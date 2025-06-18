@@ -50,12 +50,12 @@ pip install lightning-pose lightning-pose-app
 git clone https://github.com/paninski-lab/lightning-pose.git
 cd lightning-pose
 pip install -e ".[dev]"
+cd ..
 
 # Install the app
 git clone https://github.com/paninski-lab/lightning-pose-app.git
 cd lightning-pose-app/app_server
 pip install -e .
-cd ..
 ```
 
 ## Usage

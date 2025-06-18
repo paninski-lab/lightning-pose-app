@@ -1,10 +1,11 @@
 from pathlib import Path
+from textwrap import dedent
 
 import tomli
 import tomli_w
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
-import os
+import sys
 import uvicorn
 from pydantic import BaseModel, ValidationError
 from starlette import status
@@ -166,7 +167,12 @@ def rglob(request: RGlobRequest) -> RGlobResponse:
 
     response = RGlobResponse(entries=[], relativeTo=request.baseDir)
 
-    results = super_rglob(str(request.baseDir), pattern=request.pattern, no_dirs=request.noDirs, stat=request.stat)
+    results = super_rglob(
+        str(request.baseDir),
+        pattern=request.pattern,
+        no_dirs=request.noDirs,
+        stat=request.stat,
+    )
     for r in results:
         # Convert dict to pydantic model
         converted = RGlobResponseEntry.model_validate(r)
@@ -236,22 +242,49 @@ def read_file(file_path: Path):
 ###########################################################################
 
 # Serve ng assets (js, css)
-app.mount("/static", StaticFiles(directory=Path(__file__).parent / "ngdist" / "ng_app"), name="static")
+STATIC_DIR = Path(__file__).parent / "ngdist" / "ng_app"
+if not STATIC_DIR.is_dir():
+    message = dedent(
+        f"""
+        ⚠️  Warning: We couldn't find the necessary static assets (like HTML, CSS, JavaScript files).
+        As a result, only the HTTP API is currently running.
+
+        This usually happens if you've cloned the source code directly.
+        To fix this and get the full application working, you'll need to either:
+
+        - Build the application: Refer to development.md in the repository for steps.
+        - Copy static files: Obtain these files from a PyPI source distribution of a released
+        version and place them in:
+
+            {STATIC_DIR}
+        """
+    )
+    # print(f'{Fore.white}{Back.yellow}{message}{Style.reset}', file=sys.stderr)
+    print(f"{message}", file=sys.stderr)
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR, check_dir=False), name="static")
+
 
 @app.get("/favicon.ico")
 def favicon():
-    return FileResponse(
-        Path(__file__).parent / "ngdist" / "ng_app" / "favicon.ico"
-    )
+    return FileResponse(Path(__file__).parent / "ngdist" / "ng_app" / "favicon.ico")
 
 
 # Catch-all route. serve index.html.
 @app.get("/{full_path:path}")
 def index(full_path: Path):
-    return FileResponse(
-        Path(__file__).parent / "ngdist" / "ng_app" / "index.html"
-    )
+    return FileResponse(Path(__file__).parent / "ngdist" / "ng_app" / "index.html")
+
+
+def get_static_files_if_needed():
+    cache_dir = Path("~/.lightning_pose/cache").expanduser()
+    # Version check
+    # App should run with "latest compatible version"
+    # this means that if lightning pose is installed, it gets the latest version compatible with that version.
+    # otherwise it gets just the latest version.
+    # Download the files?
 
 
 def run_app(host: str, port: int):
+    get_static_files_if_needed()
     uvicorn.run(app, host=host, port=port)
