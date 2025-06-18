@@ -1,0 +1,7 @@
+.error-message {
+  background: #eee;
+  padding: 1rem;
+  font-family: monospace;
+  /*white-space: pre-line;*/
+  white-space: preserve nowrap;
+}

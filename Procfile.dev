@@ -1,0 +1,7 @@
+# Procfile for development environment
+
+# Starts the Angular frontend development server
+frontend: cd web_ui && ng serve
+
+# Starts the Uvicorn backend server with auto-reloading enabled
+backend: uvicorn litpose_app.main:app --port 8080 --reload --reload-dir app_server/

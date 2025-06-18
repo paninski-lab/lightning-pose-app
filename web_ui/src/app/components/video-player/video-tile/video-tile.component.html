@@ -1,0 +1,20 @@
+<div class="relative shadow-lg shadow-black/20 bg-base-200">
+  <!-- bg is visible during loading state -->
+  <!-- wrapper to contain video + keypoints -->
+  <video
+    #videoEl
+    preload="auto"
+    (loadedmetadata)="onLoadedMetadata()"
+    muted
+    class="w-full"
+    (timeupdate)="updateLocalCurrentTime()"
+    (ended)="onEnd()"
+  >
+    <source [src]="src()" type="video/mp4" />
+  </video>
+  <div [class.invisible]="!showProjectedContent()">
+    <!-- wrapper to hide content until video inited -->
+    <ng-content></ng-content>
+  </div>
+</div>
+<!--<p>T: {{ localCurrentTime() }}</p>-->

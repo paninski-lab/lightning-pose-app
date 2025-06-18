@@ -1,0 +1,23 @@
+<h1 mat-dialog-title>An error has occurred 😞</h1>
+<div mat-dialog-content>
+  @if (data.status) {
+    <p>
+      <b>Status Code: {{ data.status }}</b>
+    </p>
+  }
+  <p>Error message</p>
+  <div class="w-full h-full overflow-auto">
+    <p class="error-message w-fit h-fit">
+      {{ data?.stack ?? data?.message ?? "Undefined client error" }}
+    </p>
+  </div>
+  @if (data.error) {
+    <p>Error body</p>
+    <p class="error-message w-fit h-fit">
+      {{ data?.error?.detail ?? data?.error }}
+    </p>
+  }
+</div>
+<div mat-dialog-actions>
+  <button mat-raised-button mat-dialog-close color="primary">Close</button>
+</div>

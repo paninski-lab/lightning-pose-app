@@ -1,0 +1,24 @@
+<!-- this sets the boundary for dragging to be slightly larger than parent component (video or image)
+   to allow dragging the keypoint slightly past the edge to allow moving its center to (0,0) or other corners/edges -->
+<div #dragBoundary class="absolute -inset-1"></div>
+@for (keypoint of scaledKeypointModels(); track keypoint.id) {
+  <div
+    cdkDrag
+    [cdkDragBoundary]="dragBoundary"
+    [cdkDragFreeDragPosition]="keypoint.position()"
+    [cdkDragDisabled]="!labelerMode()"
+    (cdkDragEnded)="onKeypointDragEnd(keypoint, $event)"
+    [attr.data-tip]="keypoint.hoverText"
+    class="
+      h-2 w-2
+      rounded-full
+      shadow-sm/30
+      {{ keypoint.colorClass() }}
+      absolute -top-1 -left-1
+      margin
+      cursor-pointer
+      tooltip"
+  >
+    <!-- top, left position should be negative by 1/2 the height and width -->
+  </div>
+}

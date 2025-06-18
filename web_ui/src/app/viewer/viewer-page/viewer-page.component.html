@@ -1,0 +1,103 @@
+@if (isIniting()) {
+  Loading...
+} @else {
+  <div
+    class="fixed top-0 left-0 h-screen w-screen flex flex-row items-stretch shadow-lg"
+  >
+    <!-- Left pane -->
+    <div class="bg-base-300 w-60 xl:w-80 flex flex-col justify-between">
+      <div class="p-4">
+        <app-sessions-panel
+          [selectedSession]="selectedSession()"
+        ></app-sessions-panel>
+      </div>
+      <app-loading-bar class="h-20 p-4"></app-loading-bar>
+    </div>
+
+    <!-- Center content -->
+    <app-viewer-center-panel
+      class="grow z-30"
+      [viewSettings]="viewSettings"
+    ></app-viewer-center-panel>
+
+    <!-- Right pane -->
+    <div class="shrink-0 w-40 xl:w-60 h-full">
+      <div class="panel m-4">
+        <div class="panel-header">
+          <h1 class="px-2 mb-1">Views</h1>
+        </div>
+        <div class="panel-content max-h-60 overflow-y-auto">
+          <ul>
+            @for (cam of allViews; track cam) {
+              <li class="p-1 flex justify-between items-center">
+                <span>{{ cam }}</span>
+                <input
+                  type="checkbox"
+                  [checked]="viewSelectionModel.isSelected(cam)"
+                  class="checkbox checkbox-xs"
+                  (change)="onViewCheckboxChange($event, cam)"
+                />
+              </li>
+            }
+          </ul>
+        </div>
+      </div>
+
+      <div class="panel m-4">
+        <div class="panel-header">
+          <h1 class="px-2 mb-1">Keypoints</h1>
+        </div>
+        <div class="panel-content max-h-60 overflow-y-auto">
+          <ul>
+            @for (kp of projectInfoService.allKeypoints(); track kp) {
+              <li class="p-1 flex justify-between items-center">
+                <span>{{ kp }}</span>
+                <input
+                  type="checkbox"
+                  [checked]="keypointSelectionModel.isSelected(kp)"
+                  class="checkbox checkbox-xs"
+                  (change)="onKeypointCheckboxChange($event, kp)"
+                />
+              </li>
+            }
+          </ul>
+        </div>
+      </div>
+
+      <div class="panel m-4">
+        <div class="panel-header">
+          <h1 class="px-2 mb-1">Models</h1>
+        </div>
+        <div class="panel-content max-h-60 overflow-y-visible">
+          <ul>
+            @let modelSelectors =
+              viewSettings.modelsShown().length < 2
+                ? viewSettings.modelsShown().concat([noneOption])
+                : viewSettings.modelsShown();
+            <!-- it's important to track index, not model.
+             if we put model here, something weird happens when you clear all models and then set a model. -->
+            @for (model of modelSelectors; track $index) {
+              @let modelIndex = $index;
+              <li class="p-1 w-full">
+                <select
+                  class="select select-sm w-full flex-grow"
+                  [class.border-red-300]="modelIndex === 0"
+                  [class.border-green-300]="modelIndex === 1"
+                  (change)="onModelDropdownItemClick(modelIndex, $event)"
+                >
+                  @let options =
+                    [noneOption].concat(projectInfoService.allModels());
+                  @for (dropdownItem of options; track dropdownItem) {
+                    <option [selected]="dropdownItem === model">
+                      {{ dropdownItem }}
+                    </option>
+                  }
+                </select>
+              </li>
+            }
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+}

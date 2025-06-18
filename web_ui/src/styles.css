@@ -1,0 +1,22 @@
+/* You can add global styles to this file, and also import other style files */
+
+/* using tailwind instead of angular defaults:
+html, body { height: 100%; }
+body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+*/
+@import "tailwindcss";
+@plugin "daisyui" {
+  /*themes: light --default, dark --prefersdark; */
+  themes: dim --default;
+}
+
+.panel {
+  @apply bg-base-300 border-4 border-base-300 rounded-md;
+}
+
+.panel-header {
+}
+
+.panel-content {
+  @apply bg-base-100 p-1 text-sm;
+}

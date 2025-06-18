@@ -1,0 +1,9 @@
+@if (x.isLoading()) {
+  <p>Loading</p>
+
+  <progress
+    class="progress progress-info w-full"
+    [value]="x.progress()"
+    [max]="x.maxProgress()"
+  ></progress>
+}

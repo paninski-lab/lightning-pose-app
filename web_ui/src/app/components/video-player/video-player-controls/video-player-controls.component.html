@@ -1,0 +1,22 @@
+<div class="video-controls-container p-4">
+  <button class="btn" (click)="toggleIsPlaying()">
+    @if (isPlaying()) {
+      <span class="material-icons">pause</span>
+    } @else {
+      <span class="material-icons">play_arrow</span>
+    }
+  </button>
+  <span class="time-display w-10 overflow-hidden">{{ currentTime() }}</span>
+  <span class="time-display w-10">{{ currentFrame() }}</span>
+  <input
+    #rangeInput
+    type="range"
+    class="timestamp-slider"
+    min="0"
+    max="{{ duration() }}"
+    [value]="currentTime()"
+    (input)="onSliderInput(rangeInput.value)"
+    step="{{ step() }}"
+  />
+  <span class="time-display">{{ duration() }}s</span>
+</div>
