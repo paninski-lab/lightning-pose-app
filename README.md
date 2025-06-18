@@ -1,6 +1,10 @@
 # Lightning pose app 2.0
 
-Still under development. Intended to replace https://github.com/Lightning-Universe/Pose-app.
+
+Status: In development
+* Multiview prediction viewer is in a usable state.
+* Labeler under development
+* Model management not yet started.
 
 ## Features
 
@@ -11,33 +15,76 @@ The new app will have three modules:
 
 The modules will also be developed in roughly that order.
 
+## Installation
+
+You can install the app either locally or to a remote server.
+
+### Using environment managers like conda
+
+We recommend having a single lightning-pose environment (say, `lp`) for all your lightning-pose
+related package installations. This keeps lightning-pose dependencies separate from any other
+data analysis stacks you may be using, while allowing the various lightning-pose packages to
+share dependencies. 
+
+A conda example:
+
+```bash
+# Create the environment
+conda create -n lp python=3.12
+
+# Activate the environment
+conda activate lp
+```
+
+### Installation option 1: From the PyPi distribution
+
+This is the simplest option appropriate for most users.
+```bash
+pip install lightning-pose lightning-pose-app
+```
+
+### Installation option 2: From source
+
+```bash
+# (If you haven't already) Install lightning-pose core
+git clone https://github.com/paninski-lab/lightning-pose.git
+cd lightning-pose
+pip install -e ".[dev]"
+
+# Install the app
+git clone https://github.com/paninski-lab/lightning-pose-app.git
+cd lightning-pose-app/app_server
+pip install -e .
+cd ..
+```
+
 ## Usage
 
-1. Install the server bundle `pip install lightning-pose[app]`
-2. Create a config file at `~/.lightning-pose/project.toml`
+1. First create a config file at `~/.lightning-pose/project.toml`
 ```toml filename="project.toml"
-data_dir =... # Path to a directory containing all the data (videos, labels, etc).
-model_dir =... # Path to a directory containing all the models.
-views = ["", ...] # Names of the camera views.
+data_dir = "/Path to a directory containing all the data (videos, labels, etc)."
+model_dir = "/Path to a directory containing all the models."
+views = [
+    "topLeft",
+    "(Your video filenames must contain a view name, ie session123_topLeft.mp4)",
+]
 ```
-3. Run the app: `litpose app`
-4. The webserver is now listening at `http://localhost:8080`!
+(This step will be part of the UI in the future, but for now you have to do it manually.)
+2. Run the app: `litpose app`
+3. The webserver is now listening at `http://localhost:8080`!
 
 ## Development
 
-For server development, you can clone the repo, `cd app/app_server`, and `pip install -e .`.
+### UI Development required tools 
 
-See the `Procfile.dev` file, `backend: ` key, for how to run just the uvicorn server.
-
-### UI Development
-
-You will need to setup UI-specific tooling using NodeJS.
+To compile the app (only necessary for UI development) you will need to install Node.js and angular devtools.
 
 ```bash
+# Install nvm (node version manager), the recommended way to install node.js
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 ```
 
-Follow the instructions in the output for shell configuration. 
+Reload the shell to initialize `nvm` related environment variables.  
 Then:
 
 ```bash
@@ -47,22 +94,23 @@ npm install -g @angular/cli
 # Install project dependencies from web_ui/package.json.
 # Outputs a node_modules folder which is gitignored.
 cd web_ui && npm install
-
-# Install honcho which just helps run multiple servers with one command.
-pip install honcho
 ```
-You're ready to go! Start the development server with:
+
+### Running the dev servers
+
+You need to run two servers: the backend server, and an angular dev server. If you only want to run one or the other,
+use the relevant command inside `Procfile.dev`. If you're only starting the backend server (not doing any UI development),
+you can directly use the uvicorn command inside Procfile.dev instead of honcho.
 
 ```bash
+# Installs a tool that's useful for running multiple servers at once
+pip install honcho
+
+# Runs services defined in the Procfile.dev 
 honcho -f Procfile.dev start
 ```
 
-The app is now live at `localhost:4200`.
-
-### Details about the dev environment
-
-The honcho tool runs services defined in the specified "Procfile". In this case, we run `ng serve`
-which is Angular's dev server, and `uvicorn run` which is the python backend server. HTTP Requests flow through the Angular CLI, which forwards some requests to uvicorn (see [proxy.conf.json](web_ui/src/proxy.conf.json)).
+The angular dev server `ng serve` is the primary endpoint which forwards some requests to uvicorn (see [proxy.conf.json](web_ui/src/proxy.conf.json)).
 This is a dev-only setup: in production, static assets including the compiled angular app are served by `uvicorn`.
 
 The use of angular's dev server is for hot module reloading, meaning when you change an angular source file, the UI automatically updates without even a page reload.
