@@ -20,10 +20,11 @@
 <div class="panel-content inset-shadow-xs inset-shadow-black/30">
   <!--panel content-->
   <div class="overflow-x-auto">
-    <ul class="w-fit relative">
+    <ul class="w-fit relative" tabindex="0" role="listbox">
       @for (session of sessions(); track session.key) {
         <li class="text-nowrap" routerLinkActive="bg-sky-700">
           <a
+            role="option"
             class="p-1 block hover:bg-base-content/10 rounded-sm"
             [routerLink]="['/viewer', session.key]"
           >

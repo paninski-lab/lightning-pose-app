@@ -37,7 +37,13 @@
 
     <div class="navbar-end">
       <button class="btn btn-ghost">
-        <span class="material-icons">settings</span>
+        <span
+          class="material-icons"
+          tabindex="0"
+          (click)="settingsDialog.showModal()"
+          (keydown.enter)="settingsDialog.showModal()"
+          >settings</span
+        >
       </button>
     </div>
   </nav>
@@ -45,3 +51,13 @@
 <main class="flex-grow flex">
   <router-outlet />
 </main>
+
+<!-- Settings dialog -->
+<dialog #settingsDialog class="modal">
+  <app-project-settings class="modal-box"></app-project-settings>
+
+  <!-- Makes the dialog close when clicked from outside. -->
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
