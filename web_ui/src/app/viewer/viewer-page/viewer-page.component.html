@@ -1,8 +1,17 @@
-@if (isIniting()) {
-  Loading...
-} @else {
+<style>
+:host {
+  flex-grow: 1;
+  display: flex;
+}
+</style>
+
+@if (!isIniting()) {
+  <!--
+  class="fixed top-0 left-0 h-screen w-screen flex flex-row items-stretch shadow-lg"
+  -->
   <div
-    class="fixed top-0 left-0 h-screen w-screen flex flex-row items-stretch shadow-lg"
+    class="grow flex flex-row items-stretch shadow-lg"
+
   >
     <!-- Left pane -->
     <div class="bg-base-300 w-60 xl:w-80 flex flex-col justify-between">

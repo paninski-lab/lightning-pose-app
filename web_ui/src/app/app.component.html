@@ -1,22 +1,33 @@
-<nav class="flex">
-  <span>Lightning Pose</span>
-  <ul class="flex">
-    <li>
-      <a
-        routerLink="/viewer"
-        routerLinkActive="active"
-        ariaCurrentWhenActive="page"
-        >Viewer</a
-      >
-    </li>
-    <li>
-      <a
-        routerLink="/labeler"
-        routerLinkActive="active"
-        ariaCurrentWhenActive="page"
-        >Labeler</a
-      >
-    </li>
-  </ul>
-</nav>
-<router-outlet />
+<style>
+  :host {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+</style>
+<header>
+  <nav class="flex">
+    <span>Lightning Pose</span>
+    <ul class="flex">
+      <li>
+        <a
+          routerLink="/viewer"
+          routerLinkActive="active"
+          ariaCurrentWhenActive="page"
+          >Viewer</a
+        >
+      </li>
+      <li>
+        <a
+          routerLink="/labeler"
+          routerLinkActive="active"
+          ariaCurrentWhenActive="page"
+          >Labeler</a
+        >
+      </li>
+    </ul>
+  </nav>
+</header>
+<main class="flex-grow flex">
+  <router-outlet />
+</main>
