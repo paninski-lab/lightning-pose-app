@@ -1,20 +1,16 @@
 <style>
-:host {
-  flex-grow: 1;
-  display: flex;
-}
+  :host {
+    flex-grow: 1;
+    display: flex;
+  }
 </style>
 
 @if (!isIniting()) {
-  <!--
-  class="fixed top-0 left-0 h-screen w-screen flex flex-row items-stretch shadow-lg"
-  -->
-  <div
-    class="grow flex flex-row items-stretch shadow-lg"
-
-  >
+  <div class="grow flex flex-row items-stretch">
     <!-- Left pane -->
-    <div class="bg-base-300 w-60 xl:w-80 flex flex-col justify-between">
+    <div
+      class="bg-base-200 w-60 xl:w-80 flex flex-col justify-between shadow-lg"
+    >
       <div class="p-4">
         <app-sessions-panel
           [selectedSession]="selectedSession()"
