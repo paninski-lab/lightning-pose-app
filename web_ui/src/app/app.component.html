@@ -36,21 +36,22 @@
     </div>
 
     <div class="navbar-end">
-      <button class="btn btn-ghost">
-        <span
-          class="material-icons"
-          tabindex="0"
-          (click)="openSettingsDialog()"
-          (keydown.enter)="openSettingsDialog()"
-          >settings</span
-        >
+      <button
+        class="btn btn-ghost"
+        tabindex="0"
+        (click)="openSettingsDialog()"
+        (keydown.enter)="openSettingsDialog()"
+      >
+        <span class="material-icons">settings</span>
       </button>
     </div>
   </nav>
 </header>
 
 @if (isIniting()) {
-  <main class="flex-grow flex">
+  <!-- Set min-height: 0 to allow it to shrink if its content is too large.
+    Default min-height for flex items is auto. -->
+  <main class="flex-grow flex min-h-0">
     <router-outlet />
   </main>
 

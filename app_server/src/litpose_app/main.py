@@ -108,18 +108,14 @@ def set_project_info(request: SetProjectInfoRequest) -> None:
         # Convert the Pydantic model to a dictionary for TOML serialization.
         # Use mode=json to make the resulting dict json-serializable (and thus
         # also toml serializable)
-        print(request.projectInfo)
         project_data_dict = request.projectInfo.model_dump(
             mode="json", exclude_none=True
         )
-        print(project_data_dict)
         with open(PROJECT_INFO_TOML_PATH, "rb") as f:
             existing_project_data = tomli.load(f)
-            print(existing_project_data)
 
         # Apply changes onto existing data, i.e. PATCH semantics.
         existing_project_data.update(project_data_dict)
-        print(existing_project_data)
 
         # Open the file in binary write mode to write the TOML data
         with open(PROJECT_INFO_TOML_PATH, "wb") as f:
