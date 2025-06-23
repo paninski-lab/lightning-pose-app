@@ -1,22 +1,70 @@
-<nav class="flex">
-  <span>Lightning Pose</span>
-  <ul class="flex">
-    <li>
-      <a
-        routerLink="/viewer"
-        routerLinkActive="active"
-        ariaCurrentWhenActive="page"
-        >Viewer</a
+<style>
+  :host {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  .navbar {
+    min-height: 3rem; /* reduce from default of 4rem */
+  }
+</style>
+<header>
+  <nav class="navbar bg-base-200 shadow-lg">
+    <div class="navbar-start">
+      <span class="text-lg font-semibold">Lightning Pose</span>
+    </div>
+
+    <div class="navbar-center">
+      <ul class="menu menu-horizontal p-0">
+        <li>
+          <a
+            routerLink="/viewer"
+            routerLinkActive="menu-active"
+            ariaCurrentWhenActive="page"
+            >Viewer</a
+          >
+        </li>
+        <li>
+          <a
+            routerLink="/labeler"
+            routerLinkActive="menu-active"
+            ariaCurrentWhenActive="page"
+            >Labeler</a
+          >
+        </li>
+      </ul>
+    </div>
+
+    <div class="navbar-end">
+      <button
+        class="btn btn-ghost"
+        tabindex="0"
+        (click)="openSettingsDialog()"
+        (keydown.enter)="openSettingsDialog()"
       >
-    </li>
-    <li>
-      <a
-        routerLink="/labeler"
-        routerLinkActive="active"
-        ariaCurrentWhenActive="page"
-        >Labeler</a
-      >
-    </li>
-  </ul>
-</nav>
-<router-outlet />
+        <span class="material-icons">settings</span>
+      </button>
+    </div>
+  </nav>
+</header>
+
+@if (isIniting()) {
+  <!-- Set min-height: 0 to allow it to shrink if its content is too large.
+    Default min-height for flex items is auto. -->
+  <main class="flex-grow flex min-h-0">
+    <router-outlet />
+  </main>
+
+  <!-- Settings dialog -->
+  <dialog #settingsDialog class="modal">
+    <app-project-settings
+      class="modal-box"
+      (done)="settingsDialog.close()"
+    ></app-project-settings>
+
+    <!-- Makes the dialog close when clicked from outside. -->
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+}

@@ -25,9 +25,10 @@ export class ProjectInfoService {
     return this._projectInfo as ProjectInfo;
   }
 
-  async setProjectInfo(projectInfo: ProjectInfo) {
+  async setProjectInfo(projectInfo: Partial<ProjectInfo>) {
     /** Saves changes to the project info.  */
     await this.rpc.call('setProjectInfo', { projectInfo });
+    window.location.reload();
   }
 
   // Newer style of models.

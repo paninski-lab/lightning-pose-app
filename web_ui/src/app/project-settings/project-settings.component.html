@@ -1,0 +1,31 @@
+<style>
+  ::placeholder {
+    /** bring back the default style from daisy. dont know why it's getting overridden. */
+    color: color-mix(in oklch, currentColor 50%, #0000) !important;
+  }
+</style>
+
+<h3 class="text-xl font-bold">Settings</h3>
+
+<fieldset class="fieldset my-6">
+  <legend class="fieldset-legend text-md">Data directory</legend>
+  <label class="input w-full">
+    <span class="material-icons !text-sm opacity-50">folder</span>
+    <input [formControl]="dataDir" type="text" class="grow" placeholder="/" />
+  </label>
+  <p class="label">Root of the data directory for the project.</p>
+
+  <legend class="fieldset-legend text-md mt-4">Model directory</legend>
+  <label class="input w-full">
+    <span class="material-icons !text-sm opacity-50">folder</span>
+    <input [formControl]="modelDir" type="text" class="grow" placeholder="/" />
+  </label>
+  <p class="label">Root of the model directory for the project.</p>
+</fieldset>
+
+<div class="modal-action">
+  <button class="btn btn-soft btn-secondary" (click)="done.emit(null)">
+    Cancel
+  </button>
+  <button class="btn btn-soft btn-primary" (click)="onSaveClick()">Save</button>
+</div>

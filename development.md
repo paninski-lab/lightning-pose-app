@@ -45,7 +45,7 @@ Uvicorn is also run with reload=True, so when you change a python file, the uvic
 
 With the development setup above (no need for honcho), run
 ```bash
-sh build.sh
+sh build_ui.sh
 ```
 
 This calls `ng build` to compile the app as static files, and puts them inside the `app_server` directory. Specifically, `app_server/src/litpose_app/ngdist`. It's gitignored so you won't check it in by accident.
@@ -63,7 +63,6 @@ as this is the default behavior of the build backend.
 # If needed:
 pip install build
 
-cd app_server
-python -m build .
+./build_release.sh # Invokes build_ui.sh under the hood.
 # Outputs dist/*.whl. Distributions contain the compiled angular app from build.sh.
 ```

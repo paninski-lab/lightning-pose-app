@@ -47,9 +47,9 @@ PROJECT_INFO_TOML_PATH = Path("~/.lightning_pose/project.toml").expanduser()
 class ProjectInfo(BaseModel):
     """Class to hold information about the project"""
 
-    data_dir: Path = Path("")
-    model_dir: Path = Path("")
-    views: list[str] = []
+    data_dir: Path | None = None
+    model_dir: Path | None = None
+    views: list[str] | None = None
 
 
 """
@@ -108,11 +108,18 @@ def set_project_info(request: SetProjectInfoRequest) -> None:
         # Convert the Pydantic model to a dictionary for TOML serialization.
         # Use mode=json to make the resulting dict json-serializable (and thus
         # also toml serializable)
-        project_data_dict = request.projectInfo.model_dump(mode="json")
+        project_data_dict = request.projectInfo.model_dump(
+            mode="json", exclude_none=True
+        )
+        with open(PROJECT_INFO_TOML_PATH, "rb") as f:
+            existing_project_data = tomli.load(f)
+
+        # Apply changes onto existing data, i.e. PATCH semantics.
+        existing_project_data.update(project_data_dict)
 
         # Open the file in binary write mode to write the TOML data
         with open(PROJECT_INFO_TOML_PATH, "wb") as f:
-            tomli_w.dump(project_data_dict, f)
+            tomli_w.dump(existing_project_data, f)
 
         return None
 

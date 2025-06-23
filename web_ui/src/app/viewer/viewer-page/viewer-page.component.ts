@@ -72,11 +72,8 @@ export class ViewerPageComponent implements OnInit {
     // it will (future) open a dialog to get the project info.
 
     this.loadingService.isLoading.set(true);
-    this.loadingService.maxProgress.set(3);
+    this.loadingService.maxProgress.set(2);
     this.loadingService.progress.set(0);
-
-    await this.projectInfoService.loadProjectInfo();
-    this.loadingService.progress.update((x) => x + 1);
 
     // Load sessions and prediction index, but don't wait, just fire off the request.
     const p = this.sessionService.loadPredictionIndex();
