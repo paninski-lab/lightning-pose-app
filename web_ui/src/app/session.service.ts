@@ -2,17 +2,19 @@ import { inject, Injectable } from '@angular/core';
 import {
   BehaviorSubject,
   catchError,
+  distinctUntilChanged,
   firstValueFrom,
   Observable,
   of,
 } from 'rxjs';
-import { Session } from './session.model';
+import { Session, SessionView } from './session.model';
 import { RpcService } from './rpc.service';
 import { ProjectInfoService } from './project-info.service';
 import { PredictionFile } from './prediction-file';
 import { HttpClient } from '@angular/common/http';
 import { CsvParserService } from './csv-parser.service';
 import { FFProbeInfo } from './ffprobe-info';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 @Injectable({
   providedIn: 'root',
@@ -21,14 +23,13 @@ export class SessionService {
   private rpc = inject(RpcService);
   private httpClient = inject(HttpClient);
 
-  private allSessions = new BehaviorSubject<Session[]>([]);
   private predictionFiles = [] as PredictionFile[];
   private projectInfoService = inject(ProjectInfoService);
   private csvParser = inject(CsvParserService);
 
-  getAllSessions(): Observable<Session[]> {
-    return this.allSessions.asObservable();
-  }
+  private _allSessions = new BehaviorSubject<Session[]>([]);
+  allSessions$ = this._allSessions.asObservable();
+  allSessions = toSignal(this.allSessions$, { requireSync: true });
 
   async loadSessions() {
     const projectInfo = this.projectInfoService.projectInfo;
@@ -40,13 +41,11 @@ export class SessionService {
     const mp4Files: string[] = response.entries
       .filter((entry) => entry.type === 'file')
       .map((entry) => entry.path);
-    const sessions: Session[] = getUniqueSessionTemplates(
+    const sessions: Session[] = this.groupVideoFilesIntoSessions(
       mp4Files,
       this.projectInfoService.projectInfo.views,
-    ).map((templateName) => {
-      return { key: templateName.replace(/\.mp4$/, '') };
-    });
-    return this.allSessions.next(sessions);
+    );
+    return this._allSessions.next(sessions);
   }
 
   async loadPredictionIndex() {
@@ -149,31 +148,44 @@ export class SessionService {
 
     return response;
   }
-}
 
-function getUniqueSessionTemplates(
-  filenames: string[],
-  views: string[],
-): string[] {
-  // A Set will store only unique session templates
-  const sessionTemplates = new Set<string>();
+  private groupVideoFilesIntoSessions(
+    filenames: string[],
+    views: string[],
+  ): Session[] {
+    // Use a Map to group files by their session key
+    const sessionKeyToItsViewFiles = new Map<string, SessionView[]>();
 
-  // Regular expression to find "_Cam-" followed by a single uppercase letter A-F, followed by "_"
-  // The [A-F] part ensures we only match the specified camera identifiers.
+    for (const filename of filenames) {
+      let viewName = views.find((v) => filename.includes(v));
+      if (!viewName) {
+        viewName = 'unknown';
+      }
 
-  for (const filename of filenames) {
-    const viewName = views.find((v) => filename.includes(v));
-    const sessionTemplate = viewName
-      ? filename.replace(viewName, '*')
-      : filename;
-    if (!sessionTemplates.has(sessionTemplate)) {
-      sessionTemplates.add(sessionTemplate);
+      // Remove the view name to get the base session key
+      const sessionKey =
+        viewName == 'unknown' ? filename : filename.replace(viewName, '*');
+
+      if (!sessionKeyToItsViewFiles.has(sessionKey)) {
+        sessionKeyToItsViewFiles.set(sessionKey, []);
+      }
+      const projectInfo = this.projectInfoService.projectInfo;
+      sessionKeyToItsViewFiles.get(sessionKey)!.push({
+        viewName,
+        videoPath: projectInfo.data_dir + '/' + filename,
+      });
     }
-  }
 
-  // Convert the Set back to an array
-  return Array.from(sessionTemplates);
+    // Convert the Map to the required Session array format
+    return Array.from(sessionKeyToItsViewFiles.entries()).map(
+      ([key, sessionViews]) => ({
+        key: key.replace(/\.mp4$/, ''),
+        views: sessionViews,
+      }),
+    );
+  }
 }
+
 interface RGlobResponse {
   entries: {
     type: string;

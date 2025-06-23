@@ -10,15 +10,19 @@ import { toSignal } from '@angular/core/rxjs-interop';
 export class ProjectInfoService {
   rpc = inject(RpcService);
 
-  // inits to undefined, set to null if no project exists.
-  private _projectInfo: ProjectInfo | undefined = undefined;
+  // undefined means not yet requested
+  // null means requested and not present
+  private _projectInfo: ProjectInfo | undefined | null = undefined;
 
   async loadProjectInfo() {
     /** Returns null if ProjectInfo wasn't initialized yet.
      * In this case the app should prompt the user for some project info. */
     const response = await this.rpc.call('getProjectInfo');
-    this._projectInfo = response.projectInfo;
-    this.setAllViews(response.projectInfo.views);
+    this._projectInfo = response.projectInfo
+      ? new ProjectInfo(response.projectInfo)
+      : null; // ProjectInfo | null
+
+    this.setAllViews(this._projectInfo?.views ?? []);
   }
 
   get projectInfo(): ProjectInfo {
@@ -37,7 +41,9 @@ export class ProjectInfoService {
   allViews$ = this._allViews.asObservable().pipe(distinctUntilChanged());
   allViews = toSignal(this.allViews$, { requireSync: true });
   setAllViews(views: string[]) {
-    this._allViews.next(views);
+    // hack: concat unknown to fix other logic that iterates over all views
+    // instead that logic should iterate over the current session's views.
+    this._allViews.next(views.concat(['unknown']));
   }
 
   _allKeypoints = new BehaviorSubject<string[]>([]);

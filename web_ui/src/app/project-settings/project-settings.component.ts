@@ -2,10 +2,13 @@ import {
   ChangeDetectionStrategy,
   Component,
   inject,
+  input,
+  OnInit,
   output,
+  signal,
 } from '@angular/core';
 import { ProjectInfoService } from '../project-info.service';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ProjectInfo } from '../project-info';
 
 @Component({
@@ -15,35 +18,61 @@ import { ProjectInfo } from '../project-info';
   styleUrl: './project-settings.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ProjectSettingsComponent {
+export class ProjectSettingsComponent implements OnInit {
   done = output<null>();
+  setupMode = input(false);
 
-  protected dataDir = new FormControl('');
-  protected modelDir = new FormControl('');
+  protected projectInfoForm: FormGroup;
+  protected viewsInitialRows = signal(4);
   private projectInfoService = inject(ProjectInfoService);
+  private fb = inject(FormBuilder);
+
+  constructor() {
+    this.projectInfoForm = this.fb.group({
+      dataDir: [''],
+      modelDir: [''],
+      views: [''],
+    });
+  }
 
   ngOnInit() {
     const projectInfo = this.projectInfoService.projectInfo;
-    this.dataDir.setValue(projectInfo.data_dir);
-    this.modelDir.setValue(projectInfo.model_dir);
+    if (projectInfo) {
+      this.projectInfoForm.patchValue({
+        dataDir: projectInfo.data_dir,
+        modelDir: projectInfo.model_dir,
+        views: projectInfo.views.join('\n'),
+      });
+      this.viewsInitialRows.update((x) =>
+        Math.max(x, projectInfo.views.length),
+      );
+    }
   }
 
   protected async onSaveClick() {
     // Save the project info.
     const projectInfo = {} as Partial<ProjectInfo>;
 
-    if (this.dataDir.dirty) {
-      projectInfo.data_dir = this.dataDir.value ?? '';
-    }
-    if (this.modelDir.dirty) {
-      projectInfo.model_dir = this.modelDir.value ?? '';
-    }
-
-    if (Object.keys(projectInfo).length) {
-      await this.projectInfoService.setProjectInfo(projectInfo);
-    }
-
+    projectInfo.data_dir = this.projectInfoForm.get('dataDir')?.value ?? '';
+    projectInfo.model_dir = this.projectInfoForm.get('modelDir')?.value ?? '';
+    projectInfo.views = this.parseMultilineText(
+      this.projectInfoForm.get('views')?.value ?? '',
+    );
+    await this.projectInfoService.setProjectInfo(projectInfo);
     // If successful the service is going to reload the app because
     // project info is global state.
+  }
+
+  private parseMultilineText(text: string): string[] {
+    return text
+      .split('\n')
+      .map((x) => x.trim())
+      .filter((x) => Boolean(x));
+  }
+
+  protected get cameraViewPlaceholder(): string {
+    return `view1
+view2
+...`;
   }
 }

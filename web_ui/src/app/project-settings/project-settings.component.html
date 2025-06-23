@@ -5,27 +5,75 @@
   }
 </style>
 
-<h3 class="text-xl font-bold">Settings</h3>
+<h3 class="text-xl font-bold">
+  @if (setupMode()) {
+    Setup
+  } @else {
+    Settings
+  }
+</h3>
 
-<fieldset class="fieldset my-6">
-  <legend class="fieldset-legend text-md">Data directory</legend>
-  <label class="input w-full">
-    <span class="material-icons !text-sm opacity-50">folder</span>
-    <input [formControl]="dataDir" type="text" class="grow" placeholder="/" />
-  </label>
-  <p class="label">Root of the data directory for the project.</p>
+<form [formGroup]="projectInfoForm">
+  <fieldset class="fieldset my-6">
+    <!-- We like the fieldset / fieldset-legend styles from daisy, but
+        we're certainly not using it as intended. Daisy inputs
+        have no other good way of putting the label on top.
+        TODO fix properly. -->
+    <label class="fieldset-legend text-md">Data directory</label>
+    <div class="input w-full">
+      <span class="material-icons !text-sm opacity-50">folder</span>
+      <input
+        formControlName="dataDir"
+        type="text"
+        class="grow"
+        placeholder="/"
+      />
+    </div>
+    <p class="label">Root of the data directory for the project.</p>
+  </fieldset>
 
-  <legend class="fieldset-legend text-md mt-4">Model directory</legend>
-  <label class="input w-full">
-    <span class="material-icons !text-sm opacity-50">folder</span>
-    <input [formControl]="modelDir" type="text" class="grow" placeholder="/" />
-  </label>
-  <p class="label">Root of the model directory for the project.</p>
-</fieldset>
+  <fieldset class="fieldset my-4">
+    <label class="fieldset-legend text-md">Model directory</label>
 
-<div class="modal-action">
-  <button class="btn btn-soft btn-secondary" (click)="done.emit(null)">
-    Cancel
-  </button>
-  <button class="btn btn-soft btn-primary" (click)="onSaveClick()">Save</button>
-</div>
+    <div class="input w-full">
+      <span class="material-icons !text-sm opacity-50">folder</span>
+      <input
+        formControlName="modelDir"
+        type="text"
+        class="grow"
+        placeholder="/"
+      />
+    </div>
+    <p class="label">Root of the model directory for the project.</p>
+  </fieldset>
+
+  <fieldset class="fieldset my-4">
+    <label class="fieldset-legend text-md">Camera Views</label>
+
+    <textarea
+      class="textarea w-full"
+      [rows]="viewsInitialRows()"
+      [placeholder]="cameraViewPlaceholder"
+      formControlName="views"
+    ></textarea>
+    <p class="label">
+      Names of views embedded in video filenames.<br />
+      Used to group files into sessions.
+    </p>
+  </fieldset>
+
+  <div class="modal-action">
+    @if (!setupMode()) {
+      <button class="btn btn-soft btn-secondary" (click)="done.emit(null)">
+        Cancel
+      </button>
+    }
+    <button
+      class="btn btn-soft btn-primary"
+      (click)="onSaveClick()"
+      [disabled]="!projectInfoForm.dirty"
+    >
+      Save
+    </button>
+  </div>
+</form>
