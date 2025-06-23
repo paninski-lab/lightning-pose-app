@@ -21,7 +21,7 @@
   <!--panel content-->
   <div class="overflow-x-auto">
     <ul class="w-fit relative" tabindex="0" role="listbox">
-      @for (session of sessions(); track session.key) {
+      @for (session of sessionService.allSessions(); track session.key) {
         <li class="text-nowrap" routerLinkActive="bg-sky-700">
           <a
             role="option"

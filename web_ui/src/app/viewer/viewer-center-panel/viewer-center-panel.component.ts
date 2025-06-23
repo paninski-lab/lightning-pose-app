@@ -21,6 +21,8 @@ import { ProjectInfoService } from '../../project-info.service';
 import { SessionService } from '../../session.service';
 import { LoadingService } from '../../loading.service';
 import { Pair } from '../../pair';
+import { SessionView } from '../../session.model';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-viewer-center-panel',
@@ -60,16 +62,24 @@ export class ViewerCenterPanelComponent implements OnInit {
 
   buildWidgetModels(): void {
     const sessionKey = this.sessionKey();
+
     if (!sessionKey) return;
+
+    // Find the full session object
+    const session = this.sessionService
+      .allSessions()
+      .find((session) => session.key === sessionKey);
+    if (!session) return; //session not found
 
     // Build the keypointModels computed signal for each widget model.
     this.widgetModels.set(
-      this.projectInfoService.allViews().flatMap((view) => {
+      //this.projectInfoService.allViews().flatMap((view) => {
+      session.views.flatMap((sessionView) => {
         const keypointModels = this.projectInfoService
           .allModels()
           .flatMap((modelKey) => {
             const predictions = this.predictions.get(
-              new Pair(view, modelKey).toMapKey(),
+              new Pair(sessionView.viewName, modelKey).toMapKey(),
             );
             if (predictions) {
               return this.projectInfoService
@@ -80,15 +90,14 @@ export class ViewerCenterPanelComponent implements OnInit {
             }
           });
 
-        const widget = this.buildWidget(sessionKey, view, keypointModels);
+        const widget = this.buildWidget(sessionView, keypointModels);
         return widget;
       }),
     );
   }
 
   private buildWidget(
-    sessionKey: string,
-    view: string,
+    sessionView: SessionView,
     allKeypoints: KeypointImpl[],
   ): VideoWidget {
     const filteredKeypoints = computed(() => {
@@ -99,8 +108,8 @@ export class ViewerCenterPanelComponent implements OnInit {
       );
     });
     return {
-      id: view,
-      videoSrc: this.getVideoSrc(sessionKey, view),
+      id: sessionView.viewName,
+      videoSrc: this.getVideoSrc(sessionView),
       keypoints: filteredKeypoints,
     };
   }
@@ -148,9 +157,9 @@ export class ViewerCenterPanelComponent implements OnInit {
 
     return dataDir + '/' + sessionKey.replace(/\*/g, view) + '.mp4';
   }
-  getVideoSrc(sessionKey: string, view: string): string {
+  getVideoSrc(sessionView: SessionView): string {
     //return '/videos/' + sessionKey.replace(/Cam-N/g, 'Cam-' + view) + '.mp4';
-    return '/app/v0/files/' + this.getVideoPath(sessionKey, view);
+    return '/app/v0/files/' + sessionView.videoPath;
   }
 
   async loadSession(sessionKey: string) {
@@ -173,12 +182,13 @@ export class ViewerCenterPanelComponent implements OnInit {
     ]);
 
     this.loadingService.isLoading.set(false);
-    this.buildWidgetModels();
+    await this.buildWidgetModels();
   }
 
   async loadPredictionFiles() {
     const sessionKey = this.sessionKey();
     if (!sessionKey) return;
+
     const predictionFiles =
       this.sessionService.getPredictionFilesForSession(sessionKey);
 

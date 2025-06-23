@@ -2,6 +2,7 @@ import {
   AfterViewInit,
   ChangeDetectionStrategy,
   Component,
+  inject,
   input,
   Signal,
   signal,
@@ -21,13 +22,5 @@ import { toSignal } from '@angular/core/rxjs-interop';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ViewerSessionsPanelComponent {
-  sessions: Signal<Session[]>;
-
-  constructor(private sessionService: SessionService) {
-    this.sessions = toSignal(this.sessionService.getAllSessions(), {
-      requireSync: true,
-    });
-  }
-
-  selectedSession = input<Session | null>(null);
+  protected sessionService = inject(SessionService);
 }

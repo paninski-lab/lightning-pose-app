@@ -143,17 +143,6 @@ export class ViewerPageComponent implements OnInit {
       });
   }
 
-  selectedSession = computed<Session | null>(() => {
-    const sessionKey = this._sessionKey();
-    if (!sessionKey) {
-      return null;
-    } else {
-      return {
-        key: sessionKey,
-      };
-    }
-  });
-
   protected onKeypointCheckboxChange(event: Event, keypointName: string) {
     const target = event.target as HTMLInputElement;
     if (target.checked) {
