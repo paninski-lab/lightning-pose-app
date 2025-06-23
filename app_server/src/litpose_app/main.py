@@ -111,8 +111,11 @@ def set_project_info(request: SetProjectInfoRequest) -> None:
         project_data_dict = request.projectInfo.model_dump(
             mode="json", exclude_none=True
         )
-        with open(PROJECT_INFO_TOML_PATH, "rb") as f:
-            existing_project_data = tomli.load(f)
+        try:
+            with open(PROJECT_INFO_TOML_PATH, "rb") as f:
+                existing_project_data = tomli.load(f)
+        except FileNotFoundError:
+            existing_project_data = {}
 
         # Apply changes onto existing data, i.e. PATCH semantics.
         existing_project_data.update(project_data_dict)

@@ -39,8 +39,8 @@
       <button
         class="btn btn-ghost"
         tabindex="0"
-        (click)="openSettingsDialog()"
-        (keydown.enter)="openSettingsDialog()"
+        (click)="settingsDialogOpen.set(true)"
+        (keydown.enter)="settingsDialogOpen.set(true)"
       >
         <span class="material-icons">settings</span>
       </button>
@@ -48,23 +48,30 @@
   </nav>
 </header>
 
-@if (isIniting()) {
-  <!-- Set min-height: 0 to allow it to shrink if its content is too large.
-    Default min-height for flex items is auto. -->
-  <main class="flex-grow flex min-h-0">
+<!-- Set min-height: 0 to allow it to shrink if its content is too large.
+  Default min-height for flex items is auto. -->
+<main class="flex-grow flex min-h-0" [class.justify-center]="!hasBeenSetup()">
+  @if (hasBeenSetup()) {
     <router-outlet />
-  </main>
+  } @else {
+    <app-project-settings
+      [setupMode]="true"
+      class="w-lg mt-8"
+    ></app-project-settings>
+  }
+</main>
 
-  <!-- Settings dialog -->
-  <dialog #settingsDialog class="modal">
+<!-- Settings dialog -->
+<dialog #settingsDialog class="modal">
+  @if (settingsDialogOpen()) {
     <app-project-settings
       class="modal-box"
-      (done)="settingsDialog.close()"
+      (done)="settingsDialogOpen.set(false)"
     ></app-project-settings>
 
     <!-- Makes the dialog close when clicked from outside. -->
-    <form method="dialog" class="modal-backdrop">
-      <button>close</button>
-    </form>
-  </dialog>
-}
+    <div class="modal-backdrop">
+      <button (click)="settingsDialogOpen.set(false)">close</button>
+    </div>
+  }
+</dialog>

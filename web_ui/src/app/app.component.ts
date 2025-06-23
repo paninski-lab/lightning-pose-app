@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  effect,
   ElementRef,
   inject,
   OnInit,
@@ -26,19 +27,37 @@ import { ProjectInfoService } from './project-info.service';
 export class AppComponent implements OnInit {
   projectInfoService = inject(ProjectInfoService);
 
-  protected isIniting = signal(false);
-  protected settingsDialog = viewChild<ElementRef | undefined>(
-    'settingsDialog',
-  );
+  // Whether the required initial setup has been done.
+  // (Setting data directory, model directory, views).
+  protected projectInfoRequestCompleted = signal(false);
+  protected hasBeenSetup = signal(false);
+  protected settingsDialog = viewChild.required<ElementRef>('settingsDialog');
+
+  settingsDialogOpen = signal(false);
 
   async ngOnInit() {
     await this.projectInfoService.loadProjectInfo();
-    this.isIniting.set(true);
+    this.hasBeenSetup.set(Boolean(this.projectInfoService.projectInfo));
+    this.projectInfoRequestCompleted.set(true);
   }
 
-  protected openSettingsDialog() {
+  constructor() {
+    effect(() => {
+      if (this.settingsDialogOpen()) {
+        this.openSettingsDialog();
+      } else {
+        this.closeSettingsDialog();
+      }
+    });
+  }
+
+  private openSettingsDialog() {
     const elementRef = this.settingsDialog();
-    if (!elementRef) return; // projectinfo not yet loaded.
     (elementRef.nativeElement as HTMLDialogElement).showModal();
+  }
+
+  private closeSettingsDialog() {
+    const elementRef = this.settingsDialog();
+    (elementRef.nativeElement as HTMLDialogElement).close();
   }
 }
