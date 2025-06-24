@@ -5,7 +5,7 @@ import {
   EventEmitter,
   inject,
   input,
-  OnDestroy,
+  OnDestroy, OnInit,
   Output,
   signal,
   ViewChild,
@@ -36,7 +36,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   styleUrl: './video-tile.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class VideoTileComponent implements OnDestroy {
+export class VideoTileComponent implements OnDestroy, OnInit {
   @ViewChild('videoEl', { static: true }) videoElement: ElementRef | null =
     null;
 

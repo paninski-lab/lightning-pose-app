@@ -4,6 +4,7 @@ import {
   inject,
   Input,
   signal,
+  Signal,
   viewChild,
   OnInit,
   afterNextRender,
@@ -43,7 +44,6 @@ export class ViewerPageComponent implements OnInit {
 
   protected keypointSelectionModel: SelectionModel<string>;
   protected viewSelectionModel: SelectionModel<string>;
-  protected allViews = [] as string[];
 
   /**
    * Set by the router when there is a session key in the path.
@@ -59,16 +59,17 @@ export class ViewerPageComponent implements OnInit {
       return;
     }
 
-    this.centerPanel()?.loadSession(this._sessionKey() as string);
+    if (this.isIniting()) {
+      // ngOnInit will loadSession in center panel.
+    } else {
+      this.centerPanel()?.loadSession(this._sessionKey() as string);
+    }
   }
 
   _sessionKey = signal<string | null>(null);
 
   protected isIniting = signal(true);
   async ngOnInit() {
-    // Page inits by loading project info, and if it does not exist,
-    // it will (future) open a dialog to get the project info.
-
     this.loadingService.isLoading.set(true);
     this.loadingService.maxProgress.set(2);
     this.loadingService.progress.set(0);
@@ -79,7 +80,7 @@ export class ViewerPageComponent implements OnInit {
       this.loadingService.progress.update((x) => x + 1);
     });
 
-    this.allViews = this.projectInfoService.allViews();
+
     p.then(() => {
       this.keypointSelectionModel.select(
         ...this.projectInfoService.allKeypoints(),
@@ -94,7 +95,6 @@ export class ViewerPageComponent implements OnInit {
       this.loadingService.isLoading.set(false);
     });
 
-    this.viewSelectionModel.select(...this.allViews);
 
     if (this.projectInfoService.projectInfo == null) {
       throw new Error('No file at ~/.lightning_pose/project.toml');
@@ -122,6 +122,11 @@ export class ViewerPageComponent implements OnInit {
   constructor() {
     this.keypointSelectionModel = new SelectionModel<string>(true, []);
     this.viewSelectionModel = new SelectionModel<string>(true, []);
+
+    this.projectInfoService.allViews$.pipe(takeUntilDestroyed())
+      .subscribe(allViews => {
+        this.viewSelectionModel.setSelection(...allViews);
+      });
 
     // Propagate changes from our selection model to the viewSettings store.
     this.viewSelectionModel.changed

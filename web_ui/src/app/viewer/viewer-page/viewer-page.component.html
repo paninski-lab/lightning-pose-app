@@ -32,7 +32,7 @@
         </div>
         <div class="panel-content max-h-60 overflow-y-auto">
           <ul>
-            @for (cam of allViews; track cam) {
+            @for (cam of projectInfoService.allViews(); track cam) {
               <li class="p-1 flex justify-between items-center">
                 <span>{{ cam }}</span>
                 <input
