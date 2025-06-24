@@ -1,7 +1,6 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  computed,
   inject,
   Input,
   signal,
@@ -11,7 +10,6 @@ import {
   Injector,
 } from '@angular/core';
 import { ViewerSessionsPanelComponent } from '../viewer-left-panel/viewer-sessions-panel.component';
-import { Session } from '../../session.model';
 import { ViewSettings } from '../../view-settings.model';
 import { VideoPlayerState } from '../../components/video-player/video-player-state';
 import { ViewerCenterPanelComponent } from '../viewer-center-panel/viewer-center-panel.component';
@@ -133,6 +131,13 @@ export class ViewerPageComponent implements OnInit {
         this.viewSettings.setViewsShown(this.viewSelectionModel.selected);
       });
 
+    // Propagate changes from viewSettings store to our selection model.
+    this.viewSettings.viewsShown$
+      .pipe(takeUntilDestroyed())
+      .subscribe((viewsShown) => {
+        this.viewSelectionModel.setSelection(...viewsShown);
+      });
+
     this.keypointSelectionModel.changed
       .asObservable()
       .pipe(takeUntilDestroyed())
@@ -140,6 +145,11 @@ export class ViewerPageComponent implements OnInit {
         this.viewSettings.setKeypointsShown(
           this.keypointSelectionModel.selected,
         );
+      });
+    this.viewSettings.keypointsShown$
+      .pipe(takeUntilDestroyed())
+      .subscribe((keypointsShown) => {
+        this.keypointSelectionModel.setSelection(...keypointsShown);
       });
   }
 
