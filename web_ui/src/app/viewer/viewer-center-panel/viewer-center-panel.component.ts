@@ -22,7 +22,6 @@ import { SessionService } from '../../session.service';
 import { LoadingService } from '../../loading.service';
 import { Pair } from '../../pair';
 import { SessionView } from '../../session.model';
-import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-viewer-center-panel',

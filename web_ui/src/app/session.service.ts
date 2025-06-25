@@ -15,6 +15,7 @@ import { HttpClient } from '@angular/common/http';
 import { CsvParserService } from './csv-parser.service';
 import { FFProbeInfo } from './ffprobe-info';
 import { toSignal } from '@angular/core/rxjs-interop';
+import {createSessionViewComparator} from './utils/comparators';
 
 @Injectable({
   providedIn: 'root',
@@ -177,10 +178,11 @@ export class SessionService {
     }
 
     // Convert the Map to the required Session array format
+    const cmp = createSessionViewComparator(this.projectInfoService.allViews());
     return Array.from(sessionKeyToItsViewFiles.entries()).map(
       ([key, sessionViews]) => ({
         key: key.replace(/\.mp4$/, ''),
-        views: sessionViews,
+        views: [...sessionViews].sort(cmp),
       }),
     );
   }
