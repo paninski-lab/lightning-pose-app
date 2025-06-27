@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from ..tasks import transcode_fine
 
 router = APIRouter()
-from litpose_app.config import FINE_VIDEO_DIR
+from litpose_app.config import FINE_VIDEO_DIR, AUTO_TRANSCODE_VIDEO_SIZE_LIMIT_MB
 
 
 @router.post("/app/v0/rpc/getFineVideoDir")
@@ -22,3 +22,9 @@ async def get_fine_video_status(request: GetFineVideoStatusRequest):
     Either returns NotStarted, Done, or InProgress (with SSE ProgressStream)
     """
     return {"path": FINE_VIDEO_DIR}
+
+
+@router.post("/app/v0/rpc/enqueueAllNewFineVideos")
+async def enqueue_all_new_fine_videos():
+
+    AUTO_TRANSCODE_VIDEO_SIZE_LIMIT_MB

@@ -118,13 +118,13 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR, check_dir=False), name="s
 
 
 @app.get("/favicon.ico")
-def favicon():
+async def favicon():
     return FileResponse(Path(__file__).parent / "ngdist" / "ng_app" / "favicon.ico")
 
 
 # Catch-all route. serve index.html.
 @app.get("/{full_path:path}")
-def index():
+async def index():
     return FileResponse(Path(__file__).parent / "ngdist" / "ng_app" / "index.html")
 
 
