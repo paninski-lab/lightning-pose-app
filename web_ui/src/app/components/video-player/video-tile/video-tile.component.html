@@ -17,12 +17,22 @@
     muted
     (timeupdate)="updateLocalCurrentTime()"
     (ended)="onEnd()"
+    (error)="onVideoTagError()"
+    [src]="src()"
   >
-    <source [src]="src()" type="video/mp4" />
+    Your browser does not support the video tag.
   </video>
   <div [class.invisible]="!showProjectedContent()">
     <!-- wrapper to hide content until video inited -->
     <ng-content></ng-content>
+  </div>
+
+  <div
+    class="absolute inset-0 overflow-auto p-2"
+    [class.invisible]="!videoErrorMessage()"
+  >
+    {{ videoErrorMessage() }}
+    <p class="text-sm text-gray-400 mt-2">Source: {{ src() }}</p>
   </div>
 </div>
 <!--<p>T: {{ localCurrentTime() }}</p>-->

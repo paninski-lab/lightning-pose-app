@@ -22,6 +22,7 @@ import { SessionService } from '../../session.service';
 import { LoadingService } from '../../loading.service';
 import { Pair } from '../../pair';
 import { SessionView } from '../../session.model';
+import { FineVideoService } from '../../utils/fine-video.service';
 
 @Component({
   selector: 'app-viewer-center-panel',
@@ -39,6 +40,7 @@ export class ViewerCenterPanelComponent implements OnInit {
   private csvParser = inject(CsvParserService);
   private projectInfoService = inject(ProjectInfoService);
   private loadingService = inject(LoadingService);
+  private fineVideoService = inject(FineVideoService);
 
   get currentFrame() {
     return this.videoPlayerState.currentFrameSignal;
@@ -108,7 +110,7 @@ export class ViewerCenterPanelComponent implements OnInit {
     });
     return {
       id: sessionView.viewName,
-      videoSrc: this.getVideoSrc(sessionView),
+      videoSrc: this.fineVideoService.fineVideoPath(sessionView.videoPath),
       keypoints: filteredKeypoints,
     };
   }
@@ -155,10 +157,6 @@ export class ViewerCenterPanelComponent implements OnInit {
     const dataDir = this.projectInfoService.projectInfo?.data_dir as string;
 
     return dataDir + '/' + sessionKey.replace(/\*/g, view) + '.mp4';
-  }
-  getVideoSrc(sessionView: SessionView): string {
-    //return '/videos/' + sessionKey.replace(/Cam-N/g, 'Cam-' + view) + '.mp4';
-    return '/app/v0/files/' + sessionView.videoPath;
   }
 
   async loadSession(sessionKey: string) {
