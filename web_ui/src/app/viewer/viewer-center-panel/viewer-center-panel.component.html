@@ -1,19 +1,28 @@
 <div class="flex flex-col h-full">
   <!-- Video content area -->
   <div
-    class="video-tile w-full grow flex flex-wrap overflow-y-auto gap-4 *:grow *:shrink-0 *:max-w-xs justify-start content-start p-4"
+    class="w-full grow flex flex-wrap overflow-y-auto gap-4 *:max-w-xs justify-start items-start content-start p-4"
   >
     <!-- `track videosrc` makes the widget component get
      destroyed and recreated if videoSrc changes. Reactively
      changing videoSrc of an existing video does not work unfortunately. -->
     @for (w of filteredWidgetModels(); track w.videoSrc) {
-      <!--@if (viewSettings.viewsShown().indexOf(w.id) >= 0) {-->
-      <app-video-tile [src]="w.videoSrc">
-        <app-keypoint-container
-          [labelerMode]="false"
-          [keypointModels]="w.keypoints()"
-        ></app-keypoint-container>
-      </app-video-tile>
+      <div class="panel !border-none">
+        <div class="px-2 py-1 text-sm flex justify-between">
+          <h3>{{ w.id }}</h3>
+          <span
+            class="btn btn-circle btn-xs material-icons !text-sm"
+            (click)="onWidgetCloseClick(w)"
+            >close</span
+          >
+        </div>
+        <app-video-tile [src]="w.videoSrc" class="w-auto">
+          <app-keypoint-container
+            [labelerMode]="false"
+            [keypointModels]="w.keypoints()"
+          ></app-keypoint-container>
+        </app-video-tile>
+      </div>
     }
   </div>
 

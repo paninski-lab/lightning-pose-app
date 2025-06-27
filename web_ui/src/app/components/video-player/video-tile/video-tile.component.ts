@@ -50,7 +50,7 @@ export class VideoTileComponent implements OnDestroy {
 
   @Output() contentEnd = new EventEmitter<void>();
 
-  constructor(private elementRef: ElementRef) {
+  constructor(private host: ElementRef) {
     this.videoPlayerState.registerVideoPlayer(this);
     combineLatest([
       this.videoPlayerState.currentTime,
@@ -60,6 +60,14 @@ export class VideoTileComponent implements OnDestroy {
       .subscribe(() => {
         this.updateLocalCurrentTime();
       });
+  }
+
+  ngOnInit() {
+    const observer = new ResizeObserver(() => {
+      this.updateScaleFactorSignal();
+    });
+
+    observer.observe(this.host.nativeElement);
   }
 
   ngOnDestroy() {
@@ -84,12 +92,15 @@ export class VideoTileComponent implements OnDestroy {
       duration: this.videoElement?.nativeElement.duration ?? 0,
     });
 
-    this.scaleFactor.set(
-      this.elementRef.nativeElement.clientWidth /
-        this.videoMetadata.value.width,
-    );
+    this.updateScaleFactorSignal();
 
     this.showProjectedContent.set(true);
+  }
+
+  private updateScaleFactorSignal() {
+    this.scaleFactor.set(
+      this.host.nativeElement.clientWidth / this.videoMetadata.value.width,
+    );
   }
 
   protected updateLocalCurrentTime() {

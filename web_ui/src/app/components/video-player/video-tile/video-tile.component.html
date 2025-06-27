@@ -1,3 +1,12 @@
+<style>
+  :host {
+    /* Display for angular elements is inline by default.
+  This is a problem when querying the host height, because it ends up being just 0.
+  */
+    display: block;
+  }
+</style>
+
 <div class="relative shadow-lg shadow-black/20 bg-base-200">
   <!-- bg is visible during loading state -->
   <!-- wrapper to contain video + keypoints -->
@@ -6,7 +15,6 @@
     preload="auto"
     (loadedmetadata)="onLoadedMetadata()"
     muted
-    class="w-full"
     (timeupdate)="updateLocalCurrentTime()"
     (ended)="onEnd()"
   >

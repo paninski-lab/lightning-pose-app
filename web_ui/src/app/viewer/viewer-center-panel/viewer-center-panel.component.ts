@@ -22,7 +22,6 @@ import { SessionService } from '../../session.service';
 import { LoadingService } from '../../loading.service';
 import { Pair } from '../../pair';
 import { SessionView } from '../../session.model';
-import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-viewer-center-panel',
@@ -226,5 +225,12 @@ export class ViewerCenterPanelComponent implements OnInit {
     );
     this.videoPlayerState.duration.set(data.duration);
     this.videoPlayerState.fps.set(data.fps);
+  }
+
+  onWidgetCloseClick(w: VideoWidget) {
+    const nextViewsShown = this.viewSettings
+      .viewsShown()
+      .filter((v) => v != w.id);
+    this.viewSettings.setViewsShown(nextViewsShown);
   }
 }
