@@ -40,7 +40,9 @@ async def enqueue_all_new_fine_videos(
 ):
     # get all mp4 video files that are less than config.AUTO_TRANSCODE_VIDEO_SIZE_LIMIT_MB
     base_path = project_info.data_dir
-    result = await asyncio.to_thread(super_rglob, base_path, pattern="*.mp4", stat=True)
+    result = await asyncio.to_thread(
+        super_rglob, base_path, pattern="**/*.mp4", stat=True
+    )
 
     # Filter videos by size limit
     videos = [

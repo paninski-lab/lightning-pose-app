@@ -59,10 +59,8 @@ def transcode_file(
             )
             return True, f"Skipped (exists): {output_file_path.name}", output_file_path
 
-        import sys
-
         print(f"Processing: {input_file_path.name} -> {output_file_path.name}")
-
+        output_file_path.parent.mkdir(parents=True, exist_ok=True)
         ffmpeg_cmd = [
             "ffmpeg",
             "-i",
