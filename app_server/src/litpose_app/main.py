@@ -1,4 +1,6 @@
+import logging
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 from textwrap import dedent
 
@@ -9,10 +11,34 @@ from starlette import status
 from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
 
+from . import deps
 
-# use this example to pull useful features from:
-# https://github.com/fastapi/full-stack-fastapi-template
-app = FastAPI()
+## Setup logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+
+## Configure additional things to happen on server startup and shutdown.
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Start apscheduler, which is responsible for executing background tasks
+    logger.info("Application startup: Initializing scheduler...")
+    scheduler = deps.scheduler()
+    scheduler.start()
+
+    yield  # Application is now ready to receive requests
+
+    logger.info("Application shutdown: Shutting down scheduler...")
+    if scheduler and scheduler.running:
+        scheduler.shutdown()
+        logger.info("Scheduler shut down.")
+    else:
+        logger.warning("Scheduler not found or not running during shutdown.")
+
+
+app = FastAPI(lifespan=lifespan)
 
 router = APIRouter()
 from .routes import ffprobe, files, project, transcode

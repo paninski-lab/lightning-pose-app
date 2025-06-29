@@ -15,10 +15,16 @@ dependencies = [
     "tomli_w~=1.2.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "httpx~=0.28.0",
+    "pytest~=8.4.0",
+    "pytest-mock~=3.14.0"
+]
+
 [tool.poetry]
 packages = [
     { include = "litpose_app", from = "src" }
 ]
 # We need this to override the .gitignore.
 include = ["**/ngdist/**/*"]
-

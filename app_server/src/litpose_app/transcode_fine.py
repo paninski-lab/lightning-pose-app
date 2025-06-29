@@ -41,7 +41,8 @@ def check_dependencies():
 
 
 def transcode_file(
-    input_file_path: Path, output_dir: Path
+    input_file_path: Path,
+    output_file_path: Path,
 ) -> tuple[bool, str, Path | None]:
     """
     Transcodes a single video file to have an intra frame for every frame.
@@ -51,15 +52,14 @@ def transcode_file(
     Returns a tuple: (success_status: bool, message: str, output_path: Path | None)
     """
     try:
-        base_name = input_file_path.name[: -len(TARGET_SUFFIX)]
-        output_file_name = f"{base_name}{TARGET_SUFFIX.replace('.mp4', '')}{OUTPUT_SUFFIX_ADDITION}.mp4"
-        output_file_path = output_dir / output_file_name
 
         if output_file_path.exists():
             print(
                 f"Output file '{output_file_path.name}' already exists. Skipping transcoding."
             )
             return True, f"Skipped (exists): {output_file_path.name}", output_file_path
+
+        import sys
 
         print(f"Processing: {input_file_path.name} -> {output_file_path.name}")
 
@@ -75,6 +75,7 @@ def transcode_file(
         process = subprocess.Popen(
             ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
         )
+
         stdout, stderr = process.communicate()
 
         if process.returncode == 0:
@@ -99,6 +100,7 @@ def transcode_file(
             )
 
     except Exception as e:
+        print(f"Error processing '{input_file_path.name}': {e}")
         return False, f"Error: {input_file_path.name} - Exception: {e}", None
 
 
@@ -145,6 +147,12 @@ def main():
     num_processes = min(MAX_CONCURRENCY, cpu_count(), len(valid_files_to_transcode))
     print(f"\nStarting transcoding with up to {num_processes} parallel processes...\n")
 
+    output_file_paths = []
+    for f in valid_files_to_transcode:
+        base_name = f.name[: -len(TARGET_SUFFIX)]
+        output_file_name = f"{base_name}{TARGET_SUFFIX.replace('.mp4', '')}{OUTPUT_SUFFIX_ADDITION}.mp4"
+        output_file_path = f.parent / output_file_name
+        output_file_paths.append(output_file_path)
     # In this main function, output_dir is still the parent of the input file
     # For RPC, we will specify FINE_VIDEO_DIR as output_dir
     with Pool(processes=num_processes) as pool:
@@ -152,7 +160,8 @@ def main():
         # It ensures compatibility if this script were run standalone.
         # In the RPC, we'll pass FINE_VIDEO_DIR explicitly.
         results = pool.starmap(
-            transcode_file, [(f, f.parent) for f in valid_files_to_transcode]
+            transcode_file,
+            [(f, of) for f, of in zip(valid_files_to_transcode, output_file_paths)],
         )
 
     print("\n--- Transcoding Summary ---")
