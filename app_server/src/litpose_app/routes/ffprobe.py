@@ -1,6 +1,38 @@
-import subprocess
 import json
-import os
+import subprocess
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel
+
+router = APIRouter()
+
+
+class FFProbeRequest(BaseModel):
+    path: Path
+
+
+class FFProbeResponse(BaseModel):
+    codec: str
+    width: int
+    height: int
+    fps: int
+    duration: float
+
+
+@router.post("/app/v0/rpc/ffprobe")
+def ffprobe(request: FFProbeRequest) -> FFProbeResponse:
+    if request.path.suffix != ".mp4":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only mp4 files are supported.",
+        )
+
+    result = run_ffprobe(str(request.path))
+
+    response = FFProbeResponse.model_validate(result)
+
+    return response
 
 
 def run_ffprobe(video_path):

@@ -1,4 +1,3 @@
-import json
 import shutil
 import subprocess
 from multiprocessing import Pool, cpu_count
@@ -41,27 +40,27 @@ def check_dependencies():
     return True
 
 
-def transcode_file(input_file_path: Path) -> str:
+def transcode_file(
+    input_file_path: Path,
+    output_file_path: Path,
+) -> tuple[bool, str, Path | None]:
     """
     Transcodes a single video file to have an intra frame for every frame.
-    The output file will be named by inserting ".fine" before the final ".mp4".
+    The output file will be named by inserting ".fine" before the final ".mp4"
+    and placed in the specified output_dir.
     Example: "video.sec.mp4" -> "video.sec.fine.mp4"
+    Returns a tuple: (success_status: bool, message: str, output_path: Path | None)
     """
     try:
-        base_name = input_file_path.name[
-            : -len(TARGET_SUFFIX)
-        ]  # e.g., "video." from "video.sec.mp4"
-        output_file_name = f"{base_name}{TARGET_SUFFIX.replace('.mp4', '')}{OUTPUT_SUFFIX_ADDITION}.mp4"
-        output_file_path = input_file_path.parent / output_file_name
 
         if output_file_path.exists():
             print(
                 f"Output file '{output_file_path.name}' already exists. Skipping transcoding."
             )
-            return f"Skipped (exists): {output_file_path.name}"
+            return True, f"Skipped (exists): {output_file_path.name}", output_file_path
 
         print(f"Processing: {input_file_path.name} -> {output_file_path.name}")
-
+        output_file_path.parent.mkdir(parents=True, exist_ok=True)
         ffmpeg_cmd = [
             "ffmpeg",
             "-i",
@@ -74,11 +73,12 @@ def transcode_file(input_file_path: Path) -> str:
         process = subprocess.Popen(
             ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
         )
+
         stdout, stderr = process.communicate()
 
         if process.returncode == 0:
             print(f"Successfully transcoded: {output_file_path.name}")
-            return f"Success: {output_file_path.name}"
+            return True, f"Success: {output_file_path.name}", output_file_path
         else:
             print(f"Error transcoding '{input_file_path.name}':")
             print(f"FFmpeg stdout:\n{stdout}")
@@ -91,10 +91,15 @@ def transcode_file(input_file_path: Path) -> str:
                     print(
                         f"Could not remove partially created file '{output_file_path}': {e}"
                     )
-            return f"Error: {input_file_path.name} - FFmpeg failed (code {process.returncode})"
+            return (
+                False,
+                f"Error: {input_file_path.name} - FFmpeg failed (code {process.returncode})",
+                None,
+            )
 
     except Exception as e:
-        return f"Error: {input_file_path.name} - Exception: {e}"
+        print(f"Error processing '{input_file_path.name}': {e}")
+        return False, f"Error: {input_file_path.name} - Exception: {e}", None
 
 
 def main():
@@ -140,8 +145,22 @@ def main():
     num_processes = min(MAX_CONCURRENCY, cpu_count(), len(valid_files_to_transcode))
     print(f"\nStarting transcoding with up to {num_processes} parallel processes...\n")
 
+    output_file_paths = []
+    for f in valid_files_to_transcode:
+        base_name = f.name[: -len(TARGET_SUFFIX)]
+        output_file_name = f"{base_name}{TARGET_SUFFIX.replace('.mp4', '')}{OUTPUT_SUFFIX_ADDITION}.mp4"
+        output_file_path = f.parent / output_file_name
+        output_file_paths.append(output_file_path)
+    # In this main function, output_dir is still the parent of the input file
+    # For RPC, we will specify FINE_VIDEO_DIR as output_dir
     with Pool(processes=num_processes) as pool:
-        results = pool.map(transcode_file, valid_files_to_transcode)
+        # A dummy output_dir for the script's main function; not used by RPC.
+        # It ensures compatibility if this script were run standalone.
+        # In the RPC, we'll pass FINE_VIDEO_DIR explicitly.
+        results = pool.starmap(
+            transcode_file,
+            [(f, of) for f, of in zip(valid_files_to_transcode, output_file_paths)],
+        )
 
     print("\n--- Transcoding Summary ---")
     for result in results:

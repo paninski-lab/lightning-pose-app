@@ -15,7 +15,7 @@ import { HttpClient } from '@angular/common/http';
 import { CsvParserService } from './csv-parser.service';
 import { FFProbeInfo } from './ffprobe-info';
 import { toSignal } from '@angular/core/rxjs-interop';
-import {createSessionViewComparator} from './utils/comparators';
+import { createSessionViewComparator } from './utils/comparators';
 
 @Injectable({
   providedIn: 'root',
@@ -36,7 +36,7 @@ export class SessionService {
     const projectInfo = this.projectInfoService.projectInfo;
     const response = (await this.rpc.call('rglob', {
       baseDir: projectInfo.data_dir,
-      pattern: '**/*.fine.mp4', //temporary
+      pattern: '**/*.mp4', //temporary
       noDirs: true,
     })) as RGlobResponse;
     const mp4Files: string[] = response.entries
@@ -118,9 +118,7 @@ export class SessionService {
 
   getPredictionFilesForSession(sessionKey: string): PredictionFile[] {
     const predictionFiles = this.predictionFiles.filter(
-      (p) =>
-        p.sessionKey === sessionKey ||
-        p.sessionKey === sessionKey.replace(/\.fine$/, ''),
+      (p) => p.sessionKey === sessionKey,
     );
     return predictionFiles;
   }

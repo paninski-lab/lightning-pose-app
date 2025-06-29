@@ -5,7 +5,9 @@ import {
   EventEmitter,
   inject,
   input,
+  linkedSignal,
   OnDestroy,
+  OnInit,
   Output,
   signal,
   ViewChild,
@@ -14,6 +16,14 @@ import { VideoPlayerState } from '../video-player-state';
 import { VideoMetadata } from '../../../video-metadata';
 import { BehaviorSubject, combineLatest } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
+const videoErrorMessages: Record<number, string> = {
+  [MediaError.MEDIA_ERR_ABORTED]: 'Error: aborted.',
+  [MediaError.MEDIA_ERR_NETWORK]: 'Error: network error.',
+  [MediaError.MEDIA_ERR_DECODE]: 'Error: decoding error.',
+  [MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED]:
+    'Error: 404 or unsupported video format.',
+};
 
 /**
  * The VideoTileComponent displays a video.
@@ -36,14 +46,20 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   styleUrl: './video-tile.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class VideoTileComponent implements OnDestroy {
+export class VideoTileComponent implements OnDestroy, OnInit {
   @ViewChild('videoEl', { static: true }) videoElement: ElementRef | null =
     null;
 
   src = input<string>('');
 
   // Current time of the video element, for displaying for debug info.
-  localCurrentTime = signal<number>(0);
+  protected localCurrentTime = signal<number>(0);
+
+  protected videoErrorMessage = linkedSignal(() => {
+    // Re-initialize this signal to '' whenever src changes.
+    this.src(); //setup dependency.
+    return '';
+  });
 
   // the main state, injected from parent so it can be easily shared across video players
   videoPlayerState: VideoPlayerState = inject(VideoPlayerState);
@@ -85,7 +101,17 @@ export class VideoTileComponent implements OnDestroy {
   // signal to hide content until video inited
   protected showProjectedContent = signal(false);
 
-  onLoadedMetadata() {
+  protected onVideoTagError() {
+    const code = this.videoElement?.nativeElement.error?.code as
+      | number
+      | undefined;
+    const videoErrorMessage = code
+      ? videoErrorMessages[code]
+      : 'Unknown error, check dev logs.';
+    this.videoErrorMessage.set(videoErrorMessage);
+  }
+
+  protected onLoadedMetadata() {
     this.videoMetadata.next({
       height: this.videoElement?.nativeElement.videoHeight ?? 1,
       width: this.videoElement?.nativeElement.videoWidth ?? 1,

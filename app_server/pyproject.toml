@@ -4,14 +4,23 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "lightning-pose-app"
-version = "1.8.1a3"
+version = "1.8.1a4"
 requires-python = ">=3.10"
 dependencies = [
-    "fastapi",
-    "uvicorn[standard]",
-    "wcmatch",
-    "tomli",
-    "tomli_w",
+    "apscheduler~=3.11.0",
+    "fastapi~=0.115.0",
+    "honcho~=2.0",
+    "uvicorn[standard]~=0.34.0",
+    "wcmatch~=10.0",
+    "tomli~=2.2.0",
+    "tomli_w~=1.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx~=0.28.0",
+    "pytest~=8.4.0",
+    "pytest-mock~=3.14.0"
 ]
 
 [tool.poetry]
@@ -20,4 +29,3 @@ packages = [
 ]
 # We need this to override the .gitignore.
 include = ["**/ngdist/**/*"]
-

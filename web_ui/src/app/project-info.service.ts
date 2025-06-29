@@ -14,15 +14,29 @@ export class ProjectInfoService {
   // null means requested and not present
   private _projectInfo: ProjectInfo | undefined | null = undefined;
 
+  // The directory that we are storing fine videos in.
+  fineVideoDir = '';
+
   async loadProjectInfo() {
     /** Returns null if ProjectInfo wasn't initialized yet.
      * In this case the app should prompt the user for some project info. */
-    const response = await this.rpc.call('getProjectInfo');
-    this._projectInfo = response.projectInfo
-      ? new ProjectInfo(response.projectInfo)
-      : null; // ProjectInfo | null
+    const promises = [] as Promise<any>[];
+    promises.push(
+      this.rpc.call('getProjectInfo').then((response) => {
+        this._projectInfo = response.projectInfo
+          ? new ProjectInfo(response.projectInfo)
+          : null; // ProjectInfo | null
 
-    this.setAllViews(this._projectInfo?.views ?? []);
+        this.setAllViews(this._projectInfo?.views ?? []);
+      }),
+    );
+
+    promises.push(
+      this.rpc.call('getFineVideoDir').then((response) => {
+        this.fineVideoDir = response.path;
+      }),
+    );
+    return Promise.allSettled(promises);
   }
 
   get projectInfo(): ProjectInfo {

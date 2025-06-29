@@ -1,3 +1,63 @@
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel
+
+router = APIRouter()
+
+
+class RGlobRequest(BaseModel):
+    baseDir: Path
+    pattern: str
+    noDirs: bool = False
+    stat: bool = False
+
+
+class RGlobResponseEntry(BaseModel):
+    path: Path
+
+    # Present only if request had stat=True or noDirs=True
+    type: str | None
+
+    # Present only if request had stat=True
+
+    size: int | None
+    # Creation timestamp, ISO format.
+    cTime: str | None
+    # Modified timestamp, ISO format.
+    mTime: str | None
+
+
+class RGlobResponse(BaseModel):
+    entries: list[RGlobResponseEntry]
+    relativeTo: Path  # this is going to be the same base_dir that was in the request.
+
+
+@router.post("/app/v0/rpc/rglob")
+def rglob(request: RGlobRequest) -> RGlobResponse:
+    # Prevent secrets like /etc/passwd and ~/.ssh/ from being leaked.
+    if not (request.pattern.endswith(".csv") or request.pattern.endswith(".mp4")):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only csv and mp4 files are supported.",
+        )
+
+    response = RGlobResponse(entries=[], relativeTo=request.baseDir)
+
+    results = super_rglob(
+        str(request.baseDir),
+        pattern=request.pattern,
+        no_dirs=request.noDirs,
+        stat=request.stat,
+    )
+    for r in results:
+        # Convert dict to pydantic model
+        converted = RGlobResponseEntry.model_validate(r)
+        response.entries.append(converted)
+
+    return response
+
+
 import datetime
 
 from wcmatch import pathlib as w
