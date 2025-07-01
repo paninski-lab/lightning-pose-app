@@ -50,6 +50,10 @@ def test_enqueue_all_new_fine_videos(monkeypatch):
 @pytest.mark.asyncio
 async def test_sse_stream_receives_event():
     """
+    Status: this test currently just hangs. I don't know why.
+    Fix later.
+
+
     Tests the /sse endpoint.
     1. Connects a client to the SSE stream.
     2. Triggers an event by calling on_next() on the shared subject.
@@ -59,23 +63,28 @@ async def test_sse_stream_receives_event():
     test_message = "This is a test message"
 
     app.state.num_active_transcode_tasks = subject = reactivex.Subject()
-
     # We use httpx.AsyncClient because it's designed to handle async requests
     # and streaming responses, which FastAPI's standard TestClient does not.
     async with httpx.AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        timeout=httpx.Timeout(3),
     ) as client:
         # The 'async with client.stream(...)' block opens a connection and
         # keeps it open until the block is exited. This simulates a real
         # SSE client connection.
+        print("herring2")
         try:
+            print("salmon")
             async with client.stream(
                 "GET", "/app/v0/rpc/getFineVideoStatus"
             ) as response:
+                print("tuna")
                 # Ensure the connection was successful and headers are correct
                 assert response.status_code == 200
                 assert response.headers["content-type"] == "text/event-stream"
 
+                print("herring")
                 # Give the server a brief moment to establish the subscription
                 # within the event_generator.
                 await asyncio.sleep(0.1)
