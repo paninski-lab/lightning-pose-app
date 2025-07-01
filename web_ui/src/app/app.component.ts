@@ -11,6 +11,7 @@ import {
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ProjectSettingsComponent } from './project-settings/project-settings.component';
 import { ProjectInfoService } from './project-info.service';
+import { FineVideoService } from './utils/fine-video.service';
 
 @Component({
   selector: 'app-root',
@@ -26,6 +27,7 @@ import { ProjectInfoService } from './project-info.service';
 })
 export class AppComponent implements OnInit {
   projectInfoService = inject(ProjectInfoService);
+  protected fineVideoService = inject(FineVideoService);
 
   // Whether the required initial setup has been done.
   // (Setting data directory, model directory, views).

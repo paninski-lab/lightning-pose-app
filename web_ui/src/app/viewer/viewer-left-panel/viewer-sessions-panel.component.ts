@@ -13,6 +13,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 import { MatListModule } from '@angular/material/list';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { FineVideoService } from '../../utils/fine-video.service';
 
 @Component({
   selector: 'app-sessions-panel',
@@ -23,4 +24,5 @@ import { toSignal } from '@angular/core/rxjs-interop';
 })
 export class ViewerSessionsPanelComponent {
   protected sessionService = inject(SessionService);
+  protected fineVideoService = inject(FineVideoService);
 }

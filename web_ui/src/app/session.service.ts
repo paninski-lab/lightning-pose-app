@@ -1,4 +1,4 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import {
   BehaviorSubject,
   catchError,
@@ -28,24 +28,51 @@ export class SessionService {
   private projectInfoService = inject(ProjectInfoService);
   private csvParser = inject(CsvParserService);
 
+  sessionsLoading = signal(false);
   private _allSessions = new BehaviorSubject<Session[]>([]);
   allSessions$ = this._allSessions.asObservable();
   allSessions = toSignal(this.allSessions$, { requireSync: true });
 
   async loadSessions() {
+    try {
+      this.sessionsLoading.set(true);
+      await this._loadSessions();
+    } finally {
+      this.sessionsLoading.set(false);
+    }
+  }
+  async _loadSessions() {
     const projectInfo = this.projectInfoService.projectInfo;
+
     const response = (await this.rpc.call('rglob', {
       baseDir: projectInfo.data_dir,
       pattern: '**/*.mp4', //temporary
       noDirs: true,
     })) as RGlobResponse;
+
+    /* To test long request:
+    const sleep = (ms: number) =>
+      new Promise((resolve) => setTimeout(resolve, ms));
+    await sleep(1000);
+     */
+
     const mp4Files: string[] = response.entries
       .filter((entry) => entry.type === 'file')
       .map((entry) => entry.path);
+
     const sessions: Session[] = this.groupVideoFilesIntoSessions(
       mp4Files,
       this.projectInfoService.projectInfo.views,
     );
+
+    // If you want to repeat the sessions array 5 times
+    // (change const to let above)
+    /*
+    sessions = Array(5)
+      .fill(null)
+      .flatMap(() => sessions);
+      */
+
     return this._allSessions.next(sessions);
   }
 

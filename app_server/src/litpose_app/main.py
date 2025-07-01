@@ -12,6 +12,7 @@ from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
 
 from . import deps
+from .tasks.management import setup_active_task_registry
 
 ## Setup logging
 logging.basicConfig(
@@ -26,7 +27,9 @@ async def lifespan(app: FastAPI):
     # Start apscheduler, which is responsible for executing background tasks
     logger.info("Application startup: Initializing scheduler...")
     scheduler = deps.scheduler()
+    app.state.scheduler = scheduler
     scheduler.start()
+    setup_active_task_registry(app)
 
     yield  # Application is now ready to receive requests
 
