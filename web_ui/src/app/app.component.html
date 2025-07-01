@@ -36,6 +36,12 @@
     </div>
 
     <div class="navbar-end">
+      @if (fineVideoService.numPendingTranscodeTasks().pending > 0) {
+        <div class="tooltip tooltip-left" data-tip="Transcoding videos...">
+          <span class="loading loading-bars loading-xs"></span>
+        </div>
+      }
+
       <button
         class="btn btn-ghost"
         tabindex="0"

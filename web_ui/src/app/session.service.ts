@@ -50,10 +50,11 @@ export class SessionService {
       noDirs: true,
     })) as RGlobResponse;
 
-    /* To test long request: */
+    /* To test long request:
     const sleep = (ms: number) =>
       new Promise((resolve) => setTimeout(resolve, ms));
     await sleep(1000);
+     */
 
     const mp4Files: string[] = response.entries
       .filter((entry) => entry.type === 'file')

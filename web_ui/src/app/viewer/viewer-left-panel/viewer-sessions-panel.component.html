@@ -44,7 +44,9 @@
     </div>
   }
 </div>
-<div class="text-sm flex">
-  <span class="material-icons !text-sm max-w-4">info_i</span>
-  <span>Videos will populate once they are transcoded.</span>
-</div>
+@if (fineVideoService.numPendingTranscodeTasks().pending > 0) {
+  <div class="text-sm flex">
+    <span class="material-icons !text-sm max-w-4">info_i</span>
+    <span>Videos will populate once they are transcoded.</span>
+  </div>
+}
