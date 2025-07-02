@@ -81,6 +81,7 @@ def super_rglob(base_path, pattern=None, no_dirs=False, stat=False):
     result_dicts = []
     for r in results:
         stat_info = r.stat() if stat else None
+        # if no_dirs, dirs already excluded by the w.NODIR flag above.
         is_dir = False if no_dirs else r.is_dir() if stat else None
         if no_dirs and is_dir:
             continue

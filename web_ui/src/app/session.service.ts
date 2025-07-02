@@ -80,7 +80,7 @@ export class SessionService {
     const projectInfo = this.projectInfoService.projectInfo;
     const response = (await this.rpc.call('rglob', {
       baseDir: projectInfo.model_dir,
-      pattern: '**/video_preds/**/*.csv',
+      pattern: '**/*.csv',
       noDirs: true,
     })) as RGlobResponse;
     this.predictionFiles = response.entries
@@ -94,11 +94,9 @@ export class SessionService {
         return true;
       })
       .map((entry) => {
-        let match = entry.path.match(
-          /(.+)\/video_preds\/([^/]+)\.mp4\/predictions\.csv/,
-        );
+        let match = entry.path.match(/(.+)\/(video.+)\/predictions\.csv/);
         if (!match) {
-          match = entry.path.match(/(.+)\/video_preds\/([^/]+)\.csv/);
+          match = entry.path.match(/(.+)\/(video.+)\.csv/);
         }
         if (!match) return null;
         // modelKey is everything before video_preds
