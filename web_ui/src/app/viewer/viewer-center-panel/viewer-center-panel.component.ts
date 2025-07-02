@@ -14,7 +14,6 @@ import { VideoPlayerState } from '../../components/video-player/video-player-sta
 import { KeypointContainerComponent } from '../../components/keypoint-container/keypoint-container.component';
 import { KeypointImpl } from '../../keypoint';
 import { VideoWidget } from '../../video-widget';
-import { NdArray } from 'ndarray'; // Import ndarray and its type
 
 import { CsvParserService } from '../../csv-parser.service';
 import { ProjectInfoService } from '../../project-info.service';
@@ -23,6 +22,7 @@ import { LoadingService } from '../../loading.service';
 import { Pair } from '../../pair';
 import { SessionView } from '../../session.model';
 import { FineVideoService } from '../../utils/fine-video.service';
+import * as dfd from 'danfojs';
 
 @Component({
   selector: 'app-viewer-center-panel',
@@ -117,13 +117,9 @@ export class ViewerCenterPanelComponent implements OnInit {
 
   private buildKeypoint(
     keypointName: string,
-    predictions: NdArray,
+    predictions: dfd.DataFrame,
     modelKey: string,
   ): KeypointImpl {
-    // Index of the keypoints in allKeypoints will match the
-    // index of the keypoints in the predictions array.
-    const kpi = this.projectInfoService.allKeypoints().indexOf(keypointName);
-
     return {
       id: keypointName + modelKey,
       name: keypointName,
@@ -136,11 +132,19 @@ export class ViewerCenterPanelComponent implements OnInit {
       }),
       modelKey,
       position: computed(() => {
-        return {
-          // j = keypoint index, 0|1 = x|y
-          x: predictions.get(this.currentFrame(), kpi, 0),
-          y: predictions.get(this.currentFrame(), kpi, 1),
-        };
+        const i = Math.min(
+          Math.max(this.currentFrame(), 0),
+          predictions.index.length - 1,
+        );
+        const x = predictions.at(
+          i,
+          new Pair(keypointName, 'x').toMapKey(),
+        ) as number;
+        const y = predictions.at(
+          i,
+          new Pair(keypointName, 'y').toMapKey(),
+        ) as number;
+        return { x, y };
       }),
     };
   }
@@ -148,9 +152,7 @@ export class ViewerCenterPanelComponent implements OnInit {
   private sessionService = inject(SessionService);
   private predictions = this.initPredictionsArr();
   private initPredictionsArr() {
-    // a Map from Pair<view_name, model_key> to NDArray of its prediction file.
-    return new Map() as Map<string, NdArray<Float64Array>>;
-    // return ndarray([], [1 /*numModels*/, 6 /*numViews*/]);
+    return new Map() as Map<string, dfd.DataFrame>;
   }
 
   getVideoPath(sessionKey: string, view: string): string {
@@ -209,7 +211,7 @@ export class ViewerCenterPanelComponent implements OnInit {
         const parsed = this.csvParser.parsePredictionFile(r);
         this.predictions.set(
           new Pair(pfile.viewName, pfile.modelKey).toMapKey(),
-          parsed as NdArray<Float64Array>,
+          parsed,
         );
       }
     }
