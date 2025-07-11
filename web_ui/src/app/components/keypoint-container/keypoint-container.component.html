@@ -1,6 +1,32 @@
 <!-- this sets the boundary for dragging to be slightly larger than parent component (video or image)
    to allow dragging the keypoint slightly past the edge to allow moving its center to (0,0) or other corners/edges -->
 <div #dragBoundary class="absolute -inset-1"></div>
+<style>
+  .crosshair-element::before,
+  .crosshair-element::after {
+    content: "";
+    position: absolute; /* These will be positioned relative to the .crosshair-element */
+    background-color: black; /* Or your desired crosshair color */
+  }
+
+  /* Vertical line */
+  .crosshair-element::before {
+    width: 1px;
+    height: 100%;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* Horizontal line */
+  .crosshair-element::after {
+    width: 100%;
+    height: 1px;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+  }
+</style>
 @for (keypoint of scaledKeypointModels(); track keypoint.id) {
   <div
     cdkDrag
@@ -20,5 +46,8 @@
       tooltip"
   >
     <!-- top, left position should be negative by 1/2 the height and width -->
+    <!--
+    <div class="crosshair-element"></div>
+    -->
   </div>
 }

@@ -84,9 +84,6 @@ export class ViewerPageComponent implements OnInit {
       this.keypointSelectionModel.select(
         ...this.projectInfoService.allKeypoints(),
       );
-      this.viewSettings.setModelsShown(
-        this.projectInfoService.allModels().slice(1, 3),
-      );
       this.loadingService.progress.update((x) => x + 1);
     });
 
@@ -122,6 +119,10 @@ export class ViewerPageComponent implements OnInit {
   constructor() {
     this.keypointSelectionModel = new SelectionModel<string>(true, []);
     this.viewSelectionModel = new SelectionModel<string>(true, []);
+
+    //
+    // Setup two-way binding between the selection model of `select` and viewSettings state.
+    //
 
     // Propagate changes from our selection model to the viewSettings store.
     this.viewSelectionModel.changed

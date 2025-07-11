@@ -1,4 +1,4 @@
-import {SessionView} from '../session.model';
+import { SessionView } from '../session.model';
 
 /**
  * Compares two arrays of strings for deep equality, respecting the order of elements.
@@ -20,7 +20,6 @@ export const compareStringArraysOrdered = (
   }
   return true;
 };
-
 
 /**
  * Creates a comparator function for sorting session views based on the specified order.

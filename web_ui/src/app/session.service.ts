@@ -17,6 +17,8 @@ import { FFProbeInfo } from './ffprobe-info';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { createSessionViewComparator } from './utils/comparators';
 
+type SessionModelMap = Record<string, string[]>;
+
 @Injectable({
   providedIn: 'root',
 })
@@ -32,6 +34,8 @@ export class SessionService {
   private _allSessions = new BehaviorSubject<Session[]>([]);
   allSessions$ = this._allSessions.asObservable();
   allSessions = toSignal(this.allSessions$, { requireSync: true });
+
+  private sessionModelMap = {} as SessionModelMap;
 
   async loadSessions() {
     try {
@@ -77,12 +81,17 @@ export class SessionService {
   }
 
   async loadPredictionIndex() {
+    /* Finds all prediction files in model directory to update
+    application's state: available prediction files and their metadata. */
     const projectInfo = this.projectInfoService.projectInfo;
+    // Search for all CSV files.
     const response = (await this.rpc.call('rglob', {
       baseDir: projectInfo.model_dir,
       pattern: '**/video_preds/**/*.csv',
       noDirs: true,
     })) as RGlobResponse;
+
+    // Filter out special CSV files.
     this.predictionFiles = response.entries
       .filter((entry) => {
         if (entry.type !== 'file') return false;
@@ -93,6 +102,7 @@ export class SessionService {
 
         return true;
       })
+      // Filter out CSV files that don't look like prediction files.
       .map((entry) => {
         let match = entry.path.match(
           /(.+)\/video_preds\/([^/]+)\.mp4\/predictions\.csv/,
@@ -110,6 +120,7 @@ export class SessionService {
         if (!viewName) return null; // cannot parse viewname.
         const sessionKey = sessionView.replace(viewName, '*');
 
+        // Parse out key metadata.
         return {
           path: entry.path,
           modelKey,
@@ -119,12 +130,28 @@ export class SessionService {
       })
       .filter((entry) => entry != null);
 
-    // After loading predictions, hydrate the stores that depend on this info.
+    // Update application state.
     this.initModels();
+
+    // TODO: Find a better place for this call.
     await this.initKeypoints();
   }
 
   private initModels() {
+    this.sessionModelMap = this.predictionFiles.reduce(
+      (sessionModelMap: SessionModelMap, entry: PredictionFile) => {
+        const { sessionKey, modelKey } = entry;
+        // If the sessionKey doesn't exist yet, initialize it with an empty array
+        if (!sessionModelMap[sessionKey]) {
+          sessionModelMap[sessionKey] = [];
+        }
+        // Add the current modelKey to the list for this sessionKey
+        sessionModelMap[sessionKey].push(modelKey);
+        return sessionModelMap;
+      },
+      {},
+    ); // Initialize the sessionModelMap as an empty Record
+
     const uniqueModels = new Set(
       this.predictionFiles
         .map((pfile) => pfile.modelKey)
@@ -173,6 +200,10 @@ export class SessionService {
     })) as FFProbeInfo;
 
     return response;
+  }
+
+  getAvailableModelsForSession(sessionKey: string): string[] {
+    return this.sessionModelMap[sessionKey] || [];
   }
 
   private groupVideoFilesIntoSessions(

@@ -21,27 +21,40 @@
   </div>
 </div>
 <div
-  class="panel-content inset-shadow-xs inset-shadow-black/30 overflow-y-auto h-120"
+  class="panel-content inset-shadow-xs inset-shadow-black/30 overflow-auto h-120"
 >
   @if (sessionService.sessionsLoading()) {
     <progress class="progress w-full"></progress>
   } @else {
     <!--panel content-->
-    <div class="overflow-x-auto">
-      <ul class="w-fit relative" tabindex="0" role="listbox">
-        @for (session of sessionService.allSessions(); track session.key) {
-          <li class="text-nowrap" routerLinkActive="bg-sky-700">
-            <a
-              role="option"
-              class="p-1 block hover:bg-base-content/10 rounded-sm"
-              [routerLink]="['/viewer', session.key]"
-            >
-              {{ session.key }}
-            </a>
-          </li>
-        }
-      </ul>
-    </div>
+    <ul class="w-fit relative" tabindex="0" role="listbox">
+      @for (session of sessionService.allSessions(); track session.key) {
+        <li class="text-nowrap" routerLinkActive="bg-sky-700">
+          <a
+            role="option"
+            class="p-1 block hover:bg-base-content/10 rounded-sm flex items-center justify-between"
+            [routerLink]="['/viewer', session.key]"
+          >
+            <span>{{ session.key }}</span
+            ><!-- left hand side -->
+            <span>
+              <span
+                class="text-xs text-red-400 font-bold ml-2"
+                [hidden]="!sessionHasModel1(session.key)"
+              >
+                M</span
+              ><!-- right hand side -->
+              <span
+                class="text-xs text-green-400 font-bold ml-1"
+                [hidden]="!sessionHasModel2(session.key)"
+              >
+                M</span
+              ><!-- right hand side -->
+            </span>
+          </a>
+        </li>
+      }
+    </ul>
   }
 </div>
 @if (fineVideoService.numPendingTranscodeTasks().pending > 0) {

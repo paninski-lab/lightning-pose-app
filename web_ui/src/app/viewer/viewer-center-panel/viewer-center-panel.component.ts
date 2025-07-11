@@ -46,7 +46,7 @@ export class ViewerCenterPanelComponent implements OnInit {
     return this.videoPlayerState.currentFrameSignal;
   }
 
-  @Input() viewSettings: ViewSettings = {} as ViewSettings;
+  private viewSettings = inject(ViewSettings);
 
   ngOnInit() {
     this.buildWidgetModels();
@@ -126,9 +126,9 @@ export class ViewerCenterPanelComponent implements OnInit {
       hoverText: keypointName,
       colorClass: computed(() => {
         const mi = this.viewSettings.modelsShown().indexOf(modelKey);
-        if (mi == 0) return 'bg-red-400';
-        if (mi == 1) return 'bg-green-400';
-        return 'bg-sky-100';
+        if (mi == 0) return 'bg-red-400'; ///50';
+        if (mi == 1) return 'bg-green-400'; ///50';
+        return 'bg-sky-100'; ///50';
       }),
       modelKey,
       position: computed(() => {
@@ -181,7 +181,7 @@ export class ViewerCenterPanelComponent implements OnInit {
     ]);
 
     this.loadingService.isLoading.set(false);
-    await this.buildWidgetModels();
+    this.buildWidgetModels();
   }
 
   async loadPredictionFiles() {
@@ -190,6 +190,13 @@ export class ViewerCenterPanelComponent implements OnInit {
 
     const predictionFiles =
       this.sessionService.getPredictionFilesForSession(sessionKey);
+
+    // Set the list of model options to those that have any predictions for this session.
+    // TODO Find a proper home for this logic.
+    const _models = new Set([...predictionFiles.map((p) => p.modelKey)]);
+    this.viewSettings.setModelOptions(
+      this.projectInfoService.allModels().filter((m) => _models.has(m)),
+    );
 
     const requestPromises = [] as Promise<string | null>[];
 
