@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, distinctUntilChanged } from 'rxjs';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { compareStringArraysOrdered } from './utils/comparators';
 
 @Injectable()
@@ -30,5 +30,25 @@ export class ViewSettings {
   modelsShown = toSignal(this.modelsShown$, { requireSync: true });
   setModelsShown(selected: string[]) {
     this._modelsShown.next(selected);
+  }
+
+  _modelOptions = new BehaviorSubject<string[]>([]);
+  modelOptions$ = this._modelOptions
+    .asObservable()
+    .pipe(distinctUntilChanged(compareStringArraysOrdered));
+  modelOptions = toSignal(this.modelOptions$, { requireSync: true });
+  setModelOptions(selected: string[]) {
+    this._modelOptions.next(selected);
+  }
+
+  constructor() {
+    // When model options change, some modelsShown may become invalid. Remove those.
+    this.modelOptions$
+      .pipe(takeUntilDestroyed())
+      .subscribe((newOptions: string[]) => {
+        this._modelsShown.next(
+          this._modelsShown.value.filter((model) => newOptions.includes(model)),
+        );
+      });
   }
 }

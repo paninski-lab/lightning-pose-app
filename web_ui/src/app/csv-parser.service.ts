@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
-import ndarray, { NdArray } from 'ndarray';
 import Papa, { ParseResult } from 'papaparse';
+import { Pair } from './pair';
+import * as dfd from 'danfojs';
 
 @Injectable({
   providedIn: 'root',
@@ -16,10 +17,14 @@ export class CsvParserService {
    * Returns an empty array if the CSV is malformed, has no data, or PapaParse fails.
    */
   getBodyParts(csvString: string): string[] {
-    const parseOutput: ParseResult<string[]> = Papa.parse(csvString.trim(), {
-      dynamicTyping: false,
-      skipEmptyLines: true,
-    });
+    const parseOutput: ParseResult<string[]> = Papa.parse(
+      // parse the header only, for speed.
+      csvString.trim().split('\n').slice(0, 4).join('\n'),
+      {
+        dynamicTyping: false,
+        skipEmptyLines: true,
+      },
+    );
 
     if (parseOutput.errors.length > 0) {
       console.error('PapaParse errors:', parseOutput.errors);
@@ -28,33 +33,14 @@ export class CsvParserService {
 
     const allRows = parseOutput.data;
 
-    if (allRows.length < 4) {
-      console.error('CSV must have at least 3 header lines and 1 data line.');
+    if (allRows.length < 3) {
+      console.error('CSV must have at least 3 header lines.');
       return [];
     }
-
-    const bodypartsHeader = allRows[1];
-    if (
-      !bodypartsHeader ||
-      bodypartsHeader.length <= 1 ||
-      (bodypartsHeader.length - 1) % 3 !== 0
-    ) {
-      console.error(
-        'Malformed bodyparts header line (line 2 of CSV).',
-        bodypartsHeader,
-      );
-      return [];
-    }
-    return bodypartsHeader.filter((_element, index) => {
-      // Check if the index is 1 (the second element)
-      // OR if the index is 1 plus a multiple of 3
-      // (index - 1) % 3 === 0 ensures that after the 2nd element (index 1),
-      // we pick elements at index 4 (1+3), 7 (1+6), 10 (1+9), etc.
-      return (index - 1) % 3 === 0 && index >= 1;
-    });
+    return [...new Set(allRows[1].slice(1))];
   }
 
-  parsePredictionFile(csvString: string): NdArray<Float64Array> {
+  parsePredictionFile(csvString: string): dfd.DataFrame {
     const parseOutput: ParseResult<string[]> = Papa.parse(csvString.trim(), {
       dynamicTyping: false,
       skipEmptyLines: true,
@@ -62,103 +48,37 @@ export class CsvParserService {
 
     if (parseOutput.errors.length > 0) {
       console.error('PapaParse errors:', parseOutput.errors);
-      return ndarray(new Float64Array(0), [0, 0, 2]); // Return empty ndarray
+      new dfd.DataFrame();
     }
 
     const allRows = parseOutput.data;
 
     if (allRows.length < 4) {
       console.error('CSV must have at least 3 header lines and 1 data line.');
-      return ndarray(new Float64Array(0), [0, 0, 2]);
+      new dfd.DataFrame();
     }
-
-    const bodypartsHeader = allRows[1];
-    if (
-      !bodypartsHeader ||
-      bodypartsHeader.length <= 1 ||
-      (bodypartsHeader.length - 1) % 3 !== 0
-    ) {
-      console.error(
-        'Malformed bodyparts header line (line 2 of CSV).',
-        bodypartsHeader,
-      );
-      return ndarray(new Float64Array(0), [0, 0, 2]);
-    }
-    const numBodyParts = (bodypartsHeader.length - 1) / 3;
-
-    const coordsHeader = allRows[2];
-    if (!coordsHeader || coordsHeader.length !== bodypartsHeader.length) {
-      console.error(
-        'Coordinate header (line 3 of CSV) length mismatch with bodyparts header.',
-      );
-      return ndarray(new Float64Array(0), [
-        0,
-        numBodyParts > 0 ? numBodyParts : 0,
-        2,
-      ]);
-    }
-
     const dataRowsOnly = allRows.slice(3);
-    const numFrames = dataRowsOnly.length;
 
-    if (numFrames === 0 || numBodyParts === 0) {
-      // If no actual data frames or no body parts identified, return an appropriately shaped empty ndarray
-      return ndarray(new Float64Array(0), [numFrames, numBodyParts, 2]);
+    const data = {} as Record<string, number[]>;
+    for (let i = 1; i < allRows[0].length; i++) {
+      const flatColumn = new Pair(allRows[1][i], allRows[2][i]);
+
+      data[flatColumn.toMapKey()] = new Array(dataRowsOnly.length).fill(
+        NaN,
+      ) as number[];
     }
 
-    // Create a flat Float64Array to store all x, y coordinates
-    // Total elements = numFrames * numBodyParts * 2 (for x and y)
-    const flatData = new Float64Array(numFrames * numBodyParts * 2);
-    let flatIndex = 0;
-
-    for (let rowIndex = 0; rowIndex < numFrames; rowIndex++) {
-      const values = dataRowsOnly[rowIndex];
-
-      if (values.length < 1 + numBodyParts * 3) {
-        console.warn(
-          `Skipping malformed data row ${rowIndex + 4} (not enough columns): "${values.slice(0, 5).join(',')}..."`,
-        );
-        // Fill corresponding part of flatData with NaNs for this frame
-        for (let i = 0; i < numBodyParts; i++) {
-          flatData[flatIndex++] = NaN; // x
-          flatData[flatIndex++] = NaN; // y
-        }
-        continue;
+    dataRowsOnly.forEach((row, rowIndex) => {
+      for (let i = 1; i < allRows[0].length; i++) {
+        const flatColumn = new Pair(allRows[1][i], allRows[2][i]);
+        const cellValue = row[i];
+        const value = cellValue !== undefined ? parseFloat(cellValue) : NaN;
+        data[flatColumn.toMapKey()]![rowIndex] = value;
       }
-
-      for (let bodyPartIdx = 0; bodyPartIdx < numBodyParts; bodyPartIdx++) {
-        const xDataIndex = 1 + bodyPartIdx * 3;
-        const yDataIndex = 1 + bodyPartIdx * 3 + 1;
-
-        if (xDataIndex >= values.length || yDataIndex >= values.length) {
-          console.warn(
-            `Skipping body part ${bodyPartIdx} in data row ${rowIndex + 4} due to insufficient data.`,
-          );
-          flatData[flatIndex++] = NaN; // x
-          flatData[flatIndex++] = NaN; // y
-          continue;
-        }
-
-        const xString = values[xDataIndex];
-        const yString = values[yDataIndex];
-
-        const x = parseFloat(xString);
-        const y = parseFloat(yString);
-
-        if (isNaN(x) || isNaN(y)) {
-          console.warn(
-            `Could not parse x or y as number for body part ${bodyPartIdx} in data row ${rowIndex + 4}. Values: x='${xString}', y='${yString}'.`,
-          );
-          flatData[flatIndex++] = NaN;
-          flatData[flatIndex++] = NaN;
-        } else {
-          flatData[flatIndex++] = x;
-          flatData[flatIndex++] = y;
-        }
-      }
-    }
+    });
 
     // Create the ndarray with the flat data and the desired shape
-    return ndarray(flatData, [numFrames, numBodyParts, 2]);
+    //return ndarray(flatData, [numFrames, numBodyParts, 2]);
+    return new dfd.DataFrame(data);
   }
 }

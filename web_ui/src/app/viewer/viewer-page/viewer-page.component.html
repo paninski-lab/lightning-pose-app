@@ -18,10 +18,7 @@
     </div>
 
     <!-- Center content -->
-    <app-viewer-center-panel
-      class="grow z-30"
-      [viewSettings]="viewSettings"
-    ></app-viewer-center-panel>
+    <app-viewer-center-panel class="grow z-30"></app-viewer-center-panel>
 
     <!-- Right pane -->
     <div class="shrink-0 w-40 xl:w-60 h-full">
@@ -87,12 +84,13 @@
               <li class="p-1 w-full">
                 <select
                   class="select select-sm w-full flex-grow"
+                  [disabled]="viewSettings.modelOptions().length === 0"
                   [class.border-red-300]="modelIndex === 0"
                   [class.border-green-300]="modelIndex === 1"
                   (change)="onModelDropdownItemClick(modelIndex, $event)"
                 >
                   @let options =
-                    [noneOption].concat(projectInfoService.allModels());
+                    [noneOption].concat(viewSettings.modelOptions());
                   @for (dropdownItem of options; track dropdownItem) {
                     <option [selected]="dropdownItem === model">
                       {{ dropdownItem }}

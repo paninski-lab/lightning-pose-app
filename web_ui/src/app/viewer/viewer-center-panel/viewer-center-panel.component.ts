@@ -14,7 +14,6 @@ import { VideoPlayerState } from '../../components/video-player/video-player-sta
 import { KeypointContainerComponent } from '../../components/keypoint-container/keypoint-container.component';
 import { KeypointImpl } from '../../keypoint';
 import { VideoWidget } from '../../video-widget';
-import { NdArray } from 'ndarray'; // Import ndarray and its type
 
 import { CsvParserService } from '../../csv-parser.service';
 import { ProjectInfoService } from '../../project-info.service';
@@ -23,6 +22,7 @@ import { LoadingService } from '../../loading.service';
 import { Pair } from '../../pair';
 import { SessionView } from '../../session.model';
 import { FineVideoService } from '../../utils/fine-video.service';
+import * as dfd from 'danfojs';
 
 @Component({
   selector: 'app-viewer-center-panel',
@@ -46,7 +46,7 @@ export class ViewerCenterPanelComponent implements OnInit {
     return this.videoPlayerState.currentFrameSignal;
   }
 
-  @Input() viewSettings: ViewSettings = {} as ViewSettings;
+  private viewSettings = inject(ViewSettings);
 
   ngOnInit() {
     this.buildWidgetModels();
@@ -117,30 +117,34 @@ export class ViewerCenterPanelComponent implements OnInit {
 
   private buildKeypoint(
     keypointName: string,
-    predictions: NdArray,
+    predictions: dfd.DataFrame,
     modelKey: string,
   ): KeypointImpl {
-    // Index of the keypoints in allKeypoints will match the
-    // index of the keypoints in the predictions array.
-    const kpi = this.projectInfoService.allKeypoints().indexOf(keypointName);
-
     return {
       id: keypointName + modelKey,
       name: keypointName,
       hoverText: keypointName,
       colorClass: computed(() => {
         const mi = this.viewSettings.modelsShown().indexOf(modelKey);
-        if (mi == 0) return 'bg-red-400';
-        if (mi == 1) return 'bg-green-400';
-        return 'bg-sky-100';
+        if (mi == 0) return 'bg-red-400'; ///50';
+        if (mi == 1) return 'bg-green-400'; ///50';
+        return 'bg-sky-100'; ///50';
       }),
       modelKey,
       position: computed(() => {
-        return {
-          // j = keypoint index, 0|1 = x|y
-          x: predictions.get(this.currentFrame(), kpi, 0),
-          y: predictions.get(this.currentFrame(), kpi, 1),
-        };
+        const i = Math.min(
+          Math.max(this.currentFrame(), 0),
+          predictions.index.length - 1,
+        );
+        const x = predictions.at(
+          i,
+          new Pair(keypointName, 'x').toMapKey(),
+        ) as number;
+        const y = predictions.at(
+          i,
+          new Pair(keypointName, 'y').toMapKey(),
+        ) as number;
+        return { x, y };
       }),
     };
   }
@@ -148,9 +152,7 @@ export class ViewerCenterPanelComponent implements OnInit {
   private sessionService = inject(SessionService);
   private predictions = this.initPredictionsArr();
   private initPredictionsArr() {
-    // a Map from Pair<view_name, model_key> to NDArray of its prediction file.
-    return new Map() as Map<string, NdArray<Float64Array>>;
-    // return ndarray([], [1 /*numModels*/, 6 /*numViews*/]);
+    return new Map() as Map<string, dfd.DataFrame>;
   }
 
   getVideoPath(sessionKey: string, view: string): string {
@@ -179,7 +181,7 @@ export class ViewerCenterPanelComponent implements OnInit {
     ]);
 
     this.loadingService.isLoading.set(false);
-    await this.buildWidgetModels();
+    this.buildWidgetModels();
   }
 
   async loadPredictionFiles() {
@@ -188,6 +190,13 @@ export class ViewerCenterPanelComponent implements OnInit {
 
     const predictionFiles =
       this.sessionService.getPredictionFilesForSession(sessionKey);
+
+    // Set the list of model options to those that have any predictions for this session.
+    // TODO Find a proper home for this logic.
+    const _models = new Set([...predictionFiles.map((p) => p.modelKey)]);
+    this.viewSettings.setModelOptions(
+      this.projectInfoService.allModels().filter((m) => _models.has(m)),
+    );
 
     const requestPromises = [] as Promise<string | null>[];
 
@@ -209,7 +218,7 @@ export class ViewerCenterPanelComponent implements OnInit {
         const parsed = this.csvParser.parsePredictionFile(r);
         this.predictions.set(
           new Pair(pfile.viewName, pfile.modelKey).toMapKey(),
-          parsed as NdArray<Float64Array>,
+          parsed,
         );
       }
     }
