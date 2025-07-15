@@ -184,6 +184,57 @@ export class ViewerCenterPanelComponent implements OnInit {
     this.buildWidgetModels();
   }
 
+  async newLoadSketchingItOutOnly(sessionKey: string) {
+    // Try to make changes atomically. That is, either fully or not at all if there's some error.
+
+    // #######
+    // # Prepare (this refers to old state. new state is
+    // # If models were added, fetch data. (In future
+    // #######
+    const predictionFilesNeeded =
+        this.sessionService.getPredictionFilesForSession(sessionKey)
+        .filter(pfile => {
+          return this.viewSettings.viewsShown().includes(pfile.viewName) &&  this.viewSettings.modelsShown().includes(pfile.modelKey);
+        });
+    diffResult = diff(this.predictionFiles.keys(), predictionFilesNeeded);
+    let pfilePromises = [] as Promise[];
+    const newPredictionFilesMap = new Map();
+    if (diffResult.new) {
+      pfilePromises = diffResult.new.map(pfile => {
+        // todo handle cancel in getPredictionFile...
+        return this.sessionService.getPredictionFile(pfile)
+          .then(handleCancel)
+          .then((y) => {
+            this.loadingService.progress.update((x) => x + 1);
+            return y;
+          })
+          .then(y => {
+            const parsed = this.csvParser.parsePredictionFile(y);
+            newPredictionFilesMap.set(pfile, parsed);
+            return parsed;
+          });
+      });
+    }
+    const parsedPfiles = await Promise.allSettled(pfilePromises);
+
+    // ####### Commit
+    if (this.canceled) {
+      this.canceled = false;
+      throw new Error('canceled');
+    }
+    const sessionChanged = sessionKey != this.sessionKey();
+    if (sessionChanged) {
+      this.videoPlayerState.reset();
+    }
+    parsedPfiles.forEach(parsed => {
+      this.predictions.set(
+          new Pair(pfile.viewName, pfile.modelKey).toMapKey(),
+          parsed,
+        );
+    });
+    this.widgetModels = this.buildWidgetModels();
+  }
+
   async loadPredictionFiles() {
     const sessionKey = this.sessionKey();
     if (!sessionKey) return;
