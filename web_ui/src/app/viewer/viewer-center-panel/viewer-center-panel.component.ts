@@ -20,9 +20,11 @@ import { ProjectInfoService } from '../../project-info.service';
 import { SessionService } from '../../session.service';
 import { LoadingService } from '../../loading.service';
 import { Pair } from '../../pair';
-import { SessionView } from '../../session.model';
+import { Session, SessionView } from '../../session.model';
 import { FineVideoService } from '../../utils/fine-video.service';
 import * as dfd from 'danfojs';
+import { PredictionFile } from '../../prediction-file';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-viewer-center-panel',
@@ -35,7 +37,7 @@ import * as dfd from 'danfojs';
   styleUrl: './viewer-center-panel.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ViewerCenterPanelComponent implements OnInit {
+export class ViewerCenterPanelComponent {
   sessionKey = signal<string | null>(null);
   private csvParser = inject(CsvParserService);
   private projectInfoService = inject(ProjectInfoService);
@@ -47,73 +49,11 @@ export class ViewerCenterPanelComponent implements OnInit {
   }
 
   private viewSettings = inject(ViewSettings);
-
-  ngOnInit() {
-    this.buildWidgetModels();
-  }
-
   videoPlayerState = inject(VideoPlayerState);
 
-  widgetModels = signal([] as VideoWidget[]);
-  filteredWidgetModels = computed(() => {
-    return this.widgetModels().filter((x) =>
-      this.viewSettings.viewsShown().includes(x.id),
-    );
-  });
-
-  buildWidgetModels(): void {
-    const sessionKey = this.sessionKey();
-
-    if (!sessionKey) return;
-
-    // Find the full session object
-    const session = this.sessionService
-      .allSessions()
-      .find((session) => session.key === sessionKey);
-    if (!session) return; //session not found
-
-    // Build the keypointModels computed signal for each widget model.
-    this.widgetModels.set(
-      //this.projectInfoService.allViews().flatMap((view) => {
-      session.views.flatMap((sessionView) => {
-        const keypointModels = this.projectInfoService
-          .allModels()
-          .flatMap((modelKey) => {
-            const predictions = this.predictions.get(
-              new Pair(sessionView.viewName, modelKey).toMapKey(),
-            );
-            if (predictions) {
-              return this.projectInfoService
-                .allKeypoints()
-                .map((k) => this.buildKeypoint(k, predictions, modelKey));
-            } else {
-              return [];
-            }
-          });
-
-        const widget = this.buildWidget(sessionView, keypointModels);
-        return widget;
-      }),
-    );
-  }
-
-  private buildWidget(
-    sessionView: SessionView,
-    allKeypoints: KeypointImpl[],
-  ): VideoWidget {
-    const filteredKeypoints = computed(() => {
-      return allKeypoints.filter(
-        (k) =>
-          this.viewSettings.modelsShown().includes(k.modelKey) &&
-          this.viewSettings.keypointsShown().includes(k.name),
-      );
-    });
-    return {
-      id: sessionView.viewName,
-      videoSrc: this.fineVideoService.fineVideoPath(sessionView.videoPath),
-      keypoints: filteredKeypoints,
-    };
-  }
+  protected widgetModels = signal([] as VideoWidget[]);
+  // cached prediction files for this session.
+  private predictionFiles = new Map<PredictionFile, dfd.DataFrame>();
 
   private buildKeypoint(
     keypointName: string,
@@ -150,139 +90,154 @@ export class ViewerCenterPanelComponent implements OnInit {
   }
 
   private sessionService = inject(SessionService);
-  private predictions = this.initPredictionsArr();
-  private initPredictionsArr() {
-    return new Map() as Map<string, dfd.DataFrame>;
-  }
 
-  getVideoPath(sessionKey: string, view: string): string {
+  private getVideoPathForFFProbe(sessionKey: string, view: string): string {
     const dataDir = this.projectInfoService.projectInfo?.data_dir as string;
 
     return dataDir + '/' + sessionKey.replace(/\*/g, view) + '.mp4';
   }
 
   async loadSession(sessionKey: string) {
-    // not currently used for anything?
-    this.sessionKey.set(sessionKey);
-    this.widgetModels.set([]);
-    this.predictions = this.initPredictionsArr();
-    this.videoPlayerState.reset();
-
     this.loadingService.isLoading.set(true);
     this.loadingService.progress.set(0);
-    // 1 progress for each prediction file, 1 for ffprobe
-    this.loadingService.maxProgress.set(
-      this.sessionService.getPredictionFilesForSession(sessionKey).length + 1,
-    );
 
-    await Promise.allSettled([
-      this.loadFFProbeMetadata(),
-      this.loadPredictionFiles(),
-    ]);
-
-    this.loadingService.isLoading.set(false);
-    this.buildWidgetModels();
-  }
-
-  async newLoadSketchingItOutOnly(sessionKey: string) {
-    // Try to make changes atomically. That is, either fully or not at all if there's some error.
-
-    // #######
-    // # Prepare (this refers to old state. new state is
-    // # If models were added, fetch data. (In future
-    // #######
-    const predictionFilesNeeded =
-        this.sessionService.getPredictionFilesForSession(sessionKey)
-        .filter(pfile => {
-          return this.viewSettings.viewsShown().includes(pfile.viewName) &&  this.viewSettings.modelsShown().includes(pfile.modelKey);
-        });
-    diffResult = diff(this.predictionFiles.keys(), predictionFilesNeeded);
-    let pfilePromises = [] as Promise[];
-    const newPredictionFilesMap = new Map();
-    if (diffResult.new) {
-      pfilePromises = diffResult.new.map(pfile => {
-        // todo handle cancel in getPredictionFile...
-        return this.sessionService.getPredictionFile(pfile)
-          .then(handleCancel)
-          .then((y) => {
-            this.loadingService.progress.update((x) => x + 1);
-            return y;
-          })
-          .then(y => {
-            const parsed = this.csvParser.parsePredictionFile(y);
-            newPredictionFilesMap.set(pfile, parsed);
-            return parsed;
-          });
-      });
-    }
-    const parsedPfiles = await Promise.allSettled(pfilePromises);
-
-    // ####### Commit
-    if (this.canceled) {
-      this.canceled = false;
-      throw new Error('canceled');
-    }
     const sessionChanged = sessionKey != this.sessionKey();
-    if (sessionChanged) {
-      this.videoPlayerState.reset();
-    }
-    parsedPfiles.forEach(parsed => {
-      this.predictions.set(
-          new Pair(pfile.viewName, pfile.modelKey).toMapKey(),
-          parsed,
+
+    try {
+      const session = this.sessionService
+        .allSessions()
+        .find((session) => session.key === sessionKey);
+      if (!session) {
+        throw new Error(
+          `Session not found: {sessionKey} in ${this.sessionService.allSessions()}`,
         );
-    });
-    this.widgetModels = this.buildWidgetModels();
+      }
+
+      // ##################################
+      // Prepare by fetching relevant data.
+      // ##################################
+      const promises = [];
+      const predictionFileCache = sessionChanged
+        ? new Map<PredictionFile, dfd.DataFrame>()
+        : this.predictionFiles;
+      let ffprobeData = null;
+      if (sessionChanged) {
+        promises.push(
+          this.loadFFProbeMetadata(session).then((data) => {
+            ffprobeData = data;
+          }),
+        );
+      }
+      promises.push(this.fetchDataFiles(session, predictionFileCache));
+      await Promise.all(promises);
+
+      const newWidgetModels = this.pureComputeWidgetModels(
+        session,
+        predictionFileCache,
+      );
+
+      const availableModels = Array.from(
+        new Set([
+          ...this.sessionService
+            .getPredictionFilesForSession(sessionKey)
+            .map((pf) => pf.modelKey),
+        ]),
+      );
+      this.viewSettings.setModelOptions(availableModels);
+
+      // ##################################
+      // Commit changes (only happens if everything above was successful.
+      // ##################################
+      this.predictionFiles = predictionFileCache;
+      if (sessionChanged) {
+        this.videoPlayerState.reset();
+        this.videoPlayerState.duration.set(ffprobeData!.duration);
+        this.videoPlayerState.fps.set(ffprobeData!.fps);
+
+        this.sessionKey.set(sessionKey);
+      }
+      this.widgetModels.set(newWidgetModels);
+    } finally {
+      this.loadingService.isLoading.set(false);
+    }
   }
 
-  async loadPredictionFiles() {
-    const sessionKey = this.sessionKey();
-    if (!sessionKey) return;
+  private pureComputeNecessaryPredictionFiles(sessionKey: string) {
+    const viewSettings = this.viewSettings;
+    if (!sessionKey) return [];
 
     const predictionFiles =
       this.sessionService.getPredictionFilesForSession(sessionKey);
-
-    // Set the list of model options to those that have any predictions for this session.
-    // TODO Find a proper home for this logic.
-    const _models = new Set([...predictionFiles.map((p) => p.modelKey)]);
-    this.viewSettings.setModelOptions(
-      this.projectInfoService.allModels().filter((m) => _models.has(m)),
-    );
-
-    const requestPromises = [] as Promise<string | null>[];
-
-    for (const pfile of predictionFiles) {
-      requestPromises.push(
-        this.sessionService.getPredictionFile(pfile).then((y) => {
-          this.loadingService.progress.update((x) => x + 1);
-          return y;
-        }),
+    const necessaryPredictionFiles = predictionFiles.filter((pf) => {
+      return (
+        viewSettings.modelsShown().includes(pf.modelKey) &&
+        viewSettings.viewsShown().includes(pf.viewName)
       );
-    }
+    });
+    return necessaryPredictionFiles;
+  }
+  private pureComputeWidgetModels(
+    session: Session,
+    predictionFileCache: Map<PredictionFile, dfd.DataFrame>,
+  ): VideoWidget[] {
+    const viewSettings = this.viewSettings;
+    const sessionKey = this.sessionKey();
+    if (!sessionKey) return [];
+    return viewSettings
+      .viewsShown()
+      .map((view): VideoWidget | null => {
+        const sessionView = session.views.find((sv) => sv.viewName == view);
+        if (!sessionView) return null;
 
-    const promiseStatuses = await Promise.allSettled(requestPromises);
-    for (const [i, result] of promiseStatuses.entries()) {
-      if (result.status === 'fulfilled') {
-        const r = result.value;
-        if (!r) continue; // No prediction file found.
-        const pfile = predictionFiles[i];
-        const parsed = this.csvParser.parsePredictionFile(r);
-        this.predictions.set(
-          new Pair(pfile.viewName, pfile.modelKey).toMapKey(),
-          parsed,
+        const pfiles = Array.from(predictionFileCache.keys()).filter(
+          (pfile) =>
+            pfile.viewName == view &&
+            viewSettings.modelsShown().includes(pfile.modelKey),
         );
-      }
-    }
+        return {
+          id: view,
+          videoSrc: this.fineVideoService.fineVideoPath(sessionView.videoPath),
+          keypoints: signal(
+            pfiles.flatMap((pf) => {
+              return this.viewSettings.keypointsShown().map((keypoint) => {
+                return this.buildKeypoint(
+                  keypoint,
+                  predictionFileCache.get(pf) as dfd.DataFrame,
+                  pf.modelKey,
+                );
+              });
+            }),
+          ),
+        };
+      })
+      .filter((item) => item != null);
   }
 
-  async loadFFProbeMetadata() {
-    const sessionKey = this.sessionKey();
-    if (!sessionKey) return;
-    const data = await this.sessionService.ffprobe(
-      this.getVideoPath(sessionKey, this.viewSettings.viewsShown()[0]),
+  private async loadFFProbeMetadata(session: Session) {
+    return await this.sessionService.ffprobe(
+      this.getVideoPathForFFProbe(session.key, session.views[0].viewName),
     );
-    this.videoPlayerState.duration.set(data.duration);
-    this.videoPlayerState.fps.set(data.fps);
+  }
+  private async fetchDataFiles(
+    session: Session,
+    predictionFileCache: Map<PredictionFile, dfd.DataFrame>,
+  ) {
+    const necessaryPredictionFiles = this.pureComputeNecessaryPredictionFiles(
+      session.key,
+    );
+    const promises = necessaryPredictionFiles.map(async (pf) => {
+      if (this.predictionFiles.has(pf)) {
+        return Promise.resolve(predictionFileCache.get(pf));
+      }
+      const rawText = await this.sessionService.getPredictionFile(pf);
+      if (rawText == null) {
+        throw new Error('Prediction file not found');
+      }
+      const df = this.csvParser.parsePredictionFile(rawText);
+      predictionFileCache.set(pf, df);
+      return df;
+    });
+    return Promise.all(promises);
   }
 
   onWidgetCloseClick(w: VideoWidget) {
@@ -290,5 +245,25 @@ export class ViewerCenterPanelComponent implements OnInit {
       .viewsShown()
       .filter((v) => v != w.id);
     this.viewSettings.setViewsShown(nextViewsShown);
+  }
+
+  constructor() {
+    this.viewSettings.viewsShown$.pipe(takeUntilDestroyed()).subscribe(() => {
+      if (this.sessionKey() == null) return;
+      // Reload session.
+      this.loadSession(this.sessionKey() as string);
+    });
+    this.viewSettings.keypointsShown$
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => {
+        if (this.sessionKey() == null) return;
+        // Reload session.
+        this.loadSession(this.sessionKey() as string);
+      });
+    this.viewSettings.modelsShown$.pipe(takeUntilDestroyed()).subscribe(() => {
+      if (this.sessionKey() == null) return;
+      // Reload session.
+      this.loadSession(this.sessionKey() as string);
+    });
   }
 }

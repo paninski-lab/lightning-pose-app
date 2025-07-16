@@ -75,9 +75,29 @@ export class ViewerPageComponent implements OnInit {
 
     // Load sessions and prediction index, but don't wait, just fire off the request.
     const p = this.sessionService.loadPredictionIndex();
-    const s = this.sessionService.loadSessions().then(() => {
-      this.loadingService.progress.update((x) => x + 1);
-    });
+    const s = this.sessionService
+      .loadSessions()
+      .then(() => {
+        this.loadingService.progress.update((x) => x + 1);
+      })
+      .then(() => {
+        // After next render, child components will be created.
+        // Tell them to select the session.
+        // (Hacky. we should probably use [input] instead...
+        // when we do, the complex logic inside loadSession needs to be triggered
+        // properly: angular is allowed to call input setter multiple times, but we don't want to
+        // loadSession multiple times.)
+        afterNextRender(
+          () => {
+            if (this._sessionKey() != null) {
+              this.centerPanel()?.loadSession(this._sessionKey() as string);
+            }
+          },
+          {
+            injector: this.injector,
+          },
+        );
+      });
 
     this.allViews = this.projectInfoService.allViews();
     p.then(() => {
@@ -97,23 +117,6 @@ export class ViewerPageComponent implements OnInit {
       throw new Error('No file at ~/.lightning_pose/project.toml');
     }
     this.isIniting.set(false);
-
-    // After next render, child components will be created.
-    // Tell them to select the session.
-    // (Hacky. we should probably use [input] instead...
-    // when we do, the complex logic inside loadSession needs to be triggered
-    // properly: angular is allowed to call input setter multiple times, but we don't want to
-    // loadSession multiple times.)
-    afterNextRender(
-      () => {
-        if (this._sessionKey() != null) {
-          this.centerPanel()?.loadSession(this._sessionKey() as string);
-        }
-      },
-      {
-        injector: this.injector,
-      },
-    );
   }
 
   constructor() {
