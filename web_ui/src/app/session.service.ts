@@ -16,6 +16,7 @@ import { CsvParserService } from './csv-parser.service';
 import { FFProbeInfo } from './ffprobe-info';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { createSessionViewComparator } from './utils/comparators';
+import { LabelFile } from './label-file.model';
 
 type SessionModelMap = Record<string, string[]>;
 
@@ -50,7 +51,7 @@ export class SessionService {
 
     const response = (await this.rpc.call('rglob', {
       baseDir: projectInfo.data_dir,
-      pattern: '**/*.mp4', //temporary
+      pattern: '**/*.mp4',
       noDirs: true,
     })) as RGlobResponse;
 
@@ -60,24 +61,67 @@ export class SessionService {
     await sleep(1000);
      */
 
-    const mp4Files: string[] = response.entries
-      .filter((entry) => entry.type === 'file')
-      .map((entry) => entry.path);
+    const mp4Files: string[] = response.entries.map((entry) => entry.path);
 
-    const sessions: Session[] = this.groupVideoFilesIntoSessions(
+    const sessions: Session[] = this.groupFilesBySession(
       mp4Files,
       this.projectInfoService.projectInfo.views,
     );
 
-    // If you want to repeat the sessions array 5 times
-    // (change const to let above)
-    /*
-    sessions = Array(5)
-      .fill(null)
-      .flatMap(() => sessions);
-      */
-
     return this._allSessions.next(sessions);
+  }
+
+  labelFilesLoading = signal(false);
+  private _allLabelFiles = new BehaviorSubject<LabelFile[]>([]);
+  allLabelFiles$ = this._allLabelFiles.asObservable();
+  allLabelFiles = toSignal(this.allLabelFiles$, { requireSync: true });
+
+  async loadLabelFiles() {
+    try {
+      this.labelFilesLoading.set(true);
+      await this._loadLabelFiles();
+    } finally {
+      this.labelFilesLoading.set(false);
+    }
+  }
+  async _loadLabelFiles() {
+    const projectInfo = this.projectInfoService.projectInfo;
+
+    const response = (await this.rpc.call('rglob', {
+      baseDir: projectInfo.data_dir,
+      pattern: '**/*.csv',
+      noDirs: true,
+    })) as RGlobResponse;
+
+    const csvFiles: string[] = response.entries
+      .filter((entry) => {
+        if (entry.path.endsWith('_bbox.csv')) return false;
+        if (entry.path.endsWith('_error.csv')) return false;
+        if (entry.path.endsWith('_loss.csv')) return false;
+        if (entry.path.endsWith('_norm.csv')) return false;
+
+        return true;
+      })
+      .map((entry) => entry.path);
+    const cmp = createSessionViewComparator(this.projectInfoService.allViews());
+
+    const files: LabelFile[] = Array.from(
+      this.groupFilesByView(
+        csvFiles,
+        this.projectInfoService.projectInfo.views,
+      ).entries(),
+    ).map(([key, groupedFiles]) => {
+      const labelFileViews = groupedFiles.map(({ view, filename }) => ({
+        viewName: view,
+        csvPath: this.projectInfoService.projectInfo.data_dir + '/' + filename,
+      }));
+      return {
+        key,
+        views: [...labelFileViews].sort(cmp),
+      };
+    });
+
+    return this._allLabelFiles.next(files);
   }
 
   async loadPredictionIndex() {
@@ -94,8 +138,8 @@ export class SessionService {
     // Filter out special CSV files.
     this.predictionFiles = response.entries
       .filter((entry) => {
-        if (entry.type !== 'file') return false;
-        if (entry.path.endsWith('_bbox.csv')) return false;
+        if (entry.path.endsWith('bbox.csv')) return false;
+        if (entry.path.endsWith('predictions.csv')) return false;
         if (entry.path.endsWith('_error.csv')) return false;
         if (entry.path.endsWith('_loss.csv')) return false;
         if (entry.path.endsWith('_norm.csv')) return false;
@@ -206,12 +250,33 @@ export class SessionService {
     return this.sessionModelMap[sessionKey] || [];
   }
 
-  private groupVideoFilesIntoSessions(
+  private groupFilesBySession(filenames: string[], views: string[]): Session[] {
+    const sessionKeyToItsViewFiles = this.groupFilesByView(filenames, views);
+    // Convert the Map to the required Session array format
+    const cmp = createSessionViewComparator(this.projectInfoService.allViews());
+    return Array.from(sessionKeyToItsViewFiles.entries()).map(
+      ([key, groupedFiles]) => {
+        const sessionViews = groupedFiles.map(({ view, filename }) => ({
+          viewName: view,
+          videoPath:
+            this.projectInfoService.projectInfo.data_dir + '/' + filename,
+        }));
+        return {
+          key: key.replace(/\.mp4$/, ''),
+          views: [...sessionViews].sort(cmp),
+        };
+      },
+    );
+  }
+  private groupFilesByView(
     filenames: string[],
     views: string[],
-  ): Session[] {
+  ): Map<string, { view: string; filename: string }[]> {
     // Use a Map to group files by their session key
-    const sessionKeyToItsViewFiles = new Map<string, SessionView[]>();
+    const sessionKeyToItsViewFiles = new Map<
+      string,
+      { view: string; filename: string }[]
+    >();
 
     for (const filename of filenames) {
       let viewName = views.find((v) => filename.includes(v));
@@ -226,21 +291,18 @@ export class SessionService {
       if (!sessionKeyToItsViewFiles.has(sessionKey)) {
         sessionKeyToItsViewFiles.set(sessionKey, []);
       }
-      const projectInfo = this.projectInfoService.projectInfo;
+      sessionKeyToItsViewFiles.get(sessionKey)!.push({
+        view: viewName,
+        filename: filename,
+      });
+      /*
       sessionKeyToItsViewFiles.get(sessionKey)!.push({
         viewName,
         videoPath: projectInfo.data_dir + '/' + filename,
       });
+       */
     }
-
-    // Convert the Map to the required Session array format
-    const cmp = createSessionViewComparator(this.projectInfoService.allViews());
-    return Array.from(sessionKeyToItsViewFiles.entries()).map(
-      ([key, sessionViews]) => ({
-        key: key.replace(/\.mp4$/, ''),
-        views: [...sessionViews].sort(cmp),
-      }),
-    );
+    return sessionKeyToItsViewFiles;
   }
 }
 

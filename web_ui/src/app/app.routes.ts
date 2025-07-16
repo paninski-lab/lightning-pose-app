@@ -25,4 +25,9 @@ export const routes: Routes = [
     component: LabelerPageComponent,
     title: 'Lightning Pose Labeler',
   },
+  {
+    path: 'labeler/:sessionKey',
+    component: LabelerPageComponent,
+    title: 'Lightning Pose Labeler',
+  },
 ];

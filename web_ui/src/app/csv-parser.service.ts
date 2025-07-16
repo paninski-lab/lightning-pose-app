@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import Papa, { ParseResult } from 'papaparse';
-import { Pair } from './pair';
+import { Pair } from './utils/pair';
 import * as dfd from 'danfojs';
 
 @Injectable({
