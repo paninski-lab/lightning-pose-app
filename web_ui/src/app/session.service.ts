@@ -1,13 +1,6 @@
 import { inject, Injectable, signal } from '@angular/core';
-import {
-  BehaviorSubject,
-  catchError,
-  distinctUntilChanged,
-  firstValueFrom,
-  Observable,
-  of,
-} from 'rxjs';
-import { Session, SessionView } from './session.model';
+import { BehaviorSubject, catchError, firstValueFrom } from 'rxjs';
+import { Session } from './session.model';
 import { RpcService } from './rpc.service';
 import { ProjectInfoService } from './project-info.service';
 import { PredictionFile } from './prediction-file';

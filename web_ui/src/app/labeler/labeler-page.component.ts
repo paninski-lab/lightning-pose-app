@@ -5,10 +5,8 @@ import {
   inject,
   Input,
   OnInit,
-  Signal,
   signal,
   SimpleChanges,
-  viewChild,
 } from '@angular/core';
 import { LoadingBarComponent } from '../loading-bar/loading-bar.component';
 import { ProjectInfoService } from '../project-info.service';

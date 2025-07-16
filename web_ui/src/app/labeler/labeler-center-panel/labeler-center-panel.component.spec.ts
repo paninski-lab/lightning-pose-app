@@ -8,9 +8,8 @@ describe('LabelerCenterPanelComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [LabelerCenterPanelComponent]
-    })
-    .compileComponents();
+      imports: [LabelerCenterPanelComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(LabelerCenterPanelComponent);
     component = fixture.componentInstance;

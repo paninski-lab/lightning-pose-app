@@ -1,13 +1,13 @@
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   inject,
+  Injector,
   Input,
+  OnInit,
   signal,
   viewChild,
-  OnInit,
-  afterNextRender,
-  Injector,
 } from '@angular/core';
 import { ViewerSessionsPanelComponent } from '../viewer-left-panel/viewer-sessions-panel.component';
 import { ViewSettings } from '../../view-settings.model';

@@ -1,5 +1,3 @@
-import { SessionView } from '../session.model';
-
 /**
  * Compares two arrays of strings for deep equality, respecting the order of elements.
  * @param prev The previous array.

@@ -8,7 +8,7 @@ import {
   SimpleChanges,
 } from '@angular/core';
 import { Frame } from '../frame.model';
-import { SaveActionData, LKeypoint } from '../types';
+import { LKeypoint, SaveActionData } from '../types';
 import { MultiView } from '../../multiview.model';
 
 @Component({

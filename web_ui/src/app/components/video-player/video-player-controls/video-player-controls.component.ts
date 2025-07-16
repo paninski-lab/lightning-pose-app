@@ -1,8 +1,8 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  inject,
   computed,
+  inject,
 } from '@angular/core';
 import { VideoPlayerState } from '../video-player-state';
 import { animationFrameScheduler, BehaviorSubject, throttleTime } from 'rxjs';
