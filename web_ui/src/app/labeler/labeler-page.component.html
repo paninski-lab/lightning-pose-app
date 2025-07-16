@@ -72,30 +72,11 @@
     </div>
 
     <!-- Center content -->
-    <app-labeler-center-panel class="grow z-30"></app-labeler-center-panel>
-
-    <!-- Right pane -->
-    <div class="shrink-0 w-40 xl:w-60 h-full">
-      <div class="panel m-4">
-        <div>
-          <!-- panel header -->
-          <h1 class="px-2 mb-1">Keypoints</h1>
-        </div>
-        <div class="panel-content max-h-60 overflow-y-auto">
-          <ul>
-            @if (keypoints().length === 0) {
-              <li class="p-1">No keypoints found</li>
-            } @else {
-              @for (kp of keypoints(); track kp) {
-                <li class="p-1 flex justify-between items-center">
-                  <span>{{ kp }}</span>
-                  <input type="checkbox" class="checkbox checkbox-xs" />
-                </li>
-              }
-            }
-          </ul>
-        </div>
-      </div>
-    </div>
+    <app-labeler-center-panel
+      class="grow z-30"
+      [frame]="selectedFrame()"
+      [keypoints]="keypoints()"
+      (save)="handleSaveAction($event)"
+    ></app-labeler-center-panel>
   </div>
 }
