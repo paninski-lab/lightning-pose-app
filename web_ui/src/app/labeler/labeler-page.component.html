@@ -11,30 +11,40 @@
     <div
       class="bg-base-200 w-60 xl:w-80 flex flex-col justify-between shadow-lg"
     >
-      <div class="p-4">
-        <!-- sessions panel -->
-        <div class="flex justify-between">
-          <!--header row-->
-          <h1 class="px-2">Sessions</h1>
-          <div></div>
-        </div>
-        <div
-          class="panel-content inset-shadow-xs inset-shadow-black/30 overflow-auto h-120"
-        >
-          <!--panel content-->
-          <ul class="w-fit relative" tabindex="0" role="listbox">
+      <div>
+        <div class="p-4 flex justify-between items-center">
+          Label file
+          <select class="max-w-50">
             @for (session of sessionService.allLabelFiles(); track $index) {
-              <li class="text-nowrap" routerLinkActive="bg-sky-700">
-                <a
-                  class="p-1 block hover:bg-base-content/10 rounded-sm flex items-center justify-between"
-                  [routerLink]="['/labeler', session.key]"
-                >
-                  <span>{{ session.key }}</span
-                  ><!-- left hand side -->
-                </a>
-              </li>
+              <option [selected]="$index === 0">{{ session.key }}</option>
             }
-          </ul>
+          </select>
+        </div>
+        <div class="p-4">
+          <!-- sessions panel -->
+          <div class="flex justify-between">
+            <!--header row-->
+            <h1 class="px-2">Frames</h1>
+            <div></div>
+          </div>
+          <div
+            class="panel-content inset-shadow-xs inset-shadow-black/30 overflow-auto h-120"
+          >
+            <!--panel content-->
+            <ul class="w-fit relative" tabindex="0" role="listbox">
+              @for (session of sessionService.allLabelFiles(); track $index) {
+                <li class="text-nowrap" routerLinkActive="bg-sky-700">
+                  <a
+                    class="p-1 block hover:bg-base-content/10 rounded-sm flex items-center justify-between"
+                    [routerLink]="['/labeler', session.key]"
+                  >
+                    <span>{{ session.key }}</span
+                    ><!-- left hand side -->
+                  </a>
+                </li>
+              }
+            </ul>
+          </div>
         </div>
       </div>
       <app-loading-bar class="h-20 p-4"></app-loading-bar>
