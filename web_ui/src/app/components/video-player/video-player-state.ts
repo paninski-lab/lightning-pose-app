@@ -12,7 +12,6 @@ import {
   BehaviorSubject,
   map,
   Subscription,
-  take,
   timer,
 } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';

@@ -1,0 +1,57 @@
+<div class="grid grid-cols-1 md:grid-cols-[2fr_1fr] h-[90vh] w-full gap-4">
+  <!-- First Column: Nested Grid with Two Rows -->
+  <!-- grid-rows-[1fr_auto] makes the first row take available space (big), and the second row size to its content (small) -->
+  <!-- Alternatively, you could use fixed heights like grid-rows-[1fr_h-32] for the second row -->
+  <div class="grid grid-rows-[1fr_auto] gap-4 p-4">
+    <!-- First Row of First Column (Big Height) -->
+    <div
+      class="bg-blue-500 text-white p-6 rounded-lg flex items-center justify-center"
+    >
+      <h3 class="text-2xl font-bold">
+        @let frame2 = frame();
+        @if (frame2 !== null) {
+          {{ frame2.key }} - {{ selectedView() }}
+          @for (kp of frame2.views[0].keypoints; track kp.keypointName) {
+            <p class="text-sm">
+              {{ kp.keypointName }}: ({{ kp.x }},{{ kp.y }})
+            </p>
+          }
+        }
+      </h3>
+    </div>
+
+    <!-- Second Row of First Column (Small Height, Horizontal Overflow) -->
+    <!-- overflow-x-auto enables horizontal scrolling -->
+    <!-- whitespace-nowrap ensures content stays on a single line to trigger overflow -->
+    <div class="p-4 rounded-lg overflow-x-auto">
+      @if (frame2 !== null) {
+        @let views2 = frame2.views;
+        @for (view of views2; track view) {
+          <div class="whitespace-nowrap">
+            <span class="text-sm">{{ view.viewName }}</span>
+          </div>
+        }
+      }
+    </div>
+  </div>
+
+  <!-- Second Column: Single Row -->
+  <div>
+    <div class="panel m-4">
+      <div>
+        <!-- panel header -->
+        <h1 class="px-2 mb-1">Keypoints</h1>
+      </div>
+      <div class="panel-content max-h-60 overflow-y-auto">
+        <ul>
+          @for (kp of []; track kp) {
+            <li class="p-1 flex justify-between items-center">
+              <span>{{ kp }}</span>
+              <input type="checkbox" class="checkbox checkbox-xs" />
+            </li>
+          }
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>

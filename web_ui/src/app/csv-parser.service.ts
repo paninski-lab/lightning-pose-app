@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import Papa, { ParseResult } from 'papaparse';
-import { Pair } from './pair';
+import { Pair } from './utils/pair';
 import * as dfd from 'danfojs';
 
 @Injectable({
@@ -60,6 +60,7 @@ export class CsvParserService {
     const dataRowsOnly = allRows.slice(3);
 
     const data = {} as Record<string, number[]>;
+    const index = Array(dataRowsOnly.length);
     for (let i = 1; i < allRows[0].length; i++) {
       const flatColumn = new Pair(allRows[1][i], allRows[2][i]);
 
@@ -69,6 +70,7 @@ export class CsvParserService {
     }
 
     dataRowsOnly.forEach((row, rowIndex) => {
+      index[rowIndex] = row[0];
       for (let i = 1; i < allRows[0].length; i++) {
         const flatColumn = new Pair(allRows[1][i], allRows[2][i]);
         const cellValue = row[i];
@@ -79,6 +81,6 @@ export class CsvParserService {
 
     // Create the ndarray with the flat data and the desired shape
     //return ndarray(flatData, [numFrames, numBodyParts, 2]);
-    return new dfd.DataFrame(data);
+    return new dfd.DataFrame(data, { index });
   }
 }

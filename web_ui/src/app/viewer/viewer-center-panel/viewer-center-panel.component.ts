@@ -3,8 +3,6 @@ import {
   Component,
   computed,
   inject,
-  Input,
-  OnInit,
   signal,
 } from '@angular/core';
 import { VideoPlayerControlsComponent } from '../../components/video-player/video-player-controls/video-player-controls.component';
@@ -19,8 +17,8 @@ import { CsvParserService } from '../../csv-parser.service';
 import { ProjectInfoService } from '../../project-info.service';
 import { SessionService } from '../../session.service';
 import { LoadingService } from '../../loading.service';
-import { Pair } from '../../pair';
-import { Session, SessionView } from '../../session.model';
+import { Pair } from '../../utils/pair';
+import { Session } from '../../session.model';
 import { FineVideoService } from '../../utils/fine-video.service';
 import * as dfd from 'danfojs';
 import { PredictionFile } from '../../prediction-file';

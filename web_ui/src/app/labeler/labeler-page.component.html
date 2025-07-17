@@ -1,1 +1,85 @@
-<p>labeler-page works!</p>
+<style>
+  :host {
+    flex-grow: 1;
+    display: flex;
+  }
+</style>
+
+@if (!isIniting()) {
+  <div class="grow flex flex-row items-stretch">
+    <!-- Left pane -->
+    <div
+      class="bg-base-200 w-60 xl:w-80 flex flex-col justify-between shadow-lg"
+    >
+      <div>
+        <div class="p-4 flex justify-between items-center">
+          Label file
+          <select
+            class="max-w-50"
+            (change)="handleSelectLabelFile($any($event.target).value)"
+          >
+            @let nullOption = { key: "None", views: [] };
+            @for (
+              labelFile of $any([nullOption]).concat(
+                sessionService.allLabelFiles()
+              );
+              track labelFile.key
+            ) {
+              <option
+                [value]="labelFile.key"
+                [selected]="labelFile.key === selectedLabelFile()?.key"
+              >
+                {{ labelFile.key }}
+              </option>
+            }
+          </select>
+        </div>
+        @if (isLoading()) {
+          <div class="p-4">Loading CSV file...</div>
+        }
+        <div class="p-4">
+          <!-- sessions panel -->
+          <div class="flex justify-between">
+            <!--header row-->
+            <h1 class="px-2">Frames</h1>
+            <div></div>
+          </div>
+          <div
+            class="panel-content inset-shadow-xs inset-shadow-black/30 overflow-auto h-120"
+          >
+            <!--panel content-->
+            <ul class="w-fit relative" tabindex="0" role="listbox">
+              @if (allFrames() === null) {
+                <li class="p-1">No data available</li>
+              } @else {
+                @for (frame of allFrames(); track frame.key) {
+                  <li class="text-nowrap" routerLinkActive="bg-sky-700">
+                    <a
+                      class="p-1 block hover:bg-base-content/10 rounded-sm flex items-center justify-between"
+                      [routerLink]="['/labeler']"
+                      [queryParams]="{
+                        labelFileKey: selectedLabelFile()?.key,
+                        frameKey: frame.key,
+                      }"
+                    >
+                      <span>{{ frame.key }}</span
+                      ><!-- left hand side -->
+                    </a>
+                  </li>
+                }
+              }
+            </ul>
+          </div>
+        </div>
+      </div>
+      <app-loading-bar class="h-20 p-4"></app-loading-bar>
+    </div>
+
+    <!-- Center content -->
+    <app-labeler-center-panel
+      class="grow z-30"
+      [frame]="selectedFrame()"
+      (save)="handleSaveAction($event)"
+    ></app-labeler-center-panel>
+  </div>
+}

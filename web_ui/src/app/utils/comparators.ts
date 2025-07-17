@@ -1,5 +1,3 @@
-import { SessionView } from '../session.model';
-
 /**
  * Compares two arrays of strings for deep equality, respecting the order of elements.
  * @param prev The previous array.
@@ -33,7 +31,7 @@ export const compareStringArraysOrdered = (
  * - Returns `0` if both `viewName`s are not in `allViewsOrder`.
  */
 export const createSessionViewComparator = (allViewsOrder: string[]) => {
-  return (a: SessionView, b: SessionView): number => {
+  return (a: { viewName: string }, b: { viewName: string }): number => {
     const indexA = allViewsOrder.indexOf(a.viewName);
     const indexB = allViewsOrder.indexOf(b.viewName);
 
