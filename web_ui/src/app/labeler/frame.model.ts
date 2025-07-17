@@ -1,4 +1,6 @@
-export interface Frame {
+import { LKeypoint } from './types';
+
+export interface MVFrame {
   key: string;
   views: FrameView[];
 }
@@ -6,4 +8,5 @@ export interface Frame {
 export interface FrameView {
   viewName: string;
   imgPath: string;
+  keypoints: LKeypoint[];
 }

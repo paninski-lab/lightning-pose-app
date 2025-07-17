@@ -1,4 +1,4 @@
-export interface LabelFile {
+export interface MVLabelFile {
   key: string;
   views: LabelFileView[];
 }

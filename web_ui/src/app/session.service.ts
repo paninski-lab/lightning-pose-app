@@ -9,7 +9,7 @@ import { CsvParserService } from './csv-parser.service';
 import { FFProbeInfo } from './ffprobe-info';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { createSessionViewComparator } from './utils/comparators';
-import { LabelFile } from './label-file.model';
+import { MVLabelFile } from './label-file.model';
 
 type SessionModelMap = Record<string, string[]>;
 
@@ -65,7 +65,7 @@ export class SessionService {
   }
 
   labelFilesLoading = signal(false);
-  private _allLabelFiles = new BehaviorSubject<LabelFile[]>([]);
+  private _allLabelFiles = new BehaviorSubject<MVLabelFile[]>([]);
   allLabelFiles$ = this._allLabelFiles.asObservable();
   allLabelFiles = toSignal(this.allLabelFiles$, { requireSync: true });
 
@@ -98,7 +98,7 @@ export class SessionService {
       .map((entry) => entry.path);
     const cmp = createSessionViewComparator(this.projectInfoService.allViews());
 
-    const files: LabelFile[] = Array.from(
+    const files: MVLabelFile[] = Array.from(
       this.groupFilesByView(
         csvFiles,
         this.projectInfoService.projectInfo.views,

@@ -3,7 +3,8 @@ import {
   Component,
   computed,
   inject,
-  Input,
+  input,
+  OnChanges,
   OnInit,
   signal,
   SimpleChanges,
@@ -11,17 +12,15 @@ import {
 import { LoadingBarComponent } from '../loading-bar/loading-bar.component';
 import { ProjectInfoService } from '../project-info.service';
 import { LabelerCenterPanelComponent } from './labeler-center-panel/labeler-center-panel.component';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { SessionService } from '../session.service';
-import { LabelFile } from '../label-file.model';
-import { BehaviorSubject, distinctUntilChanged, firstValueFrom } from 'rxjs';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { MVLabelFile } from '../label-file.model';
+import { firstValueFrom } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { CsvParserService } from '../csv-parser.service';
 import * as dfd from 'danfojs';
 import { LKeypoint, SaveActionData } from './types';
-import { Frame } from './frame.model';
-import { MultiView } from '../multiview.model';
+import { MVFrame } from './frame.model';
 import { Pair } from '../utils/pair';
 
 @Component({
@@ -36,118 +35,63 @@ import { Pair } from '../utils/pair';
   styleUrl: './labeler-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class LabelerPageComponent implements OnInit {
+export class LabelerPageComponent implements OnInit, OnChanges {
   protected isIniting = signal(true);
   private projectInfoService = inject(ProjectInfoService);
   protected sessionService = inject(SessionService);
   private httpClient = inject(HttpClient);
   private csvParser = inject(CsvParserService);
+  private router = inject(Router);
 
   // Store the parsed DataFrame for the selected label file
   protected labelFileData = signal<dfd.DataFrame | null>(null);
-  protected allFrames = signal<Frame[] | null>(null);
+  protected allFrames = signal<MVFrame[] | null>(null);
   // Store the loading state
   protected isLoading = signal(false);
 
-  private _labelFile: string | null = null;
-  @Input()
-  set labelFile(x: string | null) {
-    this._labelFile = x;
-  }
+  labelFileKey = input<string | null>(null);
+  frameKey = input<string | null>(null);
 
-  private _frameKey: string | null = null;
-  @Input()
-  set frameKey(x: string | null) {
-    this._frameKey = x;
-  }
-
-  ngOnChanges(changes: SimpleChanges) {
-    if (changes['labelFile']) {
-      this.setSelectedLabelFile(
-        this.sessionService
-          .allLabelFiles()
-          .find((x) => x.key === this._labelFile) ?? null,
+  protected selectedLabelFile = computed(() => {
+    if (this.isIniting()) return null;
+    const labelFile =
+      this.labelFileKey() == null
+        ? null
+        : this.sessionService
+            .allLabelFiles()
+            .find((x) => x.key === this.labelFileKey());
+    if (labelFile === undefined) {
+      throw new Error(
+        `Label file not found in data_dir: ${this.labelFileKey()}`,
       );
     }
+    return labelFile;
+  });
 
-    if (this.selectedLabelFile() && changes['frameKey']) {
-      const selectedFrame: Frame | null =
-        this.allFrames()?.find((x) => x.key === this._frameKey) ?? null;
-      this.setSelectedFrame(selectedFrame);
+  protected selectedFrame = computed((): MVFrame | null => {
+    if (this.isIniting() || this.isLoading()) return null;
+    const selectedFrame =
+      this.frameKey() == null
+        ? null
+        : this.allFrames()?.find((x) => x.key === this.frameKey());
+    if (selectedFrame === undefined) {
+      throw new Error(
+        `Frame ${this.frameKey()} not found in ${this.labelFileKey()}`,
+      );
+    }
+    return selectedFrame;
+  });
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['labelFileKey']) {
+      this.loadLabelFileData(this.selectedLabelFile()).catch((error) => {
+        throw error;
+      });
     }
   }
 
-  private _selectedLabelFile = new BehaviorSubject<LabelFile | null>(null);
-  selectedLabelFile$ = this._selectedLabelFile
-    .asObservable()
-    .pipe(distinctUntilChanged());
-  protected selectedLabelFile = toSignal(this.selectedLabelFile$, {
-    requireSync: true,
-  });
-  protected setSelectedLabelFile(labelFile: LabelFile | null) {
-    this._selectedLabelFile.next(labelFile);
-  }
-
-  private _selectedFrame = new BehaviorSubject<Frame | null>(null);
-  selectedFrame$ = this._selectedFrame
-    .asObservable()
-    .pipe(distinctUntilChanged());
-  protected selectedFrame = toSignal(this.selectedFrame$, {
-    requireSync: true,
-  });
-  protected setSelectedFrame(frame: Frame | null) {
-    this._selectedFrame.next(frame);
-  }
-
-  protected keypoints = computed((): MultiView<LKeypoint[]> | null => {
-    const idx = this.selectedFrame()?.key;
-    if (!idx) return null;
-    const labelFileData = this.labelFileData();
-    if (!labelFileData) return null;
-    const columns = labelFileData.columns.map(Pair.fromMapKey) as Pair<
-      string,
-      string
-    >[];
-
-    const groupedColumns = columns.reduce(
-      (acc, column) => {
-        const bodyPart = column.first;
-        if (!acc[bodyPart]) {
-          acc[bodyPart] = [];
-        }
-        acc[bodyPart].push(column);
-        return acc;
-      },
-      {} as Record<string, Pair<string, string>[]>,
-    );
-
-    const kps: LKeypoint[] = Object.entries(groupedColumns)
-      .map(([keypointName, cols]) => {
-        const xColumn = cols.find((col) => col.second === 'x');
-        const yColumn = cols.find((col) => col.second === 'y');
-
-        const x = xColumn
-          ? (labelFileData.at(idx, xColumn.toMapKey()) as number)
-          : null;
-        const y = yColumn
-          ? (labelFileData.at(idx, yColumn.toMapKey()) as number)
-          : null;
-
-        if (x == null || y == null) return null;
-        return { keypointName, x, y };
-      })
-      .filter((x) => x != null);
-
-    return {
-      key: 'stuff',
-      views: { top: kps },
-    };
-  });
-
-  // private labelerCenterPanel = viewChild(LabelerCenterPanelComponent);
-
   // Load the CSV file for the selected label file
-  private async loadLabelFileData(labelFile: LabelFile | null) {
+  private async loadLabelFileData(labelFile: MVLabelFile | null) {
     if (!labelFile || labelFile.views.length === 0) {
       this.labelFileData.set(null);
       return;
@@ -167,20 +111,7 @@ export class LabelerPageComponent implements OnInit {
       // Parse the CSV file
       const df = this.csvParser.parsePredictionFile(csvString);
       this.labelFileData.set(df);
-      this.allFrames.set(
-        df.index.map((imgPath) => {
-          imgPath = imgPath as string;
-          return {
-            key: imgPath, // todo extract out view,
-            views: [
-              {
-                viewName: 'top',
-                imgPath,
-              },
-            ],
-          };
-        }),
-      );
+      this.allFrames.set(this.parseDfToFMVFrame(df));
     } catch (error) {
       console.error('Error loading label file data:', error);
       this.labelFileData.set(null);
@@ -204,24 +135,79 @@ export class LabelerPageComponent implements OnInit {
     }
   }
 
+  private parseDfToFMVFrame(labelFileData: dfd.DataFrame): MVFrame[] {
+    // map each row of the label file to an MVFrame.
+    return labelFileData.index.map((imgPath): MVFrame => {
+      imgPath = imgPath as string;
+
+      const columns = labelFileData.columns.map(Pair.fromMapKey) as Pair<
+        string,
+        string
+      >[];
+
+      const groupedColumns = columns.reduce(
+        (acc, column) => {
+          const bodyPart = column.first;
+          if (!acc[bodyPart]) {
+            acc[bodyPart] = [];
+          }
+          acc[bodyPart].push(column);
+          return acc;
+        },
+        {} as Record<string, Pair<string, string>[]>,
+      );
+
+      const kps: LKeypoint[] = Object.entries(groupedColumns)
+        .map(([keypointName, cols]) => {
+          const xColumn = cols.find((col) => col.second === 'x');
+          const yColumn = cols.find((col) => col.second === 'y');
+
+          const x = xColumn
+            ? (labelFileData.at(imgPath, xColumn.toMapKey()) as number)
+            : null;
+          const y = yColumn
+            ? (labelFileData.at(imgPath, yColumn.toMapKey()) as number)
+            : null;
+
+          if (x == null || y == null) return null;
+          return { keypointName, x, y };
+        })
+        .filter((x) => x != null);
+
+      return {
+        key: imgPath, // todo extract out view,
+        views: [
+          {
+            viewName: 'top',
+            imgPath,
+            keypoints: kps,
+          },
+        ],
+      };
+    });
+  }
+
   protected async handleSaveAction(data: SaveActionData): Promise<void> {
     // update local multiview dataframe state
     // multiview labels save RPC call
+    console.error('Not yet implemented: handleSaveAction');
+  }
+
+  protected handleSelectLabelFile(labelFileKey: string) {
+    if (labelFileKey !== 'None') {
+      this.router.navigate(['/labeler'], {
+        queryParams: { labelFileKey: labelFileKey },
+      });
+    } else {
+      this.router.navigate(['/labeler'], { queryParams: {} });
+    }
   }
 
   async ngOnInit() {
     await this.projectInfoService.loadProjectInfo();
     await this.sessionService.loadLabelFiles();
-    this.setSelectedLabelFile(this.sessionService.allLabelFiles()[0] ?? null);
-    this.isIniting.set(false);
-  }
 
-  constructor() {
-    this.selectedLabelFile$
-      .pipe(takeUntilDestroyed())
-      .subscribe((labelFile) => {
-        // Load the CSV file when the selected label file changes
-        this.loadLabelFileData(labelFile);
-      });
+    this.isIniting.set(false);
+    this.loadLabelFileData(this.selectedLabelFile());
   }
 }

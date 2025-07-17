@@ -16,20 +16,20 @@
           Label file
           <select
             class="max-w-50"
-            (change)="
-              setSelectedLabelFile(
-                sessionService.allLabelFiles()[
-                  $any($event.target).selectedIndex
-                ]
-              )
-            "
+            (change)="handleSelectLabelFile($any($event.target).value)"
           >
+            @let nullOption = { key: "None", views: [] };
             @for (
-              session of sessionService.allLabelFiles();
-              track session.key
+              labelFile of $any([nullOption]).concat(
+                sessionService.allLabelFiles()
+              );
+              track labelFile.key
             ) {
-              <option [selected]="session === selectedLabelFile()">
-                {{ session.key }}
+              <option
+                [value]="labelFile.key"
+                [selected]="labelFile.key === selectedLabelFile()?.key"
+              >
+                {{ labelFile.key }}
               </option>
             }
           </select>
@@ -56,7 +56,11 @@
                   <li class="text-nowrap" routerLinkActive="bg-sky-700">
                     <a
                       class="p-1 block hover:bg-base-content/10 rounded-sm flex items-center justify-between"
-                      [routerLink]="['/labeler', selectedLabelFile()?.key, idx]"
+                      [routerLink]="['/labeler']"
+                      [queryParams]="{
+                        labelFileKey: selectedLabelFile()?.key,
+                        frameKey: idx,
+                      }"
                     >
                       <span>{{ idx }}</span
                       ><!-- left hand side -->
@@ -75,7 +79,6 @@
     <app-labeler-center-panel
       class="grow z-30"
       [frame]="selectedFrame()"
-      [keypoints]="keypoints()"
       (save)="handleSaveAction($event)"
     ></app-labeler-center-panel>
   </div>

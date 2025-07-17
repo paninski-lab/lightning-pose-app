@@ -2,14 +2,12 @@ import {
   ChangeDetectionStrategy,
   Component,
   input,
-  OnChanges,
+  OnInit,
   output,
   signal,
-  SimpleChanges,
 } from '@angular/core';
-import { Frame } from '../frame.model';
-import { LKeypoint, SaveActionData } from '../types';
-import { MultiView } from '../../multiview.model';
+import { MVFrame } from '../frame.model';
+import { SaveActionData } from '../types';
 
 @Component({
   selector: 'app-labeler-center-panel',
@@ -18,27 +16,18 @@ import { MultiView } from '../../multiview.model';
   styleUrl: './labeler-center-panel.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class LabelerCenterPanelComponent implements OnChanges {
-  frame = input<Frame | null>(null);
-  keypoints = input<MultiView<LKeypoint[]> | null>();
+export class LabelerCenterPanelComponent implements OnInit {
+  frame = input<MVFrame | null>(null);
 
   save = output<SaveActionData>();
   protected selectedView = signal('unknown');
   protected selectedKeypoint = signal<string | null>(null);
 
-  ngOnChanges(changes: SimpleChanges) {
-    if (changes['frame'] || changes['keypoints']) {
-      this.loadFrame();
+  ngOnInit() {
+    /** Default to the first view in the frame */
+    const views = this.frame()?.views;
+    if (views) {
+      this.selectedView.set(views[0].viewName);
     }
-  }
-
-  private loadFrame(): void {
-    /** Component initialization */
-    this.selectedView.set(
-      (this.frame()?.views ?? [])[0]?.viewName ?? 'unknown',
-    );
-    this.selectedKeypoint.set(
-      this.keypoints()?.views[this.selectedView()][0]?.keypointName ?? null,
-    );
   }
 }

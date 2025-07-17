@@ -11,6 +11,11 @@
         @let frame2 = frame();
         @if (frame2 !== null) {
           {{ frame2.key }} - {{ selectedView() }}
+          @for (kp of frame2.views[0].keypoints; track kp.keypointName) {
+            <p class="text-sm">
+              {{ kp.keypointName }}: ({{ kp.x }},{{ kp.y }})
+            </p>
+          }
         }
       </h3>
     </div>
