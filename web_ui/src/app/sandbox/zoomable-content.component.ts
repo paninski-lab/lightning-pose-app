@@ -7,6 +7,8 @@ import {
   AfterViewInit,
   OnDestroy,
   Renderer2,
+  ContentChild, // Import ContentChild
+  AfterContentInit, // Import AfterContentInit
 } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 
@@ -46,13 +48,20 @@ import { DecimalPipe } from '@angular/common';
     `,
   ],
 })
-export class ZoomableContentComponent implements AfterViewInit, OnDestroy {
+export class ZoomableContentComponent
+  implements AfterViewInit, OnDestroy, AfterContentInit
+{
   @Input() maxScale = 6; // Maximum zoom level
   @Input() zoomSpeed = 0.0015; // How fast to zoom per scroll tick
-  @Input() contentWidth = 0; // Natural width of the content
-  @Input() contentHeight = 0; // Natural height of the content
 
   @ViewChild('viewport') viewportRef!: ElementRef<HTMLDivElement>;
+
+  // Get the first projected content element (which might be a wrapper div or another component)
+  @ContentChild(ElementRef) projectedContentRef?: ElementRef;
+
+  // Internal state for content dimensions
+  contentWidth = 0;
+  contentHeight = 0;
 
   scale = 1;
   translateX = 0;
@@ -64,21 +73,78 @@ export class ZoomableContentComponent implements AfterViewInit, OnDestroy {
   private viewportWidth = 0;
   private viewportHeight = 0;
   private resizeUnlisten?: () => void;
+  private mediaLoadListener?: () => void; // To store and clean up media load/metadata listener
 
   constructor(private renderer: Renderer2) {}
 
   ngAfterViewInit(): void {
     this.updateViewportDimensions();
-    // Store the unlisten function for cleanup
     this.resizeUnlisten = this.renderer.listen('window', 'resize', () =>
       this.updateViewportDimensions(),
     );
   }
 
+  ngAfterContentInit(): void {
+    if (this.projectedContentRef) {
+      const contentElement = this.projectedContentRef.nativeElement;
+      let mediaElement: HTMLImageElement | HTMLVideoElement | null = null;
+
+      // Check if the projected element itself is an image or video
+      if (
+        contentElement instanceof HTMLImageElement ||
+        contentElement instanceof HTMLVideoElement
+      ) {
+        mediaElement = contentElement;
+      } else {
+        // Otherwise, try to find an img or video element within its descendants
+        mediaElement =
+          contentElement.querySelector('img') ||
+          contentElement.querySelector('video');
+      }
+
+      if (mediaElement) {
+        if (mediaElement instanceof HTMLImageElement) {
+          // Handle image element
+          const img = mediaElement;
+          // If image is already complete, set dimensions, otherwise listen for load
+          if (img.complete && img.naturalWidth && img.naturalHeight) {
+            this.setContentDimensions(img.naturalWidth, img.naturalHeight);
+          } else {
+            this.mediaLoadListener = this.renderer.listen(img, 'load', () => {
+              this.setContentDimensions(img.naturalWidth, img.naturalHeight);
+            });
+          }
+        } else if (mediaElement instanceof HTMLVideoElement) {
+          // Handle video element
+          const video = mediaElement;
+          // If video metadata is already loaded, set dimensions, otherwise listen for loadedmetadata
+          if (video.readyState >= 1) {
+            // HTMLMediaElement.HAVE_METADATA
+            this.setContentDimensions(video.videoWidth, video.videoHeight);
+          } else {
+            this.mediaLoadListener = this.renderer.listen(
+              video,
+              'loadedmetadata',
+              () => {
+                this.setContentDimensions(video.videoWidth, video.videoHeight);
+              },
+            );
+          }
+        }
+      } else {
+        console.warn(
+          'ZoomableContentComponent: No <img> or <video> element found in projected content. Zoom/pan may not function as expected without content dimensions.',
+        );
+      }
+    }
+  }
+
   ngOnDestroy(): void {
-    // Clean up the resize listener
     if (this.resizeUnlisten) {
       this.resizeUnlisten();
+    }
+    if (this.mediaLoadListener) {
+      this.mediaLoadListener(); // Clean up media load/metadata listener
     }
   }
 
@@ -102,9 +168,12 @@ export class ZoomableContentComponent implements AfterViewInit, OnDestroy {
    * Sets the content dimensions and fits it to the viewport
    */
   setContentDimensions(width: number, height: number): void {
-    this.contentWidth = width;
-    this.contentHeight = height;
-    this.fitContentToViewport();
+    // Only update if dimensions have actually changed to avoid unnecessary recalculations
+    if (this.contentWidth !== width || this.contentHeight !== height) {
+      this.contentWidth = width;
+      this.contentHeight = height;
+      this.fitContentToViewport();
+    }
   }
 
   protected calculateMinScale(): number {
