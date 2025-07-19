@@ -16,8 +16,8 @@
             >close</span
           >
         </div>
-        <app-zoomable-content class="!h-[400px] !w-[400px]">
-          <app-video-tile [src]="w.videoSrc">
+        <app-zoomable-content class="!h-[250px] !w-[250px]">
+          <app-video-tile #content [src]="w.videoSrc">
             <app-keypoint-container
               [labelerMode]="false"
               [keypointModels]="w.keypoints()"

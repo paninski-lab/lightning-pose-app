@@ -7,8 +7,9 @@ import {
   AfterViewInit,
   OnDestroy,
   Renderer2,
-  ContentChild, // Import ContentChild
-  AfterContentInit, // Import AfterContentInit
+  ContentChild,
+  AfterContentInit,
+  contentChild,
 } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 
@@ -56,8 +57,9 @@ export class ZoomableContentComponent
 
   @ViewChild('viewport') viewportRef!: ElementRef<HTMLDivElement>;
 
-  // Get the first projected content element (which might be a wrapper div or another component)
-  @ContentChild(ElementRef) projectedContentRef?: ElementRef;
+  /** Labeling the content with #content is required to reliably fetch it.
+   * We use that to compute the contentSize which is used in translation calculation. */
+  projectedContentRef = contentChild.required('content', { read: ElementRef });
 
   // Internal state for content dimensions
   contentWidth = 0;
@@ -73,7 +75,7 @@ export class ZoomableContentComponent
   private viewportWidth = 0;
   private viewportHeight = 0;
   private resizeUnlisten?: () => void;
-  private mediaLoadListener?: () => void; // To store and clean up media load/metadata listener
+  private contentResizeObserver?: ResizeObserver; // Declare ResizeObserver
 
   constructor(private renderer: Renderer2) {}
 
@@ -85,57 +87,31 @@ export class ZoomableContentComponent
   }
 
   ngAfterContentInit(): void {
-    if (this.projectedContentRef) {
-      const contentElement = this.projectedContentRef.nativeElement;
-      let mediaElement: HTMLImageElement | HTMLVideoElement | null = null;
+    if (this.projectedContentRef()) {
+      const contentElement = this.projectedContentRef()
+        .nativeElement as HTMLElement;
 
-      // Check if the projected element itself is an image or video
-      if (
-        contentElement instanceof HTMLImageElement ||
-        contentElement instanceof HTMLVideoElement
-      ) {
-        mediaElement = contentElement;
-      } else {
-        // Otherwise, try to find an img or video element within its descendants
-        mediaElement =
-          contentElement.querySelector('img') ||
-          contentElement.querySelector('video');
-      }
+      // Initialize content dimensions directly from the projected element
+      // This will get the current rendered size of the content.
+      this.setContentDimensions(
+        contentElement.offsetWidth,
+        contentElement.offsetHeight,
+      );
 
-      if (mediaElement) {
-        if (mediaElement instanceof HTMLImageElement) {
-          // Handle image element
-          const img = mediaElement;
-          // If image is already complete, set dimensions, otherwise listen for load
-          if (img.complete && img.naturalWidth && img.naturalHeight) {
-            this.setContentDimensions(img.naturalWidth, img.naturalHeight);
-          } else {
-            this.mediaLoadListener = this.renderer.listen(img, 'load', () => {
-              this.setContentDimensions(img.naturalWidth, img.naturalHeight);
-            });
-          }
-        } else if (mediaElement instanceof HTMLVideoElement) {
-          // Handle video element
-          const video = mediaElement;
-          // If video metadata is already loaded, set dimensions, otherwise listen for loadedmetadata
-          if (video.readyState >= 1) {
-            // HTMLMediaElement.HAVE_METADATA
-            this.setContentDimensions(video.videoWidth, video.videoHeight);
-          } else {
-            this.mediaLoadListener = this.renderer.listen(
-              video,
-              'loadedmetadata',
-              () => {
-                this.setContentDimensions(video.videoWidth, video.videoHeight);
-              },
+      // Set up ResizeObserver to react to changes in content size
+      this.contentResizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.target === contentElement) {
+            // Update dimensions when the content's size changes
+            this.setContentDimensions(
+              entry.contentRect.width,
+              entry.contentRect.height,
             );
           }
         }
-      } else {
-        console.warn(
-          'ZoomableContentComponent: No <img> or <video> element found in projected content. Zoom/pan may not function as expected without content dimensions.',
-        );
-      }
+      });
+      // Start observing the projected content element
+      this.contentResizeObserver.observe(contentElement);
     }
   }
 
@@ -143,8 +119,9 @@ export class ZoomableContentComponent
     if (this.resizeUnlisten) {
       this.resizeUnlisten();
     }
-    if (this.mediaLoadListener) {
-      this.mediaLoadListener(); // Clean up media load/metadata listener
+    // Disconnect ResizeObserver to prevent memory leaks
+    if (this.contentResizeObserver) {
+      this.contentResizeObserver.disconnect();
     }
   }
 
