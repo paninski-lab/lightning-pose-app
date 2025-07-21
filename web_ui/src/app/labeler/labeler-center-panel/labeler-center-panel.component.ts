@@ -15,10 +15,16 @@ import { ZoomableContentComponent } from '../../sandbox/zoomable-content.compone
 import { KeypointContainerComponent } from '../../components/keypoint-container/keypoint-container.component';
 import { Keypoint } from '../../keypoint';
 import { ProjectInfoService } from '../../project-info.service';
+import { HorizontalScrollDirective } from '../../components/horizontal-scroll.directive';
 
 @Component({
   selector: 'app-labeler-center-panel',
-  imports: [DecimalPipe, ZoomableContentComponent, KeypointContainerComponent],
+  imports: [
+    DecimalPipe,
+    ZoomableContentComponent,
+    KeypointContainerComponent,
+    HorizontalScrollDirective,
+  ],
   templateUrl: './labeler-center-panel.component.html',
   styleUrl: './labeler-center-panel.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -79,5 +85,9 @@ export class LabelerCenterPanelComponent implements OnInit {
       '/' +
       kpImgPath
     );
+  }
+
+  handleViewClickFromFilmstrip(viewName: string) {
+    this.selectedView.set(viewName);
   }
 }
