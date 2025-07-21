@@ -11,7 +11,7 @@ import {
 import { FrameView, MVFrame } from '../frame.model';
 import { LKeypoint, SaveActionData } from '../types';
 import { DecimalPipe } from '@angular/common';
-import { ZoomableContentComponent } from '../../sandbox/zoomable-content.component';
+import { ZoomableContentComponent } from '../../components/zoomable-content.component';
 import { KeypointContainerComponent } from '../../components/keypoint-container/keypoint-container.component';
 import { Keypoint } from '../../keypoint';
 import { ProjectInfoService } from '../../project-info.service';
