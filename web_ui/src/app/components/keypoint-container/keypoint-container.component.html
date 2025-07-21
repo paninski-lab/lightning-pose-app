@@ -27,13 +27,12 @@
     transform: translateY(-50%);
   }
 </style>
-@for (keypoint of scaledKeypointModels(); track keypoint.id) {
+@for (keypoint of keypointModels(); track keypoint.id) {
   <div
     cdkDrag
     [cdkDragBoundary]="dragBoundary"
     [cdkDragFreeDragPosition]="keypoint.position()"
     [cdkDragDisabled]="!labelerMode()"
-    (cdkDragEnded)="onKeypointDragEnd(keypoint, $event)"
     [attr.data-tip]="keypoint.hoverText"
     class="
       h-2 w-2

@@ -7,7 +7,6 @@ import {
   AfterViewInit,
   OnDestroy,
   Renderer2,
-  ContentChild,
   AfterContentInit,
   contentChild,
 } from '@angular/core';
