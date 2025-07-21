@@ -73,7 +73,7 @@ export class LabelerCenterPanelComponent implements OnInit {
       id: lkeypoint.keypointName,
       hoverText: lkeypoint.keypointName,
       position: signal({ x: lkeypoint.x, y: lkeypoint.y }),
-      colorClass: signal('bg-green-500/30'),
+      colorClass: signal('bg-green-500/10'),
     };
     return val;
   }

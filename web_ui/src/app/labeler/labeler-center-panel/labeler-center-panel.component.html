@@ -10,7 +10,7 @@
         <h3 class="bg-base-200 px-2 text-md">
           {{ fv.viewName }}
         </h3>
-        <app-zoomable-content class="h-full w-full">
+        <app-zoomable-content class="h-full w-full" [maxScale]="100">
           <img
             #content
             [src]="imgPath(fv.imgPath)"
@@ -21,6 +21,7 @@
           />
           <app-keypoint-container
             [keypointModels]="kpAdapter(fv.keypoints)"
+            [useCrossHairs]="true"
           ></app-keypoint-container>
         </app-zoomable-content>
       </div>
