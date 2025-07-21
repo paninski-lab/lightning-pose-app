@@ -52,7 +52,12 @@ export class LabelerCenterPanelComponent implements OnInit {
   kpAdapterWM = new WeakMap<LKeypoint[], Keypoint[]>();
   kpAdapter(keypoints: LKeypoint[]): Keypoint[] {
     if (!this.kpAdapterWM.has(keypoints)) {
-      const target = keypoints.map(this._kpAdapter);
+      const target = keypoints
+        .map(this._kpAdapter)
+        .filter(
+          (keypoint) =>
+            !isNaN(keypoint.position().x) && !isNaN(keypoint.position().y),
+        );
       this.kpAdapterWM.set(keypoints, target);
     }
     return this.kpAdapterWM.get(keypoints)!;
