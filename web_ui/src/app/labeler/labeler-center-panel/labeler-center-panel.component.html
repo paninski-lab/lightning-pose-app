@@ -26,13 +26,24 @@
     <!-- Filmstrip of all views (Small Height, Horizontal Overflow) -->
     <!-- overflow-x-auto enables horizontal scrolling -->
     <!-- whitespace-nowrap ensures content stays on a single line to trigger overflow -->
-    <div class="p-4 rounded-lg overflow-x-auto">
+    <div class="p-4 rounded-lg overflow-x-auto whitespace-nowrap">
       @if (frame(); as frame2) {
         @let views2 = frame2.views;
-        @for (view of views2; track view) {
-          <div class="whitespace-nowrap">
-            <span class="text-sm">{{ view.viewName }}</span>
-          </div>
+        @for (fv of views2; track fv.viewName) {
+          <app-zoomable-content class="!h-[112px] !w-[112px] !inline-block m-1">
+            <img
+              #content
+              [src]="imgPath(fv.imgPath)"
+              class="max-w-none"
+              height="320"
+              width="320"
+              alt="fv.imgPath"
+            />
+            <app-keypoint-container
+              [labelerMode]="true"
+              [keypointModels]="kpAdapter(fv.keypoints)"
+            ></app-keypoint-container>
+          </app-zoomable-content>
         }
       }
     </div>
