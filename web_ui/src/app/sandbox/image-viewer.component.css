@@ -1,0 +1,12 @@
+:host {
+  display: block;
+  font-family: 'Inter', sans-serif;
+}
+
+.keypoint-marker {
+  width: 20px;
+  height: 20px;
+  margin-left: -10px; /* Center the marker horizontally */
+  margin-top: -10px; /* Center the marker vertically */
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}

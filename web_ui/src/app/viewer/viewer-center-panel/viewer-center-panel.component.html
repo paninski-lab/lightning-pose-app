@@ -1,7 +1,7 @@
 <div class="flex flex-col h-full">
   <!-- Video content area -->
   <div
-    class="w-full grow flex flex-wrap overflow-y-auto gap-4 *:max-w-xs justify-start items-start content-start p-4"
+    class="w-full grow flex flex-wrap overflow-y-auto gap-4 justify-start items-start content-start p-4"
   >
     <!-- `track videosrc` makes the widget component get
      destroyed and recreated if videoSrc changes. Reactively
@@ -16,12 +16,14 @@
             >close</span
           >
         </div>
-        <app-video-tile [src]="w.videoSrc" class="w-auto">
-          <app-keypoint-container
-            [labelerMode]="false"
-            [keypointModels]="w.keypoints()"
-          ></app-keypoint-container>
-        </app-video-tile>
+        <app-zoomable-content class="!h-[250px] !w-[250px]">
+          <app-video-tile #content [src]="w.videoSrc">
+            <app-keypoint-container
+              [labelerMode]="false"
+              [keypointModels]="w.keypoints()"
+            ></app-keypoint-container>
+          </app-video-tile>
+        </app-zoomable-content>
       </div>
     }
   </div>

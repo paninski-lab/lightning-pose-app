@@ -23,6 +23,7 @@ import { FineVideoService } from '../../utils/fine-video.service';
 import * as dfd from 'danfojs';
 import { PredictionFile } from '../../prediction-file';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ZoomableContentComponent } from '../../sandbox/zoomable-content.component';
 
 @Component({
   selector: 'app-viewer-center-panel',
@@ -30,6 +31,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     VideoPlayerControlsComponent,
     VideoTileComponent,
     KeypointContainerComponent,
+    ZoomableContentComponent,
   ],
   templateUrl: './viewer-center-panel.component.html',
   styleUrl: './viewer-center-panel.component.css',

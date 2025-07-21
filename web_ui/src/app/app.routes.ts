@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { ViewerPageComponent } from './viewer/viewer-page/viewer-page.component';
 import { LabelerPageComponent } from './labeler/labeler-page.component';
+import { SandboxComponent } from './sandbox/sandbox.component';
 
 export const routes: Routes = [
   {
@@ -27,5 +28,10 @@ export const routes: Routes = [
     path: 'labeler/:labelFileKey/:frameKey',
     component: LabelerPageComponent,
     title: 'Lightning Pose Labeler',
+  },
+  {
+    path: 'sandbox',
+    component: SandboxComponent,
+    title: 'Sandbox',
   },
 ];
