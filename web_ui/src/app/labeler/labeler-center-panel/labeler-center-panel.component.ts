@@ -53,7 +53,7 @@ export class LabelerCenterPanelComponent implements OnInit {
   kpAdapter(keypoints: LKeypoint[]): Keypoint[] {
     if (!this.kpAdapterWM.has(keypoints)) {
       const target = keypoints
-        .map(this._kpAdapter)
+        .map(this.convertKeypoint)
         .filter(
           (keypoint) =>
             !isNaN(keypoint.position().x) && !isNaN(keypoint.position().y),
@@ -62,7 +62,7 @@ export class LabelerCenterPanelComponent implements OnInit {
     }
     return this.kpAdapterWM.get(keypoints)!;
   }
-  _kpAdapter(lkeypoint: LKeypoint): Keypoint {
+  private convertKeypoint(lkeypoint: LKeypoint): Keypoint {
     const val = {
       id: lkeypoint.keypointName,
       hoverText: lkeypoint.keypointName,
