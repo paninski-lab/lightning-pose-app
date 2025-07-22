@@ -29,12 +29,23 @@ import { HorizontalScrollDirective } from '../../components/horizontal-scroll.di
   styleUrl: './labeler-center-panel.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class LabelerCenterPanelComponent implements OnInit {
+export class LabelerCenterPanelComponent {
   private projectInfoService = inject(ProjectInfoService);
   frame = input<MVFrame | null>(null);
 
   save = output<SaveActionData>();
-  protected selectedView = signal('lTop');
+
+  // selectedView is always nonnull. Defaults to first view in frame.
+  // Underlying selection state can be null if user hasn't selected any view explicitly yet.
+  protected _selectedView = signal<string | null>(null);
+  protected selectedView = computed((): string => {
+    if (this._selectedView()) {
+      return this._selectedView()!;
+    } else {
+      return this.frame()?.views[0]?.viewName ?? 'unknown';
+    }
+  });
+
   protected selectedFrameView = computed(() =>
     this.getFrameView(this.selectedView()),
   );
@@ -46,14 +57,6 @@ export class LabelerCenterPanelComponent implements OnInit {
     return frame.views.find((x) => x.viewName === view) ?? null;
   }
   protected selectedKeypoint = signal<string | null>(null);
-
-  ngOnInit() {
-    /** Default to the first view in the frame */
-    const views = this.frame()?.views;
-    if (views) {
-      this.selectedView.set(views[0].viewName);
-    }
-  }
 
   kpAdapterWM = new WeakMap<LKeypoint[], Keypoint[]>();
   kpAdapter(keypoints: LKeypoint[]): Keypoint[] {
@@ -88,6 +91,6 @@ export class LabelerCenterPanelComponent implements OnInit {
   }
 
   handleViewClickFromFilmstrip(viewName: string) {
-    this.selectedView.set(viewName);
+    this._selectedView.set(viewName);
   }
 }

@@ -186,10 +186,9 @@ export class ZoomableContentComponent
 
     this.scale = this.calculateMinScale();
 
-    // Center the content
+    // Center the content horizontally. Align to top vertically.
     this.translateX = (this.viewportWidth - this.contentWidth * this.scale) / 2;
-    this.translateY =
-      (this.viewportHeight - this.contentHeight * this.scale) / 2;
+    this.translateY = 0;
 
     // Ensure scale is not over max bound
     this.scale = Math.min(this.maxScale, this.scale);
@@ -319,8 +318,8 @@ export class ZoomableContentComponent
 
     // Clamp translateY
     if (scaledContentHeight <= this.viewportHeight) {
-      // If content is smaller than or equal to viewport height, center it
-      this.translateY = (this.viewportHeight - scaledContentHeight) / 2;
+      // If content is smaller than or equal to viewport height, align to top.
+      this.translateY = 0;
     } else {
       // Otherwise, clamp to edges
       this.translateY = Math.max(
