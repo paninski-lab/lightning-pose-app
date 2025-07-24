@@ -1,0 +1,14 @@
+.coordinates-display {
+  font-family: monospace; /* Helps with visual alignment, though not strictly necessary */
+  display: grid;
+  /* Define 5 columns:
+       1. Auto-width for the opening parenthesis
+       2. A column for the X value (minmax to ensure it can hold longer numbers)
+       3. Auto-width for the comma and space
+       4. A column for the Y value (minmax)
+       5. Auto-width for the closing parenthesis
+    */
+  grid-template-columns:
+    auto minmax(min-content, max-content) auto minmax(min-content, max-content)
+    auto;
+}

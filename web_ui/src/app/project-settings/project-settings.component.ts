@@ -59,8 +59,8 @@ export class ProjectSettingsComponent implements OnInit {
       this.projectInfoForm.get('views')?.value ?? '',
     );
     await this.projectInfoService.setProjectInfo(projectInfo);
-    // If successful the service is going to reload the app because
-    // project info is global state.
+    // If successful reload the app because project info is global state.
+    window.location.reload();
   }
 
   private parseMultilineText(text: string): string[] {
@@ -70,9 +70,7 @@ export class ProjectSettingsComponent implements OnInit {
       .filter((x) => Boolean(x));
   }
 
-  protected get cameraViewPlaceholder(): string {
-    return `view1
+  protected readonly cameraViewPlaceholder = `view1
 view2
 ...`;
-  }
 }

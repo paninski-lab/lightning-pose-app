@@ -1,6 +1,6 @@
 <!-- this sets the boundary for dragging to be slightly larger than parent component (video or image)
-   to allow dragging the keypoint slightly past the edge to allow moving its center to (0,0) or other corners/edges -->
-<div #dragBoundary class="absolute -inset-1"></div>
+   to allow dragging the keypoint slightly past the edge to allow moving its center to (0,0) or other corners/edges
+<div #dragBoundary class="absolute -inset-1"></div>-->
 <style>
   .crosshair-element::before,
   .crosshair-element::after {
@@ -8,6 +8,11 @@
     position: absolute; /* These will be positioned relative to the .crosshair-element */
     background-color: white; /* Or your desired crosshair color */
     opacity: 0.4;
+  }
+  .crosshair-element.newKp::before,
+  .crosshair-element.newKp::after {
+    background-color: black;
+    cursor: crosshair;
   }
 
   /* Vertical line */
@@ -27,27 +32,46 @@
     left: 0;
     transform: translateY(-50%);
   }
+  .selected {
+    border: 0.5px solid yellow;
+  }
 </style>
-@for (keypoint of keypointModels(); track keypoint.id) {
-  <div
-    cdkDrag
-    [cdkDragBoundary]="dragBoundary"
-    [cdkDragFreeDragPosition]="keypoint.position()"
-    [cdkDragDisabled]="!labelerMode()"
-    [attr.data-tip]="keypoint.hoverText"
-    class="
+<div
+  #containerDiv
+  class="w-full h-full relative overflow-hidden"
+  (mouseenter)="handleMouseEnter($event)"
+  (mouseleave)="handleMouseLeave($event)"
+  (pointermove)="handlePointerMove($event)"
+  (mousedown)="handleMouseDown($event)"
+  (mouseup)="handleMouseUp($event)"
+>
+  @for (keypoint of allMarkers(); track keypoint.id) {
+    @if (keypoint.position() !== null) {
+      <div
+        [attr.data-tip]="keypoint.hoverText"
+        [class.selected]="keypoint.id === selectedKeypoint()"
+        [style.transform]="getTransform(keypoint)"
+        (click)="handleKeypointClick($event, keypoint)"
+        (keydown.enter)="handleKeypointClick($event, keypoint)"
+        tabindex="0"
+        class="
       h-2 w-2
       rounded-full
       shadow-sm/30
       {{ keypoint.colorClass() }}
+      {{ keypoint.id === newKp()?.id ? 'cursor-none z-2' : '' }}
       absolute -top-1 -left-1
-      margin
-      cursor-pointer
       tooltip"
-  >
-    <!-- top, left position should be negative by 1/2 the height and width -->
-    @if (useCrossHairs()) {
-      <div class="crosshair-element"></div>
+      >
+        <!-- top, left position should be negative by 1/2 the height and width -->
+        @if (useCrossHairs()) {
+          <div
+            class="crosshair-element {{
+              keypoint.id === newKp()?.id ? 'newKp' : ''
+            }}"
+          ></div>
+        }
+      </div>
     }
-  </div>
-}
+  }
+</div>

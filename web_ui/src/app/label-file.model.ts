@@ -6,4 +6,5 @@ export interface MVLabelFile {
 export interface LabelFileView {
   viewName: string;
   csvPath: string;
+  //  unlabeledSidecarPath: string;
 }

@@ -18,7 +18,9 @@
             alt="fv.imgPath"
           />
           <app-keypoint-container
+            [labelerMode]="true"
             [keypointModels]="kpAdapter(fv.keypoints)"
+            [(selectedKeypoint)]="selectedKeypoint"
             [useCrossHairs]="true"
           ></app-keypoint-container>
         </app-zoomable-content>
@@ -74,16 +76,26 @@
         <!-- panel header -->
         <h1 class="px-2 mb-1">Keypoints</h1>
       </div>
-      <div class="panel-content max-h-60 overflow-y-auto">
+      <div class="panel-content overflow-y-auto">
         @if (selectedFrameView(); as fv) {
           <ul>
             @for (kp of fv.keypoints; track $index) {
-              <li class="p-1 flex justify-between items-center">
-                <span
-                  >{{ kp.keypointName }} - ({{ kp.x | number: "1.0-1" }},
-                  {{ kp.y | number: "1.0-1" }})</span
-                >
-                <input type="checkbox" class="checkbox checkbox-xs" />
+              <li
+                class="p-1 flex justify-between items-center {{
+                  kp.keypointName === selectedKeypoint()
+                    ? 'bg-sky-700'
+                    : 'hover:bg-base-content/10 cursor-pointer'
+                }}"
+                (click)="selectedKeypoint.set(kp.keypointName)"
+              >
+                <span>{{ kp.keypointName }}</span>
+                <span class="coordinates-display">
+                  (
+                  <span>{{ kp.x | number: "1.0-1" }}</span>
+                  ,
+                  <span>{{ kp.y | number: "1.0-1" }}</span>
+                  )
+                </span>
               </li>
             }
           </ul>

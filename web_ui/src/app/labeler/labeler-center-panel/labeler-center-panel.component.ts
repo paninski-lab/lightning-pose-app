@@ -62,7 +62,7 @@ export class LabelerCenterPanelComponent {
   kpAdapter(keypoints: LKeypoint[]): Keypoint[] {
     if (!this.kpAdapterWM.has(keypoints)) {
       const target = keypoints
-        .map(this.convertKeypoint)
+        .map(this.convertKeypoint.bind(this))
         .filter(
           (keypoint) =>
             !isNaN(keypoint.position().x) && !isNaN(keypoint.position().y),
@@ -76,7 +76,16 @@ export class LabelerCenterPanelComponent {
       id: lkeypoint.keypointName,
       hoverText: lkeypoint.keypointName,
       position: signal({ x: lkeypoint.x, y: lkeypoint.y }),
-      colorClass: signal('bg-green-500/10'),
+      colorClass: computed(() => {
+        if (this.selectedKeypoint() == null) {
+          return 'bg-green-500/10';
+        }
+        if (lkeypoint.keypointName === this.selectedKeypoint()) {
+          return 'bg-green-500/20';
+        } else {
+          return 'bg-green-500/5';
+        }
+      }),
     };
     return val;
   }

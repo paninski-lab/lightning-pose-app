@@ -6,10 +6,17 @@ import { ScrollingModule } from '@angular/cdk/scrolling';
 import { FineVideoService } from '../../utils/fine-video.service';
 import { ViewSettings } from '../../view-settings.model';
 import { ProjectInfoService } from '../../project-info.service';
+import { PathPipe } from '../../components/path.pipe';
 
 @Component({
   selector: 'app-sessions-panel',
-  imports: [RouterLink, RouterLinkActive, MatListModule, ScrollingModule],
+  imports: [
+    RouterLink,
+    RouterLinkActive,
+    MatListModule,
+    ScrollingModule,
+    PathPipe,
+  ],
   templateUrl: './viewer-sessions-panel.component.html',
   styleUrl: './viewer-sessions-panel.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

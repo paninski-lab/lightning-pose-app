@@ -22,7 +22,12 @@ import * as dfd from 'danfojs';
 import { LKeypoint, SaveActionData } from './types';
 import { FrameView, MVFrame } from './frame.model';
 import { Pair } from '../utils/pair';
+import { PathPipe } from '../components/path.pipe';
 
+interface LoadError {
+  message: string;
+  data: Record<string, string> | undefined;
+}
 @Component({
   selector: 'app-labeler',
   imports: [
@@ -30,6 +35,7 @@ import { Pair } from '../utils/pair';
     LabelerCenterPanelComponent,
     RouterLinkActive,
     RouterLink,
+    PathPipe,
   ],
   templateUrl: './labeler-page.component.html',
   styleUrl: './labeler-page.component.css',
@@ -44,10 +50,10 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   private router = inject(Router);
 
   // Store the parsed DataFrame for the selected label file
-  protected labelFileData = signal<dfd.DataFrame | null>(null);
   protected allFrames = signal<MVFrame[] | null>(null);
   // Store the loading state
   protected isLoading = signal(false);
+  protected loadError = signal<LoadError | null>(null);
 
   labelFileKey = input<string | null>(null);
   frameKey = input<string | null>(null);
@@ -93,7 +99,7 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   // Load the CSV file for the selected label file
   private async loadLabelFileData(labelFile: MVLabelFile | null) {
     if (!labelFile || labelFile.views.length === 0) {
-      this.labelFileData.set(null);
+      this.allFrames.set(null);
       return;
     }
 
@@ -136,7 +142,7 @@ export class LabelerPageComponent implements OnInit, OnChanges {
       this.allFrames.set(mvFrames);
     } catch (error) {
       console.error('Error loading label file data:', error);
-      this.labelFileData.set(null);
+      this.allFrames.set(null);
     } finally {
       this.isLoading.set(false);
     }
