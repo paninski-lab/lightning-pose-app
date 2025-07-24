@@ -11,18 +11,21 @@
           {{ fv.viewName }}
         </h3>
         <app-zoomable-content class="h-full w-full" [maxScale]="100">
-          <img
-            #content
-            [src]="imgPath(fv.imgPath)"
-            class="max-w-none"
-            alt="fv.imgPath"
-          />
-          <app-keypoint-container
-            [labelerMode]="true"
-            [keypointModels]="kpAdapter(fv.keypoints)"
-            [(selectedKeypoint)]="selectedKeypoint"
-            [useCrossHairs]="true"
-          ></app-keypoint-container>
+          <div #content class="relative">
+            <!-- img has max-w-none to override a bad default value of 100% -->
+            <img
+              [src]="imgPath(fv.imgPath)"
+              class="max-w-none"
+              alt="fv.imgPath"
+            />
+            <app-keypoint-container
+              [labelerMode]="true"
+              [keypointModels]="kpAdapter(fv.keypoints)"
+              [(selectedKeypoint)]="selectedKeypoint"
+              [useCrossHairs]="true"
+              class="absolute top-0 left-0 h-full w-full"
+            ></app-keypoint-container>
+          </div>
         </app-zoomable-content>
       </div>
     }

@@ -11,8 +11,8 @@
   }
   .crosshair-element.newKp::before,
   .crosshair-element.newKp::after {
-    background-color: black;
-    cursor: crosshair;
+    background-color: rgba(255, 255, 0, 0);
+    cursor: none;
   }
 
   /* Vertical line */
@@ -36,6 +36,58 @@
     border: 0.5px solid yellow;
   }
 </style>
+<style>
+  /* A single element to hold both lines, so we can apply a single mask */
+  .crosshair2-wrapper {
+    --line-thickness: 0.5px; /* Thickness of the crosshair lines */
+    --line-color: black; /* Color of the crosshair lines */
+    --center-circle-radius: 5px; /* Radius of the optional center circle */
+
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* Apply the mask to this wrapper */
+    mask-image: radial-gradient(
+      circle at var(--crosshair-x) var(--crosshair-y),
+      transparent var(--center-circle-radius),
+      /* Transparent up to radius */ black var(--center-circle-radius)
+        /* Opaque from radius onwards */
+    );
+    /* Ensure the mask covers the entire wrapper */
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    will-change: mask-position, transform; /* Hint for animation */
+  }
+
+  .crosshair-horizontal-line,
+  .crosshair-vertical-line {
+    position: absolute;
+    background-color: var(--line-color);
+    will-change: transform;
+  }
+
+  .crosshair-horizontal-line {
+    width: 100%;
+    height: var(--line-thickness);
+    left: 0;
+    transform: translateY(
+      calc(var(--crosshair-y) - (var(--line-thickness) / 2))
+    );
+  }
+
+  .crosshair-vertical-line {
+    height: 100%;
+    width: var(--line-thickness);
+    top: 0;
+    transform: translateX(
+      calc(var(--crosshair-x) - (var(--line-thickness) / 2))
+    );
+  }
+</style>
 <div
   #containerDiv
   class="w-full h-full relative overflow-hidden"
@@ -45,6 +97,19 @@
   (mousedown)="handleMouseDown($event)"
   (mouseup)="handleMouseUp($event)"
 >
+  <!-- Horizontal line -->
+  @if (newKp() !== null) {
+    <div
+      class="crosshair2-wrapper"
+      [style.--crosshair-x]="(newKp()?.position())!.x + 'px'"
+      [style.--crosshair-y]="(newKp()?.position())!.y + 'px'"
+    >
+      <div class="crosshair-horizontal-line"></div>
+      <!-- Vertical line -->
+      <div class="crosshair-vertical-line"></div>
+    </div>
+  }
+
   @for (keypoint of allMarkers(); track keypoint.id) {
     @if (keypoint.position() !== null) {
       <div
