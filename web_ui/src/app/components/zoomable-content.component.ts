@@ -1,20 +1,20 @@
 import {
+  AfterContentInit,
+  AfterViewInit,
   Component,
+  contentChild,
   ElementRef,
   HostListener,
   Input,
-  ViewChild,
-  AfterViewInit,
+  input,
   OnDestroy,
   Renderer2,
-  AfterContentInit,
-  contentChild,
+  ViewChild,
 } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
 
 @Component({
   selector: 'app-zoomable-content',
-  imports: [DecimalPipe],
+  imports: [],
   template: `
     <div
       #viewport
@@ -30,13 +30,14 @@ import { DecimalPipe } from '@angular/common';
         <ng-content></ng-content>
       </div>
     </div>
-
+    <!--
     <div class="flex justify-between">
       @if (scale > calculateMinScale()) {
         <span>Zoom: {{ scale / calculateMinScale() | number: '1.0-2' }}</span>
         <span>(Click and drag to pan)</span>
       }
     </div>
+    -->
   `,
   styles: [
     `
@@ -75,6 +76,7 @@ export class ZoomableContentComponent
   private viewportHeight = 0;
   private resizeUnlisten?: () => void;
   private contentResizeObserver?: ResizeObserver; // Declare ResizeObserver
+  interactivityDisabled = input(false);
 
   constructor(private renderer: Renderer2) {}
 
@@ -184,10 +186,9 @@ export class ZoomableContentComponent
 
     this.scale = this.calculateMinScale();
 
-    // Center the content
+    // Center the content horizontally. Align to top vertically.
     this.translateX = (this.viewportWidth - this.contentWidth * this.scale) / 2;
-    this.translateY =
-      (this.viewportHeight - this.contentHeight * this.scale) / 2;
+    this.translateY = 0;
 
     // Ensure scale is not over max bound
     this.scale = Math.min(this.maxScale, this.scale);
@@ -197,6 +198,9 @@ export class ZoomableContentComponent
    * Handles mouse down event for initiating dragging.
    */
   onMouseDown(event: MouseEvent): void {
+    if (this.interactivityDisabled()) {
+      return;
+    }
     event.preventDefault(); // Prevent default browser drag behavior
     this.isDragging = true;
     this.startX = event.clientX - this.translateX;
@@ -208,6 +212,9 @@ export class ZoomableContentComponent
    * Handles mouse up event for ending dragging.
    */
   onMouseUp(): void {
+    if (this.interactivityDisabled()) {
+      return;
+    }
     this.isDragging = false;
     this.renderer.removeClass(
       this.viewportRef.nativeElement,
@@ -220,6 +227,9 @@ export class ZoomableContentComponent
    */
   @HostListener('document:mousemove', ['$event'])
   onMouseMove(event: MouseEvent): void {
+    if (this.interactivityDisabled()) {
+      return;
+    }
     if (!this.isDragging) {
       return;
     }
@@ -238,6 +248,9 @@ export class ZoomableContentComponent
    */
   @HostListener('wheel', ['$event'])
   onWheel(event: WheelEvent): void {
+    if (this.interactivityDisabled()) {
+      return;
+    }
     event.preventDefault(); // Prevent page scrolling
 
     const viewportRect = this.viewportRef.nativeElement.getBoundingClientRect();
@@ -305,8 +318,8 @@ export class ZoomableContentComponent
 
     // Clamp translateY
     if (scaledContentHeight <= this.viewportHeight) {
-      // If content is smaller than or equal to viewport height, center it
-      this.translateY = (this.viewportHeight - scaledContentHeight) / 2;
+      // If content is smaller than or equal to viewport height, align to top.
+      this.translateY = 0;
     } else {
       // Otherwise, clamp to edges
       this.translateY = Math.max(

@@ -11,24 +11,41 @@ import {
 import { FrameView, MVFrame } from '../frame.model';
 import { LKeypoint, SaveActionData } from '../types';
 import { DecimalPipe } from '@angular/common';
-import { ZoomableContentComponent } from '../../sandbox/zoomable-content.component';
+import { ZoomableContentComponent } from '../../components/zoomable-content.component';
 import { KeypointContainerComponent } from '../../components/keypoint-container/keypoint-container.component';
 import { Keypoint } from '../../keypoint';
 import { ProjectInfoService } from '../../project-info.service';
+import { HorizontalScrollDirective } from '../../components/horizontal-scroll.directive';
 
 @Component({
   selector: 'app-labeler-center-panel',
-  imports: [DecimalPipe, ZoomableContentComponent, KeypointContainerComponent],
+  imports: [
+    DecimalPipe,
+    ZoomableContentComponent,
+    KeypointContainerComponent,
+    HorizontalScrollDirective,
+  ],
   templateUrl: './labeler-center-panel.component.html',
   styleUrl: './labeler-center-panel.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class LabelerCenterPanelComponent implements OnInit {
+export class LabelerCenterPanelComponent {
   private projectInfoService = inject(ProjectInfoService);
   frame = input<MVFrame | null>(null);
 
   save = output<SaveActionData>();
-  protected selectedView = signal('lTop');
+
+  // selectedView is always nonnull. Defaults to first view in frame.
+  // Underlying selection state can be null if user hasn't selected any view explicitly yet.
+  protected _selectedView = signal<string | null>(null);
+  protected selectedView = computed((): string => {
+    if (this._selectedView()) {
+      return this._selectedView()!;
+    } else {
+      return this.frame()?.views[0]?.viewName ?? 'unknown';
+    }
+  });
+
   protected selectedFrameView = computed(() =>
     this.getFrameView(this.selectedView()),
   );
@@ -41,19 +58,11 @@ export class LabelerCenterPanelComponent implements OnInit {
   }
   protected selectedKeypoint = signal<string | null>(null);
 
-  ngOnInit() {
-    /** Default to the first view in the frame */
-    const views = this.frame()?.views;
-    if (views) {
-      this.selectedView.set(views[0].viewName);
-    }
-  }
-
   kpAdapterWM = new WeakMap<LKeypoint[], Keypoint[]>();
   kpAdapter(keypoints: LKeypoint[]): Keypoint[] {
     if (!this.kpAdapterWM.has(keypoints)) {
       const target = keypoints
-        .map(this._kpAdapter)
+        .map(this.convertKeypoint)
         .filter(
           (keypoint) =>
             !isNaN(keypoint.position().x) && !isNaN(keypoint.position().y),
@@ -62,12 +71,12 @@ export class LabelerCenterPanelComponent implements OnInit {
     }
     return this.kpAdapterWM.get(keypoints)!;
   }
-  _kpAdapter(lkeypoint: LKeypoint): Keypoint {
+  private convertKeypoint(lkeypoint: LKeypoint): Keypoint {
     const val = {
       id: lkeypoint.keypointName,
       hoverText: lkeypoint.keypointName,
       position: signal({ x: lkeypoint.x, y: lkeypoint.y }),
-      colorClass: signal('bg-green-500/30'),
+      colorClass: signal('bg-green-500/10'),
     };
     return val;
   }
@@ -79,5 +88,9 @@ export class LabelerCenterPanelComponent implements OnInit {
       '/' +
       kpImgPath
     );
+  }
+
+  handleViewClickFromFilmstrip(viewName: string) {
+    this._selectedView.set(viewName);
   }
 }

@@ -6,6 +6,7 @@ import {
   Injectable,
   input,
   Optional,
+  signal,
   Signal,
 } from '@angular/core';
 import { CdkDragEnd, DragDrop, DragDropModule } from '@angular/cdk/drag-drop';
@@ -45,4 +46,5 @@ class CustomDragDrop extends DragDrop {
 export class KeypointContainerComponent {
   labelerMode = input<boolean>(false);
   keypointModels = input.required<Keypoint[]>();
+  useCrossHairs = input(false);
 }

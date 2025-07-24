@@ -6,12 +6,13 @@
   .crosshair-element::after {
     content: "";
     position: absolute; /* These will be positioned relative to the .crosshair-element */
-    background-color: black; /* Or your desired crosshair color */
+    background-color: white; /* Or your desired crosshair color */
+    opacity: 0.4;
   }
 
   /* Vertical line */
   .crosshair-element::before {
-    width: 1px;
+    width: 0.5px;
     height: 100%;
     top: 0;
     left: 50%;
@@ -21,7 +22,7 @@
   /* Horizontal line */
   .crosshair-element::after {
     width: 100%;
-    height: 1px;
+    height: 0.5px;
     top: 50%;
     left: 0;
     transform: translateY(-50%);
@@ -45,8 +46,8 @@
       tooltip"
   >
     <!-- top, left position should be negative by 1/2 the height and width -->
-    <!--
-    <div class="crosshair-element"></div>
-    -->
+    @if (useCrossHairs()) {
+      <div class="crosshair-element"></div>
+    }
   </div>
 }

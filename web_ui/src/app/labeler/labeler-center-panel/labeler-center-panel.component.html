@@ -6,44 +6,62 @@
     <!-- Main view -->
 
     @if (selectedFrameView(); as fv) {
-      <app-zoomable-content class="h-full w-full">
-        <img
-          #content
-          [src]="imgPath(fv.imgPath)"
-          class="max-w-none"
-          height="320"
-          width="320"
-          alt="fv.imgPath"
-        />
-        <app-keypoint-container
-          [labelerMode]="true"
-          [keypointModels]="kpAdapter(fv.keypoints)"
-        ></app-keypoint-container>
-      </app-zoomable-content>
-      {{ fv.viewName }} - {{ fv.imgPath }}
+      <div>
+        <h3 class="bg-base-200 px-2 text-md">
+          {{ fv.viewName }}
+        </h3>
+        <app-zoomable-content class="h-full w-full" [maxScale]="100">
+          <img
+            #content
+            [src]="imgPath(fv.imgPath)"
+            class="max-w-none"
+            alt="fv.imgPath"
+          />
+          <app-keypoint-container
+            [keypointModels]="kpAdapter(fv.keypoints)"
+            [useCrossHairs]="true"
+          ></app-keypoint-container>
+        </app-zoomable-content>
+      </div>
     }
 
     <!-- Filmstrip of all views (Small Height, Horizontal Overflow) -->
     <!-- overflow-x-auto enables horizontal scrolling -->
     <!-- whitespace-nowrap ensures content stays on a single line to trigger overflow -->
-    <div class="p-4 rounded-lg overflow-x-auto whitespace-nowrap">
+    <div
+      class="p-4 rounded-lg overflow-x-auto whitespace-nowrap"
+      appHorizontalScroll
+    >
       @if (frame(); as frame2) {
         @let views2 = frame2.views;
         @for (fv of views2; track fv.viewName) {
-          <app-zoomable-content class="!h-[112px] !w-[112px] !inline-block m-1">
-            <img
-              #content
-              [src]="imgPath(fv.imgPath)"
-              class="max-w-none"
-              height="320"
-              width="320"
-              alt="fv.imgPath"
-            />
-            <app-keypoint-container
-              [labelerMode]="true"
-              [keypointModels]="kpAdapter(fv.keypoints)"
-            ></app-keypoint-container>
-          </app-zoomable-content>
+          <div
+            class="!inline-block m-1 rounded-sm overflow-hidden border-primary hover:border"
+            [class.border]="selectedView() === fv.viewName"
+            [class.cursor-pointer]="selectedView() !== fv.viewName"
+            (click)="handleViewClickFromFilmstrip(fv.viewName)"
+          >
+            <h3 class="bg-base-200 px-1 text-sm">
+              {{ fv.viewName }}
+            </h3>
+
+            <app-zoomable-content
+              class="!h-[112px] !w-[112px]"
+              [interactivityDisabled]="true"
+            >
+              <img
+                #content
+                [src]="imgPath(fv.imgPath)"
+                class="max-w-none"
+                height="320"
+                width="320"
+                alt="fv.imgPath"
+              />
+              <app-keypoint-container
+                [keypointModels]="kpAdapter(fv.keypoints)"
+              ></app-keypoint-container>
+            </app-zoomable-content>
+          </div>
         }
       }
     </div>
