@@ -59,6 +59,11 @@ export class LabelerCenterPanelComponent {
   protected selectedKeypoint = signal<string | null>(null);
 
   kpAdapterWM = new WeakMap<LKeypoint[], Keypoint[]>();
+  newKp: Partial<Keypoint> | null = {
+    id: 'newbie',
+    colorClass: signal('bg-red-300/0'),
+    hoverText: 'newbie',
+  };
   kpAdapter(keypoints: LKeypoint[]): Keypoint[] {
     if (!this.kpAdapterWM.has(keypoints)) {
       const target = keypoints

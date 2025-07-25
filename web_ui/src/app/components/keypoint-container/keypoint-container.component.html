@@ -40,8 +40,8 @@
   /* A single element to hold both lines, so we can apply a single mask */
   .crosshair2-wrapper {
     --line-thickness: 0.5px; /* Thickness of the crosshair lines */
-    --line-color: black; /* Color of the crosshair lines */
-    --center-circle-radius: 5px; /* Radius of the optional center circle */
+    --line-color: grey; /* Color of the crosshair lines */
+    --center-circle-radius: 1px; /* Radius of the optional center circle */
 
     position: absolute;
     top: 0;
@@ -91,6 +91,7 @@
 <div
   #containerDiv
   class="w-full h-full relative overflow-hidden"
+  [class.cursor-none]="newKp() !== null"
   (mouseenter)="handleMouseEnter($event)"
   (mouseleave)="handleMouseLeave($event)"
   (pointermove)="handlePointerMove($event)"
@@ -110,7 +111,7 @@
     </div>
   }
 
-  @for (keypoint of allMarkers(); track keypoint.id) {
+  @for (keypoint of keypointModels(); track keypoint.id) {
     @if (keypoint.position() !== null) {
       <div
         [attr.data-tip]="keypoint.hoverText"
