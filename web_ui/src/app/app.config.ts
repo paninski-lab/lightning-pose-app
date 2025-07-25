@@ -1,7 +1,8 @@
 import {
   ApplicationConfig,
   ErrorHandler,
-  provideExperimentalZonelessChangeDetection,
+  provideBrowserGlobalErrorListeners,
+  provideZonelessChangeDetection,
 } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 
@@ -11,12 +12,11 @@ import { provideHttpClient } from '@angular/common/http';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideExperimentalZonelessChangeDetection(),
+    provideZonelessChangeDetection(),
     provideRouter(routes, withComponentInputBinding()),
     // Trying this out. It will popup any error into a dialog.
     { provide: ErrorHandler, useClass: GlobalErrorHandler },
-    // will be available in angular 20
-    // provideBrowserGlobalErrorListeners(),
+    provideBrowserGlobalErrorListeners(),
     provideHttpClient(),
   ],
 };

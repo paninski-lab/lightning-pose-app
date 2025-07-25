@@ -123,7 +123,7 @@ def read_file(file_path: Path):
 
 
 # Serve ng assets (js, css)
-STATIC_DIR = Path(__file__).parent / "ngdist" / "ng_app"
+STATIC_DIR = Path(__file__).parent / "ngdist" / "ng_app" / "browser"
 if not STATIC_DIR.is_dir():
     message = dedent(
         """
@@ -148,13 +148,17 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR, check_dir=False), name="s
 
 @app.get("/favicon.ico")
 async def favicon():
-    return FileResponse(Path(__file__).parent / "ngdist" / "ng_app" / "favicon.ico")
+    return FileResponse(
+        Path(__file__).parent / "ngdist" / "ng_app" / "browser" / "favicon.ico"
+    )
 
 
 # Catch-all route. serve index.html.
 @app.get("/{full_path:path}")
 async def index():
-    return FileResponse(Path(__file__).parent / "ngdist" / "ng_app" / "index.html")
+    return FileResponse(
+        Path(__file__).parent / "ngdist" / "ng_app" / "browser" / "index.html"
+    )
 
 
 def run_app(host: str, port: int):
