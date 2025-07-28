@@ -12,8 +12,13 @@ export interface FrameView {
   // (relative to data_dir)
   imgPath: string;
 
-  // an array of the labeled keypoints.
+  // a mutable array of the labeled keypoints.
   // unlabeled keypoints are omitted.
-  // (this array will exist but be empty).
+  // saved files must have all keypoints or no keypoints.
+  // if all => regular row in label file.
+  // if none => imgpath is saved in unlabeled sidecar.
   keypoints: LKeypoint[];
+
+  // A copy of the original keypoints.
+  originalKeypoints: LKeypoint[];
 }

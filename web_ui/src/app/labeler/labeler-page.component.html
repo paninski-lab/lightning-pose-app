@@ -43,7 +43,7 @@
             <!--header row-->
             <h1 class="">Labeled frames</h1>
             <div class="text-xs">
-              {{ allFrames()?.length ?? "" }}
+              {{ labelFileData()?.length ?? "" }}
             </div>
           </div>
         </div>
@@ -58,10 +58,10 @@
           >
             <!--panel content-->
             <ul class="w-fit relative" tabindex="0" role="listbox">
-              @if (allFrames() === null) {
+              @if (labelFileData() === null) {
                 <li class="p-1">No labeled frames</li>
               } @else {
-                @for (frame of allFrames(); track frame.key) {
+                @for (frame of labelFileData(); track frame.key) {
                   <li class="text-nowrap" routerLinkActive="bg-sky-700">
                     <a
                       class="p-1 block hover:bg-base-content/10 rounded-sm flex items-center justify-between text-xs"
