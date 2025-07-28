@@ -8,9 +8,8 @@ describe('SandboxComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [SandboxComponent]
-    })
-    .compileComponents();
+      imports: [SandboxComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(SandboxComponent);
     component = fixture.componentInstance;

@@ -37,7 +37,14 @@
 
     <div class="navbar-end">
       @if (fineVideoService.numPendingTranscodeTasks().pending > 0) {
-        <div class="tooltip tooltip-left" [attr.data-tip]="'Transcoding videos: ' + fineVideoService.numPendingTranscodeTasks().pending.toString() + ' remaining'">
+        <div
+          class="tooltip tooltip-left"
+          [attr.data-tip]="
+            'Transcoding videos: ' +
+            fineVideoService.numPendingTranscodeTasks().pending.toString() +
+            ' remaining'
+          "
+        >
           <span class="loading loading-bars loading-xs"></span>
         </div>
       }
