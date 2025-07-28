@@ -17,39 +17,27 @@ export class LabelFileFetcherService {
 
   async loadLabelFileData(labelFile: MVLabelFile): Promise<MVFrame[]> {
     // For each view, fetch and process CSV files.
-    // Store output here: (initialize to preset the key insertion order)
-    const parsedDfsPerView = Object.fromEntries(
-      labelFile.views.map(
-        ({ viewName }): [string, dfd.DataFrame | undefined] => [
-          viewName,
-          undefined,
-        ],
-      ),
-    );
-    // Store promises here so we can wait on them:
-    const csvRequests = labelFile.views.map(async ({ viewName, csvPath }) => {
-      const csvString = await this.fetchCsvFile(csvPath);
-      if (!csvString) {
-        console.error('Failed to load CSV file:', csvPath);
-        return;
-      }
-      // Parse the CSV file
-      const df = this.csvParser.parsePredictionFile(csvString);
-      parsedDfsPerView[viewName] = df;
-      return;
+    const csvRequests = labelFile.views.map((labelFileView) => {
+      const { csvPath } = labelFileView;
+      return this.fetchCsvFile(csvPath).then((csvString) => {
+        if (!csvString) {
+          throw new Error('Failed to load CSV file: ' + csvPath);
+        }
+        // Parse the CSV file
+        const df = this.csvParser.parsePredictionFile(csvString);
+        return { lfv: labelFileView, df: df };
+      });
     });
 
-    // Sort the dfs by order of the views in the label file.
-
-    await Promise.all(csvRequests);
-
-    // Narrow the type by filtering out undefined (label files that failed to load).
-    const y = Object.entries(parsedDfsPerView).filter(
-      ([_, df]) => df !== undefined,
-    ) as [string, dfd.DataFrame][];
-    const z = Object.fromEntries(y);
-    const mvFrames = this.parseDfToMVFrame(z);
-    return mvFrames;
+    return Promise.all(csvRequests).then((results) => {
+      // Narrow the type by filtering out undefined (label files that failed to load).
+      const z = results.map((r): [string, dfd.DataFrame] => [
+        r.lfv.viewName,
+        r.df,
+      ]);
+      const mvFrames = this.zipDataframesIntoMVFrame(z);
+      return mvFrames;
+    });
   }
 
   // Fetch the CSV file using HttpClient
@@ -108,11 +96,13 @@ export class LabelFileFetcherService {
     return kps;
   }
 
-  private parseDfToMVFrame(dfs: Record<string, dfd.DataFrame>): MVFrame[] {
+  private zipDataframesIntoMVFrame(
+    viewsAndDfs: [string, dfd.DataFrame][],
+  ): MVFrame[] {
     const framesPerView = {} as Record<string, FrameView[]>;
 
-    Object.entries(dfs).forEach(([viewName, df]) => {
-      framesPerView[viewName] = this.parseDfToFrameView(viewName, df);
+    viewsAndDfs.forEach(([viewName, df]) => {
+      framesPerView[viewName] = this.dfToFrameView(viewName, df);
     });
 
     const maxRowCount = Math.max(
@@ -134,7 +124,7 @@ export class LabelFileFetcherService {
     return mvFrames;
   }
 
-  private parseDfToFrameView(
+  private dfToFrameView(
     viewName: string,
     labelFileData: dfd.DataFrame,
   ): FrameView[] {
