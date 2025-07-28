@@ -162,4 +162,4 @@ async def index():
 
 
 def run_app(host: str, port: int):
-    uvicorn.run(app, host=host, port=port)
+    uvicorn.run(app, host=host, port=port, timeout_graceful_shutdown=1)
