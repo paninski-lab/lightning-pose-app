@@ -106,6 +106,7 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     } catch (error) {
       console.error('Error loading label file data:', error);
       this.labelFileData.set(null);
+      throw error;
     } finally {
       this.isLoading.set(false);
     }
