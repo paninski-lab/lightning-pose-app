@@ -107,4 +107,24 @@ export class LabelerCenterPanelComponent {
   handleViewClickFromFilmstrip(viewName: string) {
     this._selectedView.set(viewName);
   }
+
+  handleKeypointAdded(keypoint: Keypoint, fv: FrameView) {
+    const underlyingKp = fv.keypoints.find(
+      ({ keypointName }) => keypointName === keypoint.id,
+    );
+    const newKp = {
+      x: keypoint.position().x,
+      y: keypoint.position().y,
+      keypointName: keypoint.id,
+    };
+    // Update domain model.
+    if (!underlyingKp) {
+      fv.keypoints.push(newKp);
+    } else {
+      // mutates underlyingKp
+      Object.assign(underlyingKp, newKp);
+    }
+    // Invalidate keypoint viewmodel cache
+    this.kpAdapterWM.delete(fv.keypoints);
+  }
 }

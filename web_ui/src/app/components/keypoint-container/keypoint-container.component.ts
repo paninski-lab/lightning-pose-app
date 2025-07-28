@@ -75,11 +75,11 @@ export class KeypointContainerComponent {
 
   // --- Mouse event handlers for the entire container ---
 
-  handleMouseEnter(event: MouseEvent) {
+  handleMouseOver(event: MouseEvent) {
     this.mouseIsOverContainer.set(true);
   }
 
-  handleMouseLeave(event: MouseEvent) {
+  handleMouseOut(event: MouseEvent) {
     this.mouseIsOverContainer.set(false);
     // Clear new keypoint position when mouse leaves
     this.newKpPosition.set(null);

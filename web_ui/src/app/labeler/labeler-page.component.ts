@@ -49,9 +49,9 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   private csvParser = inject(CsvParserService);
   private router = inject(Router);
 
-  // Store the parsed DataFrame for the selected label file
+  // Stores the original parsed DataFrame for the selected label file
   protected allFrames = signal<MVFrame[] | null>(null);
-  // Store the loading state
+  // Stores the loading state
   protected isLoading = signal(false);
   protected loadError = signal<LoadError | null>(null);
 

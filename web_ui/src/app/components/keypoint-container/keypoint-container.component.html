@@ -92,8 +92,8 @@
   #containerDiv
   class="w-full h-full relative overflow-hidden"
   [class.cursor-none]="newKp() !== null"
-  (mouseenter)="handleMouseEnter($event)"
-  (mouseleave)="handleMouseLeave($event)"
+  (mouseover)="handleMouseOver($event)"
+  (mouseout)="handleMouseOut($event)"
   (pointermove)="handlePointerMove($event)"
   (mousedown)="handleMouseDown($event)"
   (mouseup)="handleMouseUp($event)"

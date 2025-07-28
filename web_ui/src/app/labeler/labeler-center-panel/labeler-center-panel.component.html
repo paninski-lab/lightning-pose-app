@@ -24,6 +24,7 @@
               [(selectedKeypoint)]="selectedKeypoint"
               [useCrossHairs]="true"
               [newKpTemplate]="newKp"
+              (keypointAdded)="handleKeypointAdded($event, fv)"
               class="absolute top-0 left-0 h-full w-full"
             ></app-keypoint-container>
           </div>
