@@ -43,14 +43,47 @@
             <!--header row-->
             <h1 class="">Labeled frames</h1>
             <div class="text-xs">
-              {{ labelFileData()?.length ?? "" }}
+              {{ labelFileDataLabeledSlice()?.length ?? "" }}
             </div>
+          </div>
+          <div
+            class="panel-content inset-shadow-xs inset-shadow-black/30 overflow-auto h-60"
+          >
+            <!--panel content-->
+            <ul class="w-fit relative" tabindex="0" role="listbox">
+              @if (labelFileDataLabeledSlice() === null) {
+                <li class="p-1">No labeled frames</li>
+              } @else {
+                @for (frame of labelFileDataLabeledSlice(); track frame.key) {
+                  <li class="text-nowrap" routerLinkActive="bg-sky-700">
+                    <a
+                      class="p-1 block hover:bg-base-content/10 rounded-sm flex items-center justify-between text-xs"
+                      [routerLink]="['/labeler']"
+                      [queryParams]="{
+                        labelFileKey: selectedLabelFile()?.key,
+                        frameKey: frame.key,
+                      }"
+                    >
+                      <span>{{ frame.key | path }}</span>
+                      <!-- left hand side -->
+                    </a>
+                  </li>
+                }
+              }
+            </ul>
           </div>
         </div>
         <div class="p-4">
           <div class="bg-base-300">
             <!--header row-->
-            <h1 class="">Remaining frames to label</h1>
+            <!-- labeled frames panel -->
+            <div class="flex justify-between bg-base-300 items-center">
+              <!--header row-->
+              <h1 class="">Remaining frames to label</h1>
+              <div class="text-xs">
+                {{ labelFileDataLabeledSlice()?.length ?? "" }}
+              </div>
+            </div>
             <div class="text-sm">Please label one at a time</div>
           </div>
           <div
@@ -58,10 +91,10 @@
           >
             <!--panel content-->
             <ul class="w-fit relative" tabindex="0" role="listbox">
-              @if (labelFileData() === null) {
+              @if (labelFileDataUnLabeledSlice() === null) {
                 <li class="p-1">No labeled frames</li>
               } @else {
-                @for (frame of labelFileData(); track frame.key) {
+                @for (frame of labelFileDataUnLabeledSlice(); track frame.key) {
                   <li class="text-nowrap" routerLinkActive="bg-sky-700">
                     <a
                       class="p-1 block hover:bg-base-content/10 rounded-sm flex items-center justify-between text-xs"

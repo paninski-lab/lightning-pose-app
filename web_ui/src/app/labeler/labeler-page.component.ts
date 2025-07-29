@@ -46,6 +46,21 @@ export class LabelerPageComponent implements OnInit, OnChanges {
 
   // Store loaded data for the selected label file
   protected labelFileData = signal<MVFrame[] | null>(null);
+  protected labelFileDataLabeledSlice = computed(() => {
+    const labelFileData = this.labelFileData();
+    if (!labelFileData) return [];
+    return labelFileData.filter((x) => {
+      return x.views[0].keypoints.length > 0;
+    });
+  });
+  protected labelFileDataUnLabeledSlice = computed(() => {
+    const labelFileData = this.labelFileData();
+    if (!labelFileData) return [];
+    return labelFileData.filter((x) => {
+      return x.views[0].keypoints.length === 0;
+    });
+  });
+
   // Store the loading state
   protected isLoading = signal(false);
   protected loadError = signal<LoadError | null>(null);
