@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   ElementRef,
+  Input,
   input,
   model,
   output,
@@ -13,12 +14,27 @@ import { Keypoint } from '../../keypoint';
 import { Point } from '@angular/cdk/drag-drop';
 
 /**
- * KeypointContainerComponent is responsible for displaying a collection
- * of keypoints.
+ * Keypoint display and interaction layer.
  *
- * LabelingMode (WIP) makes points draggable. Currently we update the keypoint
- * model position when the dragging has ended, not during dragging.
- * (Updating the position while dragging caused issues with the underlying cdkDrag machinery.)
+ * For now display and interaction are combined into a single component which means
+ * that when you scroll-to-zoom from the parent, _everything_ must zoom
+ * including tooltips, crosshair, and any future elements. Instead
+ * we might want to have some interaction elements like the crosshairs, tooltips,
+ * and help text be outside of the zoomable(image and shown keypoints).
+ *
+ * Interaction details:
+ * (viewer + labeler):
+ *   - on keypoint hover, display tooltip of keypoint name
+ *
+ * (labeler):
+ *   Supports "keypoint move mode" where a keypoint disappears and cursor
+ *   turns into a crosshair until the user specifies the new position.
+ *
+ *   Interaction modes for moving keypoints: view and creation.
+ *   1. View: dragging a keypoint moves it
+ *   2. Creation: keypoint is in move mode until mousedown
+ *
+ *   Completing the above workflows emits `keypointUpdate` event.
  */
 @Component({
   selector: 'app-keypoint-container',
@@ -29,13 +45,21 @@ import { Point } from '@angular/cdk/drag-drop';
   //providers: [{ provide: DragDrop, useClass: CustomDragDrop }],
 })
 export class KeypointContainerComponent {
+  /** fixme: Right now this enables handlePointerMove handler only. */
   labelerMode = input<boolean>(false);
+
   keypointModels = input.required<Keypoint[]>();
+
+  /** false renders keypoints as dots, true renders them as crosshairs */
   useCrossHairs = input(false);
 
+  /** the selected keypoint */
   selectedKeypoint = model<string | null>(null);
   newKpTemplate = input<null | Partial<Keypoint>>(null);
-  keypointAdded = output<Keypoint>();
+  editMode = input(false);
+
+  // Notifies parent of the user's intent to change keypoint position.
+  keypointUpdated = output<Keypoint>();
 
   private containerDiv = viewChild.required('containerDiv', {
     read: ElementRef,
@@ -69,7 +93,7 @@ export class KeypointContainerComponent {
     if (this.isSelectionAllowed()) {
       this.selectedKeypoint.set(keypoint.id);
     } else if (keypoint.id === this.newKp()?.id) {
-      this.keypointAdded.emit(this.newKp()!);
+      this.keypointUpdated.emit(this.newKp()!);
     }
   }
 
@@ -113,8 +137,6 @@ export class KeypointContainerComponent {
       const unscaledY = clientYRelativeToContainer / scaleY;
 
       this.newKpPosition.set({ x: unscaledX, y: unscaledY });
-
-      //this.newKpPosition.set({ x: event.offsetX, y: event.offsetY });
     }
   }
 

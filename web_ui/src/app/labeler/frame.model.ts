@@ -1,4 +1,5 @@
 import { LKeypoint } from './types';
+import _ from 'lodash';
 
 export interface MVFrame {
   key: string;
@@ -21,4 +22,22 @@ export interface FrameView {
 
   // A copy of the original keypoints.
   originalKeypoints: LKeypoint[];
+}
+
+export class FVUtils {
+  constructor(public frameView: FrameView) {}
+
+  get isFromUnlabeledSet(): boolean {
+    return this.frameView.originalKeypoints.length === 0;
+  }
+  get hasChanges(): boolean {
+    return !_.isEqual(
+      this.frameView.keypoints,
+      this.frameView.originalKeypoints,
+    );
+  }
+}
+
+export function fv(frameView: FrameView) {
+  return new FVUtils(frameView);
 }

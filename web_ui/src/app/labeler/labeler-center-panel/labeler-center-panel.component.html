@@ -20,11 +20,11 @@
             />
             <app-keypoint-container
               [labelerMode]="true"
-              [keypointModels]="kpAdapter(fv.keypoints)"
+              [keypointModels]="getCachedKeypointViewModels(fv.keypoints)"
               [(selectedKeypoint)]="selectedKeypoint"
               [useCrossHairs]="true"
-              [newKpTemplate]="newKp"
-              (keypointAdded)="handleKeypointAdded($event, fv)"
+              [editMode]="labelerDefaultsToEditMode()"
+              (keypointUpdated)="handleKeypointUpdated($event, fv)"
               class="absolute top-0 left-0 h-full w-full"
             ></app-keypoint-container>
           </div>
@@ -65,7 +65,7 @@
                 alt="fv.imgPath"
               />
               <app-keypoint-container
-                [keypointModels]="kpAdapter(fv.keypoints)"
+                [keypointModels]="getCachedKeypointViewModels(fv.keypoints)"
               ></app-keypoint-container>
             </app-zoomable-content>
           </div>

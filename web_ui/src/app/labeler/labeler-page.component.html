@@ -43,7 +43,7 @@
             <!--header row-->
             <h1 class="">Labeled frames</h1>
             <div class="text-xs">
-              {{ labelFileDataLabeledSlice()?.length ?? "" }}
+              {{ labelFileDataLabeledSlice().length }}
             </div>
           </div>
           <div
@@ -81,7 +81,7 @@
               <!--header row-->
               <h1 class="">Remaining frames to label</h1>
               <div class="text-xs">
-                {{ labelFileDataLabeledSlice()?.length ?? "" }}
+                {{ labelFileDataUnLabeledSlice().length }}
               </div>
             </div>
             <div class="text-sm">Please label one at a time</div>
@@ -120,6 +120,7 @@
     <!-- Center content -->
     <app-labeler-center-panel
       class="grow z-30"
+      [allKeypoints]="allKeypoints()"
       [frame]="selectedFrame()"
       (save)="handleSaveAction($event)"
     ></app-labeler-center-panel>

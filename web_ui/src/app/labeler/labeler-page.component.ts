@@ -61,6 +61,19 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     });
   });
 
+  protected allKeypoints = computed(() => {
+    const lfd = this.labelFileDataLabeledSlice();
+    if (!lfd.length) return [];
+    const firstLabeledFrameView = lfd[0].views[0];
+    if (!firstLabeledFrameView.keypoints.length) {
+      // TODO get this from project info if there isn't any first row.
+      return [];
+    } else {
+      // TODO sort by the order specified by the user.
+      return firstLabeledFrameView.keypoints.map((x) => x.keypointName);
+    }
+  });
+
   // Store the loading state
   protected isLoading = signal(false);
   protected loadError = signal<LoadError | null>(null);
