@@ -15,6 +15,7 @@ import { KeypointContainerComponent } from '../../components/keypoint-container/
 import { Keypoint } from '../../keypoint';
 import { ProjectInfoService } from '../../project-info.service';
 import { HorizontalScrollDirective } from '../../components/horizontal-scroll.directive';
+import { Point } from '@angular/cdk/drag-drop';
 
 @Component({
   selector: 'app-labeler-center-panel',
@@ -112,17 +113,16 @@ export class LabelerCenterPanelComponent {
     this._selectedView.set(viewName);
   }
 
-  handleKeypointUpdated(keypoint: Keypoint, frameView: FrameView) {
-    // updateKeypointDataStructure()
-    // nextInWorkflow
+  handleKeypointUpdated(position: Point, frameView: FrameView) {
+    const keypoint = this.selectedKeypoint()!;
 
     const underlyingKp = frameView.keypoints.find(
-      ({ keypointName }) => keypointName === keypoint.id,
+      ({ keypointName }) => keypointName === keypoint,
     );
     const newKp = {
-      x: keypoint.position().x,
-      y: keypoint.position().y,
-      keypointName: keypoint.id,
+      x: position.x,
+      y: position.y,
+      keypointName: keypoint,
     };
     // Update domain model.
     if (!underlyingKp) {

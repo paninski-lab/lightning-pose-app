@@ -17,8 +17,7 @@ import { Point } from '@angular/cdk/drag-drop';
  * Keypoint display and interaction layer.
  *
  * For now display and interaction are combined into a single component which means
- * that when you scroll-to-zoom from the parent, _everything_ must zoom
- * including tooltips, crosshair, and any future elements. Instead
+ * that when you scale the host div (zoom),it includes tooltips, crosshair. Instead
  * we might want to have some interaction elements like the crosshairs, tooltips,
  * and help text be outside of the zoomable(image and shown keypoints).
  *
@@ -35,6 +34,10 @@ import { Point } from '@angular/cdk/drag-drop';
  *   2. Creation: keypoint is in move mode until mousedown
  *
  *   Completing the above workflows emits `keypointUpdate` event.
+ *
+ *   // showCrosshair = selectedKeypointIsMoving = editMode || isDragging
+ *
+ *
  */
 @Component({
   selector: 'app-keypoint-container',
@@ -59,41 +62,28 @@ export class KeypointContainerComponent {
   editMode = input(false);
 
   // Notifies parent of the user's intent to change keypoint position.
-  keypointUpdated = output<Keypoint>();
+  keypointUpdated = output<Point>();
 
   private containerDiv = viewChild.required('containerDiv', {
     read: ElementRef,
   });
-  protected newKpPosition = signal<null | Point>(null);
-  protected newKp = computed(() => this.getNewKp());
-  protected allMarkers = computed(() => {
-    const newKp = this.getNewKp();
-    if (newKp) {
-      return [newKp].concat(this.keypointModels());
-    } else {
-      return this.keypointModels();
-    }
-  });
+
   protected isSelectionAllowed = computed(() => {
     if (!this.labelerMode()) return false;
-    if (this.newKp()) return false;
+    if (this.editMode()) return false;
     return true;
   });
 
   protected mouseIsOverContainer = signal(false);
-  protected mouseIsDownInContainer = signal(false);
 
   getTransform(keypoint: Keypoint) {
     return `translate3d(${keypoint.position().x}px, ${keypoint.position().y}px, 0px)`;
   }
 
+  /** Called when user clicks on a keypoint div */
   handleKeypointClick(event: Event, keypoint: Keypoint) {
-    // Event stop prop doesn't work because mousedown event still propagates.
-    // event.stopPropagation();
     if (this.isSelectionAllowed()) {
       this.selectedKeypoint.set(keypoint.id);
-    } else if (keypoint.id === this.newKp()?.id) {
-      this.keypointUpdated.emit(this.newKp()!);
     }
   }
 
@@ -105,62 +95,78 @@ export class KeypointContainerComponent {
 
   handleMouseOut(event: MouseEvent) {
     this.mouseIsOverContainer.set(false);
-    // Clear new keypoint position when mouse leaves
-    this.newKpPosition.set(null);
   }
 
   handlePointerMove(event: PointerEvent) {
-    // Filter out mousemove of child divs that bubble up.
-
-    if (this.labelerMode()) {
-      const containerElement = this.containerDiv().nativeElement;
-      const containerRect = containerElement.getBoundingClientRect();
-
-      // Calculate coordinates relative to the scaled container's top-left
-      const clientXRelativeToContainer = event.clientX - containerRect.left;
-      const clientYRelativeToContainer = event.clientY - containerRect.top;
-
-      // Get the unscaled dimensions of the container.
-      // offsetWidth/Height reflect the dimensions before any CSS transforms like scale.
-      const unscaledWidth = containerElement.offsetWidth;
-      const unscaledHeight = containerElement.offsetHeight;
-
-      // Calculate the scale factors.
-      // If unscaledWidth/Height is 0, set scale to 1 to avoid division by zero.
-      const scaleX =
-        unscaledWidth === 0 ? 1 : containerRect.width / unscaledWidth;
-      const scaleY =
-        unscaledHeight === 0 ? 1 : containerRect.height / unscaledHeight;
-
-      // Divide the scaled coordinates by the scale factor to get the unscaled local coordinates.
-      const unscaledX = clientXRelativeToContainer / scaleX;
-      const unscaledY = clientYRelativeToContainer / scaleY;
-
-      this.newKpPosition.set({ x: unscaledX, y: unscaledY });
-    }
+    this.mouseClientPosition.set({ x: event.clientX, y: event.clientY });
   }
 
-  handleMouseDown(event: MouseEvent) {
-    this.mouseIsDownInContainer.set(true);
+  private mouseClientPosition = signal<Point | null>(null);
+
+  protected crosshairPosition = computed((): Point | null => {
+    if (!this.mouseClientPosition()) return null;
+    if (!this.mouseIsOverContainer()) return null;
+
+    const containerElement = this.containerDiv().nativeElement;
+    const containerRect = containerElement.getBoundingClientRect();
+
+    // Calculate coordinates relative to the scaled container's top-left
+    const clientXRelativeToContainer =
+      this.mouseClientPosition()!.x - containerRect.left;
+    const clientYRelativeToContainer =
+      this.mouseClientPosition()!.y - containerRect.top;
+
+    // Get the unscaled dimensions of the container.
+    // offsetWidth/Height reflect the dimensions before any CSS transforms like scale.
+    const unscaledWidth = containerElement.offsetWidth;
+    const unscaledHeight = containerElement.offsetHeight;
+
+    // Calculate the scale factors.
+    // If unscaledWidth/Height is 0, set scale to 1 to avoid division by zero.
+    const scaleX =
+      unscaledWidth === 0 ? 1 : containerRect.width / unscaledWidth;
+    const scaleY =
+      unscaledHeight === 0 ? 1 : containerRect.height / unscaledHeight;
+
+    // Divide the scaled coordinates by the scale factor to get the unscaled local coordinates.
+    const unscaledX = clientXRelativeToContainer / scaleX;
+    const unscaledY = clientYRelativeToContainer / scaleY;
+
+    return { x: unscaledX, y: unscaledY };
+  });
+
+  protected showCrosshair = computed(() => {
+    return this.selectedKeypointIsMoving();
+  });
+
+  protected selectedKeypointIsMoving = computed((): boolean => {
+    return this.keypointIsDragging() || this.editMode();
+  });
+
+  private keypointIsDragging = signal(false);
+
+  handleKeypointDragStart(event: DragEvent, keypoint: Keypoint) {
+    this.keypointIsDragging.set(true);
+    // No ghost drag image. Sub with a 1x1 transparent.
+    const img = new Image(); // Create a new Image object
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+    event.dataTransfer!.setDragImage(img, 0, 0);
   }
 
-  handleMouseUp(event: MouseEvent) {
-    this.mouseIsDownInContainer.set(false);
+  handleKeypointDragEnd($event: DragEvent, keypoint: Keypoint) {
+    this.keypointIsDragging.set(false);
   }
 
-  protected getNewKp(): Keypoint | null {
-    const newKpTemplate = this.newKpTemplate();
-    const newKpPosition = this.newKpPosition();
-    if (newKpTemplate && newKpPosition) {
-      const newKp = {
-        id: newKpTemplate.id!,
-        colorClass: newKpTemplate.colorClass!,
-        hoverText: newKpTemplate.hoverText!,
-        position: computed(() => this.newKpPosition()!),
-      };
-      return newKp;
-    } else {
-      return null;
-    }
+  handleDrop(event: DragEvent) {
+    event.preventDefault(); // Prevent default browser drop behavior (e.g., opening link)
+    const point = this.crosshairPosition()!;
+    this.keypointUpdated.emit(point);
+  }
+
+  handleDragOver($event: DragEvent) {
+    $event.preventDefault(); // necessary to allow drop.
+    // Ensure the drop effect aligns with effectAllowed from dragstart
+
+    $event.dataTransfer!.dropEffect = 'move';
   }
 }

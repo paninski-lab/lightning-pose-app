@@ -91,19 +91,19 @@
 <div
   #containerDiv
   class="w-full h-full relative overflow-hidden"
-  [class.cursor-none]="newKp() !== null"
+  [class.cursor-none]="showCrosshair()"
   (mouseover)="handleMouseOver($event)"
   (mouseout)="handleMouseOut($event)"
   (pointermove)="handlePointerMove($event)"
-  (mousedown)="handleMouseDown($event)"
-  (mouseup)="handleMouseUp($event)"
+  (drop)="handleDrop($event)"
+  (dragover)="handleDragOver($event)"
 >
   <!-- Horizontal line -->
-  @if (newKp() !== null) {
+  @if (showCrosshair()) {
     <div
       class="crosshair2-wrapper"
-      [style.--crosshair-x]="(newKp()?.position())!.x + 'px'"
-      [style.--crosshair-y]="(newKp()?.position())!.y + 'px'"
+      [style.--crosshair-x]="crosshairPosition()!.x + 'px'"
+      [style.--crosshair-y]="crosshairPosition()!.y + 'px'"
     >
       <div class="crosshair-horizontal-line"></div>
       <!-- Vertical line -->
@@ -112,30 +112,30 @@
   }
 
   @for (keypoint of keypointModels(); track keypoint.id) {
-    @if (keypoint.position() !== null) {
+    @let keypointIsSelected = keypoint.id === selectedKeypoint();
+    @let hideKeypointBecauseMoving =
+      keypointIsSelected && selectedKeypointIsMoving();
+    @if (keypoint.position() !== null && !hideKeypointBecauseMoving) {
       <div
         [attr.data-tip]="keypoint.hoverText"
-        [class.selected]="keypoint.id === selectedKeypoint()"
+        [class.selected]="keypointIsSelected"
         [style.transform]="getTransform(keypoint)"
         (click)="handleKeypointClick($event, keypoint)"
         (keydown.enter)="handleKeypointClick($event, keypoint)"
+        (dragstart)="handleKeypointDragStart($event, keypoint)"
+        (dragend)="handleKeypointDragEnd($event, keypoint)"
         tabindex="0"
         class="
       h-2 w-2
       rounded-full
       shadow-sm/30
       {{ keypoint.colorClass() }}
-      {{ keypoint.id === newKp()?.id ? 'cursor-none z-2' : '' }}
       absolute -top-1 -left-1
       tooltip"
       >
         <!-- top, left position should be negative by 1/2 the height and width -->
         @if (useCrossHairs()) {
-          <div
-            class="crosshair-element {{
-              keypoint.id === newKp()?.id ? 'newKp' : ''
-            }}"
-          ></div>
+          <div class="crosshair-element"></div>
         }
       </div>
     }

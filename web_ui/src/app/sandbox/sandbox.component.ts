@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import { KeypointContainerComponent } from '../components/keypoint-container/keypoint-container.component';
 import { Keypoint } from '../keypoint';
+import { Point } from '@angular/cdk/drag-drop';
 
 @Component({
   selector: 'app-sandbox',
@@ -38,12 +39,12 @@ export class SandboxComponent {
     this.newKp = this.newKpTemplate;
   }
 
-  handleKeypointAdded(kp: Keypoint) {
+  handleKeypointAdded(pos: Point) {
     this.kp.push({
-      ...kp,
-      position: signal({ x: kp.position().x, y: kp.position().y }),
+      ...this.newKpTemplate,
+      position: signal({ x: pos.x, y: pos.y }),
       colorClass: signal('bg-base-300/30'),
-    });
+    } as Keypoint);
     this.i++;
     this.newKp = null;
     //this.newKp = { ...kp, id: 'newbie-' + this.i };
