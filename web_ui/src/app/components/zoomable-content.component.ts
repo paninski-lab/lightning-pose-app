@@ -19,9 +19,10 @@ import {
     <div
       #viewport
       class="relative w-full h-full overflow-hidden"
-      (mousedown)="onMouseDown($event)"
-      (mouseup)="onMouseUp()"
-      (mouseleave)="onMouseUp()"
+      (pointerdown)="onPointerDown($event)"
+      (pointermove)="onPointerMove($event)"
+      (pointerup)="onPointerUp($event)"
+      (pointercancel)="onPointerUp($event)"
     >
       <div
         class="absolute transform-gpu transition-transform duration-0 origin-top-left"
@@ -195,52 +196,83 @@ export class ZoomableContentComponent
   }
 
   /**
-   * Handles mouse down event for initiating dragging.
+   * Handles pointer down event for initiating dragging.
    */
-  onMouseDown(event: MouseEvent): void {
+  onPointerDown(event: PointerEvent): void {
     if (this.interactivityDisabled()) {
       return;
     }
-    event.preventDefault(); // Prevent default browser drag behavior
+    // Prevent default browser drag behavior (unless target is draggable)
+    if (
+      event.target instanceof Element &&
+      !event.target.getAttribute('draggable')
+    ) {
+      event.preventDefault();
+    }
     this.isDragging = true;
     this.startX = event.clientX - this.translateX;
     this.startY = event.clientY - this.translateY;
     this.renderer.addClass(this.viewportRef.nativeElement, 'cursor-grabbing');
+    // Capture the pointer to ensure pointermove and pointerup events
+    // continue to fire on this element even if the pointer leaves its bounds.
+    this.viewportRef.nativeElement.setPointerCapture(event.pointerId);
   }
 
   /**
-   * Handles mouse up event for ending dragging.
+   * Handles pointer up or pointer cancel event for ending dragging.
    */
-  onMouseUp(): void {
+  onPointerUp(event: PointerEvent): void {
     if (this.interactivityDisabled()) {
       return;
     }
-    this.isDragging = false;
-    this.renderer.removeClass(
-      this.viewportRef.nativeElement,
-      'cursor-grabbing',
-    );
+    if (this.isDragging) {
+      this.isDragging = false;
+      this.renderer.removeClass(
+        this.viewportRef.nativeElement,
+        'cursor-grabbing',
+      );
+      // Release the pointer capture if it was active for this pointer
+      if (this.viewportRef.nativeElement.hasPointerCapture(event.pointerId)) {
+        this.viewportRef.nativeElement.releasePointerCapture(event.pointerId);
+      }
+    }
   }
 
   /**
-   * Handles mouse move event for panning.
+   * Handles pointer move event for panning.
+   * This is now triggered by (pointermove) on the viewport,
+   * with events continuing to fire due to setPointerCapture.
    */
-  @HostListener('document:mousemove', ['$event'])
-  onMouseMove(event: MouseEvent): void {
+  onPointerMove(event: PointerEvent): void {
     if (this.interactivityDisabled()) {
       return;
     }
     if (!this.isDragging) {
       return;
     }
-    event.preventDefault();
 
-    // Calculate new translation based on mouse movement
+    // Calculate new translation based on pointer movement
     this.translateX = event.clientX - this.startX;
     this.translateY = event.clientY - this.startY;
 
     // Add boundary checks for panning
     this.applyPanningBounds();
+  }
+
+  /**
+   * Handles the 'lostpointercapture' event, ensuring drag state is reset if capture is lost for any reason.
+   */
+  @HostListener('window:lostpointercapture', ['$event'])
+  onLostPointerCapture(event: PointerEvent): void {
+    // This event fires on the element that lost capture.
+    // Ensure it's our viewport element that lost it and dragging was active.
+    if (event.target === this.viewportRef.nativeElement && this.isDragging) {
+      this.isDragging = false;
+      this.renderer.removeClass(
+        this.viewportRef.nativeElement,
+        'cursor-grabbing',
+      );
+    }
   }
 
   /**

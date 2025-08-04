@@ -95,8 +95,7 @@
   (mouseover)="handleMouseOver($event)"
   (mouseout)="handleMouseOut($event)"
   (pointermove)="handlePointerMove($event)"
-  (drop)="handleDrop($event)"
-  (dragover)="handleDragOver($event)"
+  (pointerup)="handlePointerUp($event)"
 >
   <!-- Horizontal line -->
   @if (showCrosshair()) {
@@ -115,15 +114,15 @@
     @let keypointIsSelected = keypoint.id === selectedKeypoint();
     @let hideKeypointBecauseMoving =
       keypointIsSelected && selectedKeypointIsMoving();
-    @if (keypoint.position() !== null && !hideKeypointBecauseMoving) {
+    @if (keypoint.position() !== null) {
       <div
         [attr.data-tip]="keypoint.hoverText"
         [class.selected]="keypointIsSelected"
         [style.transform]="getTransform(keypoint)"
+        [style.display]="hideKeypointBecauseMoving ? 'none' : 'block'"
         (click)="handleKeypointClick($event, keypoint)"
         (keydown.enter)="handleKeypointClick($event, keypoint)"
-        (dragstart)="handleKeypointDragStart($event, keypoint)"
-        (dragend)="handleKeypointDragEnd($event, keypoint)"
+        (pointerdown)="handleKeypointPointerDown($event, keypoint)"
         tabindex="0"
         class="
       h-2 w-2

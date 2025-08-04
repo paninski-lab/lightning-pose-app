@@ -75,6 +75,7 @@ export class KeypointContainerComponent {
   });
 
   protected mouseIsOverContainer = signal(false);
+  private isMouseDownOnKeypoint = signal(false);
 
   getTransform(keypoint: Keypoint) {
     return `translate3d(${keypoint.position().x}px, ${keypoint.position().y}px, 0px)`;
@@ -99,6 +100,10 @@ export class KeypointContainerComponent {
 
   handlePointerMove(event: PointerEvent) {
     this.mouseClientPosition.set({ x: event.clientX, y: event.clientY });
+    if (this.isMouseDownOnKeypoint()) {
+      this.keypointIsDragging.set(true);
+      event.stopPropagation();
+    }
   }
 
   private mouseClientPosition = signal<Point | null>(null);
@@ -107,7 +112,7 @@ export class KeypointContainerComponent {
     if (!this.mouseClientPosition()) return null;
     if (!this.mouseIsOverContainer()) return null;
 
-    const containerElement = this.containerDiv().nativeElement;
+    const containerElement = this.containerDiv().nativeElement as HTMLElement;
     const containerRect = containerElement.getBoundingClientRect();
 
     // Calculate coordinates relative to the scaled container's top-left
@@ -145,28 +150,32 @@ export class KeypointContainerComponent {
 
   private keypointIsDragging = signal(false);
 
-  handleKeypointDragStart(event: DragEvent, keypoint: Keypoint) {
-    this.keypointIsDragging.set(true);
-    // No ghost drag image. Sub with a 1x1 transparent.
-    const img = new Image(); // Create a new Image object
-    img.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
-    event.dataTransfer!.setDragImage(img, 0, 0);
+  handleKeypointPointerDown(event: PointerEvent, keypoint: Keypoint) {
+    this.selectedKeypoint.set(keypoint.id);
+    this.isMouseDownOnKeypoint.set(true);
+    event.stopPropagation();
+
+    // Capture the pointer to ensure pointerup is fired even if pointer leaves the element
+    (this.containerDiv().nativeElement as HTMLElement).setPointerCapture(
+      event.pointerId,
+    );
   }
 
-  handleKeypointDragEnd($event: DragEvent, keypoint: Keypoint) {
-    this.keypointIsDragging.set(false);
-  }
+  handlePointerUp(event: PointerEvent) {
+    const position = this.selectedKeypointIsMoving()
+      ? this.crosshairPosition()
+      : null;
 
-  handleDrop(event: DragEvent) {
-    event.preventDefault(); // Prevent default browser drop behavior (e.g., opening link)
-    const point = this.crosshairPosition()!;
-    this.keypointUpdated.emit(point);
-  }
+    this.isMouseDownOnKeypoint.set(false);
+    if (this.keypointIsDragging()) {
+      this.keypointIsDragging.set(false);
+      (this.containerDiv().nativeElement as HTMLElement).releasePointerCapture(
+        event.pointerId,
+      );
+    }
 
-  handleDragOver($event: DragEvent) {
-    $event.preventDefault(); // necessary to allow drop.
-    // Ensure the drop effect aligns with effectAllowed from dragstart
-
-    $event.dataTransfer!.dropEffect = 'move';
+    if (position) {
+      this.keypointUpdated.emit(position);
+    }
   }
 }
