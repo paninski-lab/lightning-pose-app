@@ -150,10 +150,20 @@ export class KeypointContainerComponent {
 
   private keypointIsDragging = signal(false);
 
-  handleKeypointPointerDown(event: PointerEvent, keypoint: Keypoint) {
-    this.selectedKeypoint.set(keypoint.id);
-    this.isMouseDownOnKeypoint.set(true);
-    event.stopPropagation();
+  handleKeypointPointerDown(event: PointerEvent, keypoint: Keypoint | null) {
+    if (
+      keypoint &&
+      !this.selectedKeypointIsMoving() /** in creatin mode, mouse down should not select keypoint */
+    ) {
+      this.selectedKeypoint.set(keypoint.id);
+      this.isMouseDownOnKeypoint.set(true);
+      event.stopPropagation();
+    }
+
+    // in creation mode, dont stop prop so that we pass this event through to the containerDiv handler.
+    if (!keypoint && this.selectedKeypointIsMoving()) {
+      event.stopPropagation();
+    }
 
     // Capture the pointer to ensure pointerup is fired even if pointer leaves the element
     (this.containerDiv().nativeElement as HTMLElement).setPointerCapture(

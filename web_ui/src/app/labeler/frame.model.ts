@@ -41,3 +41,18 @@ export class FVUtils {
 export function fv(frameView: FrameView) {
   return new FVUtils(frameView);
 }
+
+export class MVFUtils {
+  constructor(public mvFrame: MVFrame) {}
+
+  get isFromUnlabeledSet(): boolean {
+    if (!this.mvFrame.views.length) {
+      throw new Error('No views available in MVFrame');
+    }
+    return this.mvFrame.views[0].originalKeypoints.length === 0;
+  }
+}
+
+export function mvf(mvFrame: MVFrame) {
+  return new MVFUtils(mvFrame);
+}

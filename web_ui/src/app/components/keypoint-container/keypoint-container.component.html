@@ -96,9 +96,10 @@
   (mouseout)="handleMouseOut($event)"
   (pointermove)="handlePointerMove($event)"
   (pointerup)="handlePointerUp($event)"
+  (pointerdown)="handleKeypointPointerDown($event, null)"
 >
   <!-- Horizontal line -->
-  @if (showCrosshair()) {
+  @if (showCrosshair() && crosshairPosition()) {
     <div
       class="crosshair2-wrapper"
       [style.--crosshair-x]="crosshairPosition()!.x + 'px'"

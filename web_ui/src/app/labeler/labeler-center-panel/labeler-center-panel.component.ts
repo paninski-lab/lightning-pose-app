@@ -4,10 +4,12 @@ import {
   computed,
   inject,
   input,
+  OnChanges,
   output,
   signal,
+  SimpleChanges,
 } from '@angular/core';
-import { FrameView, fv, MVFrame } from '../frame.model';
+import { FrameView, fv, mvf, MVFrame } from '../frame.model';
 import { LKeypoint, SaveActionData } from '../types';
 import { DecimalPipe } from '@angular/common';
 import { ZoomableContentComponent } from '../../components/zoomable-content.component';
@@ -29,7 +31,7 @@ import { Point } from '@angular/cdk/drag-drop';
   styleUrl: './labeler-center-panel.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class LabelerCenterPanelComponent {
+export class LabelerCenterPanelComponent implements OnChanges {
   private projectInfoService = inject(ProjectInfoService);
 
   /**
@@ -43,6 +45,21 @@ export class LabelerCenterPanelComponent {
   frame = input<MVFrame | null>(null);
 
   save = output<SaveActionData>();
+
+  ngOnChanges(changes: SimpleChanges) {
+    // Unlabeled frames should start at the first unlabeled keypoint.
+    if (
+      changes['frame'] &&
+      this.frame() &&
+      mvf(this.frame()!).isFromUnlabeledSet
+    ) {
+      // Reset state
+      this.selectedKeypoint.set(null);
+      this._selectedView.set(null);
+      // The next one from null state is going to be the first one.
+      this.selectNextUnlabeledKeypoint();
+    }
+  }
 
   // selectedView is always nonnull. Defaults to first view in frame.
   // Underlying selection state can be null if user hasn't selected any view explicitly yet.
