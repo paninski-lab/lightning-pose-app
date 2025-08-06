@@ -23,7 +23,7 @@
               [keypointModels]="getCachedKeypointViewModels(fv.keypoints)"
               [(selectedKeypoint)]="selectedKeypoint"
               [useCrossHairs]="true"
-              [editMode]="labelerDefaultsToEditMode()"
+              [editMode]="labelerDefaultsToEditMode"
               (keypointUpdated)="
                 handleKeypointUpdated($event.kp, $event.position, fv)
               "
@@ -77,7 +77,7 @@
   </div>
 
   <!-- Second Column: Single Row -->
-  <div>
+  <div class="flex flex-col gap-4">
     <div class="panel m-4">
       <div>
         <!-- panel header -->
@@ -114,6 +114,31 @@
           </ul>
         }
       </div>
+    </div>
+    <div class="m-4">
+      @if (frame(); as frame2) {
+        <div class="tooltip w-full" [attr.data-tip]="saveTooltip">
+          <button
+            class="btn bg-sky-700 w-full"
+            [class.btn-disabled]="saveDisabled"
+          >
+            Save
+          </button>
+        </div>
+        @if (mvf(frame2).isFromUnlabeledSet) {
+          <div
+            class="tooltip tooltip-bottom w-full"
+            [attr.data-tip]="saveAndContinueTooltip"
+          >
+            <button
+              class="btn bg-sky-700 w-full mt-2"
+              [class.btn-disabled]="saveAndContinueDisabled"
+            >
+              Save and continue
+            </button>
+          </div>
+        }
+      }
     </div>
   </div>
 </div>

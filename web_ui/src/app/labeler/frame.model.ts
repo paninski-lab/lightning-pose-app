@@ -47,6 +47,12 @@ export class MVFUtils {
     }
     return fv(this.mvFrame.views[0]).isFromUnlabeledSet;
   }
+  get hasChanges(): boolean {
+    if (!this.mvFrame.views.length) {
+      throw new Error('No views available in MVFrame');
+    }
+    return fv(this.mvFrame.views[0]).hasChanges;
+  }
 }
 
 export function mvf(mvFrame: MVFrame) {

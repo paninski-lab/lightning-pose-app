@@ -9,7 +9,7 @@ import {
   signal,
   SimpleChanges,
 } from '@angular/core';
-import { FrameView, fv, mvf, MVFrame } from '../frame.model';
+import { FrameView, fv, mvf, MVFrame, MVFUtils } from '../frame.model';
 import { LKeypoint, lkp, SaveActionData } from '../types';
 import { DecimalPipe } from '@angular/common';
 import { ZoomableContentComponent } from '../../components/zoomable-content.component';
@@ -145,7 +145,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
     }
   }
   /** Default NaN Keypoints to edit mode. */
-  protected labelerDefaultsToEditMode = computed((): boolean => {
+  protected get labelerDefaultsToEditMode(): boolean {
     // TODO: Getting `selectedKeypointInFrame` could be a getter or computed instead.
 
     const frameView = this.selectedFrameView();
@@ -158,7 +158,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
     if (!selectedKeypointInFrame) return false;
 
     return lkp(selectedKeypointInFrame).isNaN();
-  });
+  }
 
   /**
    * Selects the next keypoint that does not have a label in the currently selected frame view.
@@ -181,7 +181,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
     }
   }
 
-  handleKeypointClearClick(kp: LKeypoint) {
+  protected handleKeypointClearClick(kp: LKeypoint) {
     if (this.selectedFrameView()) {
       this.handleKeypointUpdated(
         kp.keypointName,
@@ -190,4 +190,25 @@ export class LabelerCenterPanelComponent implements OnChanges {
       );
     }
   }
+
+  protected get saveDisabled(): boolean {
+    return !mvf(this.frame()!).hasChanges;
+  }
+  protected get saveTooltip(): string {
+    if (!this.saveDisabled) return '';
+    return 'No changes to save.';
+  }
+
+  protected get saveAndContinueDisabled(): boolean {
+    return this.saveDisabled;
+  }
+
+  protected get saveAndContinueTooltip(): string {
+    if (!this.saveAndContinueDisabled)
+      return 'Save and advance to next unlabeled frame.';
+    return 'No changes to save.';
+  }
+
+  // export to template
+  protected readonly mvf = mvf;
 }
