@@ -7,6 +7,7 @@ name = "lightning-pose-app"
 version = "1.8.1a9"
 requires-python = ">=3.10"
 dependencies = [
+    "aiofiles~=24.1.0",
     "apscheduler~=3.11.0",
     "fastapi~=0.115.0",
     "honcho~=2.0",

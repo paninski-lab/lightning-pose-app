@@ -35,7 +35,7 @@
             class="p-1 block hover:bg-base-content/10 rounded-sm flex items-center justify-between"
             [routerLink]="['/viewer', session.key]"
           >
-            <span>{{ session.key }}</span
+            <span>{{ session.key | path }}</span
             ><!-- left hand side -->
             <span>
               <span

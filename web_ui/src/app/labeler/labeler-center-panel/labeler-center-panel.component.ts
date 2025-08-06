@@ -4,18 +4,20 @@ import {
   computed,
   inject,
   input,
-  OnInit,
+  OnChanges,
   output,
   signal,
+  SimpleChanges,
 } from '@angular/core';
-import { FrameView, MVFrame } from '../frame.model';
-import { LKeypoint, SaveActionData } from '../types';
+import { FrameView, fv, mvf, MVFrame, MVFUtils } from '../frame.model';
+import { LKeypoint, lkp, SaveActionData } from '../types';
 import { DecimalPipe } from '@angular/common';
 import { ZoomableContentComponent } from '../../components/zoomable-content.component';
 import { KeypointContainerComponent } from '../../components/keypoint-container/keypoint-container.component';
 import { Keypoint } from '../../keypoint';
 import { ProjectInfoService } from '../../project-info.service';
 import { HorizontalScrollDirective } from '../../components/horizontal-scroll.directive';
+import { Point } from '@angular/cdk/drag-drop';
 
 @Component({
   selector: 'app-labeler-center-panel',
@@ -29,11 +31,27 @@ import { HorizontalScrollDirective } from '../../components/horizontal-scroll.di
   styleUrl: './labeler-center-panel.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class LabelerCenterPanelComponent {
+export class LabelerCenterPanelComponent implements OnChanges {
   private projectInfoService = inject(ProjectInfoService);
+
   frame = input<MVFrame | null>(null);
 
   save = output<SaveActionData>();
+
+  ngOnChanges(changes: SimpleChanges) {
+    // Unlabeled frames should start at the first unlabeled keypoint.
+    if (
+      changes['frame'] &&
+      this.frame() &&
+      mvf(this.frame()!).isFromUnlabeledSet
+    ) {
+      // Reset state
+      this._selectedView.set(null);
+      this.selectedKeypoint.set(
+        this.selectedFrameView()?.keypoints[0]?.keypointName ?? null,
+      );
+    }
+  }
 
   // selectedView is always nonnull. Defaults to first view in frame.
   // Underlying selection state can be null if user hasn't selected any view explicitly yet.
@@ -58,25 +76,35 @@ export class LabelerCenterPanelComponent {
   }
   protected selectedKeypoint = signal<string | null>(null);
 
-  kpAdapterWM = new WeakMap<LKeypoint[], Keypoint[]>();
-  kpAdapter(keypoints: LKeypoint[]): Keypoint[] {
-    if (!this.kpAdapterWM.has(keypoints)) {
+  keypointViewModelCache = new WeakMap<LKeypoint[], Keypoint[]>();
+
+  getCachedKeypointViewModels(keypoints: LKeypoint[]): Keypoint[] {
+    if (!this.keypointViewModelCache.has(keypoints)) {
       const target = keypoints
-        .map(this.convertKeypoint)
+        .map((k) => this.buildViewModel(k))
         .filter(
           (keypoint) =>
             !isNaN(keypoint.position().x) && !isNaN(keypoint.position().y),
         );
-      this.kpAdapterWM.set(keypoints, target);
+      this.keypointViewModelCache.set(keypoints, target);
     }
-    return this.kpAdapterWM.get(keypoints)!;
+    return this.keypointViewModelCache.get(keypoints)!;
   }
-  private convertKeypoint(lkeypoint: LKeypoint): Keypoint {
+  private buildViewModel(lkeypoint: LKeypoint): Keypoint {
     const val = {
       id: lkeypoint.keypointName,
       hoverText: lkeypoint.keypointName,
       position: signal({ x: lkeypoint.x, y: lkeypoint.y }),
-      colorClass: signal('bg-green-500/10'),
+      colorClass: computed(() => {
+        if (this.selectedKeypoint() == null) {
+          return 'bg-green-500/10';
+        }
+        if (lkeypoint.keypointName === this.selectedKeypoint()) {
+          return 'bg-green-500/20';
+        } else {
+          return 'bg-green-500/5';
+        }
+      }),
     };
     return val;
   }
@@ -93,4 +121,94 @@ export class LabelerCenterPanelComponent {
   handleViewClickFromFilmstrip(viewName: string) {
     this._selectedView.set(viewName);
   }
+
+  handleKeypointUpdated(kpName: string, position: Point, frameView: FrameView) {
+    const keypointName = kpName;
+
+    const keypoint = frameView.keypoints.find(
+      (kp) => kp.keypointName === keypointName,
+    )!;
+    const newKp = {
+      x: position.x,
+      y: position.y,
+      keypointName: keypointName,
+    };
+    // Update domain model.
+    frameView.keypoints = frameView.keypoints.map((item) =>
+      item === keypoint ? { ...keypoint, ...newKp } : item,
+    );
+    // Invalidate viewmodel cache.
+    this.keypointViewModelCache.delete(frameView.keypoints);
+
+    if (lkp(keypoint).isNaN()) {
+      this.selectNextUnlabeledKeypoint(keypointName);
+    }
+  }
+  /** Default NaN Keypoints to edit mode. */
+  protected get labelerDefaultsToEditMode(): boolean {
+    // TODO: Getting `selectedKeypointInFrame` could be a getter or computed instead.
+
+    const frameView = this.selectedFrameView();
+    if (!frameView) return false;
+    const selectedKeypoint = this.selectedKeypoint();
+    if (!selectedKeypoint) return false;
+    const selectedKeypointInFrame = frameView.keypoints.find(
+      (kp) => kp.keypointName === selectedKeypoint,
+    );
+    if (!selectedKeypointInFrame) return false;
+
+    return lkp(selectedKeypointInFrame).isNaN();
+  }
+
+  /**
+   * Selects the next keypoint that does not have a label in the currently selected frame view.
+   */
+  private selectNextUnlabeledKeypoint(originKp: string | null) {
+    const frameView = this.selectedFrameView();
+
+    if (frameView) {
+      const startIdx =
+        originKp === null
+          ? 0
+          : frameView.keypoints.findIndex((kp) => kp.keypointName === originKp);
+      for (let i = startIdx + 1; i < frameView.keypoints.length; i++) {
+        const kp = frameView.keypoints[i];
+        if (lkp(kp).isNaN()) {
+          this.selectedKeypoint.set(kp.keypointName);
+          return;
+        }
+      }
+    }
+  }
+
+  protected handleKeypointClearClick(kp: LKeypoint) {
+    if (this.selectedFrameView()) {
+      this.handleKeypointUpdated(
+        kp.keypointName,
+        { x: NaN, y: NaN },
+        this.selectedFrameView()!,
+      );
+    }
+  }
+
+  protected get saveDisabled(): boolean {
+    return !mvf(this.frame()!).hasChanges;
+  }
+  protected get saveTooltip(): string {
+    if (!this.saveDisabled) return '';
+    return 'No changes to save.';
+  }
+
+  protected get saveAndContinueDisabled(): boolean {
+    return this.saveDisabled;
+  }
+
+  protected get saveAndContinueTooltip(): string {
+    if (!this.saveAndContinueDisabled)
+      return 'Save and advance to next unlabeled frame.';
+    return 'No changes to save.';
+  }
+
+  // export to template
+  protected readonly mvf = mvf;
 }

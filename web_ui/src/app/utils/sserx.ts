@@ -26,15 +26,19 @@ export function getEventStream(endpoint: string): Observable<any> {
     };
 
     // 2. onerror: This is triggered when an error occurs with the connection.
-    eventSource.onerror = (error: any) => {
+    eventSource.onerror = (error: Event) => {
       console.error('SSE Error:', error);
       // When an error occurs, we can decide whether to close the stream.
       // If the readyState is CLOSED, it means the connection was lost for good.
       if (eventSource.readyState === EventSource.CLOSED) {
-        observer.error('SSE connection closed by server.');
+        observer.error(new Error('SSE connection closed by server.'));
       } else {
         // You could implement retry logic here if desired.
-        observer.error(error);
+        observer.error(
+          new Error(
+            'Connection to Lightning Pose App server lost. Refresh once the server is back online.',
+          ),
+        );
       }
     };
 
