@@ -13,22 +13,18 @@ export interface FrameView {
   // (relative to data_dir)
   imgPath: string;
 
-  // a mutable array of the labeled keypoints.
-  // unlabeled keypoints are omitted.
-  // saved files must have all keypoints or no keypoints.
-  // if all => regular row in label file.
-  // if none => imgpath is saved in unlabeled sidecar.
+  // a mutable array of the keypoints.
   keypoints: LKeypoint[];
 
-  // A copy of the original keypoints.
-  originalKeypoints: LKeypoint[];
+  // immutable copy of the original keypoints. null if from unlabeled file.
+  originalKeypoints: LKeypoint[] | null;
 }
 
 export class FVUtils {
   constructor(public frameView: FrameView) {}
 
   get isFromUnlabeledSet(): boolean {
-    return this.frameView.originalKeypoints.length === 0;
+    return this.frameView.originalKeypoints === null;
   }
   get hasChanges(): boolean {
     return !_.isEqual(
@@ -49,7 +45,7 @@ export class MVFUtils {
     if (!this.mvFrame.views.length) {
       throw new Error('No views available in MVFrame');
     }
-    return this.mvFrame.views[0].originalKeypoints.length === 0;
+    return fv(this.mvFrame.views[0]).isFromUnlabeledSet;
   }
 }
 

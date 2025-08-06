@@ -10,7 +10,7 @@ import {
   SimpleChanges,
 } from '@angular/core';
 import { FrameView, fv, mvf, MVFrame } from '../frame.model';
-import { LKeypoint, SaveActionData } from '../types';
+import { LKeypoint, lkp, SaveActionData } from '../types';
 import { DecimalPipe } from '@angular/common';
 import { ZoomableContentComponent } from '../../components/zoomable-content.component';
 import { KeypointContainerComponent } from '../../components/keypoint-container/keypoint-container.component';
@@ -34,14 +34,6 @@ import { Point } from '@angular/cdk/drag-drop';
 export class LabelerCenterPanelComponent implements OnChanges {
   private projectInfoService = inject(ProjectInfoService);
 
-  /**
-   * The keypoints in the currently-opened label file.
-   *
-   * A frame-view may omit some of these keypoints (meaning it's not yet fully labeled),
-   * but it would never have keypoints that are not in the `allKeypoints` array.
-   */
-  allKeypoints = input.required<string[]>();
-
   frame = input<MVFrame | null>(null);
 
   save = output<SaveActionData>();
@@ -54,10 +46,10 @@ export class LabelerCenterPanelComponent implements OnChanges {
       mvf(this.frame()!).isFromUnlabeledSet
     ) {
       // Reset state
-      this.selectedKeypoint.set(null);
       this._selectedView.set(null);
-      // The next one from null state is going to be the first one.
-      this.selectNextUnlabeledKeypoint();
+      this.selectedKeypoint.set(
+        this.selectedFrameView()?.keypoints[0]?.keypointName ?? null,
+      );
     }
   }
 
@@ -130,138 +122,72 @@ export class LabelerCenterPanelComponent implements OnChanges {
     this._selectedView.set(viewName);
   }
 
-  handleKeypointUpdated(position: Point, frameView: FrameView) {
-    const keypoint = this.selectedKeypoint()!;
+  handleKeypointUpdated(kpName: string, position: Point, frameView: FrameView) {
+    const keypointName = kpName;
 
-    const underlyingKp = frameView.keypoints.find(
-      ({ keypointName }) => keypointName === keypoint,
-    );
+    const keypoint = frameView.keypoints.find(
+      (kp) => kp.keypointName === keypointName,
+    )!;
     const newKp = {
       x: position.x,
       y: position.y,
-      keypointName: keypoint,
+      keypointName: keypointName,
     };
     // Update domain model.
-    if (!underlyingKp) {
-      frameView.keypoints = [...frameView.keypoints, newKp];
-    } else {
-      frameView.keypoints = frameView.keypoints.map((item) =>
-        item === underlyingKp ? { ...underlyingKp, ...newKp } : item,
-      );
-    }
+    frameView.keypoints = frameView.keypoints.map((item) =>
+      item === keypoint ? { ...keypoint, ...newKp } : item,
+    );
     // Invalidate viewmodel cache.
     this.keypointViewModelCache.delete(frameView.keypoints);
 
-    if (fv(frameView).isFromUnlabeledSet) {
-      this.selectNextUnlabeledKeypoint();
+    if (lkp(keypoint).isNaN()) {
+      this.selectNextUnlabeledKeypoint(keypointName);
     }
   }
+  /** Default NaN Keypoints to edit mode. */
   protected labelerDefaultsToEditMode = computed((): boolean => {
+    // TODO: Getting `selectedKeypointInFrame` could be a getter or computed instead.
+
     const frameView = this.selectedFrameView();
     if (!frameView) return false;
-    return (
-      fv(frameView).isFromUnlabeledSet &&
-      this.selectedKeypoint() !== null &&
-      frameView.keypoints.length < this.allKeypoints().length
+    const selectedKeypoint = this.selectedKeypoint();
+    if (!selectedKeypoint) return false;
+    const selectedKeypointInFrame = frameView.keypoints.find(
+      (kp) => kp.keypointName === selectedKeypoint,
     );
-  });
-  /**
-   * updateWorkflowState:
-   *   - for unlabeled frames, we should automatically select next keypoint.
-   *   - edit mode = true.
-   *
-   *   saveButtonShown = () => this.hasChanges;
-   *
-   *   saveButtonEnabled = computed(() => {
-   *     if (fv.originalKeypoints.length === 0) {
-   *       mvf.views.all((fv) => {
-   *         return fv.keypoints.length === total;
-   *       });
-   *     } else {
-   *      return hasChanges;
-   *   });
-   *
+    if (!selectedKeypointInFrame) return false;
 
-   */
+    return lkp(selectedKeypointInFrame).isNaN();
+  });
+
   /**
    * Selects the next keypoint that does not have a label in the currently selected frame view.
-   * If all keypoints in the current view are labeled, it advances to the next view
-   * and repeats the check. It cycles through keypoints and views as needed.
-   * If all keypoints across all views are labeled, selectedKeypoint is set to null.
    */
-  selectNextUnlabeledKeypoint() {
-    const allKeypoints = this.allKeypoints();
-    const frame = this.frame();
+  private selectNextUnlabeledKeypoint(originKp: string | null) {
+    const frameView = this.selectedFrameView();
 
-    if (
-      !allKeypoints ||
-      allKeypoints.length === 0 ||
-      !frame ||
-      frame.views.length === 0
-    ) {
-      this.selectedKeypoint.set(null); // No keypoints or views to process
-      return;
-    }
-
-    const views = frame.views;
-    const currentSelectedViewName = this.selectedView();
-    const currentSelectedKeypointName = this.selectedKeypoint();
-
-    let startViewIdx = views.findIndex(
-      (v) => v.viewName === currentSelectedViewName,
-    );
-    if (startViewIdx === -1) {
-      startViewIdx = 0; // Default to first view if current not found
-    }
-
-    let startKeypointIdx = allKeypoints.findIndex(
-      (kp) => kp === currentSelectedKeypointName,
-    );
-    if (startKeypointIdx === -1) {
-      startKeypointIdx = 0; // Default to first keypoint if current not found
-    }
-
-    // Iterate through all views, starting from the current selected one and cycling
-    for (let viewOffset = 0; viewOffset < views.length; viewOffset++) {
-      const currentViewIdx = (startViewIdx + viewOffset) % views.length;
-      const currentView = views[currentViewIdx];
-      const currentFrameView = this.getFrameView(currentView.viewName);
-
-      if (!currentFrameView) {
-        // If a view doesn't have a corresponding FrameView, skip it and check the next one
-        continue;
-      }
-
-      // Create a Set for efficient lookup of labeled keypoints in the current view
-      const labeledKeypointNamesInCurrentView = new Set(
-        currentFrameView.keypoints.map((kp) => kp.keypointName),
-      );
-
-      // Iterate through all keypoints, starting from the current selected one (for the first view iteration)
-      // or from the beginning (for subsequent view iterations), and cycling
-      for (
-        let keypointOffset = 0;
-        keypointOffset < allKeypoints.length;
-        keypointOffset++
-      ) {
-        // For the first view iteration, start from startKeypointIdx.
-        // For subsequent views, always start from index 0 of allKeypoints.
-        const effectiveKeypointStartIdx =
-          viewOffset === 0 ? startKeypointIdx : 0;
-        const currentKeypointIdx =
-          (effectiveKeypointStartIdx + keypointOffset) % allKeypoints.length;
-        const keypoint = allKeypoints[currentKeypointIdx];
-
-        // Check if this keypoint is unlabeled in the current frame view
-        if (!labeledKeypointNamesInCurrentView.has(keypoint)) {
-          this.selectedKeypoint.set(keypoint);
-          this._selectedView.set(currentView.viewName);
-          return; // Found an unlabeled keypoint, exit the method
+    if (frameView) {
+      const startIdx =
+        originKp === null
+          ? 0
+          : frameView.keypoints.findIndex((kp) => kp.keypointName === originKp);
+      for (let i = startIdx + 1; i < frameView.keypoints.length; i++) {
+        const kp = frameView.keypoints[i];
+        if (lkp(kp).isNaN()) {
+          this.selectedKeypoint.set(kp.keypointName);
+          return;
         }
       }
     }
+  }
 
-    // If the loops complete, it means all keypoints across all views are labeled
-    this.selectedKeypoint.set(null);
+  handleKeypointClearClick(kp: LKeypoint) {
+    if (this.selectedFrameView()) {
+      this.handleKeypointUpdated(
+        kp.keypointName,
+        { x: NaN, y: NaN },
+        this.selectedFrameView()!,
+      );
+    }
   }
 }

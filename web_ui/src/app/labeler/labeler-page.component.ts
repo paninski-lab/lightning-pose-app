@@ -18,7 +18,7 @@ import { MVLabelFile } from '../label-file.model';
 import { PathPipe } from '../components/path.pipe';
 import { LabelFileFetcherService } from './label-file-fetcher.service';
 import { SaveActionData } from './types';
-import { MVFrame } from './frame.model';
+import { mvf, MVFrame } from './frame.model';
 
 interface LoadError {
   message: string;
@@ -50,28 +50,15 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     const labelFileData = this.labelFileData();
     if (!labelFileData) return [];
     return labelFileData.filter((x) => {
-      return x.views[0].keypoints.length > 0;
+      return !mvf(x).isFromUnlabeledSet;
     });
   });
   protected labelFileDataUnLabeledSlice = computed(() => {
     const labelFileData = this.labelFileData();
     if (!labelFileData) return [];
     return labelFileData.filter((x) => {
-      return x.views[0].keypoints.length === 0;
+      return mvf(x).isFromUnlabeledSet;
     });
-  });
-
-  protected allKeypoints = computed(() => {
-    const lfd = this.labelFileDataLabeledSlice();
-    if (!lfd.length) return [];
-    const firstLabeledFrameView = lfd[0].views[0];
-    if (!firstLabeledFrameView.keypoints.length) {
-      // TODO get this from project info if there isn't any first row.
-      return [];
-    } else {
-      // TODO sort by the order specified by the user.
-      return firstLabeledFrameView.keypoints.map((x) => x.keypointName);
-    }
   });
 
   // Store the loading state

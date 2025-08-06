@@ -62,7 +62,7 @@ export class KeypointContainerComponent {
   editMode = input(false);
 
   // Notifies parent of the user's intent to change keypoint position.
-  keypointUpdated = output<Point>();
+  keypointUpdated = output<{ kp: string; position: Point }>();
 
   private containerDiv = viewChild.required('containerDiv', {
     read: ElementRef,
@@ -185,7 +185,7 @@ export class KeypointContainerComponent {
     }
 
     if (position) {
-      this.keypointUpdated.emit(position);
+      this.keypointUpdated.emit({ kp: this.selectedKeypoint()!, position });
     }
   }
 }

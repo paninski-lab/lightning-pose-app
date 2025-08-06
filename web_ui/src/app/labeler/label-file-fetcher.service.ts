@@ -1,4 +1,4 @@
-import { inject, Injectable } from '@angular/core';
+import { computed, inject, Injectable } from '@angular/core';
 import { MVLabelFile } from '../label-file.model';
 import { FrameView, MVFrame } from './frame.model';
 import { LKeypoint } from './types';
@@ -17,6 +17,8 @@ export class LabelFileFetcherService {
 
   async loadLabelFileData(labelFile: MVLabelFile): Promise<MVFrame[]> {
     // For each view, fetch and process CSV files.
+    // Every file is processed once it loads, independently of other files,
+    // to spread out CSV parsing load over time (instead of parsing all at once).
     const csvRequests = labelFile.views.map((labelFileView) => {
       const { csvPath } = labelFileView;
       return this.fetchCsvFile(csvPath).then((csvString) => {
@@ -80,8 +82,8 @@ export class LabelFileFetcherService {
             return {
               viewName: r!.lfv.viewName,
               imgPath,
-              keypoints: [],
-              originalKeypoints: [],
+              keypoints: [], // we'll patch this later once labeledframes are loaded.
+              originalKeypoints: null,
             };
           })
           .filter((x): x is FrameView => x !== null);
@@ -92,6 +94,25 @@ export class LabelFileFetcherService {
 
     const mvf = await mvFramePromise;
     const unl = await unlabeledPromise;
+
+    // Initialize keypoints for unlabeled frames to NaN.
+    // TODO sort order as specified by user
+    // TODO get allKeypoints from project config if no labeled frames present.
+    const allKeypoints =
+      mvf[0]?.views[0]?.keypoints?.map((kp) => kp.keypointName) ?? null;
+    if (allKeypoints !== null) {
+      unl.forEach((unlFrame) => {
+        unlFrame.views.forEach((unlView) => {
+          unlView.keypoints = allKeypoints.map((keypointName) => {
+            return {
+              x: NaN,
+              y: NaN,
+              keypointName,
+            };
+          });
+        });
+      });
+    }
     return mvf.concat(unl);
   }
 

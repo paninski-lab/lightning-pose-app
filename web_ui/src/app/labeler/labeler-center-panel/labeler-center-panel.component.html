@@ -24,7 +24,9 @@
               [(selectedKeypoint)]="selectedKeypoint"
               [useCrossHairs]="true"
               [editMode]="labelerDefaultsToEditMode()"
-              (keypointUpdated)="handleKeypointUpdated($event, fv)"
+              (keypointUpdated)="
+                handleKeypointUpdated($event.kp, $event.position, fv)
+              "
               class="absolute top-0 left-0 h-full w-full"
             ></app-keypoint-container>
           </div>
@@ -86,7 +88,7 @@
           <ul>
             @for (kp of fv.keypoints; track $index) {
               <li
-                class="p-1 flex justify-between items-center {{
+                class="p-1 flex justify-between items-center group {{
                   kp.keypointName === selectedKeypoint()
                     ? 'bg-sky-700'
                     : 'hover:bg-base-content/10 cursor-pointer'
@@ -94,12 +96,18 @@
                 (click)="selectedKeypoint.set(kp.keypointName)"
               >
                 <span>{{ kp.keypointName }}</span>
-                <span class="coordinates-display">
+                <span class="flex items-center">
                   (
                   <span>{{ kp.x | number: "1.0-1" }}</span>
                   ,
                   <span>{{ kp.y | number: "1.0-1" }}</span>
                   )
+                  <button
+                    class="btn btn-circle btn-xs !text-xs material-icons ml-2 invisible group-hover:visible"
+                    (click)="handleKeypointClearClick(kp)"
+                  >
+                    close
+                  </button>
                 </span>
               </li>
             }
