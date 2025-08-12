@@ -3,7 +3,7 @@ from pathlib import Path
 
 import tomli
 import tomli_w
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, BackgroundTasks
 from pydantic import BaseModel
 
 from litpose_app import deps
@@ -39,7 +39,9 @@ def get_project_info(
 
 @router.post("/app/v0/rpc/setProjectInfo")
 def set_project_info(
-    request: SetProjectInfoRequest, config: Config = Depends(deps.config)
+    request: SetProjectInfoRequest,
+    background_tasks: BackgroundTasks,
+    config: Config = Depends(deps.config),
 ) -> None:
     try:
         config.PROJECT_INFO_TOML_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -53,10 +55,30 @@ def set_project_info(
         except FileNotFoundError:
             existing_project_data = {}
 
-        existing_project_data.update(project_data_dict)
+        # Determine if data_dir changed
+        old_data_dir = existing_project_data.get("data_dir")
+        new_data_dir = project_data_dict.get("data_dir")
 
+        # Merge and persist
+        existing_project_data.update(project_data_dict)
         with open(config.PROJECT_INFO_TOML_PATH, "wb") as f:
             tomli_w.dump(existing_project_data, f)
+
+        # If data_dir changed (including being set for the first time), enqueue in background
+        try:
+            from litpose_app.utils.enqueue import enqueue_all_new_fine_videos_task
+
+            if new_data_dir is not None and new_data_dir != old_data_dir:
+                if background_tasks is not None:
+                    background_tasks.add_task(enqueue_all_new_fine_videos_task)
+                else:
+                    # Fallback: schedule fire-and-forget if BackgroundTasks not provided
+                    import asyncio
+
+                    asyncio.create_task(enqueue_all_new_fine_videos_task())
+        except Exception:
+            # Log and continue; saving project info should not fail due to enqueue trigger
+            logger.exception("Failed to schedule enqueue task after data_dir change.")
 
         return None
 

@@ -41,32 +41,9 @@ async def enqueue_all_new_fine_videos(
     project_info: ProjectInfo = Depends(deps.project_info),
     scheduler: AsyncIOScheduler = Depends(deps.scheduler),
 ):
-    # get all mp4 video files that are less than config.AUTO_TRANSCODE_VIDEO_SIZE_LIMIT_MB
-    base_path = project_info.data_dir
-    result = await asyncio.to_thread(_rglob, base_path, pattern="**/*.mp4", stat=True)
+    from ..utils.enqueue import enqueue_all_new_fine_videos_task
 
-    # Filter videos by size limit
-    videos = [
-        base_path / entry["path"]
-        for entry in result
-        if entry["size"]
-        and entry["size"] < config.AUTO_TRANSCODE_VIDEO_SIZE_LIMIT_MB * 1000 * 1000
-    ]
-
-    # Create a transcode job per video.
-    # The id of the job is just the filename. We assume unique video filenames
-    # across the entire dataset.
-    for path in videos:
-        scheduler.add_job(
-            transcode_fine.transcode_video_task,
-            id=path.name,
-            args=[path, config.FINE_VIDEO_DIR / path.name],
-            executor="transcode_pool",
-            # executor="debug",
-            replace_existing=True,
-            misfire_grace_time=None,
-        )
-
+    await enqueue_all_new_fine_videos_task()
     return "ok"
 
 

@@ -1,39 +1,21 @@
-import os
-from pathlib import Path
 import asyncio
+from pathlib import Path
 
 from fastapi import APIRouter, Depends
 import aiofiles
 import aiofiles.os
+from pydantic import BaseModel
 
 from litpose_app import deps
 from litpose_app.routes.project import ProjectInfo
 
 
-"""
-class Keypoint:
-    x: float
-    y: float
-
-
-class FrameSaveRequest:
-    filename: str
-    keypoints_changed: list[Keypoint]
-
-
-class SaveMVFrameRequest:
-    views: list[FrameSaveRequest]
-
-
-"""
-
-
-class FileToWrite:
+class FileToWrite(BaseModel):
     filename: str
     contents: str
 
 
-class WriteMultifileRequest:
+class WriteMultifileRequest(BaseModel):
     views: list[FileToWrite]
 
 
