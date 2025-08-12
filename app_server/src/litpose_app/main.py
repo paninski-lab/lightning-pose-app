@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 router = APIRouter()
-from .routes import ffprobe, files, project, transcode
+from .routes import ffprobe, rglob, project, transcode
 
 router.include_router(ffprobe.router)
 router.include_router(files.router)

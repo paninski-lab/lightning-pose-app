@@ -10,6 +10,24 @@ from litpose_app import deps
 from litpose_app.routes.project import ProjectInfo
 
 
+"""
+class Keypoint:
+    x: float
+    y: float
+
+
+class FrameSaveRequest:
+    filename: str
+    keypoints_changed: list[Keypoint]
+
+
+class SaveMVFrameRequest:
+    views: list[FrameSaveRequest]
+
+
+"""
+
+
 class FileToWrite:
     filename: str
     contents: str

@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse
 from reactivex import Observable
 import reactivex.operators
 
-from .files import super_rglob
+from .rglob import _rglob
 from .project import ProjectInfo
 from .. import deps
 from ..tasks import transcode_fine
@@ -43,9 +43,7 @@ async def enqueue_all_new_fine_videos(
 ):
     # get all mp4 video files that are less than config.AUTO_TRANSCODE_VIDEO_SIZE_LIMIT_MB
     base_path = project_info.data_dir
-    result = await asyncio.to_thread(
-        super_rglob, base_path, pattern="**/*.mp4", stat=True
-    )
+    result = await asyncio.to_thread(_rglob, base_path, pattern="**/*.mp4", stat=True)
 
     # Filter videos by size limit
     videos = [
