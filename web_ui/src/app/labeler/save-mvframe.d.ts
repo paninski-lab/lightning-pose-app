@@ -1,4 +1,8 @@
-import { LKeypoint } from './types';
+export interface BackendKeypoint {
+  x: number;
+  y: number;
+  name: string;
+}
 
 export interface SaveFrameView {
   csvPath: string;
@@ -7,7 +11,7 @@ export interface SaveFrameView {
   indexToChange: string;
 
   // an array of the keypoint changes.
-  changedKeypoints: LKeypoint[];
+  changedKeypoints: BackendKeypoint[];
 }
 
 export interface SaveMvFrame {

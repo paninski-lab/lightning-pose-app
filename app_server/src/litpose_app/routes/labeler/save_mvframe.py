@@ -23,7 +23,7 @@ class Keypoint(BaseModel):
 
 
 class SaveFrameViewRequest(BaseModel):
-    csvPath: Path  # CollectedData_lTop.csv
+    csvPath: Path  # /home/user/.../CollectedData_lTop.csv
     indexToChange: str  # labeled-data/session01_left/img001.png
     changedKeypoints: list[Keypoint]
 
@@ -73,11 +73,13 @@ def _modify_df(df: pd.DataFrame, changes: SaveFrameViewRequest) -> None:
     Modify the keypoints in the row at changes.index specified by changes.changedKeypoints.
     If the row doesn't exist (i.e. unlabeled frame) append to end of df.
     """
-    kp_names = map(lambda x: x.name, changes.changedKeypoints)
+    kp_names = set(map(lambda x: x.name, changes.changedKeypoints))
     changedkps_by_name = {c.name: c for c in changes.changedKeypoints}
-    columns = filter(
-        lambda x: x[1] in kp_names and (x[2] in ["x", "y"]), df.columns.values
+    columns = list(
+        filter(lambda x: x[1] in kp_names and (x[2] in ["x", "y"]), df.columns.values)
     )
+    print(kp_names)
+    print(df.columns.values)
     new_values = []
     for c in columns:
         changedkp = changedkps_by_name[c[1]]
@@ -87,7 +89,10 @@ def _modify_df(df: pd.DataFrame, changes: SaveFrameViewRequest) -> None:
             new_values.append(changedkp.y)
         else:
             raise AssertionError('columns were filtered for c[2] in ["x", "y"]')
-    df.loc[changes.index, columns] = new_values
+    print(changes.indexToChange)
+    print(columns)
+    print(new_values)
+    df.loc[changes.indexToChange, columns] = new_values
 
 
 async def read_df_mvframe(request: SaveMvFrameRequest) -> list[pd.DataFrame]:
@@ -116,7 +121,7 @@ async def write_df_tmp_mvframe(
     result = []
 
     def write_df_to_tmp_file(v: SaveFrameViewRequest, d: pd.DataFrame):
-        tmp_file = project_data_dir / f"{v.csvPath.name}.{timestamp}.tmp"
+        tmp_file = v.csvPath.with_name(f"{v.csvPath.name}.{timestamp}.tmp")
         d.to_csv(tmp_file)
         return tmp_file
 
@@ -134,8 +139,7 @@ async def commit_mvframe(
 
     def commit_changes():
         for vr, tmp_file_name in zip(request.views, tmp_file_names):
-            dest_path = project_data_dir / vr.csvPath
-            os.replace(tmp_file_name, dest_path)
+            os.replace(tmp_file_name, vr.csvPath)
 
     return await run_in_threadpool(commit_changes)
 
@@ -147,7 +151,7 @@ async def remove_from_unlabeled_sidecar_files(
     timestamp = time.time_ns()
 
     def remove_task(vr: SaveFrameViewRequest):
-        unlabeled_sidecar_file = data_dir / vr.csvPath.with_suffix(".unlabeled")
+        unlabeled_sidecar_file = vr.csvPath.with_suffix(".unlabeled")
         if not unlabeled_sidecar_file.exists():
             return
         lines = unlabeled_sidecar_file.read_text().splitlines()

@@ -307,13 +307,17 @@ export class SessionService {
       return {
         csvPath: lbl.csvPath,
         indexToChange: fv.imgPath,
-        changedKeypoints: fv.keypoints.filter((kp) => {
-          const okp =
-            fv.originalKeypoints?.find(
-              (okp) => okp.keypointName === kp.keypointName,
-            ) ?? null;
-          return okp === null || !_.isEqual(okp, kp);
-        }),
+        changedKeypoints: fv.keypoints
+          .filter((kp) => {
+            const okp =
+              fv.originalKeypoints?.find(
+                (okp) => okp.keypointName === kp.keypointName,
+              ) ?? null;
+            return okp === null || !_.isEqual(okp, kp);
+          })
+          .map(({ keypointName, x, y }) => {
+            return { name: keypointName, x, y };
+          }),
       };
     });
     const request: SaveMvFrame = { views };

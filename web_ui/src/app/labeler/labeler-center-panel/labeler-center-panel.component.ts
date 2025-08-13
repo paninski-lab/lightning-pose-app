@@ -222,6 +222,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
   });
 
   protected isSaveDisabled = computed(() => {
+    this.cacheBuster();
     return (
       !this.frame() ||
       this.disableInteractions() ||

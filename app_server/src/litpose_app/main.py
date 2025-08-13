@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(enqueue_all_new_fine_videos_task())
 
     # Setup watchdog for config file changes
-    app.state.config_file_observer = setup_config_watcher(app)
+    app.state.config_file_observer = setup_config_watcher()
 
     yield  # Application is now ready to receive requests
 
