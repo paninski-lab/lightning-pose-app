@@ -13,10 +13,11 @@ from litpose_app.routes.project import ProjectInfo
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
 
 router = APIRouter()
+lock = asyncio.Lock()
 
 
 class Keypoint(BaseModel):
-    name: int
+    name: str
     x: float
     y: float
 
@@ -36,25 +37,33 @@ class SaveMvFrameRequest(BaseModel):
 
 @router.post("/app/v0/rpc/save_mvframe")
 async def save_mvframe(
-    request: SaveMvFrameRequest, project_info: ProjectInfo = Depends(deps.project_info)
+    request: SaveMvFrameRequest,
+    project_info: ProjectInfo = Depends(deps.project_info),
 ) -> None:
-    """Endpoint for saving a multiview frame (in a multiview labels file)."""
+    """
+    Endpoint for saving a multiview frame (in a multiview labels file).
+    Global lock: Only one execution allowed at a time.
+    """
+    async with lock:
+        # Filter out views with no changed keypoints.
+        request = request.model_copy()
+        request.views = list(filter(lambda v: v.changedKeypoints, request.views))
 
-    # Filter out views with no changed keypoints.
-    request = request.model_copy()
-    request.views = list(filter(lambda v: v.changedKeypoints, request.views))
+        if not request.views:
+            return
 
-    # Read files multithreaded and modify dataframes in memory.
-    read_df_results = await read_df_mvframe(request)
+        # Read files multithreaded and modify dataframes in memory.
+        read_df_results = await read_df_mvframe(request)
 
-    # Write to temp files multithreaded.
-    write_tmp_results = await write_df_tmp_mvframe(
-        request, read_df_results, project_info.data_dir
-    )
+        # Write to temp files multithreaded.
+        write_tmp_results = await write_df_tmp_mvframe(
+            request, read_df_results, project_info.data_dir
+        )
 
-    # Rename all files (atomic for each file).
-    await commit_mvframe(request, write_tmp_results, project_info.data_dir)
+        # Rename all files (atomic for each file).
+        await commit_mvframe(request, write_tmp_results, project_info.data_dir)
 
+        await remove_from_unlabeled_sidecar_files(project_info.data_dir, request)
     return
 
 
@@ -126,6 +135,32 @@ async def commit_mvframe(
     def commit_changes():
         for vr, tmp_file_name in zip(request.views, tmp_file_names):
             dest_path = project_data_dir / vr.csvPath
-            os.rename(tmp_file_name, dest_path)
+            os.replace(tmp_file_name, dest_path)
 
     return await run_in_threadpool(commit_changes)
+
+
+async def remove_from_unlabeled_sidecar_files(
+    data_dir: Path, request: SaveMvFrameRequest
+):
+    """Remove the frames from the unlabeled sidecar files."""
+    timestamp = time.time_ns()
+
+    def remove_task(vr: SaveFrameViewRequest):
+        unlabeled_sidecar_file = data_dir / vr.csvPath.with_suffix(".unlabeled")
+        if not unlabeled_sidecar_file.exists():
+            return
+        lines = unlabeled_sidecar_file.read_text().splitlines()
+        while vr.indexToChange in lines:
+            lines.remove(vr.indexToChange)
+
+        temp_file_name = f"{unlabeled_sidecar_file.name}.{timestamp}.tmp"
+        temp_file_path = unlabeled_sidecar_file.parent / temp_file_name
+
+        temp_file_path.write_text("\n".join(lines) + "\n")
+        os.replace(temp_file_path, unlabeled_sidecar_file)
+
+    tasks = []
+    for vr in request.views:
+        tasks.append(run_in_threadpool(remove_task, vr))
+    await asyncio.gather(*tasks)
