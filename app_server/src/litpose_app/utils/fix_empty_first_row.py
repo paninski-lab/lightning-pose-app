@@ -1,14 +1,9 @@
-from typing import TYPE_CHECKING
+import pandas as pd
+import numpy as np
 
-if TYPE_CHECKING:
-    import pandas as pd
 
 def fix_empty_first_row(df: pd.DataFrame) -> pd.DataFrame:
-    import pandas as pd
-    import numpy as np
-
-    """Copied from lightning-pose utils. Fixes pandas issue where reading a dataframe with NaNs in first line omits it.
-    """
+    """Copied from lightning-pose utils. Fixes pandas issue where reading a dataframe with NaNs in first line omits it."""
     if df.index.name is not None:
         new_row = {col: np.nan for col in df.columns}
         prepend_df = pd.DataFrame(

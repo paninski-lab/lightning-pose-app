@@ -38,7 +38,7 @@ async def write_multifile(
     # Write all files to tmpfile to ensure they all successfully write.
     write_tasks = []
     for view in request.views:
-        tmpfile = view.filename + ".lptmp"
+        tmpfile = view.filename + f".lptmp"
 
         async def write_file_task(filename, contents):
             async with aiofiles.open(filename, mode="w") as f:
