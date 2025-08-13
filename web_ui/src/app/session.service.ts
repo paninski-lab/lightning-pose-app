@@ -10,6 +10,9 @@ import { FFProbeInfo } from './ffprobe-info';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { createSessionViewComparator } from './utils/comparators';
 import { MVLabelFile } from './label-file.model';
+import { MVFrame } from './labeler/frame.model';
+import { SaveFrameView, SaveMvFrame } from './labeler/save-mvframe';
+import _ from 'lodash';
 
 type SessionModelMap = Record<string, string[]>;
 
@@ -296,6 +299,25 @@ export class SessionService {
        */
     }
     return sessionKeyToItsViewFiles;
+  }
+
+  async saveMVFrame(labelFile: MVLabelFile, frame: MVFrame) {
+    const views: SaveFrameView[] = frame.views.map((fv) => {
+      const lbl = labelFile.views.find((v) => v.viewName === fv.viewName)!;
+      return {
+        csvPath: lbl.csvPath,
+        indexToChange: fv.imgPath,
+        changedKeypoints: fv.keypoints.filter((kp) => {
+          const okp =
+            fv.originalKeypoints?.find(
+              (okp) => okp.keypointName === kp.keypointName,
+            ) ?? null;
+          return okp === null || !_.isEqual(okp, kp);
+        }),
+      };
+    });
+    const request: SaveMvFrame = { views };
+    return this.rpc.call('save_mvframe', request);
   }
 }
 

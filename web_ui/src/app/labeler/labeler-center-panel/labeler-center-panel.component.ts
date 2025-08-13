@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   inject,
+  Input,
   input,
   OnChanges,
   output,
@@ -18,6 +19,8 @@ import { Keypoint } from '../../keypoint';
 import { ProjectInfoService } from '../../project-info.service';
 import { HorizontalScrollDirective } from '../../components/horizontal-scroll.directive';
 import { Point } from '@angular/cdk/drag-drop';
+import { SessionService } from '../../session.service';
+import { MVLabelFile } from '../../label-file.model';
 
 @Component({
   selector: 'app-labeler-center-panel',
@@ -34,6 +37,7 @@ import { Point } from '@angular/cdk/drag-drop';
 export class LabelerCenterPanelComponent implements OnChanges {
   private projectInfoService = inject(ProjectInfoService);
 
+  labelFile = input<MVLabelFile | null>(null);
   frame = input<MVFrame | null>(null);
 
   save = output<SaveActionData>();
@@ -122,6 +126,8 @@ export class LabelerCenterPanelComponent implements OnChanges {
     this._selectedView.set(viewName);
   }
 
+  // Set to a random value if you need to bust cache of computed signals.
+  private cacheBuster = signal(0);
   handleKeypointUpdated(kpName: string, position: Point, frameView: FrameView) {
     const keypointName = kpName;
 
@@ -143,7 +149,9 @@ export class LabelerCenterPanelComponent implements OnChanges {
     if (lkp(keypoint).isNaN()) {
       this.selectNextUnlabeledKeypoint(keypointName);
     }
+    this.cacheBuster.set(Math.random());
   }
+
   /** Default NaN Keypoints to edit mode. */
   protected get labelerDefaultsToEditMode(): boolean {
     // TODO: Getting `selectedKeypointInFrame` could be a getter or computed instead.
@@ -191,24 +199,48 @@ export class LabelerCenterPanelComponent implements OnChanges {
     }
   }
 
-  protected get saveDisabled(): boolean {
-    return !mvf(this.frame()!).hasChanges;
-  }
   protected get saveTooltip(): string {
-    if (!this.saveDisabled) return '';
+    if (!this.isSaveDisabled()) return '';
     return 'No changes to save.';
   }
 
-  protected get saveAndContinueDisabled(): boolean {
-    return this.saveDisabled;
-  }
-
   protected get saveAndContinueTooltip(): string {
-    if (!this.saveAndContinueDisabled)
+    if (!this.isSaveDisabled())
       return 'Save and advance to next unlabeled frame.';
     return 'No changes to save.';
   }
 
   // export to template
   protected readonly mvf = mvf;
+
+  private sessionService = inject(SessionService);
+  private isSaving = signal(false);
+  protected disableInteractions = computed(() => {
+    this.cacheBuster();
+
+    return !this.frame() || this.isSaving();
+  });
+
+  protected isSaveDisabled = computed(() => {
+    return (
+      !this.frame() ||
+      this.disableInteractions() ||
+      !mvf(this.frame()!).hasChanges
+    );
+  });
+
+  protected handleSaveClick(labelFile: MVLabelFile, frame: MVFrame) {
+    this.isSaving.set(true);
+    this.sessionService
+      .saveMVFrame(labelFile, frame)
+      .then(() => {
+        // this.save.emit({});
+        this.isSaving.set(false);
+        // on error, we just reset the loading state
+      })
+      .catch((error) => {
+        this.isSaving.set(false);
+        throw error;
+      });
+  }
 }

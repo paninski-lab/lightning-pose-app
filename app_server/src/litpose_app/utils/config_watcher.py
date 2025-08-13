@@ -1,11 +1,8 @@
 import asyncio
 import logging
-from pathlib import Path
-from typing import Optional
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from fastapi import FastAPI
 
 from .. import deps
 from .enqueue import enqueue_all_new_fine_videos_task
@@ -29,7 +26,7 @@ class ConfigFileChangeHandler(FileSystemEventHandler):
             )
 
 
-def setup_config_watcher(app: Optional[FastAPI] = None) -> Observer:
+def setup_config_watcher() -> Observer:
     config_instance = deps.config()
     config_file_path = config_instance.PROJECT_INFO_TOML_PATH.resolve()
     config_dir = config_file_path.parent

@@ -19,7 +19,7 @@
               alt="fv.imgPath"
             />
             <app-keypoint-container
-              [labelerMode]="true"
+              [enableEditing]="!disableInteractions()"
               [keypointModels]="getCachedKeypointViewModels(fv.keypoints)"
               [(selectedKeypoint)]="selectedKeypoint"
               [useCrossHairs]="true"
@@ -117,10 +117,13 @@
     </div>
     <div class="m-4">
       @if (frame(); as frame2) {
+        @let lbfl = labelFile()!;
         <div class="tooltip w-full" [attr.data-tip]="saveTooltip">
           <button
             class="btn bg-sky-700 w-full"
-            [class.btn-disabled]="saveDisabled"
+            [class.btn-disabled]="isSaveDisabled()"
+            (click)="handleSaveClick(lbfl, frame2)"
+            (keydown.enter)="handleSaveClick(lbfl, frame2)"
           >
             Save
           </button>
@@ -132,7 +135,7 @@
           >
             <button
               class="btn bg-sky-700 w-full mt-2"
-              [class.btn-disabled]="saveAndContinueDisabled"
+              [class.btn-disabled]="isSaveDisabled()"
             >
               Save and continue
             </button>

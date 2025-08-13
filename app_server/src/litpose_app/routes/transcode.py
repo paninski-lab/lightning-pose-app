@@ -36,11 +36,7 @@ async def get_fine_video_status(request: Request) -> StreamingResponse:
 
 
 @router.post("/app/v0/rpc/enqueueAllNewFineVideos")
-async def enqueue_all_new_fine_videos(
-    config: Config = Depends(deps.config),
-    project_info: ProjectInfo = Depends(deps.project_info),
-    scheduler: AsyncIOScheduler = Depends(deps.scheduler),
-):
+async def enqueue_all_new_fine_videos():
     from ..utils.enqueue import enqueue_all_new_fine_videos_task
 
     await enqueue_all_new_fine_videos_task()

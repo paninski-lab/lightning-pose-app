@@ -45,6 +45,7 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   private router = inject(Router);
 
   // Store loaded data for the selected label file
+  protected loadedLabelFile = signal<MVLabelFile | null>(null);
   protected labelFileData = signal<MVFrame[] | null>(null);
   protected labelFileDataLabeledSlice = computed(() => {
     const labelFileData = this.labelFileData();
@@ -65,7 +66,9 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   protected isLoading = signal(false);
   protected loadError = signal<LoadError | null>(null);
 
+  // Set from the router on URL change.
   labelFileKey = input<string | null>(null);
+  // Set from the router on URL change.
   frameKey = input<string | null>(null);
 
   protected selectedLabelFile = computed(() => {
@@ -109,6 +112,7 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   // Load the CSV file for the selected label file
   private async loadLabelFileData(labelFile: MVLabelFile | null) {
     if (!labelFile || labelFile.views.length === 0) {
+      this.loadedLabelFile.set(null);
       this.labelFileData.set(null);
       return;
     }
@@ -117,9 +121,11 @@ export class LabelerPageComponent implements OnInit, OnChanges {
       this.isLoading.set(true);
       const mvFrames = await this.labelFileFetcher.loadLabelFileData(labelFile);
 
+      this.loadedLabelFile.set(labelFile);
       this.labelFileData.set(mvFrames);
     } catch (error) {
       console.error('Error loading label file data:', error);
+      this.loadedLabelFile.set(null);
       this.labelFileData.set(null);
       throw error;
     } finally {

@@ -35,10 +35,14 @@ class SaveMvFrameRequest(BaseModel):
 
 
 @router.post("/app/v0/rpc/save_mvframe")
-async def save_mvframe_stub(
+async def save_mvframe(
     request: SaveMvFrameRequest, project_info: ProjectInfo = Depends(deps.project_info)
 ) -> None:
     """Endpoint for saving a multiview frame (in a multiview labels file)."""
+
+    # Filter out views with no changed keypoints.
+    request = request.model_copy()
+    request.views = list(filter(lambda v: v.changedKeypoints, request.views))
 
     # Read files multithreaded and modify dataframes in memory.
     read_df_results = await read_df_mvframe(request)
@@ -54,7 +58,7 @@ async def save_mvframe_stub(
     return
 
 
-def modify_df(df: pd.DataFrame, changes: SaveFrameViewRequest) -> None:
+def _modify_df(df: pd.DataFrame, changes: SaveFrameViewRequest) -> None:
     """
     Given a dataframe with multicolumn index (scorer, bodypart, coordinate (x|y)),
     Modify the keypoints in the row at changes.index specified by changes.changedKeypoints.
@@ -81,7 +85,7 @@ async def read_df_mvframe(request: SaveMvFrameRequest) -> list[pd.DataFrame]:
     def read_df_file_task(vr: SaveFrameViewRequest):
         df = pd.read_csv(vr.csvPath, header=[0, 1, 2], index_col=0)
         df = fix_empty_first_row(df)
-        modify_df(df, vr)
+        _modify_df(df, vr)
         return df
 
     result = []
@@ -116,17 +120,12 @@ async def write_df_tmp_mvframe(
 
 async def commit_mvframe(
     request: SaveMvFrameRequest, tmp_file_names: list[str], project_data_dir: Path
-) -> list[asyncio.Future]:
+) -> None:
     """Renames temp files to their original names (atomic per file)."""
-    result = []
 
-    def commit_df(v: SaveFrameViewRequest, tmp_file: str):
-        dest_path = project_data_dir / v.csvPath
-        os.rename(tmp_file, dest_path)
-        return tmp_file
+    def commit_changes():
+        for vr, tmp_file_name in zip(request.views, tmp_file_names):
+            dest_path = project_data_dir / vr.csvPath
+            os.rename(tmp_file_name, dest_path)
 
-    for vr, tmp_file_name in zip(request.views, tmp_file_names):
-        r = run_in_threadpool(commit_df, vr, tmp_file_name)
-        result.append(r)
-
-    return await asyncio.gather(*result)
+    return await run_in_threadpool(commit_changes)

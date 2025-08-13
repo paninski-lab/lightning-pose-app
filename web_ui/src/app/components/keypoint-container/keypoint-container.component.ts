@@ -49,7 +49,7 @@ import { Point } from '@angular/cdk/drag-drop';
 })
 export class KeypointContainerComponent {
   /** fixme: Right now this enables handlePointerMove handler only. */
-  labelerMode = input<boolean>(false);
+  enableEditing = input<boolean>(false);
 
   keypointModels = input.required<Keypoint[]>();
 
@@ -68,8 +68,8 @@ export class KeypointContainerComponent {
     read: ElementRef,
   });
 
-  protected isSelectionAllowed = computed(() => {
-    if (!this.labelerMode()) return false;
+  private isSelectionAllowed = computed(() => {
+    if (!this.enableEditing()) return false;
     if (this.editMode()) return false;
     return true;
   });
