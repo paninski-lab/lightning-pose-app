@@ -32,12 +32,7 @@ export class LabelFileFetcherService {
     });
 
     const mvFramePromise = Promise.all(csvRequests).then((results) => {
-      // Narrow the type by filtering out undefined (label files that failed to load).
-      const z = results.map((r): [string, dfd.DataFrame] => [
-        r.lfv.viewName,
-        r.df,
-      ]);
-      const mvFrames = this.zipDataframesIntoMVFrame(z);
+      const mvFrames = this.zipDataframesIntoMVFrame(results);
       return mvFrames;
     });
 
@@ -177,12 +172,15 @@ export class LabelFileFetcherService {
   }
 
   private zipDataframesIntoMVFrame(
-    viewsAndDfs: [string, dfd.DataFrame][],
+    results: {
+      lfv: { viewName: string; csvPath: string };
+      df: dfd.DataFrame;
+    }[],
   ): MVFrame[] {
     const framesPerView = {} as Record<string, FrameView[]>;
 
-    viewsAndDfs.forEach(([viewName, df]) => {
-      framesPerView[viewName] = this.dfToFrameView(viewName, df);
+    results.forEach(({ lfv, df }) => {
+      framesPerView[lfv.viewName] = this.dfToFrameView(lfv.viewName, df);
     });
 
     const maxRowCount = Math.max(
