@@ -1,21 +1,21 @@
-import os
-from pathlib import Path
 import asyncio
+from pathlib import Path
 
-from fastapi import APIRouter, Depends
 import aiofiles
 import aiofiles.os
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 
 from litpose_app import deps
 from litpose_app.routes.project import ProjectInfo
 
 
-class FileToWrite:
+class FileToWrite(BaseModel):
     filename: str
     contents: str
 
 
-class WriteMultifileRequest:
+class WriteMultifileRequest(BaseModel):
     views: list[FileToWrite]
 
 
@@ -38,7 +38,7 @@ async def write_multifile(
     # Write all files to tmpfile to ensure they all successfully write.
     write_tasks = []
     for view in request.views:
-        tmpfile = view.filename + ".lptmp"
+        tmpfile = view.filename + f".lptmp"
 
         async def write_file_task(filename, contents):
             async with aiofiles.open(filename, mode="w") as f:

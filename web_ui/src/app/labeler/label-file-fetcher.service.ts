@@ -1,4 +1,4 @@
-import { computed, inject, Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { MVLabelFile } from '../label-file.model';
 import { FrameView, MVFrame } from './frame.model';
 import { LKeypoint } from './types';

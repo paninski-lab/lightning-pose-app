@@ -9,13 +9,15 @@ requires-python = ">=3.10"
 dependencies = [
     "aiofiles~=24.1.0",
     "apscheduler~=3.11.0",
-    "fastapi~=0.115.0",
+    "fastapi~=0.116.0",
     "honcho~=2.0",
+    "pandas~=2.3.0",
     "reactivex~=4.0.0",
     "uvicorn[standard]~=0.34.0",
     "wcmatch~=10.0",
     "tomli~=2.2.0",
     "tomli_w~=1.2.0",
+    "watchdog~=4.0.0",
 ]
 
 [project.optional-dependencies]

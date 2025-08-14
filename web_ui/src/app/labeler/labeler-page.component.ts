@@ -17,7 +17,6 @@ import { SessionService } from '../session.service';
 import { MVLabelFile } from '../label-file.model';
 import { PathPipe } from '../components/path.pipe';
 import { LabelFileFetcherService } from './label-file-fetcher.service';
-import { SaveActionData } from './types';
 import { mvf, MVFrame } from './frame.model';
 
 interface LoadError {
@@ -45,6 +44,7 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   private router = inject(Router);
 
   // Store loaded data for the selected label file
+  protected loadedLabelFile = signal<MVLabelFile | null>(null);
   protected labelFileData = signal<MVFrame[] | null>(null);
   protected labelFileDataLabeledSlice = computed(() => {
     const labelFileData = this.labelFileData();
@@ -65,7 +65,9 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   protected isLoading = signal(false);
   protected loadError = signal<LoadError | null>(null);
 
+  // Set from the router on URL change.
   labelFileKey = input<string | null>(null);
+  // Set from the router on URL change.
   frameKey = input<string | null>(null);
 
   protected selectedLabelFile = computed(() => {
@@ -109,6 +111,7 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   // Load the CSV file for the selected label file
   private async loadLabelFileData(labelFile: MVLabelFile | null) {
     if (!labelFile || labelFile.views.length === 0) {
+      this.loadedLabelFile.set(null);
       this.labelFileData.set(null);
       return;
     }
@@ -117,9 +120,11 @@ export class LabelerPageComponent implements OnInit, OnChanges {
       this.isLoading.set(true);
       const mvFrames = await this.labelFileFetcher.loadLabelFileData(labelFile);
 
+      this.loadedLabelFile.set(labelFile);
       this.labelFileData.set(mvFrames);
     } catch (error) {
       console.error('Error loading label file data:', error);
+      this.loadedLabelFile.set(null);
       this.labelFileData.set(null);
       throw error;
     } finally {
@@ -127,10 +132,41 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     }
   }
 
-  protected async handleSaveAction(data: SaveActionData): Promise<void> {
-    // update local multiview dataframe state
-    // multiview labels save RPC call
-    console.error('Not yet implemented: handleSaveAction');
+  protected handleSaved(data: {
+    labelFile: MVLabelFile;
+    frame: MVFrame;
+    shouldContinue: boolean;
+  }) {
+    if (data.labelFile !== this.loadedLabelFile()) {
+      return;
+    }
+    this.labelFileData.update((mvFrames) => {
+      if (mvFrames === null) {
+        return null;
+      }
+      return mvFrames.map((mvFrame) => {
+        if (mvFrame.key === data.frame.key) {
+          return mvf(mvFrame).toSavedMvf();
+        } else {
+          return mvFrame;
+        }
+      });
+    });
+    if (data.shouldContinue) {
+      const currentFrameIndex = this.labelFileDataUnLabeledSlice().findIndex(
+        (mvf) => mvf.key === data.frame.key,
+      );
+      const nextFrameKey =
+        this.labelFileDataUnLabeledSlice()[currentFrameIndex + 1]?.key ?? null;
+      if (nextFrameKey !== null) {
+        this.router.navigate(['/labeler'], {
+          queryParams: {
+            labelFileKey: this.labelFileKey(),
+            frameKey: nextFrameKey,
+          },
+        });
+      }
+    }
   }
 
   protected handleSelectLabelFile(labelFileKey: string) {

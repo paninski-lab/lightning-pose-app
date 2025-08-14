@@ -32,6 +32,16 @@ export class FVUtils {
       this.frameView.originalKeypoints,
     );
   }
+
+  get changedKeypoints(): LKeypoint[] {
+    return this.frameView.keypoints.filter((kp) => {
+      const okp =
+        this.frameView.originalKeypoints?.find(
+          (okp) => okp.keypointName === kp.keypointName,
+        ) ?? null;
+      return okp === null || !_.isEqual(okp, kp);
+    });
+  }
 }
 
 export function fv(frameView: FrameView) {
@@ -51,7 +61,19 @@ export class MVFUtils {
     if (!this.mvFrame.views.length) {
       throw new Error('No views available in MVFrame');
     }
-    return fv(this.mvFrame.views[0]).hasChanges;
+    return this.mvFrame.views.some((view) => fv(view).hasChanges);
+  }
+
+  /** Returns the version that would result on save:
+   * original keypoints and keypoints match (hasChanges => false).
+   */
+  toSavedMvf(): MVFrame {
+    return {
+      ...this.mvFrame,
+      views: this.mvFrame.views.map((frameView) => {
+        return { ...frameView, originalKeypoints: frameView.keypoints };
+      }),
+    };
   }
 }
 

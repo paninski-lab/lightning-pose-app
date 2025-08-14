@@ -44,7 +44,7 @@ def rglob(request: RGlobRequest) -> RGlobResponse:
 
     response = RGlobResponse(entries=[], relativeTo=request.baseDir)
 
-    results = super_rglob(
+    results = _rglob(
         str(request.baseDir),
         pattern=request.pattern,
         no_dirs=request.noDirs,
@@ -63,7 +63,7 @@ import datetime
 from wcmatch import pathlib as w
 
 
-def super_rglob(base_path, pattern=None, no_dirs=False, stat=False):
+def _rglob(base_path, pattern=None, no_dirs=False, stat=False):
     """
     Needs to be performant when searching over large model directory.
     Uses wcmatch to exclude directories with extra calls to Path.is_dir.

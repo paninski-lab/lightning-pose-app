@@ -19,7 +19,7 @@
         <app-zoomable-content class="!h-[250px] !w-[250px]">
           <app-video-tile #content [src]="w.videoSrc">
             <app-keypoint-container
-              [labelerMode]="false"
+              [enableEditing]="false"
               [keypointModels]="w.keypoints()"
             ></app-keypoint-container>
           </app-video-tile>

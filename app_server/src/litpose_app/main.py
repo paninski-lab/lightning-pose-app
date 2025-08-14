@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import sys
 from contextlib import asynccontextmanager
@@ -13,6 +14,8 @@ from starlette.staticfiles import StaticFiles
 
 from . import deps
 from .tasks.management import setup_active_task_registry
+from .utils.config_watcher import setup_config_watcher
+from .utils.enqueue import enqueue_all_new_fine_videos_task
 
 ## Setup logging
 logging.basicConfig(
@@ -26,10 +29,18 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # Start apscheduler, which is responsible for executing background tasks
     logger.info("Application startup: Initializing scheduler...")
+    # Quiet down apscheduler logging. Default INFO is too verbose
+    logging.getLogger("apscheduler").setLevel(logging.WARNING)
     scheduler = deps.scheduler()
     app.state.scheduler = scheduler
     scheduler.start()
     setup_active_task_registry(app)
+
+    # Kick off background task to enqueue any fine transcodes on startup
+    asyncio.create_task(enqueue_all_new_fine_videos_task())
+
+    # Setup watchdog for config file changes
+    app.state.config_file_observer = setup_config_watcher()
 
     yield  # Application is now ready to receive requests
 
@@ -40,14 +51,21 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("Scheduler not found or not running during shutdown.")
 
+    if hasattr(app.state, "config_file_observer") and app.state.config_file_observer:
+        logger.info("Application shutdown: Shutting down config file observer...")
+        app.state.config_file_observer.stop()
+        app.state.config_file_observer.join()
+        logger.info("Config file observer shut down.")
+
 
 app = FastAPI(lifespan=lifespan)
 
 router = APIRouter()
-from .routes import ffprobe, files, project, transcode
+from .routes import ffprobe, rglob, project, transcode, labeler
 
 router.include_router(ffprobe.router)
-router.include_router(files.router)
+router.include_router(rglob.router)
+router.include_router(labeler.router)
 router.include_router(project.router)
 router.include_router(transcode.router)
 app.include_router(router)

@@ -1,10 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
-  Component,
-  inject,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { KeypointContainerComponent } from '../components/keypoint-container/keypoint-container.component';
 import { Keypoint } from '../keypoint';
 import { Point } from '@angular/cdk/drag-drop';

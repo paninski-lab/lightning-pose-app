@@ -6,12 +6,12 @@
   >
     <app-keypoint-container
       class="h-[100px] w-[100px] bg-white transform origin-top-left scale-[6] block translate-2"
-      [labelerMode]="true"
+      [enableEditing]="true"
       [keypointModels]="kp"
       [useCrossHairs]="true"
       [newKpTemplate]="newKp"
-      (keypointUpdated)="handleKeypointAdded($event)"
     >
+      <!--      (keypointUpdated)="handleKeypointAdded($event)" -->
       test
     </app-keypoint-container>
   </div>
