@@ -51,7 +51,7 @@ export class MVFUtils {
     if (!this.mvFrame.views.length) {
       throw new Error('No views available in MVFrame');
     }
-    return fv(this.mvFrame.views[0]).hasChanges;
+    return this.mvFrame.views.some((view) => fv(view).hasChanges);
   }
 }
 

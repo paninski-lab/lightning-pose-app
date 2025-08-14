@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from starlette.concurrency import run_in_threadpool
 
 from litpose_app import deps
@@ -18,8 +18,17 @@ lock = asyncio.Lock()
 
 class Keypoint(BaseModel):
     name: str
+
+    # null over the wire. Converts to float("nan") due to field validator below
     x: float
     y: float
+
+    @field_validator("x", "y", mode="before")
+    def _normalize_to_nan(cls, v):
+        """Convert None to NaN before validation."""
+        if v is None:
+            return float("nan")
+        return v
 
 
 class SaveFrameViewRequest(BaseModel):
