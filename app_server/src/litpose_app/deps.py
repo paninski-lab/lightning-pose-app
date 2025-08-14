@@ -12,8 +12,8 @@ import os
 from typing import TYPE_CHECKING
 
 from apscheduler.executors.debug import DebugExecutor
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.executors.pool import ThreadPoolExecutor
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import Depends
 
 from litpose_app.config import Config

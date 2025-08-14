@@ -1,8 +1,9 @@
 from fastapi import APIRouter
 
+from . import save_mvframe as _save_mvframe
+
 # Sub-route modules within the labeler package
 from . import write_multifile as _write_multifile
-from . import save_mvframe as _save_mvframe
 
 # Aggregate router for labeler endpoints
 router = APIRouter()

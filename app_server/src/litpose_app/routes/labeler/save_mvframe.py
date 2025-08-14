@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 import time
 from pathlib import Path
@@ -14,6 +15,9 @@ from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
 
 router = APIRouter()
 lock = asyncio.Lock()
+
+
+logger = logging.getLogger(__name__)
 
 
 class Keypoint(BaseModel):
@@ -87,8 +91,8 @@ def _modify_df(df: pd.DataFrame, changes: SaveFrameViewRequest) -> None:
     columns = list(
         filter(lambda x: x[1] in kp_names and (x[2] in ["x", "y"]), df.columns.values)
     )
-    print(kp_names)
-    print(df.columns.values)
+    logger.debug(kp_names)
+    logger.debug(df.columns.values)
     new_values = []
     for c in columns:
         changedkp = changedkps_by_name[c[1]]
@@ -98,9 +102,9 @@ def _modify_df(df: pd.DataFrame, changes: SaveFrameViewRequest) -> None:
             new_values.append(changedkp.y)
         else:
             raise AssertionError('columns were filtered for c[2] in ["x", "y"]')
-    print(changes.indexToChange)
-    print(columns)
-    print(new_values)
+    logger.debug(changes.indexToChange)
+    logger.debug(columns)
+    logger.debug(new_values)
     df.loc[changes.indexToChange, columns] = new_values
 
 

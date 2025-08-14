@@ -14,8 +14,8 @@ from starlette.staticfiles import StaticFiles
 
 from . import deps
 from .tasks.management import setup_active_task_registry
-from .utils.enqueue import enqueue_all_new_fine_videos_task
 from .utils.config_watcher import setup_config_watcher
+from .utils.enqueue import enqueue_all_new_fine_videos_task
 
 ## Setup logging
 logging.basicConfig(

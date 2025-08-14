@@ -1,8 +1,7 @@
+import logging
 import shutil
 import subprocess
-from multiprocessing import Pool, cpu_count
 from pathlib import Path
-import logging
 
 logger = logging.getLogger("apscheduler")
 

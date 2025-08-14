@@ -1,11 +1,11 @@
 import asyncio
 import logging
 
-from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
-from .. import deps
 from .enqueue import enqueue_all_new_fine_videos_task
+from .. import deps
 
 logger = logging.getLogger(__name__)
 

@@ -1,19 +1,16 @@
 import asyncio
 import json
+import logging
 from typing import AsyncGenerator
 
 import reactivex
+import reactivex.operators
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from reactivex import Observable
-import reactivex.operators
 
-from .rglob import _rglob
-from .project import ProjectInfo
 from .. import deps
-from ..tasks import transcode_fine
-import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

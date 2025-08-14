@@ -1,9 +1,9 @@
 import asyncio
 from pathlib import Path
 
-from fastapi import APIRouter, Depends
 import aiofiles
 import aiofiles.os
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from litpose_app import deps

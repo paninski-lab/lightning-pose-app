@@ -1,12 +1,9 @@
 import asyncio
 import logging
-from typing import Optional
-
-from fastapi import FastAPI
 
 from .. import deps
-from ..tasks import transcode_fine
 from ..routes.rglob import _rglob
+from ..tasks import transcode_fine
 
 logger = logging.getLogger(__name__)
 

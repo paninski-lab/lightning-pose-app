@@ -1,5 +1,5 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 
 def fix_empty_first_row(df: pd.DataFrame) -> pd.DataFrame:
