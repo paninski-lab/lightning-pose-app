@@ -17,7 +17,6 @@ import { SessionService } from '../session.service';
 import { MVLabelFile } from '../label-file.model';
 import { PathPipe } from '../components/path.pipe';
 import { LabelFileFetcherService } from './label-file-fetcher.service';
-import { SaveActionData } from './types';
 import { mvf, MVFrame } from './frame.model';
 
 interface LoadError {
@@ -133,10 +132,41 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     }
   }
 
-  protected async handleSaveAction(data: SaveActionData): Promise<void> {
-    // update local multiview dataframe state
-    // multiview labels save RPC call
-    console.error('Not yet implemented: handleSaveAction');
+  protected handleSaved(data: {
+    labelFile: MVLabelFile;
+    frame: MVFrame;
+    shouldContinue: boolean;
+  }) {
+    if (data.labelFile !== this.loadedLabelFile()) {
+      return;
+    }
+    this.labelFileData.update((mvFrames) => {
+      if (mvFrames === null) {
+        return null;
+      }
+      return mvFrames.map((mvFrame) => {
+        if (mvFrame.key === data.frame.key) {
+          return mvf(mvFrame).toSavedMvf();
+        } else {
+          return mvFrame;
+        }
+      });
+    });
+    if (data.shouldContinue) {
+      const currentFrameIndex = this.labelFileDataUnLabeledSlice().findIndex(
+        (mvf) => mvf.key === data.frame.key,
+      );
+      const nextFrameKey =
+        this.labelFileDataUnLabeledSlice()[currentFrameIndex + 1]?.key ?? null;
+      if (nextFrameKey !== null) {
+        this.router.navigate(['/labeler'], {
+          queryParams: {
+            labelFileKey: this.labelFileKey(),
+            frameKey: nextFrameKey,
+          },
+        });
+      }
+    }
   }
 
   protected handleSelectLabelFile(labelFileKey: string) {

@@ -4,10 +4,6 @@ export interface LKeypoint {
   y: number;
   keypointName: string;
 }
-export interface SaveActionData {
-  changedKeypoints: Record<string, LKeypoint[]>;
-  options: { continue?: boolean };
-}
 
 export class LKPUtils {
   constructor(public kp: LKeypoint) {}

@@ -3,15 +3,14 @@ import {
   Component,
   computed,
   inject,
-  Input,
   input,
   OnChanges,
   output,
   signal,
   SimpleChanges,
 } from '@angular/core';
-import { FrameView, fv, mvf, MVFrame, MVFUtils } from '../frame.model';
-import { LKeypoint, lkp, SaveActionData } from '../types';
+import { FrameView, mvf, MVFrame } from '../frame.model';
+import { LKeypoint, lkp } from '../types';
 import { DecimalPipe } from '@angular/common';
 import { ZoomableContentComponent } from '../../components/zoomable-content.component';
 import { KeypointContainerComponent } from '../../components/keypoint-container/keypoint-container.component';
@@ -40,7 +39,11 @@ export class LabelerCenterPanelComponent implements OnChanges {
   labelFile = input<MVLabelFile | null>(null);
   frame = input<MVFrame | null>(null);
 
-  save = output<SaveActionData>();
+  saved = output<{
+    labelFile: MVLabelFile;
+    frame: MVFrame;
+    shouldContinue: boolean;
+  }>();
 
   ngOnChanges(changes: SimpleChanges) {
     // Unlabeled frames should start at the first unlabeled keypoint.
@@ -230,18 +233,21 @@ export class LabelerCenterPanelComponent implements OnChanges {
     );
   });
 
-  protected handleSaveClick(labelFile: MVLabelFile, frame: MVFrame) {
+  protected handleSaveClick(
+    labelFile: MVLabelFile,
+    frame: MVFrame,
+    shouldContinue: boolean,
+  ) {
     this.isSaving.set(true);
     this.sessionService
       .saveMVFrame(labelFile, frame)
       .then(() => {
-        // this.save.emit({});
         this.isSaving.set(false);
-        // on error, we just reset the loading state
+        this.saved.emit({ labelFile, frame, shouldContinue });
       })
       .catch((error) => {
         this.isSaving.set(false);
-        throw error;
+        throw new Error(error);
       });
   }
 }

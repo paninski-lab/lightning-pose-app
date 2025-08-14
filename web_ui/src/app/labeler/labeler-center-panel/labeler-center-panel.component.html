@@ -122,8 +122,8 @@
           <button
             class="btn bg-sky-700 w-full"
             [class.btn-disabled]="isSaveDisabled()"
-            (click)="handleSaveClick(lbfl, frame2)"
-            (keydown.enter)="handleSaveClick(lbfl, frame2)"
+            (click)="handleSaveClick(lbfl, frame2, false)"
+            (keydown.enter)="handleSaveClick(lbfl, frame2, false)"
           >
             Save
           </button>
@@ -136,6 +136,8 @@
             <button
               class="btn bg-sky-700 w-full mt-2"
               [class.btn-disabled]="isSaveDisabled()"
+              (click)="handleSaveClick(lbfl, frame2, true)"
+              (keydown.enter)="handleSaveClick(lbfl, frame2, true)"
             >
               Save and continue
             </button>

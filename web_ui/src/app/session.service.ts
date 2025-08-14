@@ -10,9 +10,8 @@ import { FFProbeInfo } from './ffprobe-info';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { createSessionViewComparator } from './utils/comparators';
 import { MVLabelFile } from './label-file.model';
-import { MVFrame } from './labeler/frame.model';
+import { fv, MVFrame } from './labeler/frame.model';
 import { SaveFrameView, SaveMvFrame } from './labeler/save-mvframe';
-import _ from 'lodash';
 
 type SessionModelMap = Record<string, string[]>;
 
@@ -302,22 +301,18 @@ export class SessionService {
   }
 
   async saveMVFrame(labelFile: MVLabelFile, frame: MVFrame) {
-    const views: SaveFrameView[] = frame.views.map((fv) => {
-      const lbl = labelFile.views.find((v) => v.viewName === fv.viewName)!;
+    const views: SaveFrameView[] = frame.views.map((frameView) => {
+      const lbl = labelFile.views.find(
+        (v) => v.viewName === frameView.viewName,
+      )!;
       return {
         csvPath: lbl.csvPath,
-        indexToChange: fv.imgPath,
-        changedKeypoints: fv.keypoints
-          .filter((kp) => {
-            const okp =
-              fv.originalKeypoints?.find(
-                (okp) => okp.keypointName === kp.keypointName,
-              ) ?? null;
-            return okp === null || !_.isEqual(okp, kp);
-          })
-          .map(({ keypointName, x, y }) => {
+        indexToChange: frameView.imgPath,
+        changedKeypoints: fv(frameView).changedKeypoints.map(
+          ({ keypointName, x, y }) => {
             return { name: keypointName, x, y };
-          }),
+          },
+        ),
       };
     });
     const request: SaveMvFrame = { views };
