@@ -20,3 +20,6 @@ class Config(BaseModel):
     # We'll automatically transcode videos with size under this limit.
     # Larger ones will have to be manually triggered (design TBD).
     AUTO_TRANSCODE_VIDEO_SIZE_LIMIT_MB: int = 30
+
+    # Name of the directory in data_dir where extract frames will output to
+    LABELED_DATA_DIRNAME = "labeled_data"
