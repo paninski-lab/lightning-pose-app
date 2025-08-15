@@ -22,4 +22,4 @@ class Config(BaseModel):
     AUTO_TRANSCODE_VIDEO_SIZE_LIMIT_MB: int = 30
 
     # Name of the directory in data_dir where extract frames will output to
-    LABELED_DATA_DIRNAME = "labeled_data"
+    LABELED_DATA_DIRNAME: str = "labeled_data"

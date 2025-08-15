@@ -1,5 +1,6 @@
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
+from typing import Callable
 
 from pydantic import BaseModel
 
@@ -41,40 +42,29 @@ N_WORKERS = os.cpu_count()
 
 def extract_frames_task(
     config: Config,
-    session: dict,
-    mv_label_file: dict,
+    session: Session,
+    mv_label_file,
+    progress_callback: Callable[[str], None],
     method="random",
-    options: dict | None = None,
+    options: RandomMethodOptions = DEFAULT_RANDOM_OPTIONS,
 ):
     """
     session: dict (serialized Session model)
     method: random (kmeans) | active (NYI)
     """
-    session = Session(**session)
-    mv_label_file = MVLabelFile(**mv_label_file)
-    if method == "random":
-        options = RandomMethodOptions(**options)
-        _extract_frames_task(config, session, mv_label_file, method, options)
-    else:
-        raise ValueError("method not supported: " + method)
 
-
-def _extract_frames_task(
-    config: Config,
-    session: Session,
-    mv_label_file,
-    method: str,
-    options: RandomMethodOptions,
-):
     frame_idxs: list[int] = []
-    process_pool = ProcessPoolExecutor(max_workers=N_WORKERS)
-    if method == "random":
-        frame_idxs = _frame_selection_kmeans(config, session, options, process_pool)
-    else:
-        raise ValueError("method not supported: " + method)
+    with ProcessPoolExecutor(max_workers=N_WORKERS) as process_pool:
+        if method == "random":
+            frame_idxs = _frame_selection_kmeans(config, session, options, process_pool)
+            progress_callback(f"Frame selection complete.")
+        else:
+            raise ValueError("method not supported: " + method)
 
-    result = _export_frames(config, session, frame_idxs)
-    _update_unlabeled_files(result, mv_label_file)
+        result = _export_frames(config, session, frame_idxs, process_pool)
+        progress_callback(f"Frame extraction complete.")
+        _update_unlabeled_files(result, mv_label_file)
+        progress_callback(f"Update unlabeled files complete.")
 
 
 def _frame_selection_kmeans(config, session, options, process_pool) -> list[int]:
@@ -94,7 +84,7 @@ def _frame_selection_kmeans_impl(video_path: Path, n_frames: int) -> list[int]:
 
     Runs in a separate process because it's CPU intensive.
     """
-    pass
+    return []
 
 
 def _export_frames(config, session, frame_idxs, process_pool) -> dict[str, list[Path]]:
@@ -107,7 +97,7 @@ def _export_frames(config, session, frame_idxs, process_pool) -> dict[str, list[
 
     Returns a dict of view_name -> list of paths to extracted frames (relative to data dir).
     """
-    pass
+    return {}
 
 
 def _update_unlabeled_files(result: dict[str, list[Path]], mv_label_file: MVLabelFile):

@@ -11,6 +11,8 @@ from fastapi.responses import StreamingResponse
 from reactivex import Observable
 
 from .. import deps
+from ..utils.enqueue import enqueue_all_new_fine_videos_task
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -34,7 +36,6 @@ async def get_fine_video_status(request: Request) -> StreamingResponse:
 
 @router.post("/app/v0/rpc/enqueueAllNewFineVideos")
 async def enqueue_all_new_fine_videos():
-    from ..utils.enqueue import enqueue_all_new_fine_videos_task
 
     await enqueue_all_new_fine_videos_task()
     return "ok"
