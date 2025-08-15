@@ -28,7 +28,6 @@ async def extract_frames(
 ):
     config = deps.config()
     project_info = deps.project_info(config)
-    scheduler = deps.scheduler()
 
     def on_progress(x):
         logger.info(f"extractFrames progress: {x}")

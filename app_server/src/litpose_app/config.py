@@ -3,6 +3,7 @@ modify these in unit tests.
 Instead, prefer to inject `config: deps.config into the route using FastAPI's dependency injection.
 See https://fastapi.tiangolo.com/tutorial/dependencies/."""
 
+import os
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -23,3 +24,12 @@ class Config(BaseModel):
 
     # Name of the directory in data_dir where extract frames will output to
     LABELED_DATA_DIRNAME: str = "labeled_data"
+
+    ###
+    # Frame extraction config
+    ###
+
+    FRAME_EXTRACT_N_CONTEXT_FRAMES: int = 2
+    FMT_FRAME_INDEX_DIGITS: int = 8
+    N_WORKERS: int = os.cpu_count()
+    FRAME_EXTRACT_RESIZE_DIMS: int = 64

@@ -5,6 +5,7 @@ from typing import Callable
 from pydantic import BaseModel
 
 from litpose_app.config import Config
+from litpose_app.utils.video.frame_selection import frame_selection_kmeans_impl
 
 
 class SessionView(BaseModel):
@@ -32,12 +33,6 @@ class RandomMethodOptions(BaseModel):
 DEFAULT_RANDOM_OPTIONS = RandomMethodOptions()
 
 # Other configuration
-FMT_FRAME_INDEX_DIGITS = 8
-N_CONTEXT_FRAMES = 2
-
-import os
-
-N_WORKERS = os.cpu_count()
 
 
 def extract_frames_task(
@@ -54,7 +49,7 @@ def extract_frames_task(
     """
 
     frame_idxs: list[int] = []
-    with ProcessPoolExecutor(max_workers=N_WORKERS) as process_pool:
+    with ProcessPoolExecutor(max_workers=config.N_WORKERS) as process_pool:
         if method == "random":
             frame_idxs = _frame_selection_kmeans(config, session, options, process_pool)
             progress_callback(f"Frame selection complete.")
@@ -69,22 +64,18 @@ def extract_frames_task(
 
 def _frame_selection_kmeans(config, session, options, process_pool) -> list[int]:
     """
-    Select `options.n_frames` frames using just the first video in session.
+    Select `options.n_frames` frames using just the first video in the session.
 
-    Offload it to a separate process because this is CPU intensive."""
+    Offload it to a separate process because this is CPU-intensive.
+    """
+
     future = process_pool.submit(
-        _frame_selection_kmeans_impl, session.views[0].video_path, options.n_frames
+        frame_selection_kmeans_impl,
+        config,
+        session.views[0].video_path,
+        options.n_frames,
     )
     return future.result()
-
-
-def _frame_selection_kmeans_impl(video_path: Path, n_frames: int) -> list[int]:
-    """
-    Select `options.n_frames` frames using just the first video in session.
-
-    Runs in a separate process because it's CPU intensive.
-    """
-    return []
 
 
 def _export_frames(config, session, frame_idxs, process_pool) -> dict[str, list[Path]]:
