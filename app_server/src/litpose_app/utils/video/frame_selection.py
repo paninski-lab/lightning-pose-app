@@ -8,6 +8,7 @@ from sklearn.decomposition import PCA
 from tqdm import tqdm
 
 from litpose_app.config import Config
+from litpose_app.utils.video import video_capture
 
 logger = logging.getLogger(__name__)
 
@@ -93,43 +94,35 @@ def _read_nth_frames(
 ) -> np.ndarray:
 
     # Open the video file
-    assert video_file.is_file()
-    cap = cv2.VideoCapture(str(video_file))
+    with video_capture(video_file) as cap:
+        frames = []
+        frame_counter = 0
+        frame_total = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+        with tqdm(total=int(frame_total)) as pbar:
+            while cap.isOpened():
+                # Read the next frame
+                ret, frame = cap.read()
+                if ret:
+                    # If the frame was successfully read, then process it
+                    if frame_counter % n == 0:
+                        frame_resize = cv2.resize(
+                            frame,
+                            (
+                                config.FRAME_EXTRACT_RESIZE_DIMS,
+                                config.FRAME_EXTRACT_RESIZE_DIMS,
+                            ),
+                        )
+                        frame_gray = cv2.cvtColor(frame_resize, cv2.COLOR_BGR2RGB)
+                        frames.append(frame_gray.astype(np.float16))
+                    frame_counter += 1
+                    progress = frame_counter / frame_total * 100.0
+                    # TODO progress update
+                    pbar.update(1)
+                else:
+                    # If we couldn't read a frame, we've probably reached the end
+                    break
 
-    if not cap.isOpened():
-        logger.error(f"Error opening video file {video_file}")
-
-    frames = []
-    frame_counter = 0
-    frame_total = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-    with tqdm(total=int(frame_total)) as pbar:
-        while cap.isOpened():
-            # Read the next frame
-            ret, frame = cap.read()
-            if ret:
-                # If the frame was successfully read, then process it
-                if frame_counter % n == 0:
-                    frame_resize = cv2.resize(
-                        frame,
-                        (
-                            config.FRAME_EXTRACT_RESIZE_DIMS,
-                            config.FRAME_EXTRACT_RESIZE_DIMS,
-                        ),
-                    )
-                    frame_gray = cv2.cvtColor(frame_resize, cv2.COLOR_BGR2RGB)
-                    frames.append(frame_gray.astype(np.float16))
-                frame_counter += 1
-                progress = frame_counter / frame_total * 100.0
-                # TODO progress update
-                pbar.update(1)
-            else:
-                # If we couldn't read a frame, we've probably reached the end
-                break
-
-    # When everything is done, release the video capture object
-    cap.release()
-
-    return np.array(frames)
+        return np.array(frames)
 
 
 def _run_kmeans(x: np.ndarray, n_clusters: int) -> tuple:

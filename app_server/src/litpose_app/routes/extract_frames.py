@@ -33,7 +33,12 @@ async def extract_frames(
         logger.info(f"extractFrames progress: {x}")
 
     await run_in_threadpool(
-        extract_frames_task, config, request.session, request.label_file, on_progress
+        extract_frames_task,
+        config,
+        request.session,
+        project_info,
+        request.label_file,
+        on_progress,
     )
 
     return "ok"
