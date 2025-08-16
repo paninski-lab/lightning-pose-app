@@ -10,8 +10,14 @@ import { DialogRef } from '@angular/cdk/dialog';
 })
 export class ExtractFramesDialogComponent {
   private dialogRef = inject(DialogRef);
+  protected step = 'session';
 
   protected handleCloseClick() {
     this.dialogRef.close();
+  }
+
+  protected handleStepClick(event: Event, step: string) {
+    event.preventDefault();
+    this.step = step;
   }
 }

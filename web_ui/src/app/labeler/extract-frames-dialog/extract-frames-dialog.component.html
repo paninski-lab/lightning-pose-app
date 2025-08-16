@@ -1,7 +1,83 @@
-<h3 class="text-lg font-bold">Hello from DaisyUI!</h3>
-<p class="py-4">
-  This dialog is styled with DaisyUI but rendered by Angular Material.
-</p>
+<!-- Header -->
+<div class="flex">
+  <h3 class="text-xl font-bold text-nowrap">Extract frames</h3>
+  <ul class="steps text-sm">
+    <li class="step step-primary">Select a session</li>
+    <li class="step">Select extraction strategy</li>
+  </ul>
+</div>
+<div class="divider"></div>
+
+<!-- Body -->
+<div>
+  <h3 class="text-lg">1. Session</h3>
+  <sub class="text-sm">Select a session to extract frames from</sub>
+  <div class="p-4 flex items-center">
+    <select class="select">
+      <option>Session selection</option>
+    </select>
+    <div class="divider divider-horizontal">OR</div>
+    <button class="btn">Upload a new session</button>
+  </div>
+</div>
+<div>
+  <h3 class="text-lg">2. Extraction strategy</h3>
+  <sub class="text-sm">Choose which frames to extract.</sub>
+  <div class="p-4">
+    <div class="flex gap-1">
+      <input
+        type="radio"
+        name="extraction-strategy"
+        id="radio-auto"
+        value="auto"
+        class="radio radio-sm"
+        checked="checked"
+      />
+      <label for="radio-auto" class="text-sm">Auto</label>
+    </div>
+  </div>
+  <div role="alert" class="alert text-sm">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      class="stroke-info h-6 w-6 shrink-0"
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+      ></path>
+    </svg>
+    <span>
+      Frames will be selected automatically across a diversity of frames, using
+      motion energy and PCA.</span
+    >
+  </div>
+</div>
+
+<div class="mt-4">
+  <h3 class="text-lg">3. Number of frames</h3>
+  <p class="text-sm">
+    Choose how many frames to extract. 20 is a good start, but extract as many
+    or as little as you'd like.
+  </p>
+  <br />
+  <p class="text-sm">Matt: can we automatically choose this?</p>
+  <div class="p-4">
+    <input
+      type="number"
+      class="input validator"
+      required
+      placeholder="Enter a number"
+      min="1"
+      step="1"
+    />
+    <p class="validator-hint">Must be between be 1 to 10</p>
+  </div>
+</div>
+<!-- Footer -->
 <div class="modal-action">
-  <button class="btn" (click)="handleCloseClick()">Close</button>
+  <button class="btn" (click)="handleCloseClick()">Extract frames</button>
 </div>
