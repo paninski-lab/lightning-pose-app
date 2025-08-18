@@ -12,6 +12,11 @@
 <div>
   <h3 class="text-lg">1. Session</h3>
   <sub class="text-sm">Select a session to extract frames from</sub>
+  <app-sessions-panel
+    [showModelAvailableMarkers]="false"
+    [selectedSessionKey]="session()?.key"
+    (selectedSessionChange)="handleSelectedSessionChange($event)"
+  ></app-sessions-panel>
   <div class="p-4 flex items-center">
     <select class="select">
       <option>Session selection</option>

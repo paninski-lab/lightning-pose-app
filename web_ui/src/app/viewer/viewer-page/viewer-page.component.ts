@@ -19,6 +19,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SessionService } from '../../session.service';
 import { LoadingBarComponent } from '../../loading-bar/loading-bar.component';
 import { LoadingService } from '../../loading.service';
+import { FineVideoService } from '../../utils/fine-video.service';
+import { Session } from '../../session.model';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-viewer',
@@ -44,6 +47,7 @@ export class ViewerPageComponent implements OnInit {
   protected keypointSelectionModel: SelectionModel<string>;
   protected viewSelectionModel: SelectionModel<string>;
   protected allViews = [] as string[];
+  private router = inject(Router);
 
   /**
    * Set by the router when there is a session key in the path.
@@ -176,6 +180,7 @@ export class ViewerPageComponent implements OnInit {
   }
 
   protected noneOption = '- None -';
+  protected fineVideoService = inject(FineVideoService);
 
   protected onModelDropdownItemClick(index: number, event: Event) {
     const selectEl = event.target as HTMLSelectElement;
@@ -189,5 +194,13 @@ export class ViewerPageComponent implements OnInit {
     }
 
     this.viewSettings.setModelsShown(modelsShown);
+  }
+
+  protected handleSelectedSessionChange(session: Session | null) {
+    if (session === null) {
+      this.router.navigate(['/viewer']);
+    } else {
+      this.router.navigate(['/viewer', session.key]);
+    }
   }
 }
