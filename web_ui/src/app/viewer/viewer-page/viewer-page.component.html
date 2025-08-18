@@ -12,6 +12,11 @@
       class="bg-base-200 w-60 xl:w-80 flex flex-col justify-between shadow-lg"
     >
       <div class="p-4">
+        <div class="flex justify-between">
+          <!--header row-->
+          <h1 class="px-2">Sessions</h1>
+          <div></div>
+        </div>
         <app-sessions-panel
           [showModelAvailableMarkers]="true"
           [selectedSessionKey]="_sessionKey()"
