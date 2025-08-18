@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 
 
 class SessionView(BaseModel):
-    video_path: Path
-    view_name: str
+    videoPath: Path
+    viewName: str
 
 
 class Session(BaseModel):
@@ -27,8 +27,8 @@ class Session(BaseModel):
 
 
 class LabelFileView(BaseModel):
-    csv_path: Path
-    view_name: str
+    csvPath: Path
+    viewName: str
 
 
 class MVLabelFile(BaseModel):
@@ -85,7 +85,7 @@ def _frame_selection_kmeans(config, session, options, process_pool) -> list[int]
     future = process_pool.submit(
         frame_selection_kmeans_impl,
         config,
-        session.views[0].video_path,
+        session.views[0].videoPath,
         options.n_frames,
     )
     return future.result()
@@ -118,7 +118,7 @@ def _export_frames(
 
     # Compute destination paths for center frames as the return value of the function.
     retval = {
-        sv.view_name: [dest_path(sv.video_path, frame_idx) for frame_idx in frame_idxs]
+        sv.viewName: [dest_path(sv.videoPath, frame_idx) for frame_idx in frame_idxs]
         for sv in session.views
     }
 
@@ -126,7 +126,7 @@ def _export_frames(
         with video_capture(video_path) as cap:
             return int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    frame_count = get_frame_count(session.views[0].video_path)
+    frame_count = get_frame_count(session.views[0].videoPath)
 
     # expand frame_idxs to include context frames
     context_frames = config.FRAME_EXTRACT_N_CONTEXT_FRAMES
@@ -142,15 +142,15 @@ def _export_frames(
     futures = {}
     for sv in session.views:
         # Compute destination paths for every frame including context frames.
-        dest_paths = [dest_path(sv.video_path, idx) for idx in frame_idxs_with_context]
+        dest_paths = [dest_path(sv.videoPath, idx) for idx in frame_idxs_with_context]
         future = process_pool.submit(
             export_frames_singleview_impl,
             config,
-            sv.video_path,
+            sv.videoPath,
             frame_idxs_with_context,
             dest_paths,
         )
-        futures[sv.view_name] = future
+        futures[sv.viewName] = future
 
     # Wait for all completion
     for view_name, future in futures.items():

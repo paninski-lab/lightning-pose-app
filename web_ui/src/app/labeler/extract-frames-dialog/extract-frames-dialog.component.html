@@ -36,6 +36,7 @@
     <div class="p-4">
       <div class="flex gap-1">
         <input
+          [disabled]="isProcessing()"
           type="radio"
           name="extraction-strategy"
           id="radio-auto"
@@ -74,6 +75,7 @@
     </p>
     <div class="p-4">
       <input
+        [disabled]="isProcessing()"
         type="number"
         [(ngModel)]="nFrames"
         class="input validator"
@@ -93,22 +95,29 @@
       Cancel
     </button>
   } @else {
-    <button class="btn btn-outline" (click)="step.set('session')">
+    <button
+      class="btn btn-outline"
+      [disabled]="isProcessing()"
+      (click)="step.set('session')"
+    >
       Previous
     </button>
   }
   <div class="flex gap-2">
     @if (step() === "session") {
       <button
-        class="btn btn-outline"
-        [disabled]="!sessionStepIsValid()"
+        class="btn btn-outline btn-primary"
+        [disabled]="!sessionStepIsValid() || isProcessing()"
         (click)="step.set('settings')"
       >
         Next
       </button>
     } @else {
+      @if (isProcessing()) {
+        <span class="loading loading-spinner loading-sm"></span>
+      }
       <button
-        [disabled]="!settingsStepIsValid()"
+        [disabled]="!settingsStepIsValid() || isProcessing()"
         class="btn btn-soft btn-primary"
         (click)="handleExtractFramesClick()"
       >

@@ -19,7 +19,7 @@ def get_fine_video_dir(config: Config = Depends(deps.config)):
 
 class ExtractFramesRequest(BaseModel):
     session: Session
-    label_file: MVLabelFile
+    labelFile: MVLabelFile
 
 
 @router.post("/app/v0/rpc/extractFrames")
@@ -37,7 +37,7 @@ async def extract_frames(
         config,
         request.session,
         project_info,
-        request.label_file,
+        request.labelFile,
         on_progress,
     )
 

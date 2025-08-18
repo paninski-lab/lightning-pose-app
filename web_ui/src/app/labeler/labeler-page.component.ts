@@ -192,6 +192,7 @@ export class LabelerPageComponent implements OnInit, OnChanges {
 
   protected handleExtractFramesClick() {
     this.dialog.open(ExtractFramesDialogComponent, {
+      data: { labelFile: this.loadedLabelFile() },
       // width/height to fit the content of the dialog
       width: 'auto',
       height: 'auto',

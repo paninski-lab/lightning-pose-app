@@ -112,12 +112,14 @@
                 }
               }
             </ul>
-            <button
-              class="btn bg-sky-700 btn-circle btn-xs my-2 w-full"
-              (click)="handleExtractFramesClick()"
-            >
-              Add frames
-            </button>
+            @if (this.loadedLabelFile()) {
+              <button
+                class="btn bg-sky-700 btn-circle btn-xs my-2 w-full"
+                (click)="handleExtractFramesClick()"
+              >
+                Add frames
+              </button>
+            }
           </div>
         </div>
       </div>
