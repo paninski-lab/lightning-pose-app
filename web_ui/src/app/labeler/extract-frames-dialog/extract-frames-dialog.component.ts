@@ -10,6 +10,8 @@ import { ViewerSessionsPanelComponent } from '../../viewer/viewer-left-panel/vie
 import { Session } from '../../session.model';
 import { FormsModule } from '@angular/forms';
 import { MVLabelFile } from '../../label-file.model';
+import { RpcService } from '../../rpc.service';
+import { ExtractFramesRequest } from '../../extract-frames-request';
 
 @Component({
   selector: 'app-extract-frames-dialog',
@@ -49,7 +51,7 @@ export class ExtractFramesDialogComponent {
   });
 
   /** Makes a request object that the extract frames service can execute. */
-  private toExtractFramesRequest() {
+  private toExtractFramesRequest(): ExtractFramesRequest {
     // Assume validity. Calls will be guarded by is valid.
     return {
       session: {
@@ -58,10 +60,23 @@ export class ExtractFramesDialogComponent {
       labelFile: {
         views: this.dialogData.labelFile.views,
       },
+      method: 'random',
+      options: {
+        nFrames: this.nFrames()!,
+      },
     };
   }
+  private rpc = inject(RpcService);
 
   handleExtractFramesClick() {
     this.isProcessing.set(true);
+    this.rpc
+      .call('extractFrames', this.toExtractFramesRequest())
+      .then(() => {
+        this.dialogRef.close();
+      })
+      .finally(() => {
+        this.isProcessing.set(false);
+      });
   }
 }
