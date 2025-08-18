@@ -160,7 +160,9 @@ async def commit_mvframe(
 async def remove_from_unlabeled_sidecar_files(
     data_dir: Path, request: SaveMvFrameRequest
 ):
-    """Remove the frames from the unlabeled sidecar files."""
+    """Remove the frames from the unlabeled sidecar files.
+
+    See also: utils.mv_label_file.py for the add version of this."""
     timestamp = time.time_ns()
 
     def remove_task(vr: SaveFrameViewRequest):

@@ -1,3 +1,4 @@
+import logging
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Callable
@@ -8,11 +9,13 @@ from pydantic import BaseModel
 
 from litpose_app.config import Config
 from litpose_app.routes.project import ProjectInfo
+from litpose_app.utils.mv_label_file import (
+    AddToUnlabeledFileView,
+    add_to_unlabeled_sidecar_files,
+)
 from litpose_app.utils.video import video_capture
 from litpose_app.utils.video.export_frames import export_frames_singleview_impl
 from litpose_app.utils.video.frame_selection import frame_selection_kmeans_impl
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +39,7 @@ class MVLabelFile(BaseModel):
 
 
 class RandomMethodOptions(BaseModel):
-    n_frames: int = 10
+    nFrames: int = 10
 
 
 DEFAULT_RANDOM_OPTIONS = RandomMethodOptions()
@@ -71,7 +74,7 @@ def extract_frames_task(
         result = _export_frames(config, session, project_info, frame_idxs, process_pool)
         progress_callback(f"Frame extraction complete.")
         logger.debug(result)
-        _update_unlabeled_files(result, mv_label_file)
+        _update_unlabeled_files(project_info.data_dir, result, mv_label_file)
         progress_callback(f"Update unlabeled files complete.")
 
 
@@ -86,7 +89,7 @@ def _frame_selection_kmeans(config, session, options, process_pool) -> list[int]
         frame_selection_kmeans_impl,
         config,
         session.views[0].videoPath,
-        options.n_frames,
+        options.nFrames,
     )
     return future.result()
 
@@ -159,8 +162,18 @@ def _export_frames(
     return retval
 
 
-def _update_unlabeled_files(result: dict[str, list[Path]], mv_label_file: MVLabelFile):
+def _update_unlabeled_files(
+    data_dir: Path, result: dict[str, list[Path]], mv_label_file: MVLabelFile
+):
     """
     Appends the new frames in `result` to the `mv_label_file` as atomically as possible.
     """
-    pass
+    lfv_dict = {lfv.viewName: lfv for lfv in mv_label_file.views}
+    x = [
+        AddToUnlabeledFileView(
+            csvPath=lfv_dict[view_name].csvPath,
+            framePathsToAdd=[str(p.relative_to(data_dir)) for p in result[view_name]],
+        )
+        for view_name in result
+    ]
+    add_to_unlabeled_sidecar_files(x)
