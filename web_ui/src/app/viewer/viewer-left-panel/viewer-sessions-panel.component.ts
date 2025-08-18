@@ -1,22 +1,21 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { SessionService } from '../../session.service';
-import { RouterLink, RouterLinkActive } from '@angular/router';
 import { MatListModule } from '@angular/material/list';
 import { ScrollingModule } from '@angular/cdk/scrolling';
-import { FineVideoService } from '../../utils/fine-video.service';
 import { ViewSettings } from '../../view-settings.model';
 import { ProjectInfoService } from '../../project-info.service';
 import { PathPipe } from '../../components/path.pipe';
+import { Session } from '../../session.model';
 
 @Component({
   selector: 'app-sessions-panel',
-  imports: [
-    RouterLink,
-    RouterLinkActive,
-    MatListModule,
-    ScrollingModule,
-    PathPipe,
-  ],
+  imports: [MatListModule, ScrollingModule, PathPipe],
   templateUrl: './viewer-sessions-panel.component.html',
   styleUrl: './viewer-sessions-panel.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -24,13 +23,17 @@ import { PathPipe } from '../../components/path.pipe';
 export class ViewerSessionsPanelComponent {
   protected sessionService = inject(SessionService);
   private projectInfoService = inject(ProjectInfoService);
-  protected fineVideoService = inject(FineVideoService);
-  private viewSettings = inject(ViewSettings);
+  private viewSettings = inject(ViewSettings, { optional: true });
+
+  showModelAvailableMarkers = input.required<boolean>();
+  selectedSessionKey = input<string | null>();
+  selectedSessionChange = output<Session | null>();
 
   protected sessionHasModel1(sessionKey: string): boolean {
+    if (!this.showModelAvailableMarkers()) return false;
     this.projectInfoService.allModels(); // hack: track dependency to trigger
     // re-evaluation when models load.
-    const model = this.viewSettings.modelsShown()[0];
+    const model = this.viewSettings?.modelsShown()[0];
     const availableModels =
       this.sessionService.getAvailableModelsForSession(sessionKey);
     if (!model) return availableModels.length > 0;
@@ -38,10 +41,15 @@ export class ViewerSessionsPanelComponent {
   }
 
   protected sessionHasModel2(sessionKey: string): boolean {
-    const model = this.viewSettings.modelsShown()[1];
+    if (!this.showModelAvailableMarkers()) return false;
+    const model = this.viewSettings?.modelsShown()[1];
     if (!model) return false;
     const availableModels =
       this.sessionService.getAvailableModelsForSession(sessionKey);
     return availableModels.includes(model);
+  }
+
+  handleSessionSelect(session: Session) {
+    this.selectedSessionChange.emit(session);
   }
 }

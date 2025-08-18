@@ -18,6 +18,8 @@ import { MVLabelFile } from '../label-file.model';
 import { PathPipe } from '../components/path.pipe';
 import { LabelFileFetcherService } from './label-file-fetcher.service';
 import { mvf, MVFrame } from './frame.model';
+import { Dialog } from '@angular/cdk/dialog';
+import { ExtractFramesDialogComponent } from './extract-frames-dialog/extract-frames-dialog.component';
 
 interface LoadError {
   message: string;
@@ -42,6 +44,7 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   protected sessionService = inject(SessionService);
   private labelFileFetcher = inject(LabelFileFetcherService);
   private router = inject(Router);
+  private dialog = inject(Dialog);
 
   // Store loaded data for the selected label file
   protected loadedLabelFile = signal<MVLabelFile | null>(null);
@@ -185,5 +188,19 @@ export class LabelerPageComponent implements OnInit, OnChanges {
 
     this.isIniting.set(false);
     this.loadLabelFileData(this.selectedLabelFile());
+  }
+
+  protected handleExtractFramesClick() {
+    this.dialog.open(ExtractFramesDialogComponent, {
+      data: { labelFile: this.loadedLabelFile() },
+      // width/height to fit the content of the dialog
+      width: 'auto',
+      height: 'auto',
+      // Daisy UI styling.
+      backdropClass: ['modal', 'modal-open'],
+      // .modal-box opacity is usually set to 100%
+      // by a `.modal.modal-open .modal-box` selector
+      panelClass: ['modal-box', 'opacity-100'],
+    });
   }
 }

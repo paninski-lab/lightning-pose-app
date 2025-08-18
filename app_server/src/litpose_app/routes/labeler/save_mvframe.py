@@ -160,7 +160,9 @@ async def commit_mvframe(
 async def remove_from_unlabeled_sidecar_files(
     data_dir: Path, request: SaveMvFrameRequest
 ):
-    """Remove the frames from the unlabeled sidecar files."""
+    """Remove the frames from the unlabeled sidecar files.
+
+    See also: utils.mv_label_file.py for the add version of this."""
     timestamp = time.time_ns()
 
     def remove_task(vr: SaveFrameViewRequest):
@@ -168,16 +170,26 @@ async def remove_from_unlabeled_sidecar_files(
         if not unlabeled_sidecar_file.exists():
             return
         lines = unlabeled_sidecar_file.read_text().splitlines()
+        needs_save = False
         while vr.indexToChange in lines:
+            needs_save = True
             lines.remove(vr.indexToChange)
 
-        temp_file_name = f"{unlabeled_sidecar_file.name}.{timestamp}.tmp"
-        temp_file_path = unlabeled_sidecar_file.parent / temp_file_name
+        if needs_save:
+            temp_file_name = f"{unlabeled_sidecar_file.name}.{timestamp}.tmp"
+            temp_file_path = unlabeled_sidecar_file.parent / temp_file_name
 
-        temp_file_path.write_text("\n".join(lines) + "\n")
-        os.replace(temp_file_path, unlabeled_sidecar_file)
+            temp_file_path.write_text("\n".join(lines) + "\n")
+            return temp_file_path
+        else:
+            return None
 
     tasks = []
     for vr in request.views:
         tasks.append(run_in_threadpool(remove_task, vr))
-    await asyncio.gather(*tasks)
+
+    results = await asyncio.gather(*tasks)
+
+    for vr, temp_file_path in zip(request.views, results):
+        if temp_file_path is not None:
+            os.replace(temp_file_path, vr.csvPath.with_suffix(".unlabeled"))

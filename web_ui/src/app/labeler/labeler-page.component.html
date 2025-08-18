@@ -39,6 +39,7 @@
         }
         <div class="p-4">
           <!-- labeled frames panel -->
+
           <div class="flex justify-between bg-base-300 items-center">
             <!--header row-->
             <h1 class="">Labeled frames</h1>
@@ -74,9 +75,9 @@
           </div>
         </div>
         <div class="p-4">
+          <!-- unlabeled frames panel -->
           <div class="bg-base-300">
             <!--header row-->
-            <!-- labeled frames panel -->
             <div class="flex justify-between bg-base-300 items-center">
               <!--header row-->
               <h1 class="">Remaining frames to label</h1>
@@ -87,7 +88,7 @@
             <div class="text-sm">Please label one at a time</div>
           </div>
           <div
-            class="panel-content inset-shadow-xs inset-shadow-black/30 overflow-auto h-60"
+            class="panel-content inset-shadow-xs inset-shadow-black/30 overflow-auto h-60 flex flex-col justify-between"
           >
             <!--panel content-->
             <ul class="w-fit relative" tabindex="0" role="listbox">
@@ -111,6 +112,14 @@
                 }
               }
             </ul>
+            @if (this.loadedLabelFile()) {
+              <button
+                class="btn bg-sky-700 btn-circle btn-xs my-2 w-full"
+                (click)="handleExtractFramesClick()"
+              >
+                Add frames
+              </button>
+            }
           </div>
         </div>
       </div>
