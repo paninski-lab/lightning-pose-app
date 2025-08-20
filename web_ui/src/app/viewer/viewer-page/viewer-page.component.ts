@@ -36,10 +36,7 @@ import { Router } from '@angular/router';
   providers: [VideoPlayerState, ViewSettings],
 })
 export class ViewerPageComponent implements OnInit {
-  centerPanel = viewChild(ViewerCenterPanelComponent);
-
   viewSettings = inject(ViewSettings);
-  injector = inject(Injector);
   projectInfoService = inject(ProjectInfoService);
   sessionService = inject(SessionService);
   loadingService = inject(LoadingService);
@@ -62,8 +59,6 @@ export class ViewerPageComponent implements OnInit {
       // todo
       return;
     }
-
-    this.centerPanel()?.loadSession(this._sessionKey() as string);
   }
 
   _sessionKey = signal<string | null>(null);
@@ -79,29 +74,9 @@ export class ViewerPageComponent implements OnInit {
 
     // Load sessions and prediction index, but don't wait, just fire off the request.
     const p = this.sessionService.loadPredictionIndex();
-    const s = this.sessionService
-      .loadSessions()
-      .then(() => {
-        this.loadingService.progress.update((x) => x + 1);
-      })
-      .then(() => {
-        // After next render, child components will be created.
-        // Tell them to select the session.
-        // (Hacky. we should probably use [input] instead...
-        // when we do, the complex logic inside loadSession needs to be triggered
-        // properly: angular is allowed to call input setter multiple times, but we don't want to
-        // loadSession multiple times.)
-        afterNextRender(
-          () => {
-            if (this._sessionKey() != null) {
-              this.centerPanel()?.loadSession(this._sessionKey() as string);
-            }
-          },
-          {
-            injector: this.injector,
-          },
-        );
-      });
+    const s = this.sessionService.loadSessions().then(() => {
+      this.loadingService.progress.update((x) => x + 1);
+    });
 
     this.allViews = this.projectInfoService.allViews();
     p.then(() => {

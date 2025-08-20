@@ -1,4 +1,4 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { BehaviorSubject, catchError, firstValueFrom } from 'rxjs';
 import { Session } from './session.model';
 import { RpcService } from './rpc.service';
@@ -30,6 +30,7 @@ export class SessionService {
   private _allSessions = new BehaviorSubject<Session[]>([]);
   allSessions$ = this._allSessions.asObservable();
   allSessions = toSignal(this.allSessions$, { requireSync: true });
+  sessionsLoaded = computed(() => this.allSessions().length > 0);
 
   private sessionModelMap = {} as SessionModelMap;
 
