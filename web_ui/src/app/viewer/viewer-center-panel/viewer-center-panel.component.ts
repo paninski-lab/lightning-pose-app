@@ -217,8 +217,6 @@ export class ViewerCenterPanelComponent implements OnChanges {
     predictionFileCache: Map<PredictionFile, dfd.DataFrame>,
   ): VideoWidget[] {
     const viewSettings = this.viewSettings;
-    const sessionKey = this._loadedSessionKey();
-    if (!sessionKey) return [];
     return viewSettings
       .viewsShown()
       .map((view): VideoWidget | null => {
