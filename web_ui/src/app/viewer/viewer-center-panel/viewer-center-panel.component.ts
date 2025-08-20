@@ -77,11 +77,11 @@ export class ViewerCenterPanelComponent {
           predictions.index.length - 1,
         );
         const x = predictions.at(
-          i,
+          i.toString(),
           new Pair(keypointName, 'x').toMapKey(),
         ) as number;
         const y = predictions.at(
-          i,
+          i.toString(),
           new Pair(keypointName, 'y').toMapKey(),
         ) as number;
         return { x, y };
@@ -94,7 +94,7 @@ export class ViewerCenterPanelComponent {
   private getVideoPathForFFProbe(sessionKey: string, view: string): string {
     const dataDir = this.projectInfoService.projectInfo?.data_dir as string;
 
-    return dataDir + '/' + sessionKey.replace(/\*/g, view) + '.mp4';
+    return dataDir + '/' + sessionKey.replace(/\*/g, view);
   }
 
   async loadSession(sessionKey: string) {
@@ -215,7 +215,10 @@ export class ViewerCenterPanelComponent {
 
   private async loadFFProbeMetadata(session: Session) {
     return await this.sessionService.ffprobe(
-      this.getVideoPathForFFProbe(session.key, session.views[0].viewName),
+      this.getVideoPathForFFProbe(
+        session.relativePath,
+        session.views[0].viewName,
+      ),
     );
   }
   private async fetchDataFiles(
