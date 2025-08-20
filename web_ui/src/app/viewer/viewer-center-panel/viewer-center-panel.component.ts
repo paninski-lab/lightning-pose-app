@@ -3,7 +3,10 @@ import {
   Component,
   computed,
   inject,
+  input,
+  OnChanges,
   signal,
+  SimpleChanges,
 } from '@angular/core';
 import { VideoPlayerControlsComponent } from '../../components/video-player/video-player-controls/video-player-controls.component';
 import { VideoTileComponent } from '../../components/video-player/video-tile/video-tile.component';
@@ -37,12 +40,14 @@ import { ZoomableContentComponent } from '../../components/zoomable-content.comp
   styleUrl: './viewer-center-panel.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ViewerCenterPanelComponent {
-  sessionKey = signal<string | null>(null);
+export class ViewerCenterPanelComponent implements OnChanges {
+  sessionKey = input<string | null>(null);
+  _loadedSessionKey = signal<string | null>(null);
   private csvParser = inject(CsvParserService);
   private projectInfoService = inject(ProjectInfoService);
   private loadingService = inject(LoadingService);
   private fineVideoService = inject(FineVideoService);
+  private loadSessionAbortController?: AbortController = undefined;
 
   get currentFrame() {
     return this.videoPlayerState.currentFrameSignal;
@@ -77,11 +82,11 @@ export class ViewerCenterPanelComponent {
           predictions.index.length - 1,
         );
         const x = predictions.at(
-          i,
+          i.toString(),
           new Pair(keypointName, 'x').toMapKey(),
         ) as number;
         const y = predictions.at(
-          i,
+          i.toString(),
           new Pair(keypointName, 'y').toMapKey(),
         ) as number;
         return { x, y };
@@ -94,14 +99,41 @@ export class ViewerCenterPanelComponent {
   private getVideoPathForFFProbe(sessionKey: string, view: string): string {
     const dataDir = this.projectInfoService.projectInfo?.data_dir as string;
 
-    return dataDir + '/' + sessionKey.replace(/\*/g, view) + '.mp4';
+    return dataDir + '/' + sessionKey.replace(/\*/g, view);
   }
 
-  async loadSession(sessionKey: string) {
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['sessionKey']) {
+      this.loadSessionAbort(this.sessionKey()!);
+    }
+  }
+
+  private async loadSessionAbort(sessionKey: string | null) {
+    if (this.loadSessionAbortController) {
+      this.loadSessionAbortController.abort();
+    }
+    this.loadSessionAbortController = new AbortController();
+    await this.loadSession(sessionKey, this.loadSessionAbortController.signal);
+  }
+
+  private async loadSession(
+    sessionKey: string | null,
+    abortSignal: AbortSignal,
+  ) {
+    if (sessionKey == null) {
+      this.viewSettings.setModelOptions([]);
+      this.predictionFiles = new Map();
+      this.videoPlayerState.reset();
+      this.videoPlayerState.duration.set(0);
+      this.videoPlayerState.fps.set(30);
+      this._loadedSessionKey.set(sessionKey);
+      this.widgetModels.set([]);
+      return;
+    }
     this.loadingService.isLoading.set(true);
     this.loadingService.progress.set(0);
 
-    const sessionChanged = sessionKey != this.sessionKey();
+    const sessionChanged = sessionKey != this._loadedSessionKey();
 
     try {
       const session = this.sessionService
@@ -115,6 +147,7 @@ export class ViewerCenterPanelComponent {
 
       // ##################################
       // Prepare by fetching relevant data.
+      // TODO: pass abort signal into the fetch functions to make them cancel when needed.
       // ##################################
       const promises = [];
       const predictionFileCache = sessionChanged
@@ -143,18 +176,21 @@ export class ViewerCenterPanelComponent {
             .map((pf) => pf.modelKey),
         ]),
       );
-      this.viewSettings.setModelOptions(availableModels);
 
       // ##################################
       // Commit changes (only happens if everything above was successful.
       // ##################################
+      if (abortSignal.aborted) {
+        return;
+      }
+      this.viewSettings.setModelOptions(availableModels);
       this.predictionFiles = predictionFileCache;
       if (sessionChanged) {
         this.videoPlayerState.reset();
         this.videoPlayerState.duration.set(ffprobeData!.duration);
         this.videoPlayerState.fps.set(ffprobeData!.fps);
 
-        this.sessionKey.set(sessionKey);
+        this._loadedSessionKey.set(sessionKey);
       }
       this.widgetModels.set(newWidgetModels);
     } finally {
@@ -181,8 +217,6 @@ export class ViewerCenterPanelComponent {
     predictionFileCache: Map<PredictionFile, dfd.DataFrame>,
   ): VideoWidget[] {
     const viewSettings = this.viewSettings;
-    const sessionKey = this.sessionKey();
-    if (!sessionKey) return [];
     return viewSettings
       .viewsShown()
       .map((view): VideoWidget | null => {
@@ -215,7 +249,10 @@ export class ViewerCenterPanelComponent {
 
   private async loadFFProbeMetadata(session: Session) {
     return await this.sessionService.ffprobe(
-      this.getVideoPathForFFProbe(session.key, session.views[0].viewName),
+      this.getVideoPathForFFProbe(
+        session.relativePath,
+        session.views[0].viewName,
+      ),
     );
   }
   private async fetchDataFiles(
@@ -249,21 +286,21 @@ export class ViewerCenterPanelComponent {
 
   constructor() {
     this.viewSettings.viewsShown$.pipe(takeUntilDestroyed()).subscribe(() => {
-      if (this.sessionKey() == null) return;
+      if (this._loadedSessionKey() == null) return;
       // Reload session.
-      this.loadSession(this.sessionKey() as string);
+      this.loadSessionAbort(this._loadedSessionKey() as string);
     });
     this.viewSettings.keypointsShown$
       .pipe(takeUntilDestroyed())
       .subscribe(() => {
-        if (this.sessionKey() == null) return;
+        if (this._loadedSessionKey() == null) return;
         // Reload session.
-        this.loadSession(this.sessionKey() as string);
+        this.loadSessionAbort(this._loadedSessionKey() as string);
       });
     this.viewSettings.modelsShown$.pipe(takeUntilDestroyed()).subscribe(() => {
-      if (this.sessionKey() == null) return;
+      if (this._loadedSessionKey() == null) return;
       // Reload session.
-      this.loadSession(this.sessionKey() as string);
+      this.loadSessionAbort(this._loadedSessionKey() as string);
     });
   }
 }

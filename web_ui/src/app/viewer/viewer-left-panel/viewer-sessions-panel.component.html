@@ -14,7 +14,7 @@
           (keydown.enter)="handleSessionSelect(session)"
           [class.bg-sky-700]="session.key === selectedSessionKey()"
         >
-          <span>{{ session.key | path }}</span
+          <span>{{ session.relativePath | path }}</span
           ><!-- left hand side -->
           <span>
             <span

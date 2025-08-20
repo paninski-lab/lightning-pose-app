@@ -17,8 +17,9 @@
           >
         </div>
         <app-zoomable-content class="!h-[250px] !w-[250px]">
-          <app-video-tile #content [src]="w.videoSrc">
+          <app-video-tile #content [src]="w.videoSrc" class="relative">
             <app-keypoint-container
+              class="absolute top-0 left-0 h-full w-full"
               [enableEditing]="false"
               [keypointModels]="w.keypoints()"
             ></app-keypoint-container>

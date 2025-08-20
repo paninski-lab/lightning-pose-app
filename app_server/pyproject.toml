@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "lightning-pose-app"
-version = "1.8.1a9"
+version = "1.8.1a12"
 requires-python = ">=3.10"
 dependencies = [
     "aiofiles~=24.1.0",
@@ -13,15 +13,14 @@ dependencies = [
     "honcho~=2.0",
     "pandas~=2.3.0",
     "reactivex~=4.0.0",
-    "uvicorn[standard]~=0.34.0",
+    "uvicorn[standard]~=0.35.0",
     "wcmatch~=10.0",
     "tomli~=2.2.0",
     "tomli_w~=1.2.0",
-    "watchdog~=4.0.0",
-    # TODO pin to compatible version
-    "opencv-python",
-    "tqdm",
-    "scikit-learn",
+    "watchdog~=6.0.0",
+    "opencv-python~=4.12.0.88",
+    "tqdm~=4.67.1",
+    "scikit-learn~=1.7.1",
 ]
 
 [project.optional-dependencies]

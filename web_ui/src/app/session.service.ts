@@ -1,4 +1,4 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { BehaviorSubject, catchError, firstValueFrom } from 'rxjs';
 import { Session } from './session.model';
 import { RpcService } from './rpc.service';
@@ -30,6 +30,7 @@ export class SessionService {
   private _allSessions = new BehaviorSubject<Session[]>([]);
   allSessions$ = this._allSessions.asObservable();
   allSessions = toSignal(this.allSessions$, { requireSync: true });
+  sessionsLoaded = computed(() => this.allSessions().length > 0);
 
   private sessionModelMap = {} as SessionModelMap;
 
@@ -246,58 +247,62 @@ export class SessionService {
   }
 
   private groupFilesBySession(filenames: string[], views: string[]): Session[] {
-    const sessionKeyToItsViewFiles = this.groupFilesByView(filenames, views);
+    const pathKeyToItsViewFiles = this.groupFilesByView(filenames, views);
     // Convert the Map to the required Session array format
     const cmp = createSessionViewComparator(this.projectInfoService.allViews());
-    return Array.from(sessionKeyToItsViewFiles.entries()).map(
-      ([key, groupedFiles]) => {
+    return Array.from(pathKeyToItsViewFiles.entries()).map(
+      ([relativePath, groupedFiles]) => {
         const sessionViews = groupedFiles.map(({ view, filename }) => ({
           viewName: view,
           videoPath:
             this.projectInfoService.projectInfo.data_dir + '/' + filename,
         }));
+        // The filename is the key.
+        const key = relativePath
+          .split('/')
+          .at(-1)!
+          .replace(/\.mp4$/, '');
         return {
-          key: key.replace(/\.mp4$/, ''),
+          key: key,
+          relativePath,
           views: [...sessionViews].sort(cmp),
         };
       },
     );
   }
   private groupFilesByView(
-    filenames: string[],
+    paths: string[],
     views: string[],
   ): Map<string, { view: string; filename: string }[]> {
     // Use a Map to group files by their session key
-    const sessionKeyToItsViewFiles = new Map<
+    const pathKeyToItsFiles = new Map<
       string,
       { view: string; filename: string }[]
     >();
 
-    for (const filename of filenames) {
+    for (const path of paths) {
+      const parts = path.split('/');
+      const filename = parts.at(-1)!;
       let viewName = views.find((v) => filename.includes(v));
       if (!viewName) {
         viewName = 'unknown';
       }
 
       // Remove the view name to get the base session key
-      const sessionKey =
-        viewName == 'unknown' ? filename : filename.replace(viewName, '*');
+      const pathKey =
+        viewName == 'unknown'
+          ? path
+          : [...parts.slice(0, -1), filename.replace(viewName, '*')].join('/');
 
-      if (!sessionKeyToItsViewFiles.has(sessionKey)) {
-        sessionKeyToItsViewFiles.set(sessionKey, []);
+      if (!pathKeyToItsFiles.has(pathKey)) {
+        pathKeyToItsFiles.set(pathKey, []);
       }
-      sessionKeyToItsViewFiles.get(sessionKey)!.push({
+      pathKeyToItsFiles.get(pathKey)!.push({
         view: viewName,
-        filename: filename,
+        filename: path,
       });
-      /*
-      sessionKeyToItsViewFiles.get(sessionKey)!.push({
-        viewName,
-        videoPath: projectInfo.data_dir + '/' + filename,
-      });
-       */
     }
-    return sessionKeyToItsViewFiles;
+    return pathKeyToItsFiles;
   }
 
   async saveMVFrame(labelFile: MVLabelFile, frame: MVFrame) {

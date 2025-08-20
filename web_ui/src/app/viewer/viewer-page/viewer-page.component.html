@@ -33,7 +33,12 @@
     </div>
 
     <!-- Center content -->
-    <app-viewer-center-panel class="grow z-30"></app-viewer-center-panel>
+    @if (sessionService.sessionsLoaded()) {
+      <app-viewer-center-panel
+        class="grow z-30"
+        [sessionKey]="_sessionKey()"
+      ></app-viewer-center-panel>
+    }
 
     <!-- Right pane -->
     <div class="shrink-0 w-40 xl:w-60 h-full">
