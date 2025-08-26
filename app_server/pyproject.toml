@@ -8,6 +8,7 @@ version = "1.8.1a12"
 requires-python = ">=3.10"
 dependencies = [
     "aiofiles~=24.1.0",
+    "aniposelib~=0.7.2",
     "apscheduler~=3.11.0",
     "fastapi~=0.116.0",
     "honcho~=2.0",

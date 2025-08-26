@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from textwrap import dedent
 
+import anyio
 import uvicorn
 from fastapi import FastAPI, HTTPException, APIRouter, Request
 from fastapi.responses import FileResponse
@@ -13,6 +14,7 @@ from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
 
 from . import deps
+from .routes.labeler.multiview_autolabel import warm_up_anipose
 from .tasks.management import setup_active_task_registry
 from .utils.config_watcher import setup_config_watcher
 from .utils.enqueue import enqueue_all_new_fine_videos_task
@@ -41,6 +43,9 @@ async def lifespan(app: FastAPI):
 
     # Setup watchdog for config file changes
     app.state.config_file_observer = setup_config_watcher()
+
+    # Warm up anipose in the background (first run is ~1-2s slow).
+    asyncio.create_task(anyio.to_thread.run_sync(warm_up_anipose))
 
     yield  # Application is now ready to receive requests
 
