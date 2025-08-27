@@ -73,6 +73,10 @@ def get_mv_auto_labels(
     )
     if not camera_group_toml_path.is_file():
         camera_group_toml_path = project_info.data_dir / "calibrations" / "default.toml"
+    if not camera_group_toml_path.is_file():
+        raise FileNotFoundError(
+            f"Could not find calibration file for session {request.sessionKey}"
+        )
 
     global_cg = CameraGroup.load(camera_group_toml_path)
 

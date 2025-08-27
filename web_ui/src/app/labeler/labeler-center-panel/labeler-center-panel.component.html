@@ -115,6 +115,25 @@
         }
       </div>
     </div>
+    @if (frame(); as frame2) {
+      @let lbfl = labelFile()!;
+      <div class="m-4">
+        <h3 class="text-md font-semibold">Multi-view auto-label</h3>
+        <p class="text-sm">
+          Infers keypoints for other views by triangulating labels from at least
+          two views in 3D space and projecting to the other views. Requires
+          camera calibration files.
+        </p>
+        <button
+          class="btn btn-xs bg-sky-700 w-full"
+          [class.btn-disabled]="disableInteractions()"
+          (click)="handleMVAutoLabelClick(lbfl, frame2)"
+          (keydown.enter)="handleMVAutoLabelClick(lbfl, frame2)"
+        >
+          Generate labels
+        </button>
+      </div>
+    }
     <div class="m-4">
       @if (frame(); as frame2) {
         @let lbfl = labelFile()!;

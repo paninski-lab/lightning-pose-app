@@ -250,4 +250,19 @@ export class LabelerCenterPanelComponent implements OnChanges {
         throw new Error(error);
       });
   }
+
+  protected handleMVAutoLabelClick(labelFile: MVLabelFile, frame: MVFrame) {
+    this.isSaving.set(true);
+    this.sessionService
+      .mvAutoLabel(labelFile, frame)
+      .then((response) => {
+        this.isSaving.set(false);
+        // patch response.
+        console.log(JSON.stringify(response, null, 2));
+      })
+      .catch((error) => {
+        this.isSaving.set(false);
+        throw new Error(error);
+      });
+  }
 }

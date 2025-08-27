@@ -12,6 +12,8 @@ import { createSessionViewComparator } from './utils/comparators';
 import { MVLabelFile } from './label-file.model';
 import { fv, MVFrame } from './labeler/frame.model';
 import { SaveFrameView, SaveMvFrame } from './labeler/save-mvframe';
+import { GetMVAutoLabelsRequest } from './labeler/mv-autolabel';
+import _ from 'lodash';
 
 type SessionModelMap = Record<string, string[]>;
 
@@ -322,6 +324,33 @@ export class SessionService {
     });
     const request: SaveMvFrame = { views };
     return this.rpc.call('save_mvframe', request);
+  }
+
+  async mvAutoLabel(labelFile: MVLabelFile, frame: MVFrame) {
+    // Group data inside frame by keypoint name.
+    const allKeypoints = frame.views.flatMap((fv) => {
+      return fv.keypoints.map((kp) => {
+        return {
+          keypointName: kp.keypointName,
+          view: fv.viewName,
+          point: { x: kp.x, y: kp.y },
+        };
+      });
+    });
+    const keypointsByName = _.groupBy(allKeypoints, 'keypointName');
+    // Iterate over keypointsByName and return KeypointForRequest[]
+    const keypoints = Object.entries(keypointsByName).map(
+      ([keypointName, labels]) => ({
+        keypointName,
+        labels,
+      }),
+    );
+    const request: GetMVAutoLabelsRequest = {
+      sessionKey: labelFile.key.replace('*', ''),
+      keypoints,
+    };
+
+    return this.rpc.call('getMVAutoLabels', request);
   }
 }
 
