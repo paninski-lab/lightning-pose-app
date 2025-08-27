@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import logging
 import sys
 from contextlib import asynccontextmanager
@@ -18,6 +19,7 @@ from .routes.labeler.multiview_autolabel import warm_up_anipose
 from .tasks.management import setup_active_task_registry
 from .utils.config_watcher import setup_config_watcher
 from .utils.enqueue import enqueue_all_new_fine_videos_task
+from .utils.file_response import file_response
 
 ## Setup logging
 logging.basicConfig(
@@ -121,7 +123,7 @@ If we need to read out of other directories, they should be added to Project Inf
 
 
 @app.get("/app/v0/files/{file_path:path}")
-def read_file(file_path: Path):
+async def read_file(request: Request, file_path: Path):
     # Prevent secrets like /etc/passwd and ~/.ssh/ from being leaked.
     if file_path.suffix not in (".csv", ".mp4", ".png", ".jpg", ".unlabeled"):
         raise HTTPException(
@@ -130,11 +132,16 @@ def read_file(file_path: Path):
         )
     file_path = Path("/") / file_path
 
-    # Only capable of returning files that exist (not directories).
-    if not file_path.is_file():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-
-    return FileResponse(file_path)
+    # Prevent browser caching of data files (video and image caching are fine, (for now)).
+    # no-cache: browser must check if its cached value is still valid (but can still use its cached value if so).
+    headers = (
+        {"Cache-Control": "no-cache"}
+        if file_path.suffix not in (".mp4", ".png", ".jpg")
+        else None
+    )
+    partial = functools.partial(file_response, request, file_path, headers=headers)
+    response = await anyio.to_thread.run_sync(partial)
+    return response
 
 
 ###########################################################################
