@@ -9,7 +9,7 @@ import {
   signal,
   SimpleChanges,
 } from '@angular/core';
-import { FrameView, mvf, MVFrame } from '../frame.model';
+import { FrameView, fv, mvf, MVFrame } from '../frame.model';
 import { LKeypoint, lkp } from '../types';
 import { DecimalPipe } from '@angular/common';
 import { ZoomableContentComponent } from '../../components/zoomable-content.component';
@@ -20,6 +20,7 @@ import { HorizontalScrollDirective } from '../../components/horizontal-scroll.di
 import { Point } from '@angular/cdk/drag-drop';
 import { SessionService } from '../../session.service';
 import { MVLabelFile } from '../../label-file.model';
+import { GetMVAutoLabelsResponse } from '../mv-autolabel';
 
 @Component({
   selector: 'app-labeler-center-panel',
@@ -53,11 +54,28 @@ export class LabelerCenterPanelComponent implements OnChanges {
       mvf(this.frame()!).isFromUnlabeledSet
     ) {
       // Reset state
+      this.abortController.abort();
+      this.abortController = new AbortController();
+      this.hasCameraCalibrationFiles.set(false);
       this._selectedView.set(null);
       this.selectedKeypoint.set(
         this.selectedFrameView()?.keypoints[0]?.keypointName ?? null,
       );
+      this.checkIfHasCameraCalibrationFiles();
     }
+  }
+
+  private checkIfHasCameraCalibrationFiles() {
+    const abortSignal = this.abortController.signal;
+    if (!this.frame()) return;
+    const sessionKey = mvf(this.frame()!).autolabelSessionKey;
+    if (!sessionKey) return;
+    this.sessionService
+      .hasCameraCalibrationFiles(sessionKey)
+      .then((hasFiles) => {
+        if (abortSignal.aborted) return;
+        this.hasCameraCalibrationFiles.set(hasFiles);
+      });
   }
 
   // selectedView is always nonnull. Defaults to first view in frame.
@@ -131,9 +149,21 @@ export class LabelerCenterPanelComponent implements OnChanges {
 
   // Set to a random value if you need to bust cache of computed signals.
   private cacheBuster = signal(0);
-  handleKeypointUpdated(kpName: string, position: Point, frameView: FrameView) {
-    const keypointName = kpName;
-
+  /** an overload of `handleKeypointUpdated` that uses viewName: string
+   * instead of a reference to frameview. Used for autolabeling */
+  private handleKeypointUpdated2(
+    keypointName: string,
+    viewName: string,
+    position: Point,
+  ) {
+    const frameView = this.getFrameView(viewName)!;
+    this.handleKeypointUpdated(keypointName, position, frameView);
+  }
+  handleKeypointUpdated(
+    keypointName: string,
+    position: Point,
+    frameView: FrameView,
+  ) {
     const keypoint = frameView.keypoints.find(
       (kp) => kp.keypointName === keypointName,
     )!;
@@ -217,11 +247,14 @@ export class LabelerCenterPanelComponent implements OnChanges {
   protected readonly mvf = mvf;
 
   private sessionService = inject(SessionService);
+  private abortController = new AbortController();
   private isSaving = signal(false);
+  private isMVAutoLabeling = signal(false);
+  private hasCameraCalibrationFiles = signal(false);
   protected disableInteractions = computed(() => {
     this.cacheBuster();
 
-    return !this.frame() || this.isSaving();
+    return !this.frame() || this.isSaving() || this.isMVAutoLabeling();
   });
 
   protected isSaveDisabled = computed(() => {
@@ -252,17 +285,36 @@ export class LabelerCenterPanelComponent implements OnChanges {
   }
 
   protected handleMVAutoLabelClick(labelFile: MVLabelFile, frame: MVFrame) {
-    this.isSaving.set(true);
+    this.isMVAutoLabeling.set(true);
+    const abortSignal = this.abortController.signal;
+    const sessionKey = mvf(frame).autolabelSessionKey;
+    if (!sessionKey) {
+      return;
+    }
     this.sessionService
-      .mvAutoLabel(labelFile, frame)
-      .then((response) => {
-        this.isSaving.set(false);
-        // patch response.
-        console.log(JSON.stringify(response, null, 2));
+      .mvAutoLabel(frame, sessionKey)
+      .then((response: GetMVAutoLabelsResponse) => {
+        this.isMVAutoLabeling.set(false);
+        if (abortSignal.aborted) return;
+        // Patch keypoints with projections from response.
+        response.keypoints.forEach((kp) => {
+          if (!kp.projections) return;
+          kp.projections.forEach((proj) => {
+            const projectedPoint = proj.projectedPoint;
+            // Skip because there were not enough labeled views to autolabel.
+            if (!projectedPoint) return;
+            // If this is present, the original point was already labeled.
+            if (proj.originalPoint) return;
+            this.handleKeypointUpdated2(kp.keypointName, proj.view, {
+              x: projectedPoint.x,
+              y: projectedPoint.y,
+            });
+          });
+        });
       })
       .catch((error) => {
-        this.isSaving.set(false);
-        throw new Error(error);
+        this.isMVAutoLabeling.set(false);
+        throw error;
       });
   }
 }

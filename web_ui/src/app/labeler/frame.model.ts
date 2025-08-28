@@ -75,6 +75,12 @@ export class MVFUtils {
       }),
     };
   }
+
+  get autolabelSessionKey(): string | null {
+    const parts = this.mvFrame.key.split('/');
+    if (parts.length < 3) return null; // unable to parse
+    return parts[1].replace('*', '');
+  }
 }
 
 export function mvf(mvFrame: MVFrame) {

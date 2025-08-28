@@ -82,7 +82,7 @@ export class LabelFileFetcherService {
             };
           })
           .filter((x): x is FrameView => x !== null);
-        const key = views[0].imgPath;
+        const key = views[0].imgPath.replace(views[0].viewName, '*');
         return { key, views };
       });
     });
@@ -192,7 +192,7 @@ export class LabelFileFetcherService {
         const views = Object.values(framesPerView)
           .map((frameViews) => frameViews[i])
           .filter((x) => x != null);
-        const key = views[0].imgPath; // todo group by view.
+        const key = views[0].imgPath.replace(views[0].viewName, '*');
         return {
           key,
           views,
