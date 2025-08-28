@@ -76,6 +76,10 @@ export class MVFUtils {
     };
   }
 
+  /** Autolabel session key has * stripped out because it's not valid in filesystem.
+   * Assumes that MVFrame key is the frame imgPath, but view replaced with *.
+   * Assumes that the frame imgPath is <labeled data dir>/<sessionKey>/...
+   */
   get autolabelSessionKey(): string | null {
     const parts = this.mvFrame.key.split('/');
     if (parts.length < 3) return null; // unable to parse

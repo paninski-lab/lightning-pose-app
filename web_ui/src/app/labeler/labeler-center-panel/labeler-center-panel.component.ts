@@ -9,7 +9,7 @@ import {
   signal,
   SimpleChanges,
 } from '@angular/core';
-import { FrameView, fv, mvf, MVFrame } from '../frame.model';
+import { FrameView, mvf, MVFrame } from '../frame.model';
 import { LKeypoint, lkp } from '../types';
 import { DecimalPipe } from '@angular/common';
 import { ZoomableContentComponent } from '../../components/zoomable-content.component';

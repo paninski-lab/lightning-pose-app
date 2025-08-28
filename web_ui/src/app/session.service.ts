@@ -360,7 +360,7 @@ export class SessionService {
 
     const response = (await this.rpc.call('rglob', {
       baseDir: projectInfo.data_dir,
-      pattern: `calibrations/${sessionKey.replace('*', '')}.toml`,
+      pattern: `calibrations/${sessionKey}.toml`,
       noDirs: true,
     })) as RGlobResponse;
     if (response.entries.length > 0) {
