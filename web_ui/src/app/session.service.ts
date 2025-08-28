@@ -12,6 +12,8 @@ import { createSessionViewComparator } from './utils/comparators';
 import { MVLabelFile } from './label-file.model';
 import { fv, MVFrame } from './labeler/frame.model';
 import { SaveFrameView, SaveMvFrame } from './labeler/save-mvframe';
+import { GetMVAutoLabelsRequest } from './labeler/mv-autolabel';
+import _ from 'lodash';
 
 type SessionModelMap = Record<string, string[]>;
 
@@ -322,6 +324,50 @@ export class SessionService {
     });
     const request: SaveMvFrame = { views };
     return this.rpc.call('save_mvframe', request);
+  }
+
+  async mvAutoLabel(frame: MVFrame, sessionKey: string) {
+    // Group data inside frame by keypoint name.
+    const allKeypoints = frame.views
+      .flatMap((fv) => {
+        return fv.keypoints.map((kp) => {
+          return {
+            keypointName: kp.keypointName,
+            view: fv.viewName,
+            point: { x: kp.x, y: kp.y },
+          };
+        });
+      })
+      .filter(({ point }) => !isNaN(point.x));
+    const keypointsByName = _.groupBy(allKeypoints, 'keypointName');
+    // Iterate over keypointsByName and return KeypointForRequest[]
+    const keypoints = Object.entries(keypointsByName).map(
+      ([keypointName, labels]) => ({
+        keypointName,
+        labels,
+      }),
+    );
+    const request: GetMVAutoLabelsRequest = {
+      sessionKey,
+      keypoints,
+    };
+
+    return this.rpc.call('getMVAutoLabels', request);
+  }
+
+  async hasCameraCalibrationFiles(sessionKey: string) {
+    const projectInfo = this.projectInfoService.projectInfo;
+
+    const response = (await this.rpc.call('rglob', {
+      baseDir: projectInfo.data_dir,
+      pattern: `calibrations/${sessionKey}.toml`,
+      noDirs: true,
+    })) as RGlobResponse;
+    if (response.entries.length > 0) {
+      return true;
+    } else {
+      return false;
+    }
   }
 }
 
