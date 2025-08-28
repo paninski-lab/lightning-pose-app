@@ -47,21 +47,22 @@ export class LabelerCenterPanelComponent implements OnChanges {
   }>();
 
   ngOnChanges(changes: SimpleChanges) {
-    // Unlabeled frames should start at the first unlabeled keypoint.
+    if (changes['frame']) {
+      this.abortController.abort();
+      this.abortController = new AbortController();
+      this.hasCameraCalibrationFiles.set(false);
+      this.checkIfHasCameraCalibrationFiles();
+    }
+    // Unlabeled frames should start from the first view and keypoint.
     if (
       changes['frame'] &&
       this.frame() &&
       mvf(this.frame()!).isFromUnlabeledSet
     ) {
-      // Reset state
-      this.abortController.abort();
-      this.abortController = new AbortController();
-      this.hasCameraCalibrationFiles.set(false);
       this._selectedView.set(null);
       this.selectedKeypoint.set(
         this.selectedFrameView()?.keypoints[0]?.keypointName ?? null,
       );
-      this.checkIfHasCameraCalibrationFiles();
     }
   }
 
@@ -250,7 +251,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
   private abortController = new AbortController();
   private isSaving = signal(false);
   private isMVAutoLabeling = signal(false);
-  private hasCameraCalibrationFiles = signal(false);
+  protected hasCameraCalibrationFiles = signal(false);
   protected disableInteractions = computed(() => {
     this.cacheBuster();
 

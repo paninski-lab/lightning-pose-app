@@ -25,6 +25,9 @@ class Config(BaseModel):
     # Name of the directory in data_dir where extract frames will output to
     LABELED_DATA_DIRNAME: str = "labeled_data"
 
+    # Name of the directory in data_dir containing session-specific calibration files
+    CALIBRATIONS_DIRNAME: str = "calibrations"
+
     ###
     # Frame extraction config
     ###
