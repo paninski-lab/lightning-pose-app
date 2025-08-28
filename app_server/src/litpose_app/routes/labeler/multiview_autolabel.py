@@ -66,10 +66,13 @@ class GetMVAutoLabelsResponse(BaseModel):
 def get_mv_auto_labels(
     request: GetMVAutoLabelsRequest,
     project_info: ProjectInfo = Depends(deps.project_info),
+    config: deps.Config = Depends(deps.config),
 ) -> GetMVAutoLabelsResponse:
     # Read the toml files for this session.
     camera_group_toml_path = (
-        project_info.data_dir / "calibrations" / f"{request.sessionKey}.toml"
+        project_info.data_dir
+        / config.CALIBRATIONS_DIRNAME
+        / f"{request.sessionKey}.toml"
     )
     if not camera_group_toml_path.is_file():
         camera_group_toml_path = project_info.data_dir / "calibrations" / "default.toml"
@@ -135,6 +138,7 @@ def _get_mv_auto_labels_for_keypoint(
         )
 
     point3d = kp_cg.triangulate(
+        # makes a Cx2 array.
         np.array([[label.point.x, label.point.y] for label in keypoint.labels])
     )
     reprojections = global_cg.project(point3d)

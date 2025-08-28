@@ -139,7 +139,9 @@
         </ul>
         <button
           class="btn btn-xs bg-sky-700 w-full"
-          [class.btn-disabled]="disableInteractions()"
+          [class.btn-disabled]="
+            !hasCameraCalibrationFiles() || disableInteractions()
+          "
           (click)="handleMVAutoLabelClick(lbfl, frame2)"
           (keydown.enter)="handleMVAutoLabelClick(lbfl, frame2)"
         >
