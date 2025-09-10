@@ -32,6 +32,14 @@
           </div>
         </app-zoomable-content>
       </div>
+    } @else {
+      <div class="flex items-center justify-center h-full">
+        <div class="text-lg opacity-60 text-center">
+          Select a labels CSV file on the left
+          <div class="divider">OR</div>
+          <button class="btn btn-lg">Create label file</button>
+        </div>
+      </div>
     }
 
     <!-- Filmstrip of all views (Small Height, Horizontal Overflow) -->
