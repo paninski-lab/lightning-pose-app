@@ -2,8 +2,14 @@ import { Routes } from '@angular/router';
 import { ViewerPageComponent } from './viewer/viewer-page/viewer-page.component';
 import { LabelerPageComponent } from './labeler/labeler-page.component';
 import { SandboxComponent } from './sandbox/sandbox.component';
+import { HomePageComponent } from './home-page/home-page.component';
 
 export const routes: Routes = [
+  {
+    path: '',
+    component: HomePageComponent,
+    title: 'Lightning Pose App',
+  },
   {
     path: 'viewer',
     component: ViewerPageComponent,
