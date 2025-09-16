@@ -83,24 +83,11 @@ export class SessionService {
     }
   }
   async _loadLabelFiles() {
-    const projectInfo = this.projectInfoService.projectInfo;
+    const response = (await this.rpc.call('findLabelFiles')) as {
+      labelFiles: string[];
+    };
 
-    const response = (await this.rpc.call('rglob', {
-      baseDir: projectInfo.data_dir,
-      pattern: '**/*.csv',
-      noDirs: true,
-    })) as RGlobResponse;
-
-    const csvFiles: string[] = response.entries
-      .filter((entry) => {
-        if (entry.path.endsWith('_bbox.csv')) return false;
-        if (entry.path.endsWith('_error.csv')) return false;
-        if (entry.path.endsWith('_loss.csv')) return false;
-        if (entry.path.endsWith('_norm.csv')) return false;
-
-        return true;
-      })
-      .map((entry) => entry.path);
+    const csvFiles: string[] = response.labelFiles;
     const cmp = createSessionViewComparator(this.projectInfoService.allViews());
 
     const files: MVLabelFile[] = Array.from(
