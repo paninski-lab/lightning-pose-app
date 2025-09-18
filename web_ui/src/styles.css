@@ -5,6 +5,7 @@ html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 */
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 @plugin "daisyui" {
   /*themes: light --default, dark --prefersdark; */
   themes: dim --default;

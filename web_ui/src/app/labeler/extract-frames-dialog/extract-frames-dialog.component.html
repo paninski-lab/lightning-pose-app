@@ -2,7 +2,10 @@
 <div class="flex">
   <h3 class="text-xl font-bold text-nowrap">Extract frames</h3>
   <ul class="steps text-sm">
-    <li class="step step-primary">Select a session</li>
+    <li class="step step-primary">Select a label file</li>
+    <li class="step" [class.step-primary]="step() !== 'labelFile'">
+      Select a session
+    </li>
     <li class="step" [class.step-primary]="step() === 'settings'">
       Select extraction strategy
     </li>
@@ -11,7 +14,91 @@
 <div class="divider"></div>
 
 <!-- Body -->
-@if (step() === "session") {
+@if (step() === "labelFile") {
+  <div>
+    <p class="mb-4">
+      This workflow identifies new frames to label and adds them to the labeling
+      queue. It is often used when starting a project or to add frames from new
+      sessions.
+    </p>
+    <div
+      class="collapse collapse-plus text-sm bg-base-200 border-base-300 border mb-4"
+    >
+      <input type="checkbox" />
+      <div class="collapse-title font-semibold">
+        Where are extracted frames stored?
+      </div>
+      <div class="collapse-content text-sm">
+        Extracted frames are stored as <code class="code">PNG</code> files in
+        the <code class="code">labeled-data</code> subdirectory of the project
+        data directory as follows
+        <code class="code block p-2 m-2 bg-base-300"
+          >&lt;data_dir&gt;&nbsp;/&nbsp;labeled-data&nbsp;/&nbsp;&lt;session_name&gt;&nbsp;/&nbsp;img&lt;frame_index&gt;.png</code
+        >
+        Additionally, for each frame <code class="code">i</code>, adjacent
+        frames <code class="code">i-2 ... i+2</code> are extracted but not added
+        to the labeling queue. These <b>context frames</b> are used to power
+        some lightning pose features that help resolve occlusions.
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="prose">
+      <h3 class="text-md">Label file</h3>
+      <fieldset>
+        <legend>1. Select the destination for frame extraction</legend>
+        <div class="m-4">
+          <input
+            class="radio mr-2"
+            type="radio"
+            name="labelFile"
+            id="radio_createNew"
+            value="createNew"
+            [(ngModel)]="labelFileSelectionType"
+          />
+          <label for="radio_createNew">New label file</label><br />
+          <input
+            class="radio mr-2"
+            type="radio"
+            name="labelFile"
+            id="radio_useExisting"
+            value="useExisting"
+            [(ngModel)]="labelFileSelectionType"
+          />
+          <label for="radio_useExisting">Existing label file</label>
+        </div>
+        @if (labelFileSelectionType() === "createNew") {
+          <div class="mt-4">
+            <label for="input_labelFileTemplate" class="mb-2"
+              >2. Enter the new label file name</label
+            >
+            <p class="text-sm">
+              For multiview projects, one file will be created per view. Use the
+              <code class="p-1">*</code> character to represent the view name.
+              For example, <code class="p-1">CollectedData_*.csv</code>.
+            </p>
+            <input
+              class="input"
+              [(ngModel)]="newLabelFileTemplate"
+              id="input_labelFileTemplate"
+            />
+            .csv
+          </div>
+        } @else if (labelFileSelectionType() === "useExisting") {
+          <div class="mt-4">
+            <label for="input_labelFileTemplate" class="mb-2"
+              >2. Select the destination label file</label
+            >
+            <app-label-file-picker
+              class="block m-4"
+              [(labelFileKey)]="existingLabelFileKey"
+              [selectSizeClass]="'select-md'"
+            ></app-label-file-picker>
+          </div>
+        }
+      </fieldset>
+    </div>
+  </div>
+} @else if (step() === "session") {
   <div>
     <sub class="text-sm block">Select a session to extract frames from</sub>
 
@@ -90,7 +177,7 @@
 }
 <!-- Footer -->
 <div class="flex justify-between mt-6 gap-2">
-  @if (step() === "session") {
+  @if (step() === "labelFile") {
     <button class="btn btn-outline btn-secondary" (click)="handleCloseClick()">
       Cancel
     </button>
@@ -98,17 +185,17 @@
     <button
       class="btn btn-outline"
       [disabled]="isProcessing()"
-      (click)="step.set('session')"
+      (click)="step.set(stepOrder[stepOrder.indexOf(step()) - 1])"
     >
       Previous
     </button>
   }
   <div class="flex gap-2">
-    @if (step() === "session") {
+    @if (step() !== "settings") {
       <button
         class="btn btn-outline btn-primary"
-        [disabled]="!sessionStepIsValid() || isProcessing()"
-        (click)="step.set('settings')"
+        [disabled]="!isNextEnabled() || isProcessing()"
+        (click)="step.set(stepOrder[stepOrder.indexOf(step()) + 1])"
       >
         Next
       </button>

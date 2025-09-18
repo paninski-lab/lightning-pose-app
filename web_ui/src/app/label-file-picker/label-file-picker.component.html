@@ -1,0 +1,17 @@
+<select
+  class="select {{ selectSizeClass() }}"
+  (change)="handleSelectLabelFile($any($event.target).value)"
+>
+  @let nullOption = { key: "None", views: [] };
+  @for (
+    labelFile of $any([nullOption]).concat(sessionService.allLabelFiles());
+    track labelFile.key
+  ) {
+    <option
+      [value]="labelFile.key"
+      [selected]="labelFile.key === labelFileKey()"
+    >
+      {{ labelFile.key }}
+    </option>
+  }
+</select>

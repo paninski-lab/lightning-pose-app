@@ -20,6 +20,8 @@ import { LabelFileFetcherService } from './label-file-fetcher.service';
 import { mvf, MVFrame } from './frame.model';
 import { Dialog } from '@angular/cdk/dialog';
 import { ExtractFramesDialogComponent } from './extract-frames-dialog/extract-frames-dialog.component';
+import { ToastService } from '../toast.service';
+import { LabelFilePickerComponent } from '../label-file-picker/label-file-picker.component';
 
 interface LoadError {
   message: string;
@@ -33,6 +35,7 @@ interface LoadError {
     RouterLinkActive,
     RouterLink,
     PathPipe,
+    LabelFilePickerComponent,
   ],
   templateUrl: './labeler-page.component.html',
   styleUrl: './labeler-page.component.css',
@@ -45,6 +48,7 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   private labelFileFetcher = inject(LabelFileFetcherService);
   private router = inject(Router);
   private dialog = inject(Dialog);
+  private toastService = inject(ToastService);
 
   // Store loaded data for the selected label file
   protected loadedLabelFile = signal<MVLabelFile | null>(null);
@@ -172,8 +176,8 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     }
   }
 
-  protected handleSelectLabelFile(labelFileKey: string) {
-    if (labelFileKey !== 'None') {
+  protected handleSelectLabelFile(labelFileKey: string | null) {
+    if (labelFileKey !== null) {
       this.router.navigate(['/labeler'], {
         queryParams: { labelFileKey: labelFileKey },
       });
@@ -194,8 +198,10 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     this.dialog.open(ExtractFramesDialogComponent, {
       data: { labelFile: this.loadedLabelFile() },
       // width/height to fit the content of the dialog
-      width: 'auto',
-      height: 'auto',
+      maxWidth: 800,
+      minHeight: 400,
+      minWidth: 600,
+      maxHeight: '80vh',
       // Daisy UI styling.
       backdropClass: ['modal', 'modal-open'],
       // .modal-box opacity is usually set to 100%

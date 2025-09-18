@@ -12,27 +12,12 @@
       class="bg-base-200 w-60 xl:w-80 flex flex-col justify-between shadow-lg"
     >
       <div>
-        <div class="p-4 flex justify-between items-center">
-          Label file
-          <select
-            class="select select-sm max-w-50"
-            (change)="handleSelectLabelFile($any($event.target).value)"
-          >
-            @let nullOption = { key: "None", views: [] };
-            @for (
-              labelFile of $any([nullOption]).concat(
-                sessionService.allLabelFiles()
-              );
-              track labelFile.key
-            ) {
-              <option
-                [value]="labelFile.key"
-                [selected]="labelFile.key === selectedLabelFile()?.key"
-              >
-                {{ labelFile.key }}
-              </option>
-            }
-          </select>
+        <div class="p-4">
+          <h1 class="mb-2">Label file</h1>
+          <app-label-file-picker
+            [labelFileKey]="labelFileKey()"
+            (labelFileKeyChange)="handleSelectLabelFile($event)"
+          ></app-label-file-picker>
         </div>
         @if (isLoading()) {
           <div class="p-4">Loading CSV file...</div>
