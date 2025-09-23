@@ -37,7 +37,9 @@
         <div class="text-lg opacity-60 text-center">
           Select a label file on the left
           <div class="divider">OR</div>
-          <button class="btn btn-lg">Create label file</button>
+          <button class="btn btn-lg" (click)="newLabelFile.emit()">
+            Start new label file
+          </button>
         </div>
       </div>
     }

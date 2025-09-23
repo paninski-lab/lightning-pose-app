@@ -18,7 +18,6 @@ import { MVLabelFile } from '../label-file.model';
 import { PathPipe } from '../components/path.pipe';
 import { LabelFileFetcherService } from './label-file-fetcher.service';
 import { mvf, MVFrame } from './frame.model';
-import { Dialog } from '@angular/cdk/dialog';
 import { ExtractFramesDialogComponent } from './extract-frames-dialog/extract-frames-dialog.component';
 import { ToastService } from '../toast.service';
 import { LabelFilePickerComponent } from '../label-file-picker/label-file-picker.component';
@@ -36,6 +35,7 @@ interface LoadError {
     RouterLink,
     PathPipe,
     LabelFilePickerComponent,
+    ExtractFramesDialogComponent,
   ],
   templateUrl: './labeler-page.component.html',
   styleUrl: './labeler-page.component.css',
@@ -47,7 +47,6 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   protected sessionService = inject(SessionService);
   private labelFileFetcher = inject(LabelFileFetcherService);
   private router = inject(Router);
-  private dialog = inject(Dialog);
   private toastService = inject(ToastService);
 
   // Store loaded data for the selected label file
@@ -73,7 +72,7 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   protected loadError = signal<LoadError | null>(null);
 
   // Set from the router on URL change.
-  labelFileKey = input<string | null>(null);
+  labelFileKey = input<string | null | undefined>(null);
   // Set from the router on URL change.
   frameKey = input<string | null>(null);
 
@@ -194,19 +193,5 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     this.loadLabelFileData(this.selectedLabelFile());
   }
 
-  protected handleExtractFramesClick() {
-    this.dialog.open(ExtractFramesDialogComponent, {
-      data: { labelFile: this.loadedLabelFile() },
-      // width/height to fit the content of the dialog
-      maxWidth: 800,
-      minHeight: 400,
-      minWidth: 600,
-      maxHeight: '80vh',
-      // Daisy UI styling.
-      backdropClass: ['modal', 'modal-open'],
-      // .modal-box opacity is usually set to 100%
-      // by a `.modal.modal-open .modal-box` selector
-      panelClass: ['modal-box', 'opacity-100'],
-    });
-  }
+  extractFramesDialogOpen = signal<boolean>(false);
 }
