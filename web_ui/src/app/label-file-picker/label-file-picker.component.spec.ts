@@ -8,9 +8,8 @@ describe('LabelFilePickerComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [LabelFilePickerComponent]
-    })
-    .compileComponents();
+      imports: [LabelFilePickerComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(LabelFilePickerComponent);
     component = fixture.componentInstance;

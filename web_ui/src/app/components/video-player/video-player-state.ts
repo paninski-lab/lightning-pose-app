@@ -1,6 +1,19 @@
-import { computed, effect, Injectable, Signal, signal, untracked } from '@angular/core';
+import {
+  computed,
+  effect,
+  Injectable,
+  Signal,
+  signal,
+  untracked,
+} from '@angular/core';
 import { VideoTileComponent } from './video-tile/video-tile.component';
-import { animationFrameScheduler, BehaviorSubject, map, Subscription, timer } from 'rxjs';
+import {
+  animationFrameScheduler,
+  BehaviorSubject,
+  map,
+  Subscription,
+  timer,
+} from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 
 /**

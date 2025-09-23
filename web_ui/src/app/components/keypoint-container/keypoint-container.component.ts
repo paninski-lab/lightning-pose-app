@@ -7,7 +7,7 @@ import {
   model,
   output,
   signal,
-  viewChild
+  viewChild,
 } from '@angular/core';
 import { Keypoint } from '../../keypoint';
 import { Point } from '@angular/cdk/drag-drop';

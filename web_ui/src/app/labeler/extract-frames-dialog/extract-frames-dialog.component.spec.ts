@@ -8,9 +8,8 @@ describe('ExtractFramesDialogComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ExtractFramesDialogComponent]
-    })
-    .compileComponents();
+      imports: [ExtractFramesDialogComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(ExtractFramesDialogComponent);
     component = fixture.componentInstance;

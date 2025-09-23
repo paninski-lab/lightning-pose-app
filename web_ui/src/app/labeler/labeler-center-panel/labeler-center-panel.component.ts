@@ -267,6 +267,8 @@ export class LabelerCenterPanelComponent implements OnChanges {
     );
   });
 
+  newLabelFile = output();
+
   protected handleSaveClick(
     labelFile: MVLabelFile,
     frame: MVFrame,

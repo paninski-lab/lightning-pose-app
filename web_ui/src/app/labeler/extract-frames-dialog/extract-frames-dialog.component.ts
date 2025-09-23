@@ -3,14 +3,14 @@ import {
   Component,
   computed,
   inject,
+  input,
+  OnInit,
+  output,
   signal,
-  viewChild,
 } from '@angular/core';
-import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { ViewerSessionsPanelComponent } from '../../viewer/viewer-left-panel/viewer-sessions-panel.component';
 import { Session } from '../../session.model';
 import { FormsModule } from '@angular/forms';
-import { MVLabelFile } from '../../label-file.model';
 import { RpcService } from '../../rpc.service';
 import { ExtractFramesRequest } from '../../extract-frames-request';
 import { LabelFilePickerComponent } from '../../label-file-picker/label-file-picker.component';
@@ -26,15 +26,21 @@ import { LabelFilePickerComponent } from '../../label-file-picker/label-file-pic
   styleUrl: './extract-frames-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ExtractFramesDialogComponent {
-  private dialogRef = inject(DialogRef);
-  private dialogData: { labelFile: MVLabelFile } = inject(DIALOG_DATA);
-
+export class ExtractFramesDialogComponent implements OnInit {
   protected step = signal('labelFile');
   protected stepOrder = ['labelFile', 'session', 'settings'];
 
-  // Form data
+  initialLabelFileSelectionType = input<'createNew' | 'useExisting'>(
+    'createNew',
+  );
+  initialSelectedLabelFileKey = input<string | null>(null);
 
+  ngOnInit() {
+    this.labelFileSelectionType.set(this.initialLabelFileSelectionType());
+    this.existingLabelFileKey.set(this.initialSelectedLabelFileKey());
+  }
+
+  // Form data
   protected labelFileSelectionType = signal<'createNew' | 'useExisting'>(
     'createNew',
   );
@@ -45,9 +51,10 @@ export class ExtractFramesDialogComponent {
   protected session = signal<Session | null>(null);
   protected nFrames = signal<number | null>(null);
   protected isProcessing = signal(false);
+  exit = output();
 
   protected handleCloseClick() {
-    this.dialogRef.close();
+    this.exit.emit();
   }
 
   handleSelectedSessionChange(session: Session | null) {
@@ -90,7 +97,9 @@ export class ExtractFramesDialogComponent {
         views: this.session()!.views,
       },
       labelFile: {
-        views: this.dialogData.labelFile.views,
+        // TODO fixme
+        //views: this.dialogData.labelFile.views,
+        views: [],
       },
       method: 'random',
       options: {
@@ -105,7 +114,7 @@ export class ExtractFramesDialogComponent {
     this.rpc
       .call('extractFrames', this.toExtractFramesRequest())
       .then(() => {
-        this.dialogRef.close();
+        this.handleCloseClick();
       })
       .finally(() => {
         this.isProcessing.set(false);

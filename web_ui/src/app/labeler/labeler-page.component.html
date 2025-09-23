@@ -15,7 +15,7 @@
         <div class="p-4">
           <h1 class="mb-2">Label file</h1>
           <app-label-file-picker
-            [labelFileKey]="labelFileKey()"
+            [labelFileKey]="labelFileKey() ?? null"
             (labelFileKeyChange)="handleSelectLabelFile($event)"
           ></app-label-file-picker>
         </div>
@@ -97,19 +97,29 @@
                 }
               }
             </ul>
-            @if (this.loadedLabelFile()) {
-              <button
-                class="btn bg-sky-700 btn-circle btn-xs my-2 w-full"
-                (click)="handleExtractFramesClick()"
-              >
-                Add frames
-              </button>
-            }
           </div>
+          @if (this.loadedLabelFile()) {
+            <button
+              class="btn bg-sky-700 btn-circle btn-sm my-2 w-full"
+              (click)="extractFramesDialogOpen.set(true)"
+            >
+              Extract frames
+            </button>
+          }
         </div>
       </div>
       <app-loading-bar class="h-20 p-4"></app-loading-bar>
     </div>
+
+    @if (extractFramesDialogOpen()) {
+      <app-extract-frames-dialog
+        [initialLabelFileSelectionType]="
+          labelFileKey() == null ? 'createNew' : 'useExisting'
+        "
+        [initialSelectedLabelFileKey]="labelFileKey() ?? null"
+        (exit)="extractFramesDialogOpen.set(false)"
+      ></app-extract-frames-dialog>
+    }
 
     <!-- Center content -->
     <app-labeler-center-panel
@@ -117,6 +127,7 @@
       [labelFile]="loadedLabelFile()"
       [frame]="selectedFrame()"
       (saved)="handleSaved($event)"
+      (newLabelFile)="extractFramesDialogOpen.set(true)"
     ></app-labeler-center-panel>
   </div>
 }

@@ -1,11 +1,8 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
-import { KeypointContainerComponent } from '../components/keypoint-container/keypoint-container.component';
-import { Keypoint } from '../keypoint';
-import { Point } from '@angular/cdk/drag-drop';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 
 @Component({
   selector: 'app-sandbox',
-  imports: [KeypointContainerComponent],
+  imports: [],
   templateUrl: './sandbox.component.html',
   styleUrl: './sandbox.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
