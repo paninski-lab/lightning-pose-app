@@ -14,10 +14,22 @@
       <div>
         <div class="p-4">
           <h1 class="mb-2">Label file</h1>
-          <app-label-file-picker
-            [labelFileKey]="labelFileKey() ?? null"
-            (labelFileKeyChange)="handleSelectLabelFile($event)"
-          ></app-label-file-picker>
+          <div class="flex join">
+            <app-label-file-picker
+              class="grow"
+              [labelFileKey]="labelFileKey() ?? null"
+              (labelFileKeyChange)="handleSelectLabelFile($event)"
+              [selectSizeClass]="'select-sm join-item'"
+            ></app-label-file-picker>
+            @if (!this.labelFileKey()) {
+              <button
+                class="btn btn-sm btn-primary join-item"
+                (click)="extractFramesDialogOpen.set(true)"
+              >
+                +
+              </button>
+            }
+          </div>
         </div>
         @if (isLoading()) {
           <div class="p-4">Loading CSV file...</div>
@@ -73,7 +85,9 @@
             <div class="text-sm">Please label one at a time</div>
           </div>
           <div
-            class="panel-content inset-shadow-xs inset-shadow-black/30 overflow-auto h-60 flex flex-col justify-between"
+            class="panel-content inset-shadow-xs inset-shadow-black/30 overflow-auto h-60 flex flex-col justify-between {{
+              xfSuccessNotifyClasses()
+            }}"
           >
             <!--panel content-->
             <ul class="w-fit relative" tabindex="0" role="listbox">
@@ -100,10 +114,10 @@
           </div>
           @if (this.loadedLabelFile()) {
             <button
-              class="btn bg-sky-700 btn-circle btn-sm my-2 w-full"
+              class="btn btn-soft btn-primary btn-circle btn-sm my-2 w-full"
               (click)="extractFramesDialogOpen.set(true)"
             >
-              Extract frames
+              Add more frames from a session
             </button>
           }
         </div>
@@ -113,11 +127,13 @@
 
     @if (extractFramesDialogOpen()) {
       <app-extract-frames-dialog
+        [initialStep]="labelFileKey() == null ? 'labelFile' : 'session'"
         [initialLabelFileSelectionType]="
           labelFileKey() == null ? 'createNew' : 'useExisting'
         "
         [initialSelectedLabelFileKey]="labelFileKey() ?? null"
         (exit)="extractFramesDialogOpen.set(false)"
+        (done)="handleExtractFramesDone()"
       ></app-extract-frames-dialog>
     }
 

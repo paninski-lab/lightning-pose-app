@@ -104,9 +104,9 @@ def _export_frames(
     """
     Extracts frames (frame_idxs) from each view.
 
-    Each view's video is processed independently by the process pool (CPU intensive).
-    Frames are written to temp files until all frames are extracted from all views.
-    Then all temp files are moved to their final destination.
+    Work is executed by process pool: one task per camera view.
+    Tasks write to temp files.
+    Upon all tasks finishing, the temp files are moved to final destination (atomic).
 
     Returns a dict of view_name -> list of paths to extracted center frames (relative to data dir).
     """
