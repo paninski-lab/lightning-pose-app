@@ -194,4 +194,9 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   }
 
   extractFramesDialogOpen = signal<boolean>(false);
+  protected xfSuccessNotifyClasses = signal('');
+
+  handleExtractFramesDone() {
+    this.xfSuccessNotifyClasses.set('border');
+  }
 }

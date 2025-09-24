@@ -14,6 +14,8 @@ import { FormsModule } from '@angular/forms';
 import { RpcService } from '../../rpc.service';
 import { ExtractFramesRequest } from '../../extract-frames-request';
 import { LabelFilePickerComponent } from '../../label-file-picker/label-file-picker.component';
+import { ProjectInfoService } from '../../project-info.service';
+import { SessionService } from '../../session.service';
 
 @Component({
   selector: 'app-extract-frames-dialog',
@@ -27,17 +29,21 @@ import { LabelFilePickerComponent } from '../../label-file-picker/label-file-pic
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ExtractFramesDialogComponent implements OnInit {
-  protected step = signal('labelFile');
+  protected step = signal<string>('labelFile');
   protected stepOrder = ['labelFile', 'session', 'settings'];
 
+  initialStep = input<string>('labelFile');
   initialLabelFileSelectionType = input<'createNew' | 'useExisting'>(
     'createNew',
   );
   initialSelectedLabelFileKey = input<string | null>(null);
+  private sessionService = inject(SessionService);
 
   ngOnInit() {
+    this.step.set(this.initialStep());
     this.labelFileSelectionType.set(this.initialLabelFileSelectionType());
     this.existingLabelFileKey.set(this.initialSelectedLabelFileKey());
+    this.newLabelFileTemplate.set(this.defaultLabelFileTemplate());
   }
 
   // Form data
@@ -52,6 +58,9 @@ export class ExtractFramesDialogComponent implements OnInit {
   protected nFrames = signal<number | null>(null);
   protected isProcessing = signal(false);
   exit = output();
+
+  private rpc = inject(RpcService);
+  private projectInfoService = inject(ProjectInfoService);
 
   protected handleCloseClick() {
     this.exit.emit();
@@ -92,14 +101,22 @@ export class ExtractFramesDialogComponent implements OnInit {
   /** Makes a request object that the extract frames service can execute. */
   private toExtractFramesRequest(): ExtractFramesRequest {
     // Assume validity. Calls will be guarded by is valid.
+    const labelFile = this.sessionService
+      .allLabelFiles()
+      .find((mvf) => mvf.key === this.existingLabelFileKey());
+    const labelFileCreationRequest =
+      this.labelFileSelectionType() === 'createNew'
+        ? {
+            labelFileTemplate: this.newLabelFileTemplate(),
+          }
+        : null;
     return {
+      labelFileCreationRequest,
       session: {
         views: this.session()!.views,
       },
       labelFile: {
-        // TODO fixme
-        //views: this.dialogData.labelFile.views,
-        views: [],
+        views: labelFile ? labelFile.views : null,
       },
       method: 'random',
       options: {
@@ -107,7 +124,6 @@ export class ExtractFramesDialogComponent implements OnInit {
       },
     };
   }
-  private rpc = inject(RpcService);
 
   handleExtractFramesClick() {
     this.isProcessing.set(true);
@@ -130,4 +146,11 @@ export class ExtractFramesDialogComponent implements OnInit {
     }
     return false;
   });
+  protected defaultLabelFileTemplate(): string {
+    return this.isMultiviewProject() ? 'CollectedData_*' : 'CollectedData.csv';
+  }
+
+  protected isMultiviewProject() {
+    return this.projectInfoService.projectInfo.views.length > 1;
+  }
 }

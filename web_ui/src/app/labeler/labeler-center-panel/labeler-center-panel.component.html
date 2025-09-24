@@ -5,7 +5,20 @@
   <div class="grid grid-rows-[1fr_auto] gap-4 p-4">
     <!-- Main view -->
 
-    @if (selectedFrameView(); as fv) {
+    @if (!labelFile()) {
+      <div class="flex items-center justify-center h-full">
+        <div class="text-lg opacity-60 text-center">
+          Select a label file on the left
+        </div>
+      </div>
+    } @else if (!frame()) {
+      <div class="flex items-center justify-center h-full">
+        <div class="text-lg opacity-60 text-center">
+          Select a frame on the left to view
+        </div>
+      </div>
+    } @else {
+      @let fv = selectedFrameView()!;
       <div>
         <h3 class="bg-base-200 px-2 text-md">
           {{ fv.viewName }}
@@ -31,16 +44,6 @@
             ></app-keypoint-container>
           </div>
         </app-zoomable-content>
-      </div>
-    } @else {
-      <div class="flex items-center justify-center h-full">
-        <div class="text-lg opacity-60 text-center">
-          Select a label file on the left
-          <div class="divider">OR</div>
-          <button class="btn btn-lg" (click)="newLabelFile.emit()">
-            Start new label file
-          </button>
-        </div>
       </div>
     }
 

@@ -1,5 +1,11 @@
 <dialog class="modal" open>
-  <div class="modal-box w-5/6 max-w-4xl">
+  <div class="modal-box w-5/6 max-w-3xl">
+    <button
+      class="btn btn-md btn-circle btn-ghost absolute right-4 top-4"
+      (click)="handleCloseClick()"
+    >
+      ✕
+    </button>
     <!-- Header -->
     <div class="flex">
       <h3 class="text-xl font-bold text-nowrap">Extract frames</h3>
@@ -17,7 +23,7 @@
 
     <!-- Body -->
     @if (step() === "labelFile") {
-      <div>
+      <div class="prose max-w-none!">
         <p class="mb-4">
           This workflow identifies new frames to label and adds them to the
           labeling queue. It is often used when starting a project or to add
@@ -44,7 +50,7 @@
           </div>
         </div>
         <div class="divider"></div>
-        <div class="prose">
+        <div>
           <h3 class="text-md">Label file</h3>
           <fieldset>
             <legend>1. Select the destination for frame extraction</legend>
@@ -71,21 +77,35 @@
             @if (labelFileSelectionType() === "createNew") {
               <div class="mt-4">
                 <label for="input_labelFileTemplate" class="mb-2"
-                  >2. Enter the new label file name</label
+                  >2. Enter the filename for the new label file</label
                 >
-                <p class="text-sm">
-                  For multiview projects, one file will be created per view. Use
-                  the
-                  <code class="p-1">*</code> character to represent the view
-                  name. For example,
-                  <code class="p-1">CollectedData_*.csv</code>.
-                </p>
-                <input
-                  class="input"
-                  [(ngModel)]="newLabelFileTemplate"
-                  id="input_labelFileTemplate"
-                />
-                .csv
+                <div class="m-4">
+                  <p class="text-sm">
+                    @if (!isMultiviewProject()) {
+                      Single camera project detected. If instead you have
+                      multiple camera views for each session, set the Views
+                      field in the project settings and return to this workflow.
+                    } @else {
+                      Multiview project detected. One file will be created per
+                      camera view. Use the
+                      <code class="p-1">*</code> character to represent the view
+                      name. For example,
+                      <code class="p-1">CollectedData_*.csv</code>.
+                    }
+                  </p>
+                  <label class="input">
+                    <input
+                      type="text"
+                      [(ngModel)]="newLabelFileTemplate"
+                      id="input_labelFileTemplate"
+                    />
+                    <span class="label">.csv</span>
+                  </label>
+                  <div class="validator-hint visible!">
+                    <code>{{ defaultLabelFileTemplate() }}</code>
+                    is the recommended default.
+                  </div>
+                </div>
               </div>
             } @else if (labelFileSelectionType() === "useExisting") {
               <div class="mt-4">
@@ -194,17 +214,17 @@
           [disabled]="isProcessing()"
           (click)="step.set(stepOrder[stepOrder.indexOf(step()) - 1])"
         >
-          Previous
+          <span class="material-icons">arrow_back</span>Go back
         </button>
       }
       <div class="flex gap-2">
         @if (step() !== "settings") {
           <button
-            class="btn btn-outline btn-primary"
+            class="btn btn-primary"
             [disabled]="!isNextEnabled() || isProcessing()"
             (click)="step.set(stepOrder[stepOrder.indexOf(step()) + 1])"
           >
-            Next
+            Continue
           </button>
         } @else {
           @if (isProcessing()) {
