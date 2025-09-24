@@ -1,1 +1,19 @@
-<p>sandbox works!</p>
+<section style="max-width: 360px;">
+  <h3>TreeListBox demo (flat content)</h3>
+  <app-tree-listbox (selectionChange)="onSelect($event)" [allowFolderSelect]="false">
+    @for (n of flatNodes(); track n.nodeId) {
+      <app-tree-option
+        [value]="n.value"
+        [nodeId]="n.nodeId"
+        [parentId]="n.parentId"
+        [level]="n.level"
+        [hasChildren]="n.hasChildren"
+      >
+        <ng-container>{{ n.label }}</ng-container>
+        @if (n.meta) { <span> (meta: {{ n.meta.info }})</span> }
+      </app-tree-option>
+    }
+  </app-tree-listbox>
+
+  <p>Selected: {{ selectedLabel() }}</p>
+</section>
