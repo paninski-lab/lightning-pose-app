@@ -48,6 +48,7 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   private labelFileFetcher = inject(LabelFileFetcherService);
   private router = inject(Router);
   private toastService = inject(ToastService);
+  private notificationDisplayTimeMs = 1500; // Config variable for notification display time
 
   // Store loaded data for the selected label file
   protected loadedLabelFile = signal<MVLabelFile | null>(null);
@@ -196,7 +197,26 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   extractFramesDialogOpen = signal<boolean>(false);
   protected xfSuccessNotifyClasses = signal('');
 
-  handleExtractFramesDone() {
-    this.xfSuccessNotifyClasses.set('border');
+  async handleExtractFramesDone(labelFileKey: string) {
+    this.extractFramesDialogOpen.set(false);
+    if (labelFileKey === this.labelFileKey()) {
+      await this.loadLabelFileData(this.selectedLabelFile());
+    } else {
+      // Reload label files
+      await this.sessionService.loadLabelFiles();
+      // Switch to the label file the extract frames was for.
+      await this.router.navigate(['/labeler'], {
+        queryParams: { labelFileKey: labelFileKey },
+      });
+    }
+
+    // Ideally we'd wait until the label file load from the above navigate()
+    // is done. Since we don't have a handle to that promise, we just
+    // wait 300ms which will likely cover the latency.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    this.xfSuccessNotifyClasses.set('border border-primary');
+    setTimeout(() => {
+      this.xfSuccessNotifyClasses.set('');
+    }, this.notificationDisplayTimeMs);
   }
 }
