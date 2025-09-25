@@ -28,19 +28,24 @@ export class SessionService {
   private projectInfoService = inject(ProjectInfoService);
   private csvParser = inject(CsvParserService);
 
-  sessionsLoading = signal(false);
+  sessionsLoading = signal(true);
   private _allSessions = new BehaviorSubject<Session[]>([]);
   allSessions$ = this._allSessions.asObservable();
   allSessions = toSignal(this.allSessions$, { requireSync: true });
-  sessionsLoaded = computed(() => this.allSessions().length > 0);
 
   private sessionModelMap = {} as SessionModelMap;
 
   async loadSessions() {
+    /** This store is populated lazily the first time someone calls loadSessions.
+     * Subsequent loadSession calls are noop. User should refresh page, until
+     * we implement a {reload: true} option. */
+    if (this.allSessions().length > 1) return;
     try {
       this.sessionsLoading.set(true);
-      await this._loadSessions();
-    } finally {
+      const sessions = await this._loadSessions();
+      this.sessionsLoading.set(false);
+      this._allSessions.next(sessions);
+    } catch {
       this.sessionsLoading.set(false);
     }
   }
@@ -66,7 +71,7 @@ export class SessionService {
       this.projectInfoService.projectInfo.views,
     );
 
-    return this._allSessions.next(sessions);
+    return sessions;
   }
 
   labelFilesLoading = signal(false);
