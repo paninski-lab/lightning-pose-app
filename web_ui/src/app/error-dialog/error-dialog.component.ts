@@ -7,6 +7,7 @@ import {
   MatDialogTitle,
 } from '@angular/material/dialog';
 import { MatButton } from '@angular/material/button';
+import { JsonPipe } from '@angular/common';
 
 @Component({
   selector: 'app-error-dialog',
@@ -16,6 +17,7 @@ import { MatButton } from '@angular/material/button';
     MatDialogActions,
     MatButton,
     MatDialogClose,
+    JsonPipe,
   ],
   templateUrl: './error-dialog.component.html',
   styleUrl: './error-dialog.component.css',

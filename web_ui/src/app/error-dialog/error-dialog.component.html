@@ -14,7 +14,7 @@
   @if (data.error) {
     <p>Error body</p>
     <p class="error-message w-fit h-fit">
-      {{ data?.error?.detail ?? data?.error }}
+      {{ data?.error?.detail ?? data?.error | json }}
     </p>
   }
 </div>
