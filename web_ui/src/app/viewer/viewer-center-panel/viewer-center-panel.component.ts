@@ -27,6 +27,7 @@ import * as dfd from 'danfojs';
 import { PredictionFile } from '../../prediction-file';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ZoomableContentComponent } from '../../components/zoomable-content.component';
+import { firstValueFrom, skip, skipWhile } from 'rxjs';
 
 @Component({
   selector: 'app-viewer-center-panel',
@@ -135,6 +136,12 @@ export class ViewerCenterPanelComponent implements OnChanges {
 
     const sessionChanged = sessionKey != this._loadedSessionKey();
 
+    // Wait for sessions to load if they're currently still loading.
+    await firstValueFrom(
+      this.sessionService.allSessions$.pipe(
+        skipWhile(() => this.sessionService.sessionsLoading()),
+      ),
+    );
     try {
       const session = this.sessionService
         .allSessions()

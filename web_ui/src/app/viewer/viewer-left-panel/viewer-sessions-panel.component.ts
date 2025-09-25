@@ -3,6 +3,7 @@ import {
   Component,
   inject,
   input,
+  OnInit,
   output,
 } from '@angular/core';
 import { SessionService } from '../../session.service';
@@ -20,7 +21,7 @@ import { Session } from '../../session.model';
   styleUrl: './viewer-sessions-panel.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ViewerSessionsPanelComponent {
+export class ViewerSessionsPanelComponent implements OnInit {
   protected sessionService = inject(SessionService);
   private projectInfoService = inject(ProjectInfoService);
   private viewSettings = inject(ViewSettings, { optional: true });
@@ -28,6 +29,10 @@ export class ViewerSessionsPanelComponent {
   showModelAvailableMarkers = input.required<boolean>();
   selectedSessionKey = input<string | null>();
   selectedSessionChange = output<Session | null>();
+
+  ngOnInit() {
+    this.sessionService.loadSessions();
+  }
 
   protected sessionHasModel1(sessionKey: string): boolean {
     if (!this.showModelAvailableMarkers()) return false;

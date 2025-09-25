@@ -66,14 +66,11 @@ export class ViewerPageComponent implements OnInit {
     // it will (future) open a dialog to get the project info.
 
     this.loadingService.isLoading.set(true);
-    this.loadingService.maxProgress.set(2);
+    this.loadingService.maxProgress.set(1);
     this.loadingService.progress.set(0);
 
     // Load sessions and prediction index, but don't wait, just fire off the request.
     const p = this.sessionService.loadPredictionIndex();
-    const s = this.sessionService.loadSessions().then(() => {
-      this.loadingService.progress.update((x) => x + 1);
-    });
 
     this.allViews = this.projectInfoService.allViews();
     p.then(() => {
@@ -81,9 +78,7 @@ export class ViewerPageComponent implements OnInit {
         ...this.projectInfoService.allKeypoints(),
       );
       this.loadingService.progress.update((x) => x + 1);
-    });
-
-    Promise.allSettled([p, s]).then(() => {
+    }).then(() => {
       this.loadingService.isLoading.set(false);
     });
 
