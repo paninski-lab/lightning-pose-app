@@ -20,6 +20,7 @@ class ProjectInfo(BaseModel):
     data_dir: Path | None = None
     model_dir: Path | None = None
     views: list[str] | None = None
+    keypoint_names: list[str] | None = None
 
 
 class GetProjectInfoResponse(BaseModel):

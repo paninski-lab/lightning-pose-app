@@ -66,7 +66,7 @@ def project_info(config: Config = Depends(config)) -> ProjectInfo:
             toml_data = tomli.load(f)
 
         # Unpack the dictionary into the Pydantic model
-        return ProjectInfo(**toml_data)
+        return ProjectInfo.model_validate(toml_data)
     except FileNotFoundError:
         return None
     except tomli.TOMLDecodeError as e:
