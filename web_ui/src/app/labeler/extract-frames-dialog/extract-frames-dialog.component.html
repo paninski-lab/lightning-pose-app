@@ -144,6 +144,11 @@
                           _
                         </li>
                       }
+                      @if (labelFileTemplateNgModel.errors?.["hasCSV"]) {
+                        <li>
+                          Invalid name: remove <code>.csv</code> extension
+                        </li>
+                      }
                     </ul>
                   </div>
                 </div>
