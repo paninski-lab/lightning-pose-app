@@ -2,20 +2,93 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  Directive,
   inject,
+  Input,
   input,
   OnInit,
   output,
   signal,
+  viewChild,
 } from '@angular/core';
 import { ViewerSessionsPanelComponent } from '../../viewer/viewer-left-panel/viewer-sessions-panel.component';
 import { Session } from '../../session.model';
-import { FormsModule } from '@angular/forms';
+import {
+  AbstractControl,
+  FormsModule,
+  NG_VALIDATORS,
+  NgModel,
+  ValidationErrors,
+  Validator,
+} from '@angular/forms';
 import { RpcService } from '../../rpc.service';
 import { ExtractFramesRequest } from '../../extract-frames-request';
 import { LabelFilePickerComponent } from '../../label-file-picker/label-file-picker.component';
 import { ProjectInfoService } from '../../project-info.service';
 import { SessionService } from '../../session.service';
+
+@Directive({
+  selector: '[appLabelFileTemplateValidator]',
+  providers: [
+    {
+      provide: NG_VALIDATORS,
+      useExisting: LabelFileTemplateValidatorDirective,
+      multi: true,
+    },
+  ],
+})
+class LabelFileTemplateValidatorDirective implements Validator {
+  private projectInfoService = inject(ProjectInfoService);
+
+  validate(control: AbstractControl): ValidationErrors | null {
+    let value: string = control.value;
+    if (!value) {
+      return null;
+    }
+
+    const errors = {} as Record<string, unknown>;
+
+    // If multiview, one star is required.
+    if (this.projectInfoService.allViews().length > 0) {
+      const starCount = (value.match(/\*/g) || []).length;
+      if (starCount === 0) {
+        errors['viewStarMissing'] = true;
+      }
+
+      // short circuit the rest of the validation if multiple stars
+      if (starCount > 1) {
+        errors['invalidFilename'] = true;
+        return errors;
+      }
+
+      // Star should be next to an _ or - delimiter on both sides,
+      // unless the star is the last character
+      const parts = value.split('*');
+      if (!/[-_]$/.test(parts[0])) {
+        errors['starNotNextToDelimiter'] = true;
+      }
+
+      if (parts[1] && !/^[-_]/.test(parts[1])) {
+        errors['starNotNextToDelimiter'] = true;
+      }
+
+      value = value.replace('*', this.projectInfoService.allViews()[0]);
+    }
+
+    // Allow only alphanumeric, -, _, .
+    const allowedChars = /^[a-zA-Z0-9][a-zA-Z0-9-._]+$/;
+    if (!allowedChars.test(value)) {
+      errors['invalidFilename'] = true;
+    }
+
+    // Rule 3: No .csv extension
+    if (value.toLowerCase().endsWith('.csv')) {
+      errors['hasCSV'] = true;
+    }
+
+    return Object.keys(errors).length === 0 ? null : errors; // All rules passed
+  }
+}
 
 @Component({
   selector: 'app-extract-frames-dialog',
@@ -23,6 +96,7 @@ import { SessionService } from '../../session.service';
     ViewerSessionsPanelComponent,
     FormsModule,
     LabelFilePickerComponent,
+    LabelFileTemplateValidatorDirective,
   ],
   templateUrl: './extract-frames-dialog.component.html',
   styleUrl: './extract-frames-dialog.component.css',
@@ -72,10 +146,10 @@ export class ExtractFramesDialogComponent implements OnInit {
 
   protected labelFileStepIsValid = computed(() => {
     if (this.labelFileSelectionType() === 'createNew') {
-      // further validate
       return (
         this.newLabelFileTemplate() !== null &&
-        this.newLabelFileTemplate() !== ''
+        this.newLabelFileTemplate() !== '' &&
+        this.labelFileTemplateNgModel()!.valid
       );
     }
     if (
@@ -146,6 +220,7 @@ export class ExtractFramesDialogComponent implements OnInit {
     }
     return false;
   });
+
   protected defaultLabelFileTemplate(): string {
     return this.isMultiviewProject() ? 'CollectedData_*' : 'CollectedData.csv';
   }
@@ -153,4 +228,8 @@ export class ExtractFramesDialogComponent implements OnInit {
   protected isMultiviewProject() {
     return this.projectInfoService.projectInfo.views.length > 1;
   }
+
+  private labelFileTemplateNgModel = viewChild<NgModel>(
+    'labelFileTemplateNgModel',
+  );
 }

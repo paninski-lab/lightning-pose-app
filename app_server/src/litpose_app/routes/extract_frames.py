@@ -37,7 +37,7 @@ class LabelFileCreationRequest(BaseModel):
 
 
 class ExtractFramesRequest(BaseModel):
-    labelFileCreationRequest: LabelFileCreationRequest
+    labelFileCreationRequest: LabelFileCreationRequest | None
     session: Session
 
     labelFile: MVLabelFile
@@ -94,7 +94,10 @@ def init_label_file(
         for view in project_info.views:
             files_to_create.append(
                 project_info.data_dir
-                / labelFileCreationRequest.labelFileTemplate.replace("*", view.name)
+                / (
+                    labelFileCreationRequest.labelFileTemplate.replace("*", view.name)
+                    + ".csv"
+                )
             )
             lfviews.append(
                 LabelFileView(csvPath=files_to_create[-1], viewName=view.name)
@@ -103,7 +106,8 @@ def init_label_file(
 
     else:
         files_to_create.append(
-            project_info.data_dir / labelFileCreationRequest.labelFileTemplate
+            project_info.data_dir
+            / (labelFileCreationRequest.labelFileTemplate + ".csv")
         )
         mvlabelfile = MVLabelFile(
             [LabelFileView(csvPath=files_to_create[0], viewName="unknown")]
@@ -128,6 +132,7 @@ def init_label_file(
 
     # Create the label files
     for p in files_to_create:
+        assert p.suffix == ".csv"
         df.to_csv(p)
 
     return mvlabelfile

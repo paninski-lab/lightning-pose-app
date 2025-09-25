@@ -93,17 +93,58 @@
                       <code class="p-1">CollectedData_*.csv</code>.
                     }
                   </p>
-                  <label class="input">
+                  <label
+                    class="input"
+                    [class.input-success]="
+                      labelFileTemplateNgModel.valid &&
+                      labelFileTemplateNgModel.touched
+                    "
+                    [class.input-error]="
+                      labelFileTemplateNgModel.invalid &&
+                      labelFileTemplateNgModel.touched
+                    "
+                  >
                     <input
                       type="text"
-                      [(ngModel)]="newLabelFileTemplate"
+                      spellcheck="false"
                       id="input_labelFileTemplate"
+                      [(ngModel)]="newLabelFileTemplate"
+                      required
+                      appLabelFileTemplateValidator
+                      #labelFileTemplateNgModel="ngModel"
                     />
                     <span class="label">.csv</span>
                   </label>
                   <div class="validator-hint visible!">
                     <code>{{ defaultLabelFileTemplate() }}</code>
                     is the recommended default.
+                  </div>
+                  <div class="validator-hint visible! text-error min-h-[10rem]">
+                    <ul>
+                      @if (labelFileTemplateNgModel.errors?.["required"]) {
+                        <li>Filename required</li>
+                      }
+                      @if (
+                        labelFileTemplateNgModel.errors?.["invalidFilename"]
+                      ) {
+                        <li>Filename invalid</li>
+                      }
+                      @if (
+                        labelFileTemplateNgModel.errors?.["viewStarMissing"]
+                      ) {
+                        <li>Filename missing required star character</li>
+                      }
+                      @if (
+                        labelFileTemplateNgModel.errors?.[
+                          "starNotNextToDelimiter"
+                        ]
+                      ) {
+                        <li>
+                          Star character must be next to valid delimiters: - or
+                          _
+                        </li>
+                      }
+                    </ul>
                   </div>
                 </div>
               </div>
