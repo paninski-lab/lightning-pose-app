@@ -110,6 +110,10 @@ export class ExtractFramesDialogComponent implements OnInit {
     'createNew',
   );
   initialSelectedLabelFileKey = input<string | null>(null);
+  exit = output();
+  // Outputs the target label file key.
+  done = output<string>();
+
   private sessionService = inject(SessionService);
 
   ngOnInit() {
@@ -133,7 +137,6 @@ export class ExtractFramesDialogComponent implements OnInit {
   protected session = signal<Session | null>(null);
   protected nFrames = signal<number | null>(null);
   protected isProcessing = signal(false);
-  exit = output();
 
   private rpc = inject(RpcService);
   private projectInfoService = inject(ProjectInfoService);
@@ -142,7 +145,7 @@ export class ExtractFramesDialogComponent implements OnInit {
     this.exit.emit();
   }
 
-  handleSelectedSessionChange(session: Session | null) {
+  protected handleSelectedSessionChange(session: Session | null) {
     this.session.set(session);
   }
 
@@ -205,12 +208,16 @@ export class ExtractFramesDialogComponent implements OnInit {
     };
   }
 
-  handleExtractFramesClick() {
+  protected handleExtractFramesClick() {
     this.isProcessing.set(true);
+    const targetKey =
+      this.labelFileSelectionType() === 'createNew'
+        ? this.newLabelFileTemplate() + '.csv'
+        : this.existingLabelFileKey()!;
     this.rpc
       .call('extractFrames', this.toExtractFramesRequest())
       .then(() => {
-        this.handleCloseClick();
+        this.done.emit(targetKey);
       })
       .finally(() => {
         this.isProcessing.set(false);

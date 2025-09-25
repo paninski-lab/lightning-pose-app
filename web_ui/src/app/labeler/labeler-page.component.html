@@ -85,7 +85,11 @@
             <div class="text-sm">Please label one at a time</div>
           </div>
           <div
-            class="panel-content inset-shadow-xs inset-shadow-black/30 overflow-auto h-60 flex flex-col justify-between {{
+            class="panel-content
+              inset-shadow-xs inset-shadow-black/30
+              overflow-auto
+              h-60 flex flex-col justify-between
+              transition-color duration-500 ease-in-out {{
               xfSuccessNotifyClasses()
             }}"
           >
@@ -119,6 +123,12 @@
             >
               Add more frames from a session
             </button>
+            <button
+              class="btn btn-soft btn-primary btn-circle btn-sm my-2 w-full"
+              (click)="handleExtractFramesDone('Test_*.csv')"
+            >
+              Test XF done
+            </button>
           }
         </div>
       </div>
@@ -133,7 +143,7 @@
         "
         [initialSelectedLabelFileKey]="labelFileKey() ?? null"
         (exit)="extractFramesDialogOpen.set(false)"
-        (done)="handleExtractFramesDone()"
+        (done)="handleExtractFramesDone($event)"
       ></app-extract-frames-dialog>
     }
 
