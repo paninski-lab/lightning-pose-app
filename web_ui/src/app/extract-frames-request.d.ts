@@ -14,8 +14,7 @@ export interface EFRLabelFileView {
   viewName: string;
 }
 export interface EFRLabelFile {
-  // only present if using existing label file (not creating new)
-  views: EFRLabelFileView[] | null;
+  views: EFRLabelFileView[];
 }
 
 export interface EFRRandomOptions {
@@ -29,7 +28,8 @@ export interface LabelFileCreationRequest {
 export interface ExtractFramesRequest {
   labelFileCreationRequest: LabelFileCreationRequest | null;
   session: EFRSession;
-  labelFile: EFRLabelFile;
+  // only present if using existing label file (not creating new)
+  labelFile: EFRLabelFile | null;
   method: 'random' | 'active';
   options: EFRRandomOptions;
 }

@@ -193,9 +193,11 @@ export class ExtractFramesDialogComponent implements OnInit {
       session: {
         views: this.session()!.views,
       },
-      labelFile: {
-        views: labelFile ? labelFile.views : null,
-      },
+      labelFile: labelFile
+        ? {
+            views: labelFile.views,
+          }
+        : null,
       method: 'random',
       options: {
         nFrames: this.nFrames()!,

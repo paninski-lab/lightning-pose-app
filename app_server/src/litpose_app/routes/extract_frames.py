@@ -37,10 +37,10 @@ class LabelFileCreationRequest(BaseModel):
 
 
 class ExtractFramesRequest(BaseModel):
-    labelFileCreationRequest: LabelFileCreationRequest | None
+    labelFileCreationRequest: LabelFileCreationRequest | None = None
     session: Session
 
-    labelFile: MVLabelFile
+    labelFile: MVLabelFile | None = None
     """
     Client sets None when labelFileCreationRequest is present.
     Internally it will be populated once the labelFileCreationRequest is processed.
@@ -90,19 +90,18 @@ def init_label_file(
     # Map of view to label file path
     files_to_create = []
     if "*" in labelFileCreationRequest.labelFileTemplate:
+        assert project_info.views and len(project_info.views) > 0
         lfviews = []
         for view in project_info.views:
             files_to_create.append(
                 project_info.data_dir
                 / (
-                    labelFileCreationRequest.labelFileTemplate.replace("*", view.name)
+                    labelFileCreationRequest.labelFileTemplate.replace("*", view)
                     + ".csv"
                 )
             )
-            lfviews.append(
-                LabelFileView(csvPath=files_to_create[-1], viewName=view.name)
-            )
-        mvlabelfile = MVLabelFile(lfviews)
+            lfviews.append(LabelFileView(csvPath=files_to_create[-1], viewName=view))
+        mvlabelfile = MVLabelFile(views=lfviews)
 
     else:
         files_to_create.append(
@@ -110,7 +109,7 @@ def init_label_file(
             / (labelFileCreationRequest.labelFileTemplate + ".csv")
         )
         mvlabelfile = MVLabelFile(
-            [LabelFileView(csvPath=files_to_create[0], viewName="unknown")]
+            views=[LabelFileView(csvPath=files_to_create[0], viewName="unknown")]
         )
 
     for p in files_to_create:
@@ -125,6 +124,8 @@ def init_label_file(
                         )
 
     # Create the DataFrame (it's the same for all files)
+    assert project_info.keypoint_names is not None
+    assert len(project_info.keypoint_names) > 0
     column_levels = [["scorer"], project_info.keypoint_names, ["x", "y"]]
     column_names = ["scorer", "bodyparts", "coords"]
     column_index = pd.MultiIndex.from_product(column_levels, names=column_names)
