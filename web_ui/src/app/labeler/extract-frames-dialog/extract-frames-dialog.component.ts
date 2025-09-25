@@ -4,7 +4,6 @@ import {
   computed,
   Directive,
   inject,
-  Input,
   input,
   OnInit,
   output,
@@ -128,6 +127,9 @@ export class ExtractFramesDialogComponent implements OnInit {
   protected existingLabelFileKey = signal<string | null>(null);
   // Only applicable when labelFileSelectionType == createNew
   protected newLabelFileTemplate = signal<string>('CollectedData');
+  private labelFileTemplateNgModel = viewChild<NgModel>(
+    'labelFileTemplateNgModel',
+  );
   protected session = signal<Session | null>(null);
   protected nFrames = signal<number | null>(null);
   protected isProcessing = signal(false);
@@ -144,12 +146,14 @@ export class ExtractFramesDialogComponent implements OnInit {
     this.session.set(session);
   }
 
-  protected labelFileStepIsValid = computed(() => {
+  protected labelFileStepIsValid(): boolean {
     if (this.labelFileSelectionType() === 'createNew') {
+      // We are blocked from using computed signals, because
+      // NgModel.valid used inside the below will not cache-bust a computed signal.
       return (
         this.newLabelFileTemplate() !== null &&
         this.newLabelFileTemplate() !== '' &&
-        this.labelFileTemplateNgModel()!.valid
+        (this.labelFileTemplateNgModel()!.valid ?? false)
       );
     }
     if (
@@ -159,7 +163,7 @@ export class ExtractFramesDialogComponent implements OnInit {
       return false;
     }
     return true;
-  });
+  }
 
   protected sessionStepIsValid = computed(() => {
     return this.session() !== null;
@@ -211,15 +215,17 @@ export class ExtractFramesDialogComponent implements OnInit {
       });
   }
 
-  protected isNextEnabled = computed(() => {
+  protected isNextEnabled(): boolean {
     if (this.step() === 'labelFile') {
+      // We are blocked from using computed signals, because
+      // NgModel.valid used inside the below will not cache-bust a computed signal.
       return this.labelFileStepIsValid();
     }
     if (this.step() === 'session') {
       return this.sessionStepIsValid();
     }
     return false;
-  });
+  }
 
   protected defaultLabelFileTemplate(): string {
     return this.isMultiviewProject() ? 'CollectedData_*' : 'CollectedData.csv';
@@ -228,8 +234,4 @@ export class ExtractFramesDialogComponent implements OnInit {
   protected isMultiviewProject() {
     return this.projectInfoService.projectInfo.views.length > 1;
   }
-
-  private labelFileTemplateNgModel = viewChild<NgModel>(
-    'labelFileTemplateNgModel',
-  );
 }
