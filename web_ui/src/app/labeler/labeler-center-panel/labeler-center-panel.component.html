@@ -130,36 +130,110 @@
     </div>
     @if (frame(); as frame2) {
       @let lbfl = labelFile()!;
-      <div class="m-4">
-        <h3 class="text-md font-semibold">Multi-view auto-label</h3>
-        <p class="text-sm">
-          Infers keypoints for other views by triangulating labels from at least
-          two views in 3D space and projecting to the other views.
-        </p>
-        <ul class="text-xs list-disc list-inside">
-          <li>
-            Requires camera calibration files in
-            <code>calibrations/&lt;sessionKey&gt;.toml</code> format.
-            <code>sessionKey</code> is the video filename with the viewname
-            stripped out: (e.g. <code>session1_view1.mp4</code> ->
-            <code>session1_.toml</code>).
-          </li>
-          <li>
-            Assumes video name is the 2nd part of the frame key (e.g.
-            <code>labeled_data/&lt;video_name&gt;/frame_001.png</code> where
-            video_name is without the file extension.
-          </li>
-        </ul>
-        <button
-          class="btn btn-xs bg-sky-700 w-full"
-          [class.btn-disabled]="
-            !hasCameraCalibrationFiles() || disableInteractions()
-          "
-          (click)="handleMVAutoLabelClick(lbfl, frame2)"
-          (keydown.enter)="handleMVAutoLabelClick(lbfl, frame2)"
-        >
-          Generate labels
-        </button>
+      <div class="panel m-4 mt-0">
+        <div>
+          <!-- panel header -->
+          <h1 class="px-2 mb-1 flex justify-between items-center">
+            Multiview tools
+            <button
+              class="btn btn-circle btn-ghost btn-xs material-icons text-sm!"
+              onclick="multiview_info.showModal()"
+            >
+              info
+            </button>
+          </h1>
+        </div>
+        <dialog class="modal" id="multiview_info">
+          <div class="modal-box w-5/6 max-w-3xl prose">
+            <button
+              class="btn btn-md btn-circle btn-ghost absolute right-4 top-4"
+              onclick="multiview_info.close()"
+            >
+              ✕
+            </button>
+            <h2>Multiview tools</h2>
+            <p>Use camera parameters to assist labeling.</p>
+            <p>
+              With accurate parameters, you need only label two views per
+              keypoint: the other views can be auto-labeled by triangulating and
+              reprojecting. The tool also supports bundle adjustment to refine
+              the camera parameters after labeling several frames.
+            </p>
+            <h3>How to provide camera parameters to Lightning Pose</h3>
+            <p>
+              Camera calibration is typically performed using Anipose before
+              every session. Camera parameters are recommended to be
+              session-specific to allow for changes in camera position from
+              session to session, however a single project-wide calibration file
+              is also supported.
+            </p>
+            <p>
+              Session specific calibration files should be at
+              <code>{{ "calibrations/{sessionKey}.toml" | path }}</code
+              >. where <code>sessionKey</code> is the video filename without the
+              viewname.<br />
+              For example, the calibration file for session with files like
+            </p>
+
+            <ul>
+              <li>
+                <code>{{ "videos/session1_view1.mp4" | path }}</code> would
+                become
+                <code>{{ "session1.toml" | path }}</code>
+              </li>
+              <li>
+                <code>{{ "videos/session1_view1_123.mp4" | path }}</code> would
+                become
+                <code>{{ "session1_123.toml" | path }}</code>
+              </li>
+            </ul>
+            <p>
+              The optional project calibration file should be at
+              <code>calibrations.toml</code>. It will be used if
+              session-specific calibration is not found. When bundle adjustment
+              is performed, it will not modify the project calibration.toml; it
+              will instead output a session-specific calibration file.
+            </p>
+
+            <div class="modal-action">
+              <form method="dialog">
+                <!-- if there is a button in form, it will close the modal -->
+                <button class="btn">Close</button>
+              </form>
+            </div>
+          </div>
+        </dialog>
+        <div class="panel-content overflow-y-auto">
+          <button
+            class="btn btn-xs bg-sky-700 w-full"
+            [class.btn-disabled]="
+              !hasCameraCalibrationFiles() || disableInteractions()
+            "
+            (click)="handleMVAutoLabelClick(lbfl, frame2)"
+          >
+            Triangulate and reproject all keypoints
+          </button>
+          <button
+            class="btn btn-xs bg-sky-700 w-full"
+            [class.btn-disabled]="
+              !hasCameraCalibrationFiles() || disableInteractions()
+            "
+            onclick="bundle_adjustment.showModal()"
+          >
+            Bundle adjustment
+          </button>
+          <dialog class="dialog" id="bundle_adjustment">
+            <div class="modal-box w-5/6 max-w-3xl prose">
+              <button
+                class="btn btn-md btn-circle btn-ghost absolute right-4 top-4"
+                onclick="multiview_info.close()"
+              >
+                ✕
+              </button>
+              <h2>Multiview tools</h2>
+            </div>
+          </dialog>
+        </div>
       </div>
     }
     <div class="m-4">
