@@ -29,7 +29,7 @@ class Config(BaseModel):
     CALIBRATIONS_DIRNAME: str = "calibrations"
     CALIBRATION_BACKUPS_DIRNAME: str = "calibration_backups"
 
-    GLOBAL_CALIBRATION_PATH = "calibration.toml"
+    GLOBAL_CALIBRATION_PATH: str = "calibration.toml"
 
     ###
     # Frame extraction config

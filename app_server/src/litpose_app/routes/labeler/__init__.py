@@ -4,6 +4,7 @@ from . import multiview_autolabel as _multiview_autolabel
 from . import save_mvframe as _save_mvframe
 from . import write_multifile as _write_multifile
 from . import find_label_files as _find_label_files
+from . import bundle_adjust as _bundle_adjust
 
 # Sub-route modules within the labeler package
 
@@ -15,3 +16,4 @@ router.include_router(_write_multifile.router)
 router.include_router(_save_mvframe.router)
 router.include_router(_multiview_autolabel.router)
 router.include_router(_find_label_files.router)
+router.include_router(_bundle_adjust.router)

@@ -219,46 +219,16 @@
             [class.btn-disabled]="
               !hasCameraCalibrationFiles() || disableInteractions()
             "
-            onclick="bundle_adjustment.showModal()"
+            (click)="baDialog.open()"
           >
             <span class="material-icons">model_training</span>
             Refine calibration (bundle adjustment)
           </button>
-          <dialog class="modal" id="bundle_adjustment">
-            <div class="modal-box w-5/6 max-w-3xl prose">
-              <button
-                class="btn btn-md btn-circle btn-ghost absolute right-4 top-4"
-                onclick="bundle_adjustment.close()"
-              >
-                ✕
-              </button>
-              <h2 class="mt-0">Bundle Adjustment</h2>
-              <p>
-                Optimizes the camera parameters for this session by minimizing
-                the reprojection error of the labeled frames for this session.
-                Overwrites the session-level camera calibration file. Backs up
-                the original calibration file to
-                <code>calibration_backups</code>.
-              </p>
-              <table class="table table-sm w-fit">
-                <tr>
-                  <td>Label file</td>
-                  <td>{{ labelFile()?.key }}</td>
-                </tr>
-
-                <tr>
-                  <td>Session</td>
-                  <td>{{ mvf(this.frame()!).autolabelSessionKey }}</td>
-                </tr>
-              </table>
-              <div class="modal-action">
-                <button class="btn btn-primary">
-                  <span class="material-icons"> directions_run </span>
-                  Run
-                </button>
-              </div>
-            </div>
-          </dialog>
+          <app-bundle-adjust-dialog
+            #baDialog
+            [labelFile]="labelFile()"
+            [frame]="this.frame()"
+          ></app-bundle-adjust-dialog>
         </div>
       </div>
     }

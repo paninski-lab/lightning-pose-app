@@ -1,6 +1,7 @@
-import multiprocessing
 import os
+import re
 import time
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -33,12 +34,16 @@ def bundle_adjust(
     project_info: ProjectInfo = Depends(deps.project_info),
     config: Config = Depends(deps.config),
 ):
-    p = multiprocessing.Process(
-        target=_bundle_adjust_impl, args=(request, project_info, config)
-    )
-    p.start()
-    p.join()
-    return "ok"
+    with ProcessPoolExecutor(max_workers=1) as executor:
+        fut = executor.submit(
+            _bundle_adjust_impl,
+            request,
+            project_info,
+            config,
+        )
+        result = fut.result()
+
+    return result
 
 
 def _session_level_config_path(
@@ -54,7 +59,7 @@ def _find_calibration_file(
     if session_level_path.is_file():
         return session_level_path
 
-    global_calibrations_path = project_info.data_dir / config.global_calibrations_path
+    global_calibrations_path = project_info.data_dir / config.GLOBAL_CALIBRATION_PATH
     if global_calibrations_path.is_file():
         return global_calibrations_path
 
@@ -68,7 +73,9 @@ def _bundle_adjust_impl(
         request.sessionKey, project_info, config
     )
     if camera_group_toml_path is None:
-        raise FileNotFoundError(f"Could not find calibration file for {session_key}")
+        raise FileNotFoundError(
+            f"Could not find calibration file for {request.sessionKey}"
+        )
     cg = CameraGroup.load(camera_group_toml_path)
     views = list(map(lambda c: c.name, cg.cameras))
     assert set(project_info.views) == set(views)
@@ -77,14 +84,17 @@ def _bundle_adjust_impl(
         parts = imgpath.split("/")
         if len(parts) < 3:
             return False
-        return parts[-2].replace(view, "") == request.sessionKey
+        # sessionkey_from_frame = re.sub(rf"[-_]*({'|'.join(views)})[-_]*", "", parts[-2])
+        sessionkey_from_frame = re.sub(
+            rf"({'|'.join([re.escape(_v) for _v in views])})", "", parts[-2]
+        )
+
+        return sessionkey_from_frame == request.sessionKey
 
     # Group multiview csv files
-    files_by_view = {
-        project_info.data_dir / v.csvPath for v in request.mvlabelfile.views
-    }
+    files_by_view = {v.viewName: v.csvPath for v in request.mvlabelfile.views}
 
-    numpy_arrs: dict[str, np.ndarray] = dict  # view -> np.ndarray
+    numpy_arrs: dict[str, np.ndarray] = {}  # view -> np.ndarray
 
     # Read DFs
     dfs_by_view = {}
@@ -136,12 +146,32 @@ def _bundle_adjust_impl(
         nparr = nparr.reshape(-1, 2)
         numpy_arrs[view] = nparr
 
-    output = np.stack([numpy_arrs[v] for v in views])
-    cg.bundle_adjust_iter(output)
+    # Creates a CxNx2 np array for anipose
+    p2ds = np.stack([numpy_arrs[v] for v in views])
+    p3ds = cg.triangulate(p2ds)
+    old_reprojection_error = cg.reprojection_error(p3ds, p2ds)
+    cg.bundle_adjust_iter(p2ds, verbose=True)
+    p3ds = cg.triangulate(p2ds)
+    new_reprojection_error = cg.reprojection_error(p3ds, p2ds)
     target_path = _session_level_config_path(request.sessionKey, project_info, config)
+
     if target_path.exists():
-        backup_path = config.calibration_backups_dirname / target_path.name.with_suffix(
-            f".{time.time_ns()}.toml"
+        backup_path = (
+            project_info.data_dir
+            / config.CALIBRATION_BACKUPS_DIRNAME
+            / target_path.with_suffix(f".{time.time_ns()}.toml").name
         )
+        backup_path.parent.mkdir(parents=True, exist_ok=True)
         os.rename(target_path, backup_path)
+
+    camera_group_toml_path.parent.mkdir(parents=True, exist_ok=True)
     cg.dump(camera_group_toml_path)
+
+    return {
+        "old_reprojection_error": np.linalg.norm(old_reprojection_error, axis=2)
+        .sum(axis=1)
+        .tolist(),
+        "new_reprojection_error": np.linalg.norm(new_reprojection_error, axis=2)
+        .sum(axis=1)
+        .tolist(),
+    }
