@@ -24,6 +24,7 @@ import { GetMVAutoLabelsResponse } from '../mv-autolabel';
 import { PathPipe } from '../../components/path.pipe';
 import { RpcService } from '../../rpc.service';
 import { BundleAdjustDialogComponent } from '../../bundle-adjust-dialog/bundle-adjust-dialog.component';
+import { ToastService } from '../../toast.service';
 
 @Component({
   selector: 'app-labeler-center-panel',
@@ -41,6 +42,7 @@ import { BundleAdjustDialogComponent } from '../../bundle-adjust-dialog/bundle-a
 })
 export class LabelerCenterPanelComponent implements OnChanges {
   private projectInfoService = inject(ProjectInfoService);
+  private toastService = inject(ToastService);
 
   labelFile = input<MVLabelFile | null>(null);
   frame = input<MVFrame | null>(null);
@@ -285,6 +287,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
       .then(() => {
         this.isSaving.set(false);
         this.saved.emit({ labelFile, frame, shouldContinue });
+        this.toastService.showToast({ content: 'Saved successfully' });
       })
       .catch((error) => {
         this.isSaving.set(false);
