@@ -2,7 +2,6 @@ import os
 import re
 import time
 from concurrent.futures import ProcessPoolExecutor
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -12,6 +11,7 @@ from pydantic import BaseModel
 
 from litpose_app import deps
 from litpose_app.config import Config
+from litpose_app.routes.labeler import find_calibration_file, session_level_config_path
 from litpose_app.routes.project import ProjectInfo
 from litpose_app.tasks.extract_frames import MVLabelFile
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
@@ -57,30 +57,11 @@ def bundle_adjust(
     return BundleAdjustResponse.model_validate(result)
 
 
-def _session_level_config_path(
-    session_key: str, project_info: ProjectInfo, config: Config
-) -> Path:
-    return project_info.data_dir / config.CALIBRATIONS_DIRNAME / f"{session_key}.toml"
-
-
-def _find_calibration_file(
-    session_key: str, project_info: ProjectInfo, config: Config
-) -> None | Path:
-    session_level_path = _session_level_config_path(session_key, project_info, config)
-    if session_level_path.is_file():
-        return session_level_path
-
-    global_calibrations_path = project_info.data_dir / config.GLOBAL_CALIBRATION_PATH
-    if global_calibrations_path.is_file():
-        return global_calibrations_path
-
-    return None
-
 
 def _bundle_adjust_impl(
     request: BundleAdjustRequest, project_info: ProjectInfo, config: Config
 ):
-    camera_group_toml_path = _find_calibration_file(
+    camera_group_toml_path = find_calibration_file(
         request.sessionKey, project_info, config
     )
     if camera_group_toml_path is None:
@@ -177,7 +158,7 @@ def _bundle_adjust_impl(
     cg.bundle_adjust_iter(p2ds, verbose=True)
     p3ds = cg.triangulate(p2ds)
     new_reprojection_error = cg.reprojection_error(p3ds, p2ds)
-    target_path = _session_level_config_path(request.sessionKey, project_info, config)
+    target_path = session_level_config_path(request.sessionKey, project_info, config)
 
     if target_path.exists():
         backup_path = (
@@ -188,8 +169,13 @@ def _bundle_adjust_impl(
         backup_path.parent.mkdir(parents=True, exist_ok=True)
         os.rename(target_path, backup_path)
 
-    camera_group_toml_path.parent.mkdir(parents=True, exist_ok=True)
-    cg.dump(camera_group_toml_path)
+    # Writes to session-level calibration file even if the
+    # project level calibration file was used for bundle adjustment.
+    session_level_calibration_path = session_level_config_path(
+        request.sessionKey, project_info, config
+    )
+    session_level_calibration_path.parent.mkdir(parents=True, exist_ok=True)
+    cg.dump(session_level_calibration_path)
 
     return {
         "camList": views,  # Add the camList
