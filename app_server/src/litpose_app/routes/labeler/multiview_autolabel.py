@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from litpose_app import deps
+from litpose_app.routes.labeler import find_calibration_file
 from litpose_app.routes.project import ProjectInfo
 
 router = APIRouter()
@@ -69,14 +70,8 @@ def get_mv_auto_labels(
     config: deps.Config = Depends(deps.config),
 ) -> GetMVAutoLabelsResponse:
     # Read the toml files for this session.
-    camera_group_toml_path = (
-        project_info.data_dir
-        / config.CALIBRATIONS_DIRNAME
-        / f"{request.sessionKey}.toml"
-    )
-    if not camera_group_toml_path.is_file():
-        camera_group_toml_path = project_info.data_dir / "calibrations" / "default.toml"
-    if not camera_group_toml_path.is_file():
+    camera_group_toml_path = find_calibration_file(request.sessionKey, project_info, config)
+    if camera_group_toml_path is None:
         raise FileNotFoundError(
             f"Could not find calibration file for session {request.sessionKey}"
         )

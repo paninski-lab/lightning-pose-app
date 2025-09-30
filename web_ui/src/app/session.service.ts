@@ -12,7 +12,10 @@ import { createSessionViewComparator } from './utils/comparators';
 import { MVLabelFile } from './label-file.model';
 import { fv, MVFrame } from './labeler/frame.model';
 import { SaveFrameView, SaveMvFrame } from './labeler/save-mvframe';
-import { GetMVAutoLabelsRequest } from './labeler/mv-autolabel';
+import {
+  GetMVAutoLabelsRequest,
+  GetMVAutoLabelsResponse,
+} from './labeler/mv-autolabel';
 import _ from 'lodash';
 
 type SessionModelMap = Record<string, string[]>;
@@ -318,7 +321,10 @@ export class SessionService {
     return this.rpc.call('save_mvframe', request);
   }
 
-  async mvAutoLabel(frame: MVFrame, sessionKey: string) {
+  async mvAutoLabel(
+    frame: MVFrame,
+    sessionKey: string,
+  ): Promise<GetMVAutoLabelsResponse> {
     // Group data inside frame by keypoint name.
     const allKeypoints = frame.views
       .flatMap((fv) => {
@@ -344,22 +350,36 @@ export class SessionService {
       keypoints,
     };
 
-    return this.rpc.call('getMVAutoLabels', request);
+    return this.rpc.call(
+      'getMVAutoLabels',
+      request,
+    ) as Promise<GetMVAutoLabelsResponse>;
   }
 
-  async hasCameraCalibrationFiles(sessionKey: string) {
+  async hasCameraCalibrationFiles(sessionKey: string): Promise<boolean> {
     const projectInfo = this.projectInfoService.projectInfo;
 
-    const response = (await this.rpc.call('rglob', {
+    // Search for session-level calibration file.
+    let response = (await this.rpc.call('rglob', {
       baseDir: projectInfo.data_dir,
       pattern: `calibrations/${sessionKey}.toml`,
       noDirs: true,
     })) as RGlobResponse;
     if (response.entries.length > 0) {
       return true;
-    } else {
-      return false;
     }
+
+    // Search for project-level calibration file.
+    response = (await this.rpc.call('rglob', {
+      baseDir: projectInfo.data_dir,
+      pattern: `calibration.toml`,
+      noDirs: true,
+    })) as RGlobResponse;
+    if (response.entries.length > 0) {
+      return true;
+    }
+
+    return false;
   }
 }
 

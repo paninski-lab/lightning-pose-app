@@ -76,14 +76,24 @@ export class MVFUtils {
     };
   }
 
-  /** Autolabel session key has * stripped out because it's not valid in filesystem.
-   * Assumes that MVFrame key is the frame imgPath, but view replaced with *.
-   * Assumes that the frame imgPath is <labeled data dir>/<sessionKey>/...
+  /** Autolabel session key is modified from the normal session key.
+   * Regular session key has * in place of view. Autolabel session key
+   * has * part removed because it's not valid in filesystem.
    */
   get autolabelSessionKey(): string | null {
     const parts = this.mvFrame.key.split('/');
     if (parts.length < 3) return null; // unable to parse
-    return parts[1].replace('*', '');
+    const sessionKeyWithStar = parts.at(-2)!;
+    if (!sessionKeyWithStar?.indexOf('*')) return null;
+    const partsHyphenSplit = sessionKeyWithStar.split('-');
+    const partsUnderscoreSplit = sessionKeyWithStar.split('_');
+    if (partsHyphenSplit.indexOf('*') !== -1) {
+      return partsHyphenSplit.filter((p) => p !== '*').join('-');
+    } else if (partsUnderscoreSplit.indexOf('*') !== -1) {
+      return partsUnderscoreSplit.filter((p) => p !== '*').join('_');
+    } else {
+      return null; // unrecognized delimeter
+    }
   }
 }
 

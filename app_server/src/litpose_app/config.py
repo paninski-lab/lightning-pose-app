@@ -27,6 +27,9 @@ class Config(BaseModel):
 
     # Name of the directory in data_dir containing session-specific calibration files
     CALIBRATIONS_DIRNAME: str = "calibrations"
+    CALIBRATION_BACKUPS_DIRNAME: str = "calibration_backups"
+
+    GLOBAL_CALIBRATION_PATH: str = "calibration.toml"
 
     ###
     # Frame extraction config

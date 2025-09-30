@@ -21,6 +21,9 @@ import { Point } from '@angular/cdk/drag-drop';
 import { SessionService } from '../../session.service';
 import { MVLabelFile } from '../../label-file.model';
 import { GetMVAutoLabelsResponse } from '../mv-autolabel';
+import { PathPipe } from '../../components/path.pipe';
+import { RpcService } from '../../rpc.service';
+import { BundleAdjustDialogComponent } from '../../bundle-adjust-dialog/bundle-adjust-dialog.component';
 
 @Component({
   selector: 'app-labeler-center-panel',
@@ -29,6 +32,8 @@ import { GetMVAutoLabelsResponse } from '../mv-autolabel';
     ZoomableContentComponent,
     KeypointContainerComponent,
     HorizontalScrollDirective,
+    PathPipe,
+    BundleAdjustDialogComponent,
   ],
   templateUrl: './labeler-center-panel.component.html',
   styleUrl: './labeler-center-panel.component.css',
