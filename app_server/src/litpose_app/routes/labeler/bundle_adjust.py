@@ -91,16 +91,29 @@ def _bundle_adjust_impl(
     views = list(map(lambda c: c.name, cg.cameras))
     assert set(project_info.views) == set(views)
 
-    def is_of_current_session(imgpath: str):
-        parts = imgpath.split("/")
+    def autoLabelSessionKey(framePath: str) -> str | None:
+        parts = framePath.split("/")
         if len(parts) < 3:
             return False
-        # sessionkey_from_frame = re.sub(rf"[-_]*({'|'.join(views)})[-_]*", "", parts[-2])
+        sessionViewName = parts[-2] # e.g. 05272019_fly1_0_R1C24_Cam-A_rot-ccw-0.06_sec
+        # Replace view with *, e.g. 05272019_fly1_0_R1C24_*_rot-ccw-0.06_sec
         sessionkey_from_frame = re.sub(
-            rf"({'|'.join([re.escape(_v) for _v in views])})", "", parts[-2]
+            rf"({'|'.join([re.escape(_v) for _v in views])})", "*", sessionViewName
         )
+        parts_hyphenated = sessionkey_from_frame.split('-')
+        if '*' in parts_hyphenated:
+            return '-'.join(filter(lambda x: x != '*', parts_hyphenated))
 
-        return sessionkey_from_frame == request.sessionKey
+        # 05272019_fly1_0_R1C24_*_rot-ccw-0.06_sec will be split correctly.
+        parts_underscored = sessionkey_from_frame.split('_')
+
+        # if underscore is the delimeter, * will be a token by itself
+        if '*' in parts_underscored:
+            return '_'.join(filter(lambda x: x != '*', parts_underscored))
+        return None
+
+    def is_of_current_session(imgpath: str):
+        return autoLabelSessionKey(imgpath) == request.sessionKey
 
     # Group multiview csv files
     files_by_view = {v.viewName: v.csvPath for v in request.mvlabelfile.views}
