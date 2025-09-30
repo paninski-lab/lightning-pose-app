@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -8,23 +8,13 @@ import { firstValueFrom } from 'rxjs';
 export class RpcService {
   private http = inject(HttpClient);
 
-  call(method: string, params?: any): Promise<any> {
-    /**
-     * Makes an RPC to the fastapi server.
-     *
-     * Uses angular http client under the hood.
-     *
-     * Throws angular HttpErrorResponse if there's a
-     * server error or connection error, which will get handled
-     * by the global error handler.
-     *
-     * Converts http client's native return type of Observable,
-     * to the simpler interface, Promise. But I might regret
-     * this and wish I had directly returned the observable.
-     */
-    const observable = this.http.post(`/app/v0/rpc/${method}`, params ?? null, {
+  callObservable(method: string, params?: any): Observable<unknown> {
+    return this.http.post(`/app/v0/rpc/${method}`, params ?? null, {
       headers: { 'Content-type': 'application/json' },
     });
+  }
+  call(method: string, params?: any): Promise<unknown> {
+    const observable = this.callObservable(method, params);
     return firstValueFrom(observable);
   }
 }

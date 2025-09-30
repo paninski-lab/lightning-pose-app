@@ -1,0 +1,77 @@
+<dialog class="modal" id="bundle_adjustment">
+  <div class="modal-box w-5/6 max-w-3xl prose">
+    <button
+      class="btn btn-md btn-circle btn-ghost absolute right-4 top-4"
+      onclick="bundle_adjustment.close()"
+    >
+      ✕
+    </button>
+    <h2 class="mt-0">Bundle Adjustment</h2>
+    <p>
+      Optimizes the camera parameters for this session by minimizing the
+      reprojection error of the labeled frames for this session. Overwrites the
+      session-level camera calibration file. Backs up the original calibration
+      file to
+      <code>calibration_backups</code>.
+    </p>
+    <table class="table table-sm w-fit">
+      <tr>
+        <td>Label file</td>
+        <td>{{ labelFile()?.key }}</td>
+      </tr>
+
+      <tr>
+        <td>Session</td>
+        <td>{{ mvf(this.frame()!).autolabelSessionKey }}</td>
+      </tr>
+    </table>
+    @if (!baLoading() && baResponse()) {
+      <div class="divider"></div>
+
+      <div>
+        <p>
+          Operation successful. You may close this dialog, or re-run Bundle
+          Adjustment.
+        </p>
+        <table class="table table-sm w-fit">
+          <thead>
+            <tr>
+              <th>Views</th>
+              @for (v of baResponse()!.camList; track $index) {
+                <td>{{ v }}</td>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th>Old reprojection error</th>
+              @for (err of baResponse()!.oldReprojectionError; track $index) {
+                <td>{{ err }}</td>
+              }
+            </tr>
+            <tr>
+              <th>New reprojection error</th>
+              @for (err of baResponse()!.newReprojectionError; track $index) {
+                <td>{{ err }}</td>
+              }
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    }
+    <div class="modal-action">
+      <button
+        class="btn btn-primary"
+        (click)="handleBundleAdjustClick()"
+        [disabled]="baLoading()"
+      >
+        @if (baLoading()) {
+          <span class="loading loading-spinner loading-sm"></span>
+        } @else {
+          <span class="material-icons"> directions_run </span>
+        }
+        Run
+      </button>
+    </div>
+  </div>
+</dialog>

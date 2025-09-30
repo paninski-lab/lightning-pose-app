@@ -28,12 +28,23 @@ class BundleAdjustRequest(BaseModel):
     sessionKey: str  # name of the session with the view stripped out
 
 
+class BundleAdjustResponse(BaseModel):
+    camList: list[str]
+    """List of camera view names in order of the reprojection errors below."""
+
+    oldReprojectionError: list[float]
+    """List: one per camera."""
+
+    newReprojectionError: list[float]
+    """List: one per camera."""
+
+
 @router.post("/app/v0/rpc/bundleAdjust")
 def bundle_adjust(
     request: BundleAdjustRequest,
     project_info: ProjectInfo = Depends(deps.project_info),
     config: Config = Depends(deps.config),
-):
+) -> BundleAdjustResponse:
     with ProcessPoolExecutor(max_workers=1) as executor:
         fut = executor.submit(
             _bundle_adjust_impl,
@@ -43,7 +54,7 @@ def bundle_adjust(
         )
         result = fut.result()
 
-    return result
+    return BundleAdjustResponse.model_validate(result)
 
 
 def _session_level_config_path(
@@ -168,10 +179,15 @@ def _bundle_adjust_impl(
     cg.dump(camera_group_toml_path)
 
     return {
-        "old_reprojection_error": np.linalg.norm(old_reprojection_error, axis=2)
+        "camList": views,  # Add the camList
+        "oldReprojectionError": np.linalg.norm(
+            old_reprojection_error, axis=2
+        )  # Change key to camelCase
         .sum(axis=1)
         .tolist(),
-        "new_reprojection_error": np.linalg.norm(new_reprojection_error, axis=2)
+        "newReprojectionError": np.linalg.norm(
+            new_reprojection_error, axis=2
+        )  # Change key to camelCase
         .sum(axis=1)
         .tolist(),
     }
