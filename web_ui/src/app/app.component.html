@@ -78,7 +78,7 @@
 <dialog #settingsDialog class="modal">
   @if (settingsDialogOpen()) {
     <app-project-settings
-      class="modal-box"
+      class="modal-box w-5/6 max-w-3xl h-2/3 max-h-150"
       (done)="settingsDialogOpen.set(false)"
     ></app-project-settings>
 
