@@ -7,11 +7,14 @@ import * as dfd from 'danfojs';
 import { HttpClient } from '@angular/common/http';
 import { CsvParserService } from '../csv-parser.service';
 import { Pair } from '../utils/pair';
+import { ProjectInfoService } from '../project-info.service';
+import { orderStringsByUserSpecifiedOrder } from '../utils/comparators';
 
 @Injectable({
   providedIn: 'root',
 })
 export class LabelFileFetcherService {
+  private projectInfoService = inject(ProjectInfoService);
   private httpClient = inject(HttpClient);
   private csvParser = inject(CsvParserService);
 
@@ -93,8 +96,16 @@ export class LabelFileFetcherService {
     // Initialize keypoints for unlabeled frames to NaN.
     // TODO sort order as specified by user
     // TODO get allKeypoints from project config if no labeled frames present.
-    const allKeypoints =
-      mvf[0]?.views[0]?.keypoints?.map((kp) => kp.keypointName) ?? null;
+    const keypointsFromFirstFrame = mvf[0]?.views[0]?.keypoints?.map(
+      (kp) => kp.keypointName,
+    );
+    const keypointsFromProjectConfig =
+      this.projectInfoService.projectInfo.keypoint_names;
+    const allKeypoints = keypointsFromFirstFrame
+      ? keypointsFromFirstFrame.sort(
+          orderStringsByUserSpecifiedOrder(keypointsFromProjectConfig),
+        )
+      : keypointsFromProjectConfig;
     if (allKeypoints !== null) {
       unl.forEach((unlFrame) => {
         unlFrame.views.forEach((unlView) => {
