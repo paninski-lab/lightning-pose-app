@@ -1,13 +1,13 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  Signal,
-  WritableSignal,
   computed,
   inject,
   input,
-  signal,
   OnInit,
+  signal,
+  Signal,
+  WritableSignal,
 } from '@angular/core';
 import { TreeListBoxComponent } from './tree-listbox.component';
 

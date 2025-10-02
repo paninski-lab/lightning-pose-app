@@ -3,7 +3,6 @@ import {
   Component,
   computed,
   inject,
-  Input,
   input,
   OnChanges,
   output,
@@ -23,7 +22,6 @@ import { SessionService } from '../../session.service';
 import { MVLabelFile } from '../../label-file.model';
 import { GetMVAutoLabelsResponse } from '../mv-autolabel';
 import { PathPipe } from '../../components/path.pipe';
-import { RpcService } from '../../rpc.service';
 import { BundleAdjustDialogComponent } from '../../bundle-adjust-dialog/bundle-adjust-dialog.component';
 import { ToastService } from '../../toast.service';
 
