@@ -59,11 +59,14 @@
         </table>
       </div>
     }
-    <div class="modal-action">
+    <div class="modal-action items-center">
+      @if (numLabeledFrames() < 3) {
+        <p class="text-error">Not enough labeled frames</p>
+      }
       <button
         class="btn btn-primary"
         (click)="handleBundleAdjustClick()"
-        [disabled]="baLoading()"
+        [disabled]="baLoading() || numLabeledFrames() < 3"
       >
         @if (baLoading()) {
           <span class="loading loading-spinner loading-sm"></span>

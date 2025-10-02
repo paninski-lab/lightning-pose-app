@@ -4,6 +4,7 @@ import {
   Component,
   DestroyRef,
   inject,
+  Input,
   input,
   signal,
 } from '@angular/core';
@@ -33,6 +34,7 @@ export class BundleAdjustDialogComponent implements AfterViewInit {
   protected readonly mvf = mvf;
   labelFile = input.required<MVLabelFile | null>();
   frame = input.required<MVFrame | null>();
+  numLabeledFrames = input.required<number>();
 
   private runSubscription?: Subscription;
   protected baLoading = signal(false);
