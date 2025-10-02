@@ -322,6 +322,9 @@ export class LabelerCenterPanelComponent implements OnChanges {
             });
           });
         });
+        this.toastService.showToast({
+          content: 'Success: keypoints have been labeled wherever possible.',
+        });
       })
       .catch((error) => {
         this.isMVAutoLabeling.set(false);

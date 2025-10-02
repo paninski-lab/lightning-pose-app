@@ -43,3 +43,20 @@ export const createSessionViewComparator = (allViewsOrder: string[]) => {
     return indexA - indexB;
   };
 };
+
+export const orderStringsByUserSpecifiedOrder = (userOrder: string[]) => {
+  return (a: string, b: string): number => {
+    const indexA = userOrder.indexOf(a);
+    const indexB = userOrder.indexOf(b);
+
+    // If a string isn't in the user's order list,
+    // we can handle it by placing it at the end.
+    // This is a good practice to prevent -1 values from
+    // causing incorrect sorting.
+    // Note: '|| Infinity' is a common trick.
+    const aRank = indexA === -1 ? Infinity : indexA;
+    const bRank = indexB === -1 ? Infinity : indexB;
+
+    return aRank - bRank;
+  };
+};
