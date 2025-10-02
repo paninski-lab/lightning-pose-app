@@ -70,7 +70,9 @@ def get_mv_auto_labels(
     config: deps.Config = Depends(deps.config),
 ) -> GetMVAutoLabelsResponse:
     # Read the toml files for this session.
-    camera_group_toml_path = find_calibration_file(request.sessionKey, project_info, config)
+    camera_group_toml_path = find_calibration_file(
+        request.sessionKey, project_info, config
+    )
     if camera_group_toml_path is None:
         raise FileNotFoundError(
             f"Could not find calibration file for session {request.sessionKey}"
@@ -127,9 +129,7 @@ def _get_mv_auto_labels_for_keypoint(
         return KeypointForResponse(
             keypointName=keypoint.keypointName,
             triangulatedPt=None,
-            projections=[
-                KPProjectedLabel(view=view) for view in global_cg.cameras.keys()
-            ],
+            projections=[KPProjectedLabel(view=cam.name) for cam in global_cg.cameras],
         )
 
     point3d = kp_cg.triangulate(
