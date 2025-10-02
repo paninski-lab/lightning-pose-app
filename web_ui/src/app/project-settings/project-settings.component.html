@@ -5,70 +5,207 @@
   }
 </style>
 
-<h3 class="text-xl font-bold">
-  @if (setupMode()) {
-    Setup
-  } @else {
-    Settings
-  }
-</h3>
+<div class="flex flex-col h-full">
+  <h3 class="text-xl font-bold mb-4 shrink-0">
+    @if (setupMode()) {
+      Setup
+    } @else {
+      Settings
+    }
+  </h3>
 
-<form [formGroup]="projectInfoForm">
-  <fieldset class="fieldset my-6">
-    <!-- We like the fieldset / fieldset-legend styles from daisy, but
-        we're certainly not using it as intended. Daisy inputs
-        have no other good way of putting the label on top.
-        TODO fix properly. -->
-    <label class="fieldset-legend text-md">Data directory</label>
-    <div class="input w-full">
-      <span class="material-icons !text-sm opacity-50">folder</span>
-      <input
-        formControlName="dataDir"
-        type="text"
-        class="grow"
-        placeholder="/"
-        spellcheck="false"
-      />
+  <div class="flex gap-2 w-full grow shrink min-h-0">
+    <ul class="menu min-w-40">
+      <li>
+        <a
+          [class.menu-active]="selectedTab() === 'directories'"
+          tabindex="0"
+          (click)="handleTabClick('directories')"
+          (keydown.enter)="handleTabClick('directories')"
+        >
+          <span class="material-icons text-sm!">folder</span>Directories</a
+        >
+      </li>
+      <li>
+        <a
+          [class.menu-active]="selectedTab() === 'keypoints'"
+          tabindex="0"
+          (click)="handleTabClick('keypoints')"
+          (keydown.enter)="handleTabClick('keypoints')"
+          ><span class="material-icons text-sm!">adjust</span>Keypoints</a
+        >
+      </li>
+      <li>
+        <a
+          [class.menu-active]="selectedTab() === 'multiview'"
+          tabindex="0"
+          (click)="handleTabClick('multiview')"
+          (keydown.enter)="handleTabClick('multiview')"
+          ><span class="material-icons text-sm!">camera_alt</span>Multiview</a
+        >
+      </li>
+    </ul>
+    <div class="divider divider-vertical"></div>
+    <div class="overflow-y-auto">
+      @if (selectedTab() === "directories") {
+        <form [formGroup]="projectInfoForm" class="prose px-4">
+          <fieldset class="fieldset my-6">
+            <p class="m-0!">
+              Configure the directories that the app uses for this project.
+            </p>
+            <h3 class="text-md">Data directory</h3>
+            <p class="m-0!">Set the data directory for this project.</p>
+            <p class="m-0!">
+              For new projects, create a directory at a location of your choice
+              and place your videos in the <code>videos</code> subdirectory.
+            </p>
+            <div class="collapse collapse-plus">
+              <input type="checkbox" />
+              <div class="collapse-title font-semibold flex items-center gap-1">
+                <span class="material-icons text-sm!">help_outline</span>
+                More info
+              </div>
+              <div class="collapse-content">
+                It is not strictly necessary for videos to be in a subdirectory
+                called <code>videos</code>, but this is a sensible default for
+                most setups.
+                <ul class="mt-0!">
+                  <li>
+                    In the Viewer module, this is the root search directory for
+                    video files, including its subdirectories.
+                  </li>
+                  <li>
+                    In the Labeler module, this is the root search directory for
+                    label CSV files, including its subdirectories. Paths
+                    referenced from label files are relative to this directory.
+                    The labeler always extracts frames to the
+                    <code>labeled_data</code> subdirectory.
+                  </li>
+                  <li>
+                    In the Models module, this is the root search directory for
+                    label files and extracted frames for supervised training,
+                    and videos for semi-supervised training.
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div class="input w-full">
+              <span class="material-icons !text-sm opacity-50">folder</span>
+              <input
+                formControlName="dataDir"
+                type="text"
+                class="grow"
+                placeholder="/"
+                spellcheck="false"
+              />
+            </div>
+          </fieldset>
+
+          <fieldset class="my-4 fieldset">
+            <h3 class="text-md">Model directory</h3>
+            <p class="m-0!">Set the model directory for the project.</p>
+            <p class="m-0!">
+              For new projects, our recommendation is to create a
+              <code>models</code> subdirectory of your data directory.
+            </p>
+            <div class="collapse collapse-plus">
+              <input type="checkbox" />
+              <div class="collapse-title font-semibold flex items-center gap-1">
+                <span class="material-icons text-sm!">help_outline</span>
+                More info
+              </div>
+              <div class="collapse-content">
+                <ul class="mt-0!">
+                  <li>
+                    In the Models module, this is the search directory for model
+                    directories. New models are placed in this directory.
+                  </li>
+                  <li>
+                    In the Viewer module, this is the root search directory for
+                    model predictions including subdirectories.
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="input w-full">
+              <span class="material-icons !text-sm opacity-50">folder</span>
+              <input
+                formControlName="modelDir"
+                type="text"
+                class="grow"
+                placeholder="/"
+                spellcheck="false"
+              />
+            </div>
+          </fieldset>
+        </form>
+      }
+      @if (selectedTab() === "multiview") {
+        <form [formGroup]="projectInfoForm" class="prose px-4">
+          <fieldset class="fieldset my-6">
+            <h3 class="text-md mt-0!">Camera view names</h3>
+            <p class="m-0!">
+              Enter the names of the camera views, or leave blank if this is a
+              single view project.
+            </p>
+            <p class="m-0!">
+              Used to group multiview files. Sessions are identified by removing
+              the view name from the video filename. Label CSV files are
+              similarly grouped.
+            </p>
+            <p class="m-0!">
+              Filenames should embed the view name delimited by underscore or
+              hyphen. For example,
+              <code>video_01_front.mp4</code> or
+              <code>video_01-front.mp4</code> are valid, but not
+              <code>video_01front.mp4</code>.
+            </p>
+            <textarea
+              class="textarea w-full"
+              [rows]="viewsInitialRows()"
+              [placeholder]="cameraViewPlaceholder"
+              formControlName="views"
+              spellcheck="false"
+            ></textarea>
+            <p>
+              Parsed:
+              {{ parseTextAsList(projectInfoForm.get("views")?.value) | json }}
+            </p>
+          </fieldset>
+        </form>
+      }
+      @if (selectedTab() === "keypoints") {
+        <form [formGroup]="projectInfoForm" class="prose px-4">
+          <fieldset class="fieldset my-6">
+            <h3 class="text-md mt-0!">Keypoint names</h3>
+            <p class="m-0!">
+              Enter the names of the keypoints to label. This is also the
+              labeling order of the keypoints.
+            </p>
+            <textarea
+              class="textarea w-full"
+              [rows]="keypointInitialRows()"
+              formControlName="keypointNames"
+              spellcheck="false"
+            ></textarea>
+            <p>
+              Parsed:
+              {{
+                parseTextAsList(projectInfoForm.get("keypointNames")?.value)
+                  | json
+              }}
+            </p>
+          </fieldset>
+        </form>
+      }
     </div>
-    <p class="label">Root of the data directory for the project.</p>
-  </fieldset>
-
-  <fieldset class="fieldset my-4">
-    <label class="fieldset-legend text-md">Model directory</label>
-
-    <div class="input w-full">
-      <span class="material-icons !text-sm opacity-50">folder</span>
-      <input
-        formControlName="modelDir"
-        type="text"
-        class="grow"
-        placeholder="/"
-        spellcheck="false"
-      />
-    </div>
-    <p class="label">Root of the model directory for the project.</p>
-  </fieldset>
-
-  <fieldset class="fieldset my-4">
-    <label class="fieldset-legend text-md">Camera Views</label>
-
-    <textarea
-      class="textarea w-full"
-      [rows]="viewsInitialRows()"
-      [placeholder]="cameraViewPlaceholder"
-      formControlName="views"
-      spellcheck="false"
-    ></textarea>
-    <p class="label">
-      Names of views embedded in video filenames.<br />
-      Used to group files into sessions.
-    </p>
-  </fieldset>
-
-  <div class="modal-action">
+  </div>
+  <footer class="shrink-0 modal-action">
+    <p class="text-sm text-info">{{ saveSuccessMessage() }}</p>
     @if (!setupMode()) {
       <button class="btn btn-soft btn-secondary" (click)="done.emit(null)">
-        Cancel
+        Close
       </button>
     }
     <button
@@ -78,5 +215,5 @@
     >
       Save
     </button>
-  </div>
-</form>
+  </footer>
+</div>
