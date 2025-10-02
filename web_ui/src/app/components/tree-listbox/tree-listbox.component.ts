@@ -1,4 +1,16 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Signal, WritableSignal, computed, effect, inject, output, signal, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  ElementRef,
+  inject,
+  input,
+  output,
+  Signal,
+  signal,
+  WritableSignal,
+} from '@angular/core';
 
 // Forward type import inside same folder
 import { TreeOptionComponent } from './tree-option.component';
@@ -6,12 +18,17 @@ import { TreeOptionComponent } from './tree-option.component';
 @Component({
   selector: 'app-tree-listbox',
   imports: [],
-  template: `
-    <ng-content></ng-content>
-  `,
+  template: ` <ng-content></ng-content> `,
   styles: [
-    `:host{display:block;outline:none;}
-     :host(.tlb-focused){outline: 2px solid var(--focus-color, #3b82f6); outline-offset: 2px;}
+    `
+      :host {
+        display: block;
+        outline: none;
+      }
+      :host(.tlb-focused) {
+        outline: 2px solid var(--focus-color, #3b82f6);
+        outline-offset: 2px;
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -19,7 +36,7 @@ import { TreeOptionComponent } from './tree-option.component';
     role: 'listbox',
     tabindex: '0',
     '[attr.aria-activedescendant]': 'activeId()',
-    "[attr.aria-multiselectable]": '"false"',
+    '[attr.aria-multiselectable]': '"false"',
     '(keydown)': 'onKeydown($event)',
     '(focus)': 'onFocus()',
     '(blur)': 'onBlur()',
@@ -32,13 +49,20 @@ export class TreeListBoxComponent<T = unknown> {
   private readonly el = inject(ElementRef<HTMLElement>);
 
   // Registered options in DOM order
-  private readonly _options: WritableSignal<TreeOptionComponent<T>[]> = signal([]);
+  private readonly _options: WritableSignal<TreeOptionComponent<T>[]> = signal(
+    [],
+  );
 
   // Expanded state per option instance (WeakMap for GC on destroy)
-  private readonly _expanded = new WeakMap<TreeOptionComponent<T>, WritableSignal<boolean>>();
+  private readonly _expanded = new WeakMap<
+    TreeOptionComponent<T>,
+    WritableSignal<boolean>
+  >();
 
   // Active and selected state managed here
-  readonly activeId: WritableSignal<string | null> = signal<string | null>(null);
+  readonly activeId: WritableSignal<string | null> = signal<string | null>(
+    null,
+  );
   readonly selectedValue: WritableSignal<T | null> = signal<T | null>(null);
 
   // Outputs
@@ -81,7 +105,9 @@ export class TreeListBoxComponent<T = unknown> {
     }
     return s;
   }
-  isExpanded(option: TreeOptionComponent<T>): boolean { return this.expandedFor(option)(); }
+  isExpanded(option: TreeOptionComponent<T>): boolean {
+    return this.expandedFor(option)();
+  }
   toggleExpand(option: TreeOptionComponent<T>): void {
     const s = this.expandedFor(option);
     s.set(!s());
@@ -91,7 +117,8 @@ export class TreeListBoxComponent<T = unknown> {
   isVisible(option: TreeOptionComponent<T>): boolean {
     // Root nodes (no parent) are visible
     let pid = option.parentId ? option.parentId() : null;
-    const getById = (id: string) => this._options().find(o => (o.nodeId ? o.nodeId() : null) === id);
+    const getById = (id: string) =>
+      this._options().find((o) => (o.nodeId ? o.nodeId() : null) === id);
     while (pid) {
       const parent = getById(pid);
       if (parent && !this.isExpanded(parent)) return false;
@@ -102,8 +129,8 @@ export class TreeListBoxComponent<T = unknown> {
   }
 
   // Derived list of enabled options (visible and not disabled)
-  private readonly enabledOptions: Signal<TreeOptionComponent<T>[]> = computed(() =>
-    this._options().filter((o) => !o.disabled() && this.isVisible(o)),
+  private readonly enabledOptions: Signal<TreeOptionComponent<T>[]> = computed(
+    () => this._options().filter((o) => !o.disabled() && this.isVisible(o)),
   );
 
   // Keep option visual states in sync
@@ -113,7 +140,7 @@ export class TreeListBoxComponent<T = unknown> {
 
     // Ensure active is visible; if not, move to first visible
     const all = this._options();
-    const activeOpt = all.find(o => o.id === active) ?? null;
+    const activeOpt = all.find((o) => o.id === active) ?? null;
     if (activeOpt && !this.isVisible(activeOpt)) {
       const firstVisible = this.enabledOptions()[0] ?? null;
       this.activeId.set(firstVisible ? firstVisible.id : null);
@@ -141,7 +168,16 @@ export class TreeListBoxComponent<T = unknown> {
 
   onKeydown(event: KeyboardEvent): void {
     const key = event.key;
-    if (key === 'ArrowDown' || key === 'ArrowUp' || key === 'Home' || key === 'End' || key === 'Enter' || key === ' ' || key === 'ArrowLeft' || key === 'ArrowRight') {
+    if (
+      key === 'ArrowDown' ||
+      key === 'ArrowUp' ||
+      key === 'Home' ||
+      key === 'End' ||
+      key === 'Enter' ||
+      key === ' ' ||
+      key === 'ArrowLeft' ||
+      key === 'ArrowRight'
+    ) {
       event.preventDefault();
     }
 
@@ -155,7 +191,10 @@ export class TreeListBoxComponent<T = unknown> {
 
     switch (key) {
       case 'ArrowDown': {
-        const next = currentIndex >= 0 && currentIndex < enabled.length - 1 ? enabled[currentIndex + 1] : first;
+        const next =
+          currentIndex >= 0 && currentIndex < enabled.length - 1
+            ? enabled[currentIndex + 1]
+            : first;
         this.activeId.set(next.id);
         break;
       }
@@ -178,7 +217,10 @@ export class TreeListBoxComponent<T = unknown> {
             this.toggleExpand(current);
           } else {
             // move to next visible
-            const next = currentIndex < enabled.length - 1 ? enabled[currentIndex + 1] : first;
+            const next =
+              currentIndex < enabled.length - 1
+                ? enabled[currentIndex + 1]
+                : first;
             this.activeId.set(next.id);
           }
         }
@@ -194,7 +236,9 @@ export class TreeListBoxComponent<T = unknown> {
         // Move to parent if exists
         if (current && current.parentId && current.parentId()) {
           const pid = current.parentId();
-          const parent = this._options().find(o => (o.nodeId ? o.nodeId() : null) === pid);
+          const parent = this._options().find(
+            (o) => (o.nodeId ? o.nodeId() : null) === pid,
+          );
           if (parent) this.activeId.set(parent.id);
         }
         break;
@@ -202,7 +246,11 @@ export class TreeListBoxComponent<T = unknown> {
       case 'Enter': {
         const active = current;
         if (active && !active.disabled()) {
-          if (active.hasChildren && active.hasChildren() && !this.allowFolderSelect()) {
+          if (
+            active.hasChildren &&
+            active.hasChildren() &&
+            !this.allowFolderSelect()
+          ) {
             // Toggle expand/collapse when folder selection is not allowed
             this.toggleExpand(active);
             // Do not select when allowFolderSelect is false

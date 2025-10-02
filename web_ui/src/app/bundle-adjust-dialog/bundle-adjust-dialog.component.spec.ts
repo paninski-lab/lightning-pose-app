@@ -8,9 +8,8 @@ describe('BundleAdjustDialogComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [BundleAdjustDialogComponent]
-    })
-    .compileComponents();
+      imports: [BundleAdjustDialogComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(BundleAdjustDialogComponent);
     component = fixture.componentInstance;

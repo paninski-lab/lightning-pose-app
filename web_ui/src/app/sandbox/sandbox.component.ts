@@ -1,20 +1,15 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  signal,
   computed,
+  signal,
 } from '@angular/core';
-import { KeypointContainerComponent } from '../components/keypoint-container/keypoint-container.component';
 import { TreeListBoxComponent } from '../components/tree-listbox/tree-listbox.component';
 import { TreeOptionComponent } from '../components/tree-listbox/tree-option.component';
 
 @Component({
   selector: 'app-sandbox',
-  imports: [
-    KeypointContainerComponent,
-    TreeListBoxComponent,
-    TreeOptionComponent,
-  ],
+  imports: [TreeListBoxComponent, TreeOptionComponent],
   templateUrl: './sandbox.component.html',
   styleUrl: './sandbox.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

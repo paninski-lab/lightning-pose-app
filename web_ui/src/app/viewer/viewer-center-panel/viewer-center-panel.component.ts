@@ -27,7 +27,7 @@ import * as dfd from 'danfojs';
 import { PredictionFile } from '../../prediction-file';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ZoomableContentComponent } from '../../components/zoomable-content.component';
-import { firstValueFrom, skip, skipWhile } from 'rxjs';
+import { firstValueFrom, skipWhile } from 'rxjs';
 
 @Component({
   selector: 'app-viewer-center-panel',
