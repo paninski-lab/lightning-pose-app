@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   inject,
+  Input,
   input,
   OnChanges,
   output,
@@ -46,6 +47,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
 
   labelFile = input<MVLabelFile | null>(null);
   frame = input<MVFrame | null>(null);
+  numLabeledFrames = input.required<number>();
 
   saved = output<{
     labelFile: MVLabelFile;

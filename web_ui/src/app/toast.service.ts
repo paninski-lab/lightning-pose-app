@@ -94,7 +94,12 @@ export class ToastService {
       return this.containerEl;
     }
     const container = this.document.createElement('div');
-    container.classList.add('toast', 'toast-bottom', 'toast-center');
+    container.classList.add(
+      'toast',
+      'toast-bottom',
+      'toast-center',
+      'z-[99999]',
+    );
     this.document.body.appendChild(container);
     this.containerEl = container;
     return container;
