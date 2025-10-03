@@ -3,6 +3,7 @@ import { ViewerPageComponent } from './viewer/viewer-page/viewer-page.component'
 import { LabelerPageComponent } from './labeler/labeler-page.component';
 import { SandboxComponent } from './sandbox/sandbox.component';
 import { HomePageComponent } from './home-page/home-page.component';
+import { ModelsPageComponent } from './models-page/models-page.component';
 
 export const routes: Routes = [
   {
@@ -34,6 +35,11 @@ export const routes: Routes = [
     path: 'labeler/:labelFileKey/:frameKey',
     component: LabelerPageComponent,
     title: 'Lightning Pose Labeler',
+  },
+  {
+    path: 'models',
+    component: ModelsPageComponent,
+    title: 'Lightning Pose Models',
   },
   {
     path: 'sandbox',

@@ -7,7 +7,7 @@
       ✕
     </button>
     <!-- Header -->
-    <div class="flex">
+    <div class="flex mb-6">
       <h3 class="text-xl font-bold text-nowrap">Extract frames</h3>
       <ul class="steps text-sm">
         <li class="step step-primary">Select a label file</li>
@@ -19,12 +19,11 @@
         </li>
       </ul>
     </div>
-    <div class="divider"></div>
 
     <!-- Body -->
     @if (step() === "labelFile") {
       <div class="prose max-w-none!">
-        <p class="mb-4">
+        <p class="mb-4 text-sm">
           This workflow identifies new frames to label and adds them to the
           labeling queue. It is often used when starting a project or to add
           frames from new sessions.

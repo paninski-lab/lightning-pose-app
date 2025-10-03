@@ -6,6 +6,14 @@
 </style>
 
 <div class="flex flex-col h-full">
+  @if (!setupMode()) {
+    <button
+      class="btn btn-md btn-circle btn-ghost absolute right-4 top-4"
+      (click)="done.emit(null)"
+    >
+      ✕
+    </button>
+  }
   <h3 class="text-xl font-bold mb-4 shrink-0">
     @if (setupMode()) {
       Setup
@@ -203,11 +211,6 @@
   </div>
   <footer class="shrink-0 modal-action">
     <p class="text-sm text-info">{{ saveSuccessMessage() }}</p>
-    @if (!setupMode()) {
-      <button class="btn btn-soft btn-secondary" (click)="done.emit(null)">
-        Close
-      </button>
-    }
     <button
       class="btn btn-soft btn-primary"
       (click)="onSaveClick()"
