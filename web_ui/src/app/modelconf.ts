@@ -78,6 +78,27 @@ export interface ModelConfig {
   heatmap_loss_type: 'mse';
   model_name: string;
 }
+export const backbones = [
+  'resnet18',
+  'resnet34',
+  'resnet50',
+  'resnet101',
+  'resnet152',
+  'resnet50_contrastive',
+  'resnet50_animal_apose',
+  'resnet50_animal_ap10k',
+  'resnet50_human_jhmdb',
+  'resnet50_human_res_rle',
+  'resnet50_human_top_res',
+  'resnet50_human_hand',
+  'efficientnet_b0',
+  'efficientnet_b1',
+  'efficientnet_b2',
+  'vits_dino',
+  'vitb_dino',
+  'vitb_imagenet',
+  'vitb_sam',
+];
 
 /**
  * Configuration for DALI data loader pipelines.
@@ -173,7 +194,7 @@ export interface CallbacksConfig {
 /**
  * The root interface for the entire configuration file.
  */
-export interface ModelConfig {
+export interface RootConfig {
   data: DataConfig;
   training: TrainingConfig;
   model: ModelConfig;

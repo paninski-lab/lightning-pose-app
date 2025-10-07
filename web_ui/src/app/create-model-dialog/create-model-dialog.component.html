@@ -44,26 +44,54 @@
                 </p>
 
                 <input
+                  name="modelName"
                   type="text"
                   class="input w-full"
+                  [class.input-error]="
+                    form.controls.modelName.touched &&
+                    form.controls.modelName.invalid
+                  "
                   placeholder="my_model"
                   spellcheck="false"
+                  [formControl]="form.controls.modelName"
                 />
+                <p
+                  class="my-0! text-error invisible"
+                  [class.visible!]="
+                    form.controls.modelName.touched &&
+                    form.controls.modelName.invalid
+                  "
+                >
+                  Invalid name
+                </p>
               </fieldset>
               <fieldset class="fieldset my-2">
                 <h3 class="text-md mt-0!">Model type</h3>
                 <div class="flex gap-4 items-start">
                   <div class="grow">
                     <p class="m-0!">Select the model type</p>
-                    <select class="select" spellcheck="false">
-                      <option value="ss">Semi-supervised</option>
-                      <option value="ss-ctx">Semi-supervised context</option>
+                    <select
+                      class="select"
+                      spellcheck="false"
+                      [formControl]="form.controls.modelType"
+                    >
+                      @for (type of modelTypeOptions; track type) {
+                        <option [value]="type">
+                          {{ type | modelType }}
+                        </option>
+                      }
                     </select>
                   </div>
                   <div class="grow">
                     <p class="m-0!">Select the backbone architecture.</p>
-                    <select class="select" spellcheck="false">
-                      <option value="resnet50">ResNet50</option>
+                    <select
+                      class="select"
+                      spellcheck="false"
+                      [formControl]="form.controls.backbone"
+                    >
+                      @for (backbone of backboneOptions; track backbone) {
+                        <option [value]="backbone">{{ backbone }}</option>
+                      }
                     </select>
                   </div>
                 </div>
