@@ -1,0 +1,4 @@
+/* https://github.com/saadeghi/daisyui/issues/3870 */
+input::placeholder {
+  color: color-mix(in oklab, var(--color-base-content) 50%, #0000) !important;
+}

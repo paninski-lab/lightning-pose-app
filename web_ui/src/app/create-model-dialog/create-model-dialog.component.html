@@ -1,5 +1,5 @@
 <dialog class="modal" open>
-  <div class="modal-box w-5/6 max-w-3xl h-2/3 max-h-150">
+  <div class="modal-box overflow-x-hidden w-5/6 max-w-3xl h-2/3 max-h-150">
     <div class="flex flex-col h-full">
       <button
         class="btn btn-md btn-circle btn-ghost absolute right-4 top-4"
@@ -103,15 +103,22 @@
               <fieldset class="fieldset my-6">
                 <h3 class="text-md mt-0">Labeled frames</h3>
                 <p class="m-0!">
-                  Select the label file for supervised training.
+                  Select the label file for supervised training. (Deferred: make
+                  the selection load from FS instead of one static option).
                 </p>
 
-                <select class="select" spellcheck="false">
-                  <option value="loremipsum">CollectedData_*.csv</option>
+                <select
+                  class="select"
+                  spellcheck="false"
+                  [formControl]="form.controls.labelFile"
+                >
+                  <option value="CollectedData_*.csv">
+                    CollectedData_*.csv
+                  </option>
                 </select>
               </fieldset>
               <fieldset class="fieldset my-2">
-                <h3 class="text-md mt-0!">Train / test split</h3>
+                <h3 class="text-md mt-0!">Train / test split #TODO</h3>
                 <div class="flex gap-4 items-start">
                   <div class="grow">
                     <p class="m-0!">Set the train prob</p>
@@ -128,8 +135,12 @@
                 <p class="m-0!">
                   Select the directory containing videos to train on.
                 </p>
-                <select class="select" spellcheck="false">
-                  <option value="loremipsum">videos</option>
+                <select
+                  class="select"
+                  spellcheck="false"
+                  [formControl]="form.controls.videosDir"
+                >
+                  <option value="videos">videos</option>
                 </select>
               </fieldset>
             </form>
@@ -139,18 +150,49 @@
               <fieldset class="fieldset my-6">
                 <h3 class="text-md mt-0">Duration</h3>
                 <p class="m-0!">How many epochs to train for.</p>
-                <input type="number" class="input" value="300" />
+                <input
+                  type="number"
+                  class="input"
+                  [formControl]="form.controls.epochs"
+                  [class.input-error]="
+                    form.controls.epochs.touched && form.controls.epochs.invalid
+                  "
+                />
+                <p
+                  class="my-0! text-error invisible"
+                  [class.visible!]="
+                    form.controls.epochs.touched && form.controls.epochs.invalid
+                  "
+                >
+                  {{ form.controls.epochs.errors | json }}
+                </p>
               </fieldset>
               <fieldset class="fieldset my-2">
                 <h3 class="text-md mt-0!">Batch size</h3>
                 <div class="flex gap-4 items-start">
                   <div class="grow">
                     <p class="m-0!">Set the labeled batch size</p>
-                    <input type="number" class="input w-full" value="6" />
+                    <input
+                      type="number"
+                      class="input w-full"
+                      [formControl]="form.controls.labeledBatchSize"
+                      [class.input-error]="
+                        form.controls.labeledBatchSize.touched &&
+                        form.controls.labeledBatchSize.invalid
+                      "
+                    />
                   </div>
                   <div class="grow">
                     <p class="m-0!">Set the unlabeled batch size</p>
-                    <input type="number" class="input w-full" value="6" />
+                    <input
+                      type="number"
+                      class="input w-full"
+                      [formControl]="form.controls.unlabeledBatchSize"
+                      [class.input-error]="
+                        form.controls.unlabeledBatchSize.touched &&
+                        form.controls.unlabeledBatchSize.invalid
+                      "
+                    />
                   </div>
                 </div>
               </fieldset>
@@ -175,9 +217,19 @@
           </ul>
         </div>
         <div>
-          <button class="btn btn-soft btn-primary" (click)="onCreateClick()">
-            Create
-          </button>
+          <!-- adding the tooltip causes horizontal scrollbar for some reason.
+          Fixed with overflow-x-hidden on the modal-box. -->
+          <span
+            class="tooltip tooltip-left"
+            [attr.data-tip]="formInvalidReason()"
+            ><button
+              class="btn btn-soft btn-primary"
+              (click)="onCreateClick()"
+              [class.btn-disabled]="!form.valid"
+            >
+              Create
+            </button></span
+          >
         </div>
       </footer>
     </div>

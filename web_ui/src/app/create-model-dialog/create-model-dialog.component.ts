@@ -16,6 +16,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { backbones } from '../modelconf';
+import { JsonPipe } from '@angular/common';
 
 @Pipe({
   name: 'modelType',
@@ -28,7 +29,7 @@ export class ModelTypeLabelPipe implements PipeTransform {
 }
 @Component({
   selector: 'app-create-model-dialog',
-  imports: [FormsModule, ReactiveFormsModule, ModelTypeLabelPipe],
+  imports: [FormsModule, ReactiveFormsModule, ModelTypeLabelPipe, JsonPipe],
   templateUrl: './create-model-dialog.component.html',
   styleUrl: './create-model-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -40,7 +41,36 @@ export class CreateModelDialogComponent {
   protected form = this.fb.group({
     modelName: ['', [Validators.required, fileNameValidator]],
     modelType: [ModelType.SUP, Validators.required],
-    backbone: ['resnet50'],
+    backbone: 'resnet50',
+    labelFile: 'CollectedData_*.csv',
+    videosDir: 'videos',
+    epochs: [
+      300,
+      [
+        Validators.required,
+        Validators.min(5),
+        Validators.max(1000000),
+        Validators.pattern('^[0-9]+$'),
+      ],
+    ],
+    labeledBatchSize: [
+      16,
+      [
+        Validators.required,
+        Validators.min(1),
+        Validators.max(1000),
+        Validators.pattern('^[0-9]+$'),
+      ],
+    ],
+    unlabeledBatchSize: [
+      32,
+      [
+        Validators.required,
+        Validators.min(1),
+        Validators.max(1000),
+        Validators.pattern('^[0-9]+$'),
+      ],
+    ],
   });
 
   // expose to the template
@@ -59,7 +89,17 @@ export class CreateModelDialogComponent {
   handleTabClick(tabId: string) {
     this.selectedTab.set(tabId);
   }
+
+  formInvalidReason(): string {
+    for (const [name, control] of Object.entries(this.form.controls)) {
+      if (control.invalid) {
+        return `${name} invalid`;
+      }
+    }
+    return '';
+  }
 }
+
 enum ModelType {
   SUP = 'SUP',
   S_SUP = 'S_SUP',

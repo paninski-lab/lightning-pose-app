@@ -18,3 +18,4 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 .panel-content {
   @apply bg-base-100 p-1 text-sm;
 }
+
