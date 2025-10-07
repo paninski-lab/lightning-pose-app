@@ -381,6 +381,10 @@ export class SessionService {
 
     return false;
   }
+
+  async createTrainingTask(configObject: any): Promise<void> {
+    await this.rpc.call('createTrainingTask', { config: configObject });
+  }
 }
 
 interface RGlobResponse {
