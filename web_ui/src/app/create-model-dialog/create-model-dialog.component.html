@@ -1,0 +1,245 @@
+<dialog class="modal" open>
+  <div class="modal-box overflow-x-hidden w-5/6 max-w-3xl h-2/3 max-h-150">
+    <div class="flex flex-col h-full">
+      <button
+        class="btn btn-md btn-circle btn-ghost absolute right-4 top-4"
+        (click)="handleCloseClick()"
+      >
+        ✕
+      </button>
+      <!-- Header -->
+      <h3 class="text-xl font-bold text-nowrap mb-4">Model creation</h3>
+
+      <div class="flex gap-2 w-full grow shrink min-h-0">
+        <div class="flex flex-col justify-between">
+          <ul class="menu min-w-50 steps steps-vertical">
+            @let tabs =
+              [
+                { id: "general", text: "General" },
+                { id: "data", text: "Data" },
+                { id: "training", text: "Training" },
+              ];
+            @for (tab of tabs; track tab.id) {
+              <li class="step">
+                <a
+                  [class.menu-active]="selectedTab() === tab.id"
+                  tabindex="0"
+                  (click)="handleTabClick(tab.id)"
+                  (keydown.enter)="handleTabClick(tab.id)"
+                  >{{ tab.text }}</a
+                >
+              </li>
+            }
+          </ul>
+        </div>
+        <div class="divider divider-vertical"></div>
+        <div class="overflow-y-auto prose">
+          @if (selectedTab() === "yaml") {
+            <div class="px-4">
+              <h3 class="text-md mt-0">YAML Preview</h3>
+              <pre class="rounded-box bg-base-200 p-4 max-h-96 overflow-auto">
+                <code class="hljs" [appHighlight]="yamlPreviewText()" [language]="'yaml'"></code>
+              </pre>
+            </div>
+          }
+          @if (selectedTab() === "general") {
+            <form class="prose px-4">
+              <fieldset class="fieldset my-6">
+                <h3 class="text-md mt-0">Model name</h3>
+                <p class="m-0!">
+                  The name of the model and the directory that will be created
+                  for it.
+                </p>
+
+                <input
+                  name="modelName"
+                  type="text"
+                  class="input w-full"
+                  [class.input-error]="
+                    form.controls.modelName.touched &&
+                    form.controls.modelName.invalid
+                  "
+                  placeholder="my_model"
+                  spellcheck="false"
+                  [formControl]="form.controls.modelName"
+                />
+                <p
+                  class="my-0! text-error invisible"
+                  [class.visible!]="
+                    form.controls.modelName.touched &&
+                    form.controls.modelName.invalid
+                  "
+                >
+                  Invalid name
+                </p>
+              </fieldset>
+              <fieldset class="fieldset my-2">
+                <h3 class="text-md mt-0!">Model type</h3>
+                <div class="flex gap-4 items-start">
+                  <div class="grow">
+                    <p class="m-0!">Select the model type</p>
+                    <select
+                      class="select"
+                      spellcheck="false"
+                      [formControl]="form.controls.modelType"
+                    >
+                      @for (type of modelTypeOptions; track type) {
+                        <option [value]="type">
+                          {{ type | modelType }}
+                        </option>
+                      }
+                    </select>
+                  </div>
+                  <div class="grow">
+                    <p class="m-0!">Select the backbone architecture.</p>
+                    <select
+                      class="select"
+                      spellcheck="false"
+                      [formControl]="form.controls.backbone"
+                    >
+                      @for (backbone of backboneOptions; track backbone) {
+                        <option [value]="backbone">{{ backbone }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+              </fieldset>
+            </form>
+          }
+          @if (selectedTab() === "data") {
+            <form class="prose px-4">
+              <fieldset class="fieldset my-6">
+                <h3 class="text-md mt-0">Labeled frames</h3>
+                <p class="m-0!">
+                  Select the label file for supervised training. (Deferred: make
+                  the selection load from FS instead of one static option).
+                </p>
+
+                <select
+                  class="select"
+                  spellcheck="false"
+                  [formControl]="form.controls.labelFile"
+                >
+                  <option value="CollectedData_*.csv">
+                    CollectedData_*.csv
+                  </option>
+                </select>
+              </fieldset>
+              <fieldset class="fieldset my-2">
+                <h3 class="text-md mt-0!">Train / test split #TODO</h3>
+                <div class="flex gap-4 items-start">
+                  <div class="grow">
+                    <p class="m-0!">Set the train prob</p>
+                    <input type="number" class="input w-full" value="0.2" />
+                  </div>
+                  <div class="grow">
+                    <p class="m-0!">Set the test prob</p>
+                    <input type="number" class="input w-full" value="0.2" />
+                  </div>
+                </div>
+              </fieldset>
+              <fieldset class="fieldset my-2">
+                <h3 class="text-md mt-0!">Unsupervised training</h3>
+                <p class="m-0!">
+                  Select the directory containing videos to train on.
+                </p>
+                <select
+                  class="select"
+                  spellcheck="false"
+                  [formControl]="form.controls.videosDir"
+                >
+                  <option value="videos">videos</option>
+                </select>
+              </fieldset>
+            </form>
+          }
+          @if (selectedTab() === "training") {
+            <form class="prose px-4">
+              <fieldset class="fieldset my-6">
+                <h3 class="text-md mt-0">Duration</h3>
+                <p class="m-0!">How many epochs to train for.</p>
+                <input
+                  type="number"
+                  class="input"
+                  [formControl]="form.controls.epochs"
+                  [class.input-error]="
+                    form.controls.epochs.touched && form.controls.epochs.invalid
+                  "
+                />
+                <p
+                  class="my-0! text-error invisible"
+                  [class.visible!]="
+                    form.controls.epochs.touched && form.controls.epochs.invalid
+                  "
+                >
+                  {{ form.controls.epochs.errors | json }}
+                </p>
+              </fieldset>
+              <fieldset class="fieldset my-2">
+                <h3 class="text-md mt-0!">Batch size</h3>
+                <div class="flex gap-4 items-start">
+                  <div class="grow">
+                    <p class="m-0!">Set the labeled batch size</p>
+                    <input
+                      type="number"
+                      class="input w-full"
+                      [formControl]="form.controls.labeledBatchSize"
+                      [class.input-error]="
+                        form.controls.labeledBatchSize.touched &&
+                        form.controls.labeledBatchSize.invalid
+                      "
+                    />
+                  </div>
+                  <div class="grow">
+                    <p class="m-0!">Set the unlabeled batch size</p>
+                    <input
+                      type="number"
+                      class="input w-full"
+                      [formControl]="form.controls.unlabeledBatchSize"
+                      [class.input-error]="
+                        form.controls.unlabeledBatchSize.touched &&
+                        form.controls.unlabeledBatchSize.invalid
+                      "
+                    />
+                  </div>
+                </div>
+              </fieldset>
+            </form>
+          }
+        </div>
+      </div>
+
+      <footer class="shrink-0 modal-action justify-between!">
+        <div>
+          <ul class="menu min-w-50">
+            <li>
+              <a
+                class="opacity-40 hover:opacity-100"
+                [class.menu-active]="selectedTab() === 'yaml'"
+                tabindex="0"
+                (click)="onPreviewYamlClick()"
+                (keydown.enter)="onPreviewYamlClick()"
+                >Preview YAML</a
+              >
+            </li>
+          </ul>
+        </div>
+        <div>
+          <!-- adding the tooltip causes horizontal scrollbar for some reason.
+          Fixed with overflow-x-hidden on the modal-box. -->
+          <span
+            class="tooltip tooltip-left"
+            [attr.data-tip]="formInvalidReason()"
+            ><button
+              class="btn btn-soft btn-primary"
+              (click)="onCreateClick()"
+              [class.btn-disabled]="!form.valid"
+            >
+              Create
+            </button></span
+          >
+        </div>
+      </footer>
+    </div>
+  </div>
+</dialog>

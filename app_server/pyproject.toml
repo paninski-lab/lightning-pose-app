@@ -12,6 +12,7 @@ dependencies = [
     "apscheduler~=3.11.0",
     "fastapi~=0.116.0",
     "honcho~=2.0",
+    "omegaconf~=2.3.0",
     "pandas~=2.3.0",
     "reactivex~=4.0.0",
     "uvicorn[standard]~=0.35.0",

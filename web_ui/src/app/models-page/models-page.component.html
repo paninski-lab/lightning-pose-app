@@ -1,0 +1,65 @@
+<style>
+  :host {
+    display: flex;
+    flex-grow: 1;
+    justify-content: center;
+  }
+</style>
+<div class="min-w-lg max-w-4xl">
+  <div class="flex gap-2 items-center mb-4">
+    <button
+      class="btn btn-primary tooltip tooltip-bottom"
+      data-tip="Create and train a model"
+      (click)="isCreateModelDialogOpen.set(true)"
+    >
+      New model
+    </button>
+    <button class="btn btn-accent">Actions</button>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="table table-zebra">
+      <thead>
+        <tr>
+          <th>
+            <label>
+              <input type="checkbox" class="checkbox" />
+            </label>
+          </th>
+          <th>Model Name</th>
+          <th>Model Type</th>
+          <th>Date Created</th>
+          <th>Epochs Trained</th>
+          <th>Train/Test Split</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (m of models; track m.id) {
+          <tr>
+            <td>
+              <label>
+                <input type="checkbox" class="checkbox" />
+              </label>
+            </td>
+            <td>{{ m.name }}</td>
+            <td>{{ m.type }}</td>
+            <td>{{ m.creationDate | date }}</td>
+            <td>{{ m.epochsTrained }}</td>
+            <td>{{ m.trainTestSplit }}</td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="100" class="text-center opacity-60">
+              No models found in model directory.
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+@if (isCreateModelDialogOpen()) {
+  <app-create-model-dialog
+    (done)="isCreateModelDialogOpen.set(false)"
+  ></app-create-model-dialog>
+}

@@ -116,4 +116,6 @@ view2
   protected handleTabClick(tabKey: string) {
     this.selectedTab.set(tabKey);
   }
+
+  handleCloseClick() {}
 }
