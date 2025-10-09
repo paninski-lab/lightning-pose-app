@@ -10,6 +10,11 @@ import { routes } from './app.routes';
 import { GlobalErrorHandler } from './global-error-handler.service';
 import { provideHttpClient } from '@angular/common/http';
 
+// Import and configure Highlight.js
+import hljs from 'highlight.js/lib/core';
+import yaml from 'highlight.js/lib/languages/yaml';
+hljs.registerLanguage('yaml', yaml);
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZonelessChangeDetection(),

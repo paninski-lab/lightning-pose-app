@@ -239,6 +239,31 @@ export class SessionService {
     return response;
   }
 
+  async getYamlFile(filePath: string): Promise<any | null> {
+    // GET /app/v0/getYamlFile?file_path=...
+    const url = `/app/v0/getYamlFile`;
+    return await firstValueFrom(
+      this.httpClient
+        .get(url, { params: { file_path: filePath } })
+        .pipe(
+          catchError((error) => {
+            if (error.status === 404) {
+              return [null];
+            }
+            throw error;
+          }),
+        ),
+    );
+  }
+
+  async createTrainTask(yamlText: string): Promise<void> {
+    // RPC stub for creating a training task. Intentionally unimplemented.
+    // When implemented, it should likely call an RPC endpoint like '/app/v0/rpc/createTrainTask'
+    // with a payload containing the YAML string.
+    void yamlText;
+    return;
+  }
+
   getAvailableModelsForSession(sessionKey: string): string[] {
     return this.sessionModelMap[sessionKey] || [];
   }

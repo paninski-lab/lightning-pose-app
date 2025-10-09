@@ -34,6 +34,14 @@
         </div>
         <div class="divider divider-vertical"></div>
         <div class="overflow-y-auto prose">
+          @if (selectedTab() === "yaml") {
+            <div class="px-4">
+              <h3 class="text-md mt-0">YAML Preview</h3>
+              <pre class="rounded-box bg-base-200 p-4 max-h-96 overflow-auto">
+                <code class="hljs" [appHighlight]="yamlPreviewText()" [language]="'yaml'"></code>
+              </pre>
+            </div>
+          }
           @if (selectedTab() === "general") {
             <form class="prose px-4">
               <fieldset class="fieldset my-6">
@@ -209,8 +217,8 @@
                 class="opacity-40 hover:opacity-100"
                 [class.menu-active]="selectedTab() === 'yaml'"
                 tabindex="0"
-                (click)="handleTabClick('yaml')"
-                (keydown.enter)="handleTabClick('yaml')"
+                (click)="onPreviewYamlClick()"
+                (keydown.enter)="onPreviewYamlClick()"
                 >Preview YAML</a
               >
             </li>
