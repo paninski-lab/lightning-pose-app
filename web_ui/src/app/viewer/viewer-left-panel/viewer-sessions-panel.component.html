@@ -1,5 +1,11 @@
+<style>
+  :host {
+    display: flex;
+    flex-direction: column;
+  }
+</style>
 <div
-  class="panel-content inset-shadow-xs inset-shadow-black/30 overflow-auto h-120"
+  class="panel-content inset-shadow-xs inset-shadow-black/30 overflow-auto h-full w-full"
 >
   @if (sessionService.sessionsLoading()) {
     <progress class="progress w-full"></progress>

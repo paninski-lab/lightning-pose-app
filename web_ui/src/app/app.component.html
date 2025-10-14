@@ -16,30 +16,23 @@
 
     <div class="navbar-center">
       <ul class="menu menu-horizontal p-0">
-        <li>
-          <a
-            routerLink="/viewer"
-            routerLinkActive="menu-active"
-            ariaCurrentWhenActive="page"
-            >Viewer</a
-          >
-        </li>
-        <li>
-          <a
-            routerLink="/labeler"
-            routerLinkActive="menu-active"
-            ariaCurrentWhenActive="page"
-            >Labeler</a
-          >
-        </li>
-        <li>
-          <a
-            routerLink="/models"
-            routerLinkActive="menu-active"
-            ariaCurrentWhenActive="page"
-            >Models</a
-          >
-        </li>
+        @for (
+          entry of [
+            { path: "/labeler", text: "Labeler" },
+            { path: "/models", text: "Models" },
+            { path: "/viewer", text: "Viewer" },
+          ];
+          track entry.path
+        ) {
+          <li>
+            <a
+              [routerLink]="entry.path"
+              routerLinkActive="menu-active"
+              ariaCurrentWhenActive="page"
+              >{{ entry.text }}</a
+            >
+          </li>
+        }
       </ul>
     </div>
 
