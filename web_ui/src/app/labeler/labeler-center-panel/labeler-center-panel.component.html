@@ -96,7 +96,7 @@
         <!-- panel header -->
         <h1 class="px-2 mb-1">Keypoints</h1>
       </div>
-      <div class="panel-content overflow-y-auto">
+      <div class="panel-content overflow-y-auto max-h-100">
         @if (selectedFrameView(); as fv) {
           <ul>
             @for (kp of fv.keypoints; track $index) {
