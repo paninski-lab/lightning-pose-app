@@ -31,6 +31,6 @@ export class ModelsPageComponent {
   protected isCreateModelDialogOpen = signal(false);
 
   constructor() {
-    this.models = [];
+    //this.models = [];
   }
 }
