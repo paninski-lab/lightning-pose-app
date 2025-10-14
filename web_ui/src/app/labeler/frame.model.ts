@@ -81,19 +81,28 @@ export class MVFUtils {
    * has * part removed because it's not valid in filesystem.
    */
   get autolabelSessionKey(): string | null {
-    const parts = this.mvFrame.key.split('/');
-    if (parts.length < 3) return null; // unable to parse
-    const sessionKeyWithStar = parts.at(-2)!;
-    if (!sessionKeyWithStar?.indexOf('*')) return null;
-    const partsHyphenSplit = sessionKeyWithStar.split('-');
-    const partsUnderscoreSplit = sessionKeyWithStar.split('_');
-    if (partsHyphenSplit.indexOf('*') !== -1) {
-      return partsHyphenSplit.filter((p) => p !== '*').join('-');
-    } else if (partsUnderscoreSplit.indexOf('*') !== -1) {
-      return partsUnderscoreSplit.filter((p) => p !== '*').join('_');
-    } else {
-      return null; // unrecognized delimeter
-    }
+    const pathParts = this.mvFrame.key.split('/');
+    if (pathParts.length < 3) return null; // unable to parse
+    const sessionKeyWithStar = pathParts.at(-2);
+    if (sessionKeyWithStar === undefined) return null;
+    if (sessionKeyWithStar.indexOf('*') === -1) return null;
+
+    // Split the session key on "." to handle cases like a-view.b.c
+    const processPart = (part: string) => {
+      if (part.indexOf('*') === -1) return part;
+      const partsHyphenSplit = part.split('-');
+      const partsUnderscoreSplit = part.split('_');
+      if (partsHyphenSplit.indexOf('*') !== -1) {
+        return partsHyphenSplit.filter((p) => p !== '*').join('-');
+      } else if (partsUnderscoreSplit.indexOf('*') !== -1) {
+        return partsUnderscoreSplit.filter((p) => p !== '*').join('_');
+      } else {
+        return null; // unrecognized delimiter
+      }
+    };
+    const processedParts = sessionKeyWithStar.split('.').map(processPart);
+    if (processedParts.indexOf(null) !== -1) return null;
+    return processedParts.filter(Boolean).join('.');
   }
 }
 
