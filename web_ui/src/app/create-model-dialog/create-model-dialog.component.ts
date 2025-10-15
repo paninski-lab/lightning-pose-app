@@ -35,6 +35,7 @@ import {
   sumToOneValidator,
 } from '../utils/validators';
 import { ModelTypeLabelPipe } from '../utils/pipes';
+import { DaisyFormControlDirective } from '../utils/daisy-form-control.directive';
 
 @Component({
   selector: 'app-create-model-dialog',
@@ -44,6 +45,7 @@ import { ModelTypeLabelPipe } from '../utils/pipes';
     ModelTypeLabelPipe,
     JsonPipe,
     HighlightDirective,
+    DaisyFormControlDirective,
   ],
   templateUrl: './create-model-dialog.component.html',
   styleUrl: './create-model-dialog.component.css',

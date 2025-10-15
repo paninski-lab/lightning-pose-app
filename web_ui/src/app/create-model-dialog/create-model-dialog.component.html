@@ -55,10 +55,6 @@
                   name="modelName"
                   type="text"
                   class="input w-full"
-                  [class.input-error]="
-                    form.controls.modelName.touched &&
-                    form.controls.modelName.invalid
-                  "
                   placeholder="my_model"
                   spellcheck="false"
                   [formControl]="form.controls.modelName"
@@ -94,10 +90,6 @@
                       class="select"
                       spellcheck="false"
                       [formControl]="form.controls.modelType"
-                      [class.select-error]="
-                        form.controls.modelType.touched &&
-                        form.controls.modelType.invalid
-                      "
                     >
                       @if (
                         modelTypeOptions().indexOf(
@@ -121,10 +113,6 @@
                       class="select"
                       spellcheck="false"
                       [formControl]="form.controls.backbone"
-                      [class.select-error]="
-                        form.controls.backbone.touched &&
-                        form.controls.backbone.invalid
-                      "
                     >
                       @if (
                         backboneOptions().indexOf(
@@ -252,9 +240,6 @@
                   type="number"
                   class="input"
                   [formControl]="form.controls.epochs"
-                  [class.input-error]="
-                    form.controls.epochs.touched && form.controls.epochs.invalid
-                  "
                 />
                 <p
                   class="my-0! text-error invisible"
@@ -274,10 +259,6 @@
                       type="number"
                       class="input w-full"
                       [formControl]="form.controls.labeledBatchSize"
-                      [class.input-error]="
-                        form.controls.labeledBatchSize.touched &&
-                        form.controls.labeledBatchSize.invalid
-                      "
                     />
                   </div>
                   @if (isUnsupervised(form.controls.modelType.value)) {
@@ -287,10 +268,6 @@
                         type="number"
                         class="input w-full"
                         [formControl]="form.controls.unlabeledBatchSize"
-                        [class.input-error]="
-                          form.controls.unlabeledBatchSize.touched &&
-                          form.controls.unlabeledBatchSize.invalid
-                        "
                       />
                     </div>
                   }
