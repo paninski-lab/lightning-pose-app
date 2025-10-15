@@ -407,8 +407,15 @@ export class SessionService {
     return false;
   }
 
-  async createTrainingTask(configObject: any): Promise<void> {
-    await this.rpc.call('createTrainingTask', { config: configObject });
+  async createTrainingTask(modelName: string, configYaml: string): Promise<void> {
+    await this.rpc.call('createTrainTask', { modelName, configYaml });
+  }
+
+  async listModels(): Promise<{ id: string; name: string; status?: string }[]> {
+    const resp = (await this.rpc.call('listModels')) as {
+      models: { id: string; name: string; status?: string }[];
+    };
+    return resp.models;
   }
 }
 

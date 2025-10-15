@@ -166,10 +166,44 @@ export class CreateModelDialogComponent {
   }
 
   async onCreateClick() {
-    const formObject = this.form.value;
-    const configObject = await this.computeYaml(formObject);
-    await this.sessionService.createTrainingTask(configObject);
-    return;
+    const yamlText = await this.generateYamlText();
+    if (!yamlText) {
+      return;
+    }
+    await this.sessionService.createTrainingTask(
+      this.form.controls.modelName.value!,
+      yamlText,
+    );
+    this.done.emit();
+  }
+
+  private async generateYamlText(
+    abortSignal?: AbortSignal,
+  ): Promise<string | null> {
+    const defaultPath = 'configs/default.yaml';
+    try {
+      const yamlObj = await this.sessionService.getYamlFile(defaultPath);
+      if (abortSignal?.aborted) return null;
+
+      if (!yamlObj) {
+        window.alert('configs/default.yaml was not found.');
+        return null;
+      }
+      const formObject = this.form.value;
+      const patch = await this.computeYaml(formObject);
+      if (abortSignal?.aborted) return null;
+
+      const merged = _.merge({}, yamlObj, patch);
+      const yamlText = yamlStringify(merged);
+      if (abortSignal?.aborted) return null;
+
+      return yamlText;
+    } catch (error) {
+      if (abortSignal?.aborted) return null;
+
+      // Let other errors bubble to global handler or console for now
+      throw error;
+    }
   }
 
   private async computeYaml(
@@ -198,6 +232,13 @@ export class CreateModelDialogComponent {
           this.projectInfoService.projectInfo.keypoint_names.length,
       },
     });
+    if (this.projectInfoService.projectInfo.views.length > 1) {
+      patches.push({
+        data: {
+          view_names: this.projectInfoService.projectInfo.views,
+        },
+      });
+    }
     if (formObject.modelName) {
       patches.push({ model: { model_name: formObject.modelName } });
     }
@@ -306,33 +347,12 @@ export class CreateModelDialogComponent {
     this.previewAbortController = new AbortController();
     const abortSignal = this.previewAbortController.signal;
 
-    const defaultPath = 'configs/default.yaml';
-    const p = this.sessionService.getYamlFile(defaultPath);
-    p.then(async (yamlObj) => {
-      if (abortSignal.aborted) return;
-      if (!yamlObj) {
-        window.alert('configs/default.yaml was not found.');
-        return;
-      }
-      const formObject = this.form.value;
-      const patch = await this.computeYaml(formObject);
-      if (abortSignal.aborted) return;
-      const merged = _.merge({}, yamlObj, patch);
-      const yamlText = yamlStringify(merged);
-      if (abortSignal.aborted) return;
-      this.yamlPreviewText.set(yamlText);
-      this.handleTabClick('yaml');
-    }).catch((error) => {
-      if (abortSignal.aborted) return;
-      if (error?.status === 400) {
-        const detail =
-          error?.error?.detail || 'Bad request while parsing YAML.';
-        window.alert(detail);
-      } else {
-        // Let other errors bubble to global handler or console for now
-        throw error;
-      }
-    });
+    const yamlText = await this.generateYamlText(abortSignal);
+    if (abortSignal.aborted || !yamlText) {
+      return;
+    }
+    this.yamlPreviewText.set(yamlText);
+    this.handleTabClick('yaml');
   }
 
   handleTabClick(tabId: string) {

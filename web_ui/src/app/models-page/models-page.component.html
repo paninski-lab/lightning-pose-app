@@ -31,10 +31,11 @@
           <th>Date Created</th>
           <th>Epochs Trained</th>
           <th>Train/Test Split</th>
+          <th>Status</th>
         </tr>
       </thead>
       <tbody>
-        @for (m of models; track m.id) {
+        @for (m of models(); track m.id) {
           <tr>
             <td>
               <label>
@@ -46,6 +47,7 @@
             <td>{{ m.creationDate | date }}</td>
             <td>{{ m.epochsTrained }}</td>
             <td>{{ m.trainTestSplit }}</td>
+            <td>{{ m.status }}</td>
           </tr>
         } @empty {
           <tr>
@@ -60,6 +62,6 @@
 </div>
 @if (isCreateModelDialogOpen()) {
   <app-create-model-dialog
-    (done)="isCreateModelDialogOpen.set(false)"
+    (done)="isCreateModelDialogOpen.set(false); reloadModels()"
   ></app-create-model-dialog>
 }
