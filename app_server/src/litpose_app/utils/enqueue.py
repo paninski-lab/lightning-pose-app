@@ -26,12 +26,10 @@ async def enqueue_all_new_fine_videos_task() -> None:
             _rglob, base_path, pattern="**/*.mp4", stat=True
         )
 
-        # Filter videos by size limit
+        # Sort videos by size ascending
         videos = [
             base_path / entry["path"]
-            for entry in result
-            if entry["size"]
-            and entry["size"] < config.AUTO_TRANSCODE_VIDEO_SIZE_LIMIT_MB * 1000 * 1000
+            for entry in sorted(result, key=lambda entry: entry["size"])
         ]
 
         # Create a transcode job per video.
