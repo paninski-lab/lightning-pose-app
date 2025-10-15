@@ -1,6 +1,7 @@
 import asyncio
 import functools
 import logging
+import multiprocessing
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -17,6 +18,7 @@ from starlette.staticfiles import StaticFiles
 from . import deps
 from .routes.labeler.multiview_autolabel import warm_up_anipose
 from .tasks.management import setup_active_task_registry
+from .train_scheduler import _train_scheduler_process_target
 from .utils.config_watcher import setup_config_watcher
 from .utils.enqueue import enqueue_all_new_fine_videos_task
 from .utils.file_response import file_response
@@ -49,6 +51,17 @@ async def lifespan(app: FastAPI):
     # Warm up anipose in the background (first run is ~1-2s slow).
     asyncio.create_task(anyio.to_thread.run_sync(warm_up_anipose))
 
+    # Start model train scheduler loop in a separate process
+    try:
+        logger.info("Starting train scheduler in a separate process...")
+        _train_scheduler_process = multiprocessing.Process(
+            target=_train_scheduler_process_target, daemon=True
+        )
+        _train_scheduler_process.start()
+        logger.info(f"Started train scheduler process [{_train_scheduler_process.pid}]")
+    except Exception:
+        logger.exception("Failed to start train scheduler process")
+
     yield  # Application is now ready to receive requests
 
     logger.info("Application shutdown: Shutting down scheduler...")
@@ -68,7 +81,16 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 router = APIRouter()
-from .routes import ffprobe, rglob, project, transcode, labeler, extract_frames, configs
+from .routes import (
+    ffprobe,
+    rglob,
+    project,
+    transcode,
+    labeler,
+    extract_frames,
+    configs,
+    models,
+)
 
 router.include_router(ffprobe.router)
 router.include_router(rglob.router)
@@ -77,6 +99,7 @@ router.include_router(project.router)
 router.include_router(transcode.router)
 router.include_router(extract_frames.router)
 router.include_router(configs.router)
+router.include_router(models.router)
 app.include_router(router)
 
 

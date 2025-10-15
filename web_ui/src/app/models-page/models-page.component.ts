@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { CreateModelDialogComponent } from '../create-model-dialog/create-model-dialog.component';
+import { SessionService } from '../session.service';
 
 @Component({
   selector: 'app-models-page',
@@ -10,27 +11,18 @@ import { CreateModelDialogComponent } from '../create-model-dialog/create-model-
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ModelsPageComponent {
-  protected models = [
-    {
-      id: 'supervised_test',
-      name: 'supervised_test',
-      type: 'Supervised',
-      creationDate: '09/10/2025',
-      epochsTrained: 300,
-      trainTestSplit: '100/20',
-    },
-    {
-      id: 'semisupervised_test',
-      name: 'semisupervised_test',
-      type: 'Semisupervised',
-      creationDate: '09/10/2025',
-      epochsTrained: 255,
-      trainTestSplit: '100/20',
-    },
-  ];
+  private session = inject(SessionService);
+
+  protected models = signal<{ id: string; name: string; type?: string; creationDate?: string; epochsTrained?: number; trainTestSplit?: string; status?: string }[]>([]);
   protected isCreateModelDialogOpen = signal(false);
 
   constructor() {
-    //this.models = [];
+    this.reloadModels();
+  }
+
+  async reloadModels() {
+    const list = await this.session.listModels();
+    // For now, we only map name/id and leave other columns blank.
+    this.models.set(list.map((m) => ({ id: m.id, name: m.name, status: m.status })));
   }
 }
