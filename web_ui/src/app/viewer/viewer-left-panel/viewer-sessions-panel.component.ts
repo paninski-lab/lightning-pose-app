@@ -11,7 +11,7 @@ import { MatListModule } from '@angular/material/list';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { ViewSettings } from '../../view-settings.model';
 import { ProjectInfoService } from '../../project-info.service';
-import { PathPipe } from '../../components/path.pipe';
+import { PathPipe } from '../../utils/pipes';
 import { Session } from '../../session.model';
 
 @Component({

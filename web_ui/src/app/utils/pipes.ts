@@ -1,4 +1,5 @@
 import { Pipe, PipeTransform } from '@angular/core';
+import { ModelType, modelTypeLabels } from '../modelconf';
 
 @Pipe({
   name: 'path',
@@ -10,5 +11,15 @@ export class PathPipe implements PipeTransform {
       return '';
     }
     return value.replace(/\//g, ' / ');
+  }
+}
+
+@Pipe({
+  name: 'modelType',
+  standalone: true,
+})
+export class ModelTypeLabelPipe implements PipeTransform {
+  transform(modelType: ModelType): string {
+    return modelTypeLabels[modelType] || modelType.toString();
   }
 }
