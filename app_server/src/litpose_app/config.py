@@ -18,10 +18,6 @@ class Config(BaseModel):
     # Directory where finely transcoded videos are stored
     FINE_VIDEO_DIR: Path = Path("~/.lightning_pose/finevideos").expanduser()
 
-    # We'll automatically transcode videos with size under this limit.
-    # Larger ones will have to be manually triggered (design TBD).
-    AUTO_TRANSCODE_VIDEO_SIZE_LIMIT_MB: int = 30
-
     # Name of the directory in data_dir where extract frames will output to
     LABELED_DATA_DIRNAME: str = "labeled_data"
 
