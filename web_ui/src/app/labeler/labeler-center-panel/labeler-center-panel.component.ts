@@ -21,7 +21,7 @@ import { Point } from '@angular/cdk/drag-drop';
 import { SessionService } from '../../session.service';
 import { MVLabelFile } from '../../label-file.model';
 import { GetMVAutoLabelsResponse } from '../mv-autolabel';
-import { PathPipe } from '../../components/path.pipe';
+import { PathPipe } from '../../utils/pipes';
 import { BundleAdjustDialogComponent } from '../../bundle-adjust-dialog/bundle-adjust-dialog.component';
 import { ToastService } from '../../toast.service';
 

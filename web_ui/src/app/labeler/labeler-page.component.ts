@@ -15,7 +15,7 @@ import { LabelerCenterPanelComponent } from './labeler-center-panel/labeler-cent
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { SessionService } from '../session.service';
 import { MVLabelFile } from '../label-file.model';
-import { PathPipe } from '../components/path.pipe';
+import { PathPipe } from '../utils/pipes';
 import { LabelFileFetcherService } from './label-file-fetcher.service';
 import { mvf, MVFrame } from './frame.model';
 import { ExtractFramesDialogComponent } from './extract-frames-dialog/extract-frames-dialog.component';

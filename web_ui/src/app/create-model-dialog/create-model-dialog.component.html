@@ -35,11 +35,11 @@
         <div class="divider divider-vertical"></div>
         <div class="overflow-y-auto prose">
           @if (selectedTab() === "yaml") {
-            <div class="px-4">
+            <div class="px-4 flex flex-col max-h-full">
               <h3 class="text-md mt-0">YAML Preview</h3>
-              <pre class="rounded-box bg-base-200 p-4 max-h-96 overflow-auto">
-                <code class="hljs" [appHighlight]="yamlPreviewText()" [language]="'yaml'"></code>
-              </pre>
+              <pre
+                class="rounded-box bg-base-200 overflow-auto p-0"
+              ><code class="hljs w-max" [appHighlight]="yamlPreviewText()" [language]="'yaml'"></code></pre>
             </div>
           }
           @if (selectedTab() === "general") {
@@ -75,6 +75,18 @@
               </fieldset>
               <fieldset class="fieldset my-2">
                 <h3 class="text-md mt-0!">Model type</h3>
+
+                @if (isMultiviewProject()) {
+                  <label class="flex gap-2 cursor-pointer mb-2">
+                    <input
+                      type="checkbox"
+                      class="checkbox"
+                      [formControl]="form.controls.useTrueMultiviewModel"
+                    />
+                    Use true multi-view models (recommended)</label
+                  >
+                }
+
                 <div class="flex gap-4 items-start">
                   <div class="grow">
                     <p class="m-0!">Select the model type</p>
@@ -82,8 +94,21 @@
                       class="select"
                       spellcheck="false"
                       [formControl]="form.controls.modelType"
+                      [class.select-error]="
+                        form.controls.modelType.touched &&
+                        form.controls.modelType.invalid
+                      "
                     >
-                      @for (type of modelTypeOptions; track type) {
+                      @if (
+                        modelTypeOptions().indexOf(
+                          form.controls.modelType.value
+                        ) === -1
+                      ) {
+                        <option [ngValue]="form.controls.modelType.value">
+                          --- Select a model type ---
+                        </option>
+                      }
+                      @for (type of modelTypeOptions(); track type) {
                         <option [value]="type">
                           {{ type | modelType }}
                         </option>
@@ -96,14 +121,57 @@
                       class="select"
                       spellcheck="false"
                       [formControl]="form.controls.backbone"
+                      [class.select-error]="
+                        form.controls.backbone.touched &&
+                        form.controls.backbone.invalid
+                      "
                     >
-                      @for (backbone of backboneOptions; track backbone) {
+                      @if (
+                        backboneOptions().indexOf(
+                          form.controls.backbone.value
+                        ) === -1
+                      ) {
+                        <option [ngValue]="form.controls.backbone.value">
+                          --- Select a backbone ---
+                        </option>
+                      }
+                      @for (backbone of backboneOptions(); track backbone) {
                         <option [value]="backbone">{{ backbone }}</option>
                       }
                     </select>
                   </div>
                 </div>
+                <p>
+                  <span class="material-icons text-sm! align-middle"
+                    >info_outline</span
+                  >
+                  The model types and backbone options depend on whether you're
+                  using true multi-view models. True multi-view models leverage
+                  information from multiple camera views to perform better than
+                  models applied independently to all views, but they require
+                  more memory.
+                </p>
               </fieldset>
+
+              @if (isUnsupervised(form.controls.modelType.value)) {
+                <fieldset class="fieldset my-2">
+                  <h3 class="text-md mt-0!">Semi-supervised losses</h3>
+                  @for (
+                    option of checkboxOptions;
+                    track option;
+                    let i = $index
+                  ) {
+                    <label class="flex gap-2 cursor-pointer mb-2">
+                      <input
+                        type="checkbox"
+                        class="checkbox"
+                        [formControl]="form.controls.losses.at(i)"
+                      />
+                      {{ checkboxOptionLabels[i] }}</label
+                    >
+                  }
+                </fieldset>
+              }
             </form>
           }
           @if (selectedTab() === "data") {
@@ -125,20 +193,43 @@
                 </select>
               </fieldset>
               <fieldset class="fieldset my-2">
-                <h3 class="text-md mt-0!">Train / test split</h3>
+                <h3 class="text-md mt-0!">Train / val split</h3>
+                <p class="m-0!">
+                  Data is split accordingly. The values below must sum to 1.
+                </p>
                 <div class="flex gap-4 items-start">
                   <div class="grow">
-                    <p class="m-0!">Set the train prob</p>
-                    <input type="number" class="input w-full" value="0.2" />
+                    <p class="m-0!">Train prob</p>
+                    <input
+                      type="number"
+                      class="input w-full"
+                      [formControl]="
+                        form.controls.trainValSplit.controls.trainProb
+                      "
+                    />
                   </div>
                   <div class="grow">
-                    <p class="m-0!">Set the test prob</p>
-                    <input type="number" class="input w-full" value="0.2" />
+                    <p class="m-0!">Val prob</p>
+                    <input
+                      type="number"
+                      class="input w-full"
+                      [formControl]="
+                        form.controls.trainValSplit.controls.valProb
+                      "
+                    />
                   </div>
                 </div>
+                <p class="m-0!">Random seed</p>
+                <input
+                  type="number"
+                  step="1"
+                  class="input"
+                  min="0"
+                  [formControl]="form.controls.randomSeed"
+                />
               </fieldset>
               <fieldset class="fieldset my-2">
-                <h3 class="text-md mt-0!">Unsupervised training</h3>
+                <h3 class="text-md mt-0!">Semisupervised training</h3>
                 <p class="m-0!">
                   Select the directory containing videos to train on.
                 </p>
@@ -189,18 +280,20 @@
                       "
                     />
                   </div>
-                  <div class="grow">
-                    <p class="m-0!">Set the unlabeled batch size</p>
-                    <input
-                      type="number"
-                      class="input w-full"
-                      [formControl]="form.controls.unlabeledBatchSize"
-                      [class.input-error]="
-                        form.controls.unlabeledBatchSize.touched &&
-                        form.controls.unlabeledBatchSize.invalid
-                      "
-                    />
-                  </div>
+                  @if (isUnsupervised(form.controls.modelType.value)) {
+                    <div class="grow">
+                      <p class="m-0!">Set the unlabeled batch size</p>
+                      <input
+                        type="number"
+                        class="input w-full"
+                        [formControl]="form.controls.unlabeledBatchSize"
+                        [class.input-error]="
+                          form.controls.unlabeledBatchSize.touched &&
+                          form.controls.unlabeledBatchSize.invalid
+                        "
+                      />
+                    </div>
+                  }
                 </div>
               </fieldset>
             </form>

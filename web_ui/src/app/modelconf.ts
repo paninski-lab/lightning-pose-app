@@ -78,6 +78,7 @@ export interface ModelConfig {
   heatmap_loss_type: 'mse';
   model_name: string;
 }
+
 export const backbones = [
   'resnet18',
   'resnet34',
@@ -99,6 +100,8 @@ export const backbones = [
   'vitb_imagenet',
   'vitb_sam',
 ];
+// Only vit backbones are supported for true multiview models.
+export const validMvBackbones = backbones.filter((b) => b.startsWith('vit'));
 
 /**
  * Configuration for DALI data loader pipelines.
@@ -333,3 +336,21 @@ export class RootConfigWrapper extends ConfigWrapper<RootConfig> {
     return `${this._data.model.model_name}-${this._data.model.backbone}`;
   }
 }
+
+export enum ModelType {
+  SUP = 'SUP',
+  S_SUP = 'S_SUP',
+  SUP_CTX = 'SUP_CTX',
+  S_SUP_CTX = 'S_SUP_CTX',
+}
+export const modelTypeLabels: Record<ModelType, string> = {
+  [ModelType.SUP]: 'Supervised',
+  [ModelType.S_SUP]: 'Semi-supervised',
+  [ModelType.SUP_CTX]: 'Supervised Context',
+  [ModelType.S_SUP_CTX]: 'Semi-supervised Context',
+};
+export function isUnsupervised(value: ModelType) {
+  return value === ModelType.S_SUP || value === ModelType.S_SUP_CTX;
+}
+
+export const validMvModelTypes = [ModelType.SUP];

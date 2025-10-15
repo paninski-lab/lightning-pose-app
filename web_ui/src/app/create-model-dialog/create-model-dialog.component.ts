@@ -1,10 +1,10 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
+  effect,
   inject,
   output,
-  Pipe,
-  PipeTransform,
   signal,
 } from '@angular/core';
 import {
@@ -15,25 +15,36 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
-import { backbones } from '../modelconf';
+import {
+  backbones,
+  isUnsupervised,
+  ModelType,
+  validMvBackbones,
+  validMvModelTypes,
+} from '../modelconf';
 import { JsonPipe } from '@angular/common';
 import { SessionService } from '../session.service';
 import _ from 'lodash';
 import { stringify as yamlStringify } from 'yaml';
 import { HighlightDirective } from '../highlight.directive';
+import { ProjectInfoService } from '../project-info.service';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import {
+  atLeastOneTrueValidator,
+  mustBeInOptionsList,
+  sumToOneValidator,
+} from '../utils/validators';
+import { ModelTypeLabelPipe } from '../utils/pipes';
 
-@Pipe({
-  name: 'modelType',
-  standalone: true,
-})
-export class ModelTypeLabelPipe implements PipeTransform {
-  transform(modelType: ModelType): string {
-    return modelTypeLabels[modelType] || modelType.toString();
-  }
-}
 @Component({
   selector: 'app-create-model-dialog',
-  imports: [FormsModule, ReactiveFormsModule, ModelTypeLabelPipe, JsonPipe, HighlightDirective],
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    ModelTypeLabelPipe,
+    JsonPipe,
+    HighlightDirective,
+  ],
   templateUrl: './create-model-dialog.component.html',
   styleUrl: './create-model-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -42,14 +53,56 @@ export class CreateModelDialogComponent {
   done = output<void>();
   selectedTab = signal<string>('general');
   yamlPreviewText = signal<string>('');
+  private projectInfoService = inject(ProjectInfoService);
   private sessionService = inject(SessionService);
   private fb = inject(NonNullableFormBuilder);
   private previewAbortController: AbortController = new AbortController();
+  checkboxOptions = ['temporal', 'pca_singleview'];
+  checkboxOptionLabels = ['Temporal', 'Pose PCA'];
   protected form = this.fb.group({
     modelName: ['', [Validators.required, fileNameValidator]],
-    modelType: [ModelType.SUP, Validators.required],
-    backbone: 'resnet50',
+    // Initialize to true only for multiview projects.
+    useTrueMultiviewModel: [this.isMultiviewProject()],
+    modelType: [
+      ModelType.SUP,
+      [Validators.required, mustBeInOptionsList(() => this.modelTypeOptions)],
+    ],
+    backbone: [
+      this.projectInfoService.projectInfo.views.length > 1
+        ? 'vits_dino'
+        : 'resnet50',
+      [Validators.required, mustBeInOptionsList(() => this.backboneOptions)],
+    ],
+    losses: this.fb.array(
+      this.checkboxOptions.map(() => true),
+      atLeastOneTrueValidator(),
+    ),
     labelFile: 'CollectedData_*.csv',
+    trainValSplit: this.fb.group(
+      {
+        trainProb: [
+          0.95, // Initial value (must be non-zero and <= 1)
+          [
+            Validators.required,
+            Validators.min(0.000001), // Ensures value > 0
+            Validators.max(1),
+          ],
+        ],
+        valProb: [
+          0.05, // Initial value (must be non-zero and <= 1)
+          [
+            Validators.required,
+            Validators.min(0.000001), // Ensures value > 0
+            Validators.max(1),
+          ],
+        ],
+      },
+      {
+        // Apply the custom validator to the entire form group
+        validators: sumToOneValidator,
+      },
+    ),
+    randomSeed: [0, [Validators.required, Validators.min(0)]],
     videosDir: 'videos',
     epochs: [
       300,
@@ -79,10 +132,32 @@ export class CreateModelDialogComponent {
       ],
     ],
   });
+  private useTrueMultiviewModelAsSignal = toSignal(
+    this.form.controls.useTrueMultiviewModel.valueChanges.pipe(
+      takeUntilDestroyed(),
+    ),
+    { initialValue: this.form.controls.useTrueMultiviewModel.value },
+  );
 
   // expose to the template
-  protected modelTypeOptions = Object.values(ModelType);
-  protected backboneOptions = backbones;
+  protected modelTypeOptions = computed((): ModelType[] => {
+    return this.useTrueMultiviewModelAsSignal()
+      ? validMvModelTypes
+      : Object.values(ModelType);
+  });
+  protected backboneOptions = computed((): string[] => {
+    return this.useTrueMultiviewModelAsSignal() ? validMvBackbones : backbones;
+  });
+
+  constructor() {
+    effect(() => {
+      // Read the signal to track the dependency.
+      this.useTrueMultiviewModelAsSignal();
+      // On change, update the form controls validity.
+      this.form.controls.backbone.updateValueAndValidity();
+      this.form.controls.modelType.updateValueAndValidity();
+    });
+  }
 
   handleCloseClick() {
     this.done.emit();
@@ -98,9 +173,13 @@ export class CreateModelDialogComponent {
   private async computeYaml(
     formObject: Partial<{
       modelName: string;
+      useTrueMultiviewModel: boolean;
       modelType: ModelType;
       backbone: string;
+      losses: boolean[];
       labelFile: string;
+      trainValSplit: Partial<{ trainProb: number; valProb: number }>;
+      randomSeed: number;
       videosDir: string;
       epochs: number;
       labeledBatchSize: number;
@@ -109,30 +188,83 @@ export class CreateModelDialogComponent {
   ) {
     const configPatchObject = {};
     const patches = [];
+    patches.push({
+      data: {
+        data_dir: this.projectInfoService.projectInfo.data_dir,
+        keypoint_names: this.projectInfoService.projectInfo.keypoint_names,
+        num_keypoints:
+          this.projectInfoService.projectInfo.keypoint_names.length,
+      },
+    });
     if (formObject.modelName) {
       patches.push({ model: { model_name: formObject.modelName } });
     }
     if (formObject.modelType) {
       patches.push({
         model: {
-          model_type:
-            formObject.modelType === ModelType.SUP_CTX ||
-            formObject.modelType === ModelType.S_SUP_CTX
+          model_type: formObject.useTrueMultiviewModel
+            ? 'heatmap_multiview_transformer'
+            : formObject.modelType === ModelType.SUP_CTX ||
+                formObject.modelType === ModelType.S_SUP_CTX
               ? 'heatmap_mhcrnn'
               : 'heatmap',
         },
       });
+      if (isUnsupervised(formObject.modelType)) {
+        patches.push({
+          model: {
+            losses_to_use: this.checkboxOptions.filter((x, i) => {
+              return formObject.losses?.[i] ?? false;
+            }),
+          },
+        });
+      } else {
+        patches.push({
+          model: {
+            losses_to_use: [],
+          },
+        });
+      }
     }
-    // TODO losses to use.
+
     if (formObject.backbone) {
       patches.push({ model: { backbone: formObject.backbone } });
     }
     if (formObject.labelFile) {
-      // TODO expand into a list by replacing * with views in multiview case.
-      patches.push({ data: { csv_file: formObject.labelFile } });
+      if (this.projectInfoService.projectInfo.views.length > 1) {
+        const csvFiles = [] as string[];
+        for (const view of this.projectInfoService.projectInfo.views) {
+          csvFiles.push(formObject.labelFile.replace('*', view));
+        }
+        patches.push({ data: { csv_file: csvFiles } });
+      } else {
+        patches.push({ data: { csv_file: formObject.labelFile } });
+      }
+    }
+    if (formObject.trainValSplit) {
+      patches.push({
+        training: {
+          train_prob: formObject.trainValSplit.trainProb,
+          val_prob: formObject.trainValSplit.valProb,
+        },
+      });
+    }
+    if (formObject.randomSeed) {
+      patches.push({
+        training: {
+          rng_seed_data_pt: formObject.randomSeed,
+        },
+      });
     }
     if (formObject.videosDir) {
-      patches.push({ data: { video_dir: formObject.videosDir } });
+      patches.push({
+        data: {
+          video_dir:
+            this.projectInfoService.projectInfo.data_dir +
+            '/' +
+            formObject.videosDir,
+        },
+      });
     }
     if (formObject.epochs) {
       patches.push({
@@ -213,20 +345,13 @@ export class CreateModelDialogComponent {
     }
     return '';
   }
-}
 
-enum ModelType {
-  SUP = 'SUP',
-  S_SUP = 'S_SUP',
-  SUP_CTX = 'SUP_CTX',
-  S_SUP_CTX = 'S_SUP_CTX',
+  protected isMultiviewProject(): boolean {
+    return this.projectInfoService.projectInfo.views.length > 1;
+  }
+
+  protected isUnsupervised = isUnsupervised;
 }
-const modelTypeLabels: Record<ModelType, string> = {
-  [ModelType.SUP]: 'Supervised',
-  [ModelType.S_SUP]: 'Semi-supervised',
-  [ModelType.SUP_CTX]: 'Supervised Context',
-  [ModelType.S_SUP_CTX]: 'Semi-supervised Context',
-};
 
 function fileNameValidator(control: AbstractControl): ValidationErrors | null {
   const allowedChars = /^[a-zA-Z0-9][a-zA-Z0-9-._]+$/;
