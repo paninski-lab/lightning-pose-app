@@ -23,7 +23,7 @@ class mc_util {
     return this.m.model_name;
   }
   get type() {
-    if (this.c!.model.losses_to_use) {
+    if ((this.c!.model.losses_to_use?.length ?? 0) > 0) {
       return this.c!.model.model_type.endsWith('mhcrnn')
         ? ModelType.S_SUP_CTX
         : ModelType.S_SUP;
