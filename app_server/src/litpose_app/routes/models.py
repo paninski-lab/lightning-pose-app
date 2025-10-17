@@ -1,6 +1,11 @@
+import asyncio
 import json
 import logging
-from typing import Literal, Optional
+from datetime import datetime
+from typing import Literal
+from pathlib import Path
+
+import yaml
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -28,7 +33,7 @@ StatusLiteral = Literal[
 
 class TrainStatus(BaseModel):
     status: StatusLiteral
-    pid: Optional[int] = None
+    pid: int | None = None
 
 
 class CreateTrainTaskRequest(BaseModel):
@@ -41,14 +46,16 @@ class CreateTrainTaskResponse(BaseModel):
     ok: bool
 
 
-class ModelInfo(BaseModel):
-    id: str
-    name: str
-    status: Optional[StatusLiteral] = None
+class ModelListResponseEntry(BaseModel):
+    model_name: str
+    model_relative_path: str
+    config: dict | None
+    created_at: str  # ISO format
+    status: TrainStatus | None = None
 
 
 class ListModelsResponse(BaseModel):
-    models: list[ModelInfo]
+    models: list[ModelListResponseEntry]
 
 
 @router.post("/app/v0/rpc/createTrainTask")
@@ -62,7 +69,7 @@ def create_train_task(
             detail="Project model_dir is not configured.",
         )
 
-    model_dir = (project_info.model_dir / request.modelName).resolve()
+    model_dir = Path(project_info.model_dir / request.modelName).resolve()
 
     # Ensure model name maps within model_dir
     try:
@@ -100,28 +107,54 @@ def create_train_task(
 def list_models(
     project_info: ProjectInfo = Depends(deps.project_info),
 ) -> ListModelsResponse:
-    models: list[ModelInfo] = []
+    # Use the running loop if inside an async server context; otherwise create a new one
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    models: list[ModelListResponseEntry] = []
     if project_info is None or project_info.model_dir is None:
         return ListModelsResponse(models=models)
 
-    base = project_info.model_dir
+    base = Path(project_info.model_dir)
     if not base.exists():
         return ListModelsResponse(models=models)
 
-    for child in sorted([p for p in base.iterdir() if p.is_dir()]):
-        status_path = child / "train_status.json"
-        status: Optional[StatusLiteral] = None
+    def read_model_config(child_path: Path) -> ModelListResponseEntry:
+        config_path = child_path / "config.yaml"
+        status_path = child_path / "train_status.json"
+        config = None
+        status = None
+
+        if config_path.is_file():
+            try:
+                content = config_path.read_text()
+                config = yaml.safe_load(content)
+            except Exception:
+                logger.exception("Failed to read config.yaml for %s", child_path)
+
         if status_path.is_file():
             try:
-                data = json.loads(status_path.read_text())
-                status = data.get("status")
+                content = status_path.read_text()
+                status_data = json.loads(content)
+                status = TrainStatus(**status_data)
             except Exception:
-                logger.exception("Failed to read train_status.json for %s", child)
-        models.append(
-            ModelInfo(
-                id=child.name,
-                name=child.name,
-                status=status,
-            )
+                logger.exception("Failed to read train_status.json for %s", child_path)
+
+        stat = child_path.stat()
+        created_at = datetime.fromtimestamp(stat.st_ctime).isoformat()
+
+        return ModelListResponseEntry(
+            model_name=child_path.name,
+            model_relative_path=str(child_path.relative_to(base)),
+            config=config,
+            created_at=created_at,
+            status=status,
         )
+
+    paths = sorted([p for p in base.iterdir() if p.is_dir()])
+    models = [read_model_config(p) for p in paths]
+
     return ListModelsResponse(models=models)

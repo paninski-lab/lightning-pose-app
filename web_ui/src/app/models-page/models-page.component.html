@@ -29,25 +29,22 @@
           <th>Model Name</th>
           <th>Model Type</th>
           <th>Date Created</th>
-          <th>Epochs Trained</th>
-          <th>Train/Test Split</th>
           <th>Status</th>
         </tr>
       </thead>
       <tbody>
-        @for (m of models(); track m.id) {
+        @for (m of models().models; track m.model_relative_path) {
+          @let u = mc_util(m);
           <tr>
             <td>
               <label>
                 <input type="checkbox" class="checkbox" />
               </label>
             </td>
-            <td>{{ m.name }}</td>
-            <td>{{ m.type }}</td>
-            <td>{{ m.creationDate | date }}</td>
-            <td>{{ m.epochsTrained }}</td>
-            <td>{{ m.trainTestSplit }}</td>
-            <td>{{ m.status }}</td>
+            <td>{{ u.name }}</td>
+            <td>{{ u.c ? u.type : "" }}</td>
+            <td>{{ u.createdAt | date }}</td>
+            <td>{{ u.c ? u.status : "" }}</td>
           </tr>
         } @empty {
           <tr>

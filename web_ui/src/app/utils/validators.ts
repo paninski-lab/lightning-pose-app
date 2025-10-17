@@ -72,3 +72,13 @@ export function sumToOneValidator(
 
   return null;
 }
+
+export function fileNameValidator(
+  control: AbstractControl,
+): ValidationErrors | null {
+  const allowedChars = /^[a-zA-Z0-9][a-zA-Z0-9-._]+$/;
+  if (!allowedChars.test(control.value)) {
+    return { invalidFilename: true };
+  }
+  return null;
+}

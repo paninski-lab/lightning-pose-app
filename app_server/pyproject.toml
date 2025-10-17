@@ -25,6 +25,7 @@ dependencies = [
     "scikit-learn~=1.7.1",
     "portalocker~=3.2.0",
     "psutil~=7.0.0",
+    "PyYAML~=6.0.2",
 ]
 
 [project.optional-dependencies]

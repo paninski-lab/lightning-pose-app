@@ -235,3 +235,29 @@ export type DeepPartial<T> = T extends object
       [P in keyof T]?: DeepPartial<T[P]>;
     }
   : T;
+
+export interface TrainStatus {
+  status:
+    | 'PENDING'
+    | 'STARTING'
+    | 'STARTED'
+    | 'TRAINING'
+    | 'EVALUATING'
+    | 'COMPLETED'
+    | 'FAILED'
+    | 'CANCELED'
+    | 'PAUSED';
+  pid?: number | null;
+}
+
+export interface ModelListResponseEntry {
+  model_name: string;
+  model_relative_path: string;
+  config?: ModelConfig;
+  created_at: string; // of the model dir. ISO format
+  status?: TrainStatus;
+}
+
+export interface ModelListResponse {
+  models: ModelListResponseEntry[];
+}

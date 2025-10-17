@@ -8,11 +8,9 @@ import {
   signal,
 } from '@angular/core';
 import {
-  AbstractControl,
   FormsModule,
   NonNullableFormBuilder,
   ReactiveFormsModule,
-  ValidationErrors,
   Validators,
 } from '@angular/forms';
 import {
@@ -33,6 +31,7 @@ import { ProjectInfoService } from '../project-info.service';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   atLeastOneTrueValidator,
+  fileNameValidator,
   mustBeInOptionsList,
   sumToOneValidator,
 } from '../utils/validators';
@@ -375,12 +374,4 @@ export class CreateModelDialogComponent {
   }
 
   protected isUnsupervised = isUnsupervised;
-}
-
-function fileNameValidator(control: AbstractControl): ValidationErrors | null {
-  const allowedChars = /^[a-zA-Z0-9][a-zA-Z0-9-._]+$/;
-  if (!allowedChars.test(control.value)) {
-    return { invalidFilename: true };
-  }
-  return null;
 }

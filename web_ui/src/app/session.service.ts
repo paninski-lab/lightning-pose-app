@@ -17,6 +17,7 @@ import {
   GetMVAutoLabelsResponse,
 } from './labeler/mv-autolabel';
 import _ from 'lodash';
+import { ModelListResponse } from './modelconf';
 
 type SessionModelMap = Record<string, string[]>;
 
@@ -243,16 +244,14 @@ export class SessionService {
     // GET /app/v0/getYamlFile?file_path=...
     const url = `/app/v0/getYamlFile`;
     return await firstValueFrom(
-      this.httpClient
-        .get(url, { params: { file_path: filePath } })
-        .pipe(
-          catchError((error) => {
-            if (error.status === 404) {
-              return [null];
-            }
-            throw error;
-          }),
-        ),
+      this.httpClient.get(url, { params: { file_path: filePath } }).pipe(
+        catchError((error) => {
+          if (error.status === 404) {
+            return [null];
+          }
+          throw error;
+        }),
+      ),
     );
   }
 
@@ -407,15 +406,16 @@ export class SessionService {
     return false;
   }
 
-  async createTrainingTask(modelName: string, configYaml: string): Promise<void> {
+  async createTrainingTask(
+    modelName: string,
+    configYaml: string,
+  ): Promise<void> {
     await this.rpc.call('createTrainTask', { modelName, configYaml });
   }
 
-  async listModels(): Promise<{ id: string; name: string; status?: string }[]> {
-    const resp = (await this.rpc.call('listModels')) as {
-      models: { id: string; name: string; status?: string }[];
-    };
-    return resp.models;
+  async listModels(): Promise<ModelListResponse> {
+    const resp = (await this.rpc.call('listModels')) as ModelListResponse;
+    return resp;
   }
 }
 

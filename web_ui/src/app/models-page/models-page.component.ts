@@ -1,7 +1,45 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  signal,
+} from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { CreateModelDialogComponent } from '../create-model-dialog/create-model-dialog.component';
 import { SessionService } from '../session.service';
+import {
+  ModelConfig,
+  ModelListResponse,
+  ModelListResponseEntry,
+  ModelType,
+} from '../modelconf';
+
+class mc_util {
+  constructor(private m: ModelListResponseEntry) {}
+  get c() {
+    return this.m.config;
+  }
+  get name() {
+    return this.m.model_name;
+  }
+  get type() {
+    if (this.c!.model.losses_to_use) {
+      return this.c!.model.model_type.endsWith('mhcrnn')
+        ? ModelType.S_SUP_CTX
+        : ModelType.S_SUP;
+    } else {
+      return this.c!.model.model_type.endsWith('mhcrnn')
+        ? ModelType.SUP_CTX
+        : ModelType.SUP;
+    }
+  }
+  get createdAt(): string {
+    return this.m.created_at;
+  }
+  get status(): string {
+    return this.m.status?.status ?? '';
+  }
+}
 
 @Component({
   selector: 'app-models-page',
@@ -13,7 +51,7 @@ import { SessionService } from '../session.service';
 export class ModelsPageComponent {
   private session = inject(SessionService);
 
-  protected models = signal<{ id: string; name: string; type?: string; creationDate?: string; epochsTrained?: number; trainTestSplit?: string; status?: string }[]>([]);
+  protected models = signal<ModelListResponse>({ models: [] });
   protected isCreateModelDialogOpen = signal(false);
 
   constructor() {
@@ -21,8 +59,11 @@ export class ModelsPageComponent {
   }
 
   async reloadModels() {
-    const list = await this.session.listModels();
-    // For now, we only map name/id and leave other columns blank.
-    this.models.set(list.map((m) => ({ id: m.id, name: m.name, status: m.status })));
+    const resp = await this.session.listModels();
+    this.models.set(resp);
+  }
+
+  protected mc_util(m: ModelListResponseEntry): mc_util {
+    return new mc_util(m);
   }
 }
