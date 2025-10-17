@@ -42,7 +42,7 @@
               </label>
             </td>
             <td>{{ u.name }}</td>
-            <td>{{ u.c ? u.type : "" }}</td>
+            <td>{{ u.c ? (u.type | modelType) : "" }}</td>
             <td>{{ u.createdAt | date }}</td>
             <td>{{ u.c ? u.status : "" }}</td>
           </tr>

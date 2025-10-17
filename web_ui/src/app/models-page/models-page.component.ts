@@ -13,6 +13,7 @@ import {
   ModelListResponseEntry,
   ModelType,
 } from '../modelconf';
+import { ModelTypeLabelPipe } from '../utils/pipes';
 
 class mc_util {
   constructor(private m: ModelListResponseEntry) {}
@@ -43,7 +44,7 @@ class mc_util {
 
 @Component({
   selector: 'app-models-page',
-  imports: [DatePipe, CreateModelDialogComponent],
+  imports: [DatePipe, CreateModelDialogComponent, ModelTypeLabelPipe],
   templateUrl: './models-page.component.html',
   styleUrl: './models-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
