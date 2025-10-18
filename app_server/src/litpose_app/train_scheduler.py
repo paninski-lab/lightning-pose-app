@@ -109,8 +109,8 @@ def _launch_training(model_dir: Path) -> None:
 
     _write_status(status_path, TrainStatus(status="STARTING"))
 
-    with open(stdout_path, "ab", buffering=0) as out, open(
-        stderr_path, "ab", buffering=0
+    with open(stdout_path, "w", encoding="utf-8") as out, open(
+        stderr_path, "w", encoding="utf-8"
     ) as err:
         proc = subprocess.Popen(
             [
