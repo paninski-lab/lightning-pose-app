@@ -1,0 +1,52 @@
+<style>
+  .cdk-option-active {
+    background-color: var(--color-base-300);
+  }
+</style>
+
+<table class="table table-pin-rows">
+  <thead>
+    <tr>
+      <th>
+        <!--
+        <label>
+          <input type="checkbox" class="checkbox" />
+        </label>-->
+      </th>
+      <th>Model Name</th>
+      <th>Model Type</th>
+      <th>Date Created</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody
+    cdkListbox
+    [cdkListboxValue]="getCdkListboxValue()"
+    (cdkListboxValueChange)="handleCdkListboxChange($event.value)"
+  >
+    @for (m of models().models; track m.model_relative_path) {
+      @let u = mc_util(m);
+      <tr class="hover:bg-base-200 cursor-pointer" [cdkOption]="m">
+        <td>
+          <label>
+            <input
+              type="checkbox"
+              class="checkbox"
+              [checked]="selectedModel() === m"
+            />
+          </label>
+        </td>
+        <td>{{ u.name }}</td>
+        <td>{{ u.c ? (u.type | modelType) : "" }}</td>
+        <td>{{ u.createdAt | date }}</td>
+        <td>{{ u.c ? u.status : "" }}</td>
+      </tr>
+    } @empty {
+      <tr>
+        <td colspan="100" class="text-center opacity-60">
+          No models found in model directory.
+        </td>
+      </tr>
+    }
+  </tbody>
+</table>

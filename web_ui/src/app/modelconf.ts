@@ -261,3 +261,30 @@ export interface ModelListResponseEntry {
 export interface ModelListResponse {
   models: ModelListResponseEntry[];
 }
+
+export class mc_util {
+  constructor(private m: ModelListResponseEntry) {}
+  get c() {
+    return this.m.config;
+  }
+  get name() {
+    return this.m.model_name;
+  }
+  get type() {
+    if ((this.c!.model.losses_to_use?.length ?? 0) > 0) {
+      return this.c!.model.model_type.endsWith('mhcrnn')
+        ? ModelType.S_SUP_CTX
+        : ModelType.S_SUP;
+    } else {
+      return this.c!.model.model_type.endsWith('mhcrnn')
+        ? ModelType.SUP_CTX
+        : ModelType.SUP;
+    }
+  }
+  get createdAt(): string {
+    return this.m.created_at;
+  }
+  get status(): string {
+    return this.m.status?.status ?? '';
+  }
+}

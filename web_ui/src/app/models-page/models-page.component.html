@@ -5,60 +5,29 @@
     justify-content: center;
   }
 </style>
-<div class="min-w-lg">
-  <div class="flex gap-2 items-center mb-4">
-    <button
-      class="btn btn-primary tooltip tooltip-bottom"
-      data-tip="Create and train a model"
-      (click)="isCreateModelDialogOpen.set(true)"
-    >
-      New model
-    </button>
-    <button class="btn btn-accent">Actions</button>
-  </div>
+<div class="flex mt-4">
+  <div class="min-w-sm">
+    <div class="flex gap-2 items-center mb-4">
+      <button
+        class="btn btn-primary tooltip tooltip-bottom"
+        data-tip="Create and train a model"
+        (click)="isCreateModelDialogOpen.set(true)"
+      >
+        New model
+      </button>
+      <button class="btn btn-accent">Actions</button>
+    </div>
 
-  <div class="overflow-auto max-h-5/6">
-    <table class="table table-zebra table-pin-rows">
-      <thead>
-        <tr>
-          <th>
-            <label>
-              <input type="checkbox" class="checkbox" />
-            </label>
-          </th>
-          <th>Model Name</th>
-          <th>Model Type</th>
-          <th>Date Created</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (m of models().models; track m.model_relative_path) {
-          @let u = mc_util(m);
-          <tr>
-            <td>
-              <label>
-                <input type="checkbox" class="checkbox" />
-              </label>
-            </td>
-            <td>{{ u.name }}</td>
-            <td>{{ u.c ? (u.type | modelType) : "" }}</td>
-            <td>{{ u.createdAt | date }}</td>
-            <td>{{ u.c ? u.status : "" }}</td>
-          </tr>
-        } @empty {
-          <tr>
-            <td colspan="100" class="text-center opacity-60">
-              No models found in model directory.
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
+    <div class="overflow-auto max-h-5/6">
+      <app-models-list [(selectedModel)]="selectedModel"></app-models-list>
+    </div>
+  </div>
+  <div>
+    <app-model-detail [selectedModel]="selectedModel()"></app-model-detail>
   </div>
 </div>
 @if (isCreateModelDialogOpen()) {
   <app-create-model-dialog
-    (done)="isCreateModelDialogOpen.set(false); reloadModels()"
+    (done)="handleCreateModelDialogDone()"
   ></app-create-model-dialog>
 }

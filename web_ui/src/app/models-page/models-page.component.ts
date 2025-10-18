@@ -1,70 +1,34 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  inject,
   signal,
+  viewChild,
 } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { CreateModelDialogComponent } from '../create-model-dialog/create-model-dialog.component';
-import { SessionService } from '../session.service';
-import {
-  ModelConfig,
-  ModelListResponse,
-  ModelListResponseEntry,
-  ModelType,
-} from '../modelconf';
-import { ModelTypeLabelPipe } from '../utils/pipes';
 
-class mc_util {
-  constructor(private m: ModelListResponseEntry) {}
-  get c() {
-    return this.m.config;
-  }
-  get name() {
-    return this.m.model_name;
-  }
-  get type() {
-    if ((this.c!.model.losses_to_use?.length ?? 0) > 0) {
-      return this.c!.model.model_type.endsWith('mhcrnn')
-        ? ModelType.S_SUP_CTX
-        : ModelType.S_SUP;
-    } else {
-      return this.c!.model.model_type.endsWith('mhcrnn')
-        ? ModelType.SUP_CTX
-        : ModelType.SUP;
-    }
-  }
-  get createdAt(): string {
-    return this.m.created_at;
-  }
-  get status(): string {
-    return this.m.status?.status ?? '';
-  }
-}
+import { ModelsListComponent } from '../models-list/models-list.component';
+import { ModelListResponseEntry } from '../modelconf';
+import { ModelDetailComponent } from './model-detail/model-detail.component';
 
 @Component({
   selector: 'app-models-page',
-  imports: [DatePipe, CreateModelDialogComponent, ModelTypeLabelPipe],
+  imports: [
+    CreateModelDialogComponent,
+    ModelsListComponent,
+    ModelDetailComponent,
+  ],
   templateUrl: './models-page.component.html',
   styleUrl: './models-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ModelsPageComponent {
-  private session = inject(SessionService);
-
-  protected models = signal<ModelListResponse>({ models: [] });
   protected isCreateModelDialogOpen = signal(false);
 
-  constructor() {
-    this.reloadModels();
-  }
+  private modelsListComponent = viewChild(ModelsListComponent);
+  protected selectedModel = signal<ModelListResponseEntry | null>(null);
 
-  async reloadModels() {
-    const resp = await this.session.listModels();
-    this.models.set(resp);
-  }
-
-  protected mc_util(m: ModelListResponseEntry): mc_util {
-    return new mc_util(m);
+  handleCreateModelDialogDone() {
+    this.isCreateModelDialogOpen.set(false);
+    this.modelsListComponent()?.reloadModels();
   }
 }

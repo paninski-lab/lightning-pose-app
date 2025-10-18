@@ -1,0 +1,46 @@
+<div role="tablist" class="tabs tabs-lift">
+  @let tabs =
+    [
+      { id: "general", label: "General" },
+      { id: "logs", label: "Logs" },
+    ];
+  @for (tab of tabs; track tab) {
+    <a
+      role="tab"
+      class="tab"
+      [class.tab-active]="activeTab() === tab.id"
+      (click)="activeTab.set(tab.id)"
+      (keydown.enter)="activeTab.set(tab.id)"
+      >{{ tab.label }}</a
+    >
+  }
+</div>
+<div class="p-4">
+  @if (activeTab() === "general") {
+    <pre>{{ selectedModel() | json }}</pre>
+  } @else if (activeTab() === "logs") {
+    <div class="collapse collapse-arrow bg-base-100 border border-base-300">
+      <input type="radio" name="my-accordion-2" checked="checked" />
+      <div class="collapse-title font-semibold">train_stdout.log</div>
+      <div class="collapse-content text-sm">
+        Click the "Sign Up" button in the top right corner and follow the
+        registration process.
+      </div>
+    </div>
+    <div class="collapse collapse-arrow bg-base-100 border border-base-300">
+      <input type="radio" name="my-accordion-2" />
+      <div class="collapse-title font-semibold">train_stderr.log</div>
+      <div class="collapse-content text-sm">
+        Click on "Forgot Password" on the login page and follow the instructions
+        sent to your email.
+      </div>
+    </div>
+    <div class="collapse collapse-arrow bg-base-100 border border-base-300">
+      <input type="radio" name="my-accordion-2" />
+      <div class="collapse-title font-semibold">inference_stdout.log</div>
+      <div class="collapse-content text-sm">
+        Go to "My Account" settings and select "Edit Profile" to make changes.
+      </div>
+    </div>
+  }
+</div>
