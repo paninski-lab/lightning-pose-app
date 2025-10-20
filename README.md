@@ -2,18 +2,16 @@
 
 
 Status: In development
-* Multiview prediction viewer is in a usable state.
-* Labeler under development
-* Model management not yet started.
+* Multiview prediction viewer is in a usable state, needs polish.
+* Labeler is in a usable state, needs polish.
+* Model management is in development...
 
 ## Features
 
-The new app will have three modules:
+The app has three modules:
 1. Viewer: support for scrubbing through synced multiview video and their error traces
 2. Labeling: support for multiview with camera calibrations, no longer using LabelStudio 
 3. Model management
-
-The modules will also be developed in roughly that order.
 
 ## Installation
 
@@ -36,17 +34,16 @@ conda create -n lp python=3.12
 conda activate lp
 ```
 
-### Installation option 1: From the PyPi distribution
+### Installation
 
-This is the simplest option appropriate for most users.
 ```bash
 pip install lightning-pose lightning-pose-app
 ```
 
-### Installation option 2: From source
+### Installation for developers
 
 ```bash
-# (If you haven't already) Install lightning-pose core
+# Install lightning-pose core
 git clone https://github.com/paninski-lab/lightning-pose.git
 cd lightning-pose
 pip install -e ".[dev]"
@@ -68,7 +65,11 @@ views = [
     "topLeft",
     "(Your video filenames must contain a view name, ie session123_topLeft.mp4)",
 ]
+keypoint_names = [
+    "leftPaw",
+    "rightPaw",
+]
 ```
-(This step will be part of the UI in the future, but for now you have to do it manually.)
-2. Run the app: `litpose app`
+(This step will be automated in the future, but for now it's manual.)
+2. Run the app: `litpose app` (equivalent to running `uvicorn litpose_app.main:app --port 8080` if running without lightning-pose)
 3. The webserver is now listening at `http://localhost:8080`!
