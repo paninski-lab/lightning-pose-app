@@ -3,10 +3,11 @@
     display: flex;
     flex-grow: 1;
     justify-content: center;
+    width: 100%;
   }
 </style>
-<div class="flex mt-4">
-  <div class="min-w-sm">
+<div class="flex mt-4 w-full">
+  <div class="min-w-sm shrink-0">
     <div class="flex gap-2 items-center mb-4">
       <button
         class="btn btn-primary tooltip tooltip-bottom"
@@ -22,7 +23,7 @@
       <app-models-list [(selectedModel)]="selectedModel"></app-models-list>
     </div>
   </div>
-  <div>
+  <div class="min-w-0 min-h-0 grow">
     <app-model-detail [selectedModel]="selectedModel()"></app-model-detail>
   </div>
 </div>
