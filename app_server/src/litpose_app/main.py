@@ -149,7 +149,7 @@ If we need to read out of other directories, they should be added to Project Inf
 @app.get("/app/v0/files/{file_path:path}")
 async def read_file(request: Request, file_path: Path):
     # Prevent secrets like /etc/passwd and ~/.ssh/ from being leaked.
-    if file_path.suffix not in (".csv", ".mp4", ".png", ".jpg", ".unlabeled"):
+    if file_path.suffix not in (".csv", ".mp4", ".png", ".jpg", ".unlabeled", ".log"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="File type not supported: " + file_path.suffix,

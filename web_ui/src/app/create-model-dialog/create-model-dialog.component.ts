@@ -8,16 +8,16 @@ import {
   signal,
 } from '@angular/core';
 import {
-  AbstractControl,
   FormsModule,
   NonNullableFormBuilder,
   ReactiveFormsModule,
-  ValidationErrors,
   Validators,
 } from '@angular/forms';
 import {
   backbones,
+  DeepPartial,
   isUnsupervised,
+  ModelConfig,
   ModelType,
   validMvBackbones,
   validMvModelTypes,
@@ -31,6 +31,7 @@ import { ProjectInfoService } from '../project-info.service';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   atLeastOneTrueValidator,
+  fileNameValidator,
   mustBeInOptionsList,
   sumToOneValidator,
 } from '../utils/validators';
@@ -182,18 +183,18 @@ export class CreateModelDialogComponent {
   ): Promise<string | null> {
     const defaultPath = 'configs/default.yaml';
     try {
-      const yamlObj = await this.sessionService.getYamlFile(defaultPath);
+      const baseConfig = await this.sessionService.getYamlFile(defaultPath);
       if (abortSignal?.aborted) return null;
 
-      if (!yamlObj) {
+      if (!baseConfig) {
         window.alert('configs/default.yaml was not found.');
         return null;
       }
       const formObject = this.form.value;
-      const patch = await this.computeYaml(formObject);
+      const patch = this.computeConfigPatch(formObject);
       if (abortSignal?.aborted) return null;
 
-      const merged = _.merge({}, yamlObj, patch);
+      const merged = _.merge({}, baseConfig, patch);
       const yamlText = yamlStringify(merged);
       if (abortSignal?.aborted) return null;
 
@@ -206,7 +207,7 @@ export class CreateModelDialogComponent {
     }
   }
 
-  private async computeYaml(
+  private computeConfigPatch(
     formObject: Partial<{
       modelName: string;
       useTrueMultiviewModel: boolean;
@@ -221,9 +222,9 @@ export class CreateModelDialogComponent {
       labeledBatchSize: number;
       unlabeledBatchSize: number;
     }>,
-  ) {
-    const configPatchObject = {};
-    const patches = [];
+  ): DeepPartial<ModelConfig> {
+    const configPatchObject = {} as DeepPartial<ModelConfig>;
+    const patches = [] as DeepPartial<ModelConfig>[];
     patches.push({
       data: {
         data_dir: this.projectInfoService.projectInfo.data_dir,
@@ -328,10 +329,10 @@ export class CreateModelDialogComponent {
       patches.push({
         dali: {
           base: {
-            train: formObject.unlabeledBatchSize,
+            train: { sequence_length: formObject.unlabeledBatchSize },
           },
           context: {
-            train: formObject.unlabeledBatchSize,
+            train: { batch_size: formObject.unlabeledBatchSize },
           },
         },
       });
@@ -373,12 +374,4 @@ export class CreateModelDialogComponent {
   }
 
   protected isUnsupervised = isUnsupervised;
-}
-
-function fileNameValidator(control: AbstractControl): ValidationErrors | null {
-  const allowedChars = /^[a-zA-Z0-9][a-zA-Z0-9-._]+$/;
-  if (!allowedChars.test(control.value)) {
-    return { invalidFilename: true };
-  }
-  return null;
 }

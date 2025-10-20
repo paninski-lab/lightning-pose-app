@@ -3,65 +3,32 @@
     display: flex;
     flex-grow: 1;
     justify-content: center;
+    width: 100%;
   }
 </style>
-<div class="min-w-lg max-w-4xl">
-  <div class="flex gap-2 items-center mb-4">
-    <button
-      class="btn btn-primary tooltip tooltip-bottom"
-      data-tip="Create and train a model"
-      (click)="isCreateModelDialogOpen.set(true)"
-    >
-      New model
-    </button>
-    <button class="btn btn-accent">Actions</button>
-  </div>
+<div class="flex mt-4 w-full">
+  <div class="min-w-sm shrink-0">
+    <div class="flex gap-2 items-center mb-4">
+      <button
+        class="btn btn-primary tooltip tooltip-bottom"
+        data-tip="Create and train a model"
+        (click)="isCreateModelDialogOpen.set(true)"
+      >
+        New model
+      </button>
+      <button class="btn btn-accent">Actions</button>
+    </div>
 
-  <div class="overflow-x-auto">
-    <table class="table table-zebra">
-      <thead>
-        <tr>
-          <th>
-            <label>
-              <input type="checkbox" class="checkbox" />
-            </label>
-          </th>
-          <th>Model Name</th>
-          <th>Model Type</th>
-          <th>Date Created</th>
-          <th>Epochs Trained</th>
-          <th>Train/Test Split</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (m of models(); track m.id) {
-          <tr>
-            <td>
-              <label>
-                <input type="checkbox" class="checkbox" />
-              </label>
-            </td>
-            <td>{{ m.name }}</td>
-            <td>{{ m.type }}</td>
-            <td>{{ m.creationDate | date }}</td>
-            <td>{{ m.epochsTrained }}</td>
-            <td>{{ m.trainTestSplit }}</td>
-            <td>{{ m.status }}</td>
-          </tr>
-        } @empty {
-          <tr>
-            <td colspan="100" class="text-center opacity-60">
-              No models found in model directory.
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
+    <div class="overflow-auto max-h-5/6">
+      <app-models-list [(selectedModel)]="selectedModel"></app-models-list>
+    </div>
+  </div>
+  <div class="min-w-0 min-h-0 grow">
+    <app-model-detail [selectedModel]="selectedModel()"></app-model-detail>
   </div>
 </div>
 @if (isCreateModelDialogOpen()) {
   <app-create-model-dialog
-    (done)="isCreateModelDialogOpen.set(false); reloadModels()"
+    (done)="handleCreateModelDialogDone()"
   ></app-create-model-dialog>
 }

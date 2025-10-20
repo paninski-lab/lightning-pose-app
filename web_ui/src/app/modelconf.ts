@@ -13,7 +13,8 @@ export interface DataConfig {
   image_resize_dims: ImageResizeDims;
   data_dir: string;
   video_dir: string;
-  csv_file: string;
+  csv_file: string | string[];
+  view_names?: string[];
   num_keypoints: number;
   keypoint_names: string[];
   mirrored_column_matches: number[][];
@@ -74,7 +75,11 @@ export interface TrainingConfig {
 export interface ModelConfig {
   losses_to_use: string[];
   backbone: string;
-  model_type: 'regression' | 'heatmap' | 'heatmap_mhcrnn';
+  model_type:
+    | 'regression'
+    | 'heatmap'
+    | 'heatmap_mhcrnn'
+    | 'heatmap_multiview_transformer';
   heatmap_loss_type: 'mse';
   model_name: string;
 }
@@ -197,7 +202,7 @@ export interface CallbacksConfig {
 /**
  * The root interface for the entire configuration file.
  */
-export interface RootConfig {
+export interface ModelConfig {
   data: DataConfig;
   training: TrainingConfig;
   model: ModelConfig;
@@ -205,136 +210,6 @@ export interface RootConfig {
   losses: LossesConfig;
   eval: EvalConfig;
   callbacks: CallbacksConfig;
-}
-
-// --- Wrapper Classes with Utility Methods ---
-
-/**
- * A generic base class to wrap a configuration object.
- */
-class ConfigWrapper<T> {
-  protected readonly _data: T;
-
-  constructor(data: T) {
-    this._data = data;
-  }
-
-  /**
-   * Access the raw, unwrapped configuration object.
-   */
-  public get raw(): T {
-    return this._data;
-  }
-}
-
-// --- AI Generated utility wrappers.
-// Methods are illustrative and to be replaced with actual utility methods. ---
-
-class DataConfigWrapper extends ConfigWrapper<DataConfig> {
-  /**
-   * Calculates the aspect ratio of the resize dimensions.
-   */
-  public getAspectRatio(): number {
-    const { width, height } = this._data.image_resize_dims;
-    return height === 0 ? 0 : width / height;
-  }
-
-  /**
-   * Checks if a given keypoint name is valid according to the config.
-   */
-  public hasKeypoint(name: string): boolean {
-    return this._data.keypoint_names.includes(name);
-  }
-}
-
-class TrainingConfigWrapper extends ConfigWrapper<TrainingConfig> {
-  /**
-   * Calculates the fraction of data used for testing, based on the
-   * train and validation probabilities.
-   */
-  public getTestProb(): number {
-    const testProb = 1 - this._data.train_prob - this._data.val_prob;
-    // Ensure the result is non-negative and reasonably formatted
-    return Math.max(0, parseFloat(testProb.toFixed(2)));
-  }
-}
-
-class ModelConfigWrapper extends ConfigWrapper<ModelConfig> {}
-class DaliConfigWrapper extends ConfigWrapper<DaliConfig> {}
-class LossesConfigWrapper extends ConfigWrapper<LossesConfig> {}
-class EvalConfigWrapper extends ConfigWrapper<EvalConfig> {}
-class CallbacksConfigWrapper extends ConfigWrapper<CallbacksConfig> {}
-
-/**
- * The main wrapper for the root configuration object. It provides
- * hierarchical access to wrapped sub-configurations.
- */
-export class RootConfigWrapper extends ConfigWrapper<RootConfig> {
-  // Cache wrapped instances to avoid re-creating them on every access
-  private _dataWrapper?: DataConfigWrapper;
-  private _trainingWrapper?: TrainingConfigWrapper;
-  private _modelWrapper?: ModelConfigWrapper;
-  private _daliWrapper?: DaliConfigWrapper;
-  private _lossesWrapper?: LossesConfigWrapper;
-  private _evalWrapper?: EvalConfigWrapper;
-  private _callbacksWrapper?: CallbacksConfigWrapper;
-
-  public get data(): DataConfigWrapper {
-    if (!this._dataWrapper) {
-      this._dataWrapper = new DataConfigWrapper(this._data.data);
-    }
-    return this._dataWrapper;
-  }
-
-  public get training(): TrainingConfigWrapper {
-    if (!this._trainingWrapper) {
-      this._trainingWrapper = new TrainingConfigWrapper(this._data.training);
-    }
-    return this._trainingWrapper;
-  }
-
-  public get model(): ModelConfigWrapper {
-    if (!this._modelWrapper) {
-      this._modelWrapper = new ModelConfigWrapper(this._data.model);
-    }
-    return this._modelWrapper;
-  }
-
-  public get dali(): DaliConfigWrapper {
-    if (!this._daliWrapper) {
-      this._daliWrapper = new DaliConfigWrapper(this._data.dali);
-    }
-    return this._daliWrapper;
-  }
-
-  public get losses(): LossesConfigWrapper {
-    if (!this._lossesWrapper) {
-      this._lossesWrapper = new LossesConfigWrapper(this._data.losses);
-    }
-    return this._lossesWrapper;
-  }
-
-  public get eval(): EvalConfigWrapper {
-    if (!this._evalWrapper) {
-      this._evalWrapper = new EvalConfigWrapper(this._data.eval);
-    }
-    return this._evalWrapper;
-  }
-
-  public get callbacks(): CallbacksConfigWrapper {
-    if (!this._callbacksWrapper) {
-      this._callbacksWrapper = new CallbacksConfigWrapper(this._data.callbacks);
-    }
-    return this._callbacksWrapper;
-  }
-
-  /**
-   * Creates a unique identifier string for the model configuration.
-   * @returns A string like "rebuttal23a-resnet50_animal_ap10k".
-   */
-  public getModelIdentifier(): string {
-    return `${this._data.model.model_name}-${this._data.model.backbone}`;
-  }
 }
 
 export enum ModelType {
@@ -354,3 +229,62 @@ export function isUnsupervised(value: ModelType) {
 }
 
 export const validMvModelTypes = [ModelType.SUP];
+
+export type DeepPartial<T> = T extends object
+  ? {
+      [P in keyof T]?: DeepPartial<T[P]>;
+    }
+  : T;
+
+export interface TrainStatus {
+  status:
+    | 'PENDING'
+    | 'STARTING'
+    | 'STARTED'
+    | 'TRAINING'
+    | 'EVALUATING'
+    | 'COMPLETED'
+    | 'FAILED'
+    | 'CANCELED'
+    | 'PAUSED';
+  pid?: number | null;
+}
+
+export interface ModelListResponseEntry {
+  model_name: string;
+  model_relative_path: string;
+  config?: ModelConfig;
+  created_at: string; // of the model dir. ISO format
+  status?: TrainStatus;
+}
+
+export interface ModelListResponse {
+  models: ModelListResponseEntry[];
+}
+
+export class mc_util {
+  constructor(private m: ModelListResponseEntry) {}
+  get c() {
+    return this.m.config;
+  }
+  get name() {
+    return this.m.model_name;
+  }
+  get type() {
+    if ((this.c!.model.losses_to_use?.length ?? 0) > 0) {
+      return this.c!.model.model_type.endsWith('mhcrnn')
+        ? ModelType.S_SUP_CTX
+        : ModelType.S_SUP;
+    } else {
+      return this.c!.model.model_type.endsWith('mhcrnn')
+        ? ModelType.SUP_CTX
+        : ModelType.SUP;
+    }
+  }
+  get createdAt(): string {
+    return this.m.created_at;
+  }
+  get status(): string {
+    return this.m.status?.status ?? '';
+  }
+}

@@ -1,0 +1,54 @@
+<div role="tablist" class="tabs tabs-lift">
+  @let tabs =
+    [
+      { id: "general", label: "General" },
+      { id: "logs", label: "Logs" },
+    ];
+  @for (tab of tabs; track tab) {
+    <a
+      role="tab"
+      class="tab"
+      [class.tab-active]="activeTab() === tab.id"
+      (click)="activeTab.set(tab.id)"
+      (keydown.enter)="activeTab.set(tab.id)"
+      >{{ tab.label }}</a
+    >
+  }
+</div>
+<div class="p-4">
+  @if (activeTab() === "general") {
+    <pre>{{ selectedModel() | json }}</pre>
+  } @else if (activeTab() === "logs") {
+    @for (logEntry of logs(); track logEntry.filename) {
+      <div class="collapse collapse-arrow bg-base-100 border border-base-300">
+        <input
+          type="checkbox"
+          name="log-accordion"
+          (change)="scrollHandle.scrollTop = scrollHandle.scrollHeight"
+        />
+        <div
+          class="collapse-title font-semibold bg-base-200 z-10 pointer-events-none"
+        >
+          <span>{{ logEntry.filename }}</span>
+
+          <button
+            class="btn btn-ghost btn-md btn-circle pointer-events-auto"
+            [disabled]="isReloading.get(logEntry)"
+            (click)="reloadLog(logEntry)"
+          >
+            @if (isReloading.get(logEntry)) {
+              <span class="loading loading-spinner loading-sm"></span>
+            } @else {
+              <span class="material-icons">cached</span>
+            }
+          </button>
+        </div>
+        <div class="collapse-content text-sm w-full min-w-0">
+          <pre class="max-h-140 overflow-auto w-full p-4" #scrollHandle>{{
+            logEntry.content
+          }}</pre>
+        </div>
+      </div>
+    }
+  }
+</div>

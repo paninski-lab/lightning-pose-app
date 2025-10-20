@@ -216,19 +216,21 @@
                   [formControl]="form.controls.randomSeed"
                 />
               </fieldset>
-              <fieldset class="fieldset my-2">
-                <h3 class="text-md mt-0!">Semisupervised training</h3>
-                <p class="m-0!">
-                  Select the directory containing videos to train on.
-                </p>
-                <select
-                  class="select"
-                  spellcheck="false"
-                  [formControl]="form.controls.videosDir"
-                >
-                  <option value="videos">videos</option>
-                </select>
-              </fieldset>
+              @if (isUnsupervised(form.controls.modelType.value)) {
+                <fieldset class="fieldset my-2">
+                  <h3 class="text-md mt-0!">Semisupervised training</h3>
+                  <p class="m-0!">
+                    Select the directory containing videos to train on.
+                  </p>
+                  <select
+                    class="select"
+                    spellcheck="false"
+                    [formControl]="form.controls.videosDir"
+                  >
+                    <option value="videos">videos</option>
+                  </select>
+                </fieldset>
+              }
             </form>
           }
           @if (selectedTab() === "training") {
