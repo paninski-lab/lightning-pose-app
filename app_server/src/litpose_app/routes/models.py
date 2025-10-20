@@ -107,13 +107,6 @@ def create_train_task(
 def list_models(
     project_info: ProjectInfo = Depends(deps.project_info),
 ) -> ListModelsResponse:
-    # Use the running loop if inside an async server context; otherwise create a new one
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
     models: list[ModelListResponseEntry] = []
     if project_info is None or project_info.model_dir is None:
         return ListModelsResponse(models=models)
