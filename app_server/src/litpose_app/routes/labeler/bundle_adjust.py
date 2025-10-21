@@ -76,22 +76,39 @@ def _bundle_adjust_impl(
         parts = framePath.split("/")
         if len(parts) < 3:
             return False
-        sessionViewName = parts[-2] # e.g. 05272019_fly1_0_R1C24_Cam-A_rot-ccw-0.06_sec
-        # Replace view with *, e.g. 05272019_fly1_0_R1C24_*_rot-ccw-0.06_sec
-        sessionkey_from_frame = re.sub(
-            rf"({'|'.join([re.escape(_v) for _v in views])})", "*", sessionViewName
-        )
-        parts_hyphenated = sessionkey_from_frame.split('-')
-        if '*' in parts_hyphenated:
-            return '-'.join(filter(lambda x: x != '*', parts_hyphenated))
+        sessionViewNameWithDots = parts[-2] # e.g. 05272019_fly1_0_R1C24_Cam-A_rot-ccw-0.06_sec
 
-        # 05272019_fly1_0_R1C24_*_rot-ccw-0.06_sec will be split correctly.
-        parts_underscored = sessionkey_from_frame.split('_')
+        def processPart(sessionViewName):
+            """Mirrors frame.model.ts get autolabelSessionKey()"""
+            # Replace view with *, e.g. 05272019_fly1_0_R1C24_*_rot-ccw-0.06_sec
+            sessionkey_from_frame = re.sub(
+                rf"({'|'.join([re.escape(_v) for _v in views])})", "*", sessionViewName
+            )
 
-        # if underscore is the delimeter, * will be a token by itself
-        if '*' in parts_underscored:
-            return '_'.join(filter(lambda x: x != '*', parts_underscored))
-        return None
+            # View not in this token, so return identity.
+            if '*' not in sessionkey_from_frame:
+                return sessionkey_from_frame
+
+            # Attempt to parse assuming - is the delimiter.
+            parts_hyphenated = sessionkey_from_frame.split('-')
+            if '*' in parts_hyphenated:
+                return '-'.join(filter(lambda x: x != '*', parts_hyphenated))
+
+            # Attempt to parse assuming _ is the delimiter.
+            parts_underscored = sessionkey_from_frame.split('_')
+            if '*' in parts_underscored:
+                return '_'.join(filter(lambda x: x != '*', parts_underscored))
+
+            # View present, but invalid delimiter: return None
+            return None
+
+        # Split on . and process each part.
+        processedParts = list(map(processPart, sessionViewNameWithDots.split('.')))
+        # If some part had * but without correct delimiters around it, return null.
+        if None in processedParts:
+            return None
+        # Filter empty tokens after processPart (* got removed) and join by .
+        return '.'.join(filter(lambda p: bool(p), processedParts))
 
     def is_of_current_session(imgpath: str):
         return autoLabelSessionKey(imgpath) == request.sessionKey
@@ -125,7 +142,9 @@ def _bundle_adjust_impl(
     for view in views:
         df = dfs_by_view[view]
         dfs_by_view[view] = df.loc[df.index.to_series().apply(is_of_current_session)]
-
+        if len(dfs_by_view[view]) == 0:
+            raise RuntimeError(
+                f"Insufficient frames found after filtering for session {request.sessionKey}. Possible error in session extraction logic.")
     # Normalize columns: x, y alternating.
     for view in views:
         df = dfs_by_view[view]

@@ -83,8 +83,7 @@ export class MVFUtils {
   get autolabelSessionKey(): string | null {
     const pathParts = this.mvFrame.key.split('/');
     if (pathParts.length < 3) return null; // unable to parse
-    const sessionKeyWithStar = pathParts.at(-2);
-    if (sessionKeyWithStar === undefined) return null;
+    const sessionKeyWithStar = pathParts.at(-2)!;
     if (sessionKeyWithStar.indexOf('*') === -1) return null;
 
     // Split the session key on "." to handle cases like a-view.b.c
