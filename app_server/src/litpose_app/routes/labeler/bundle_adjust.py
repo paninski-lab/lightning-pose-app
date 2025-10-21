@@ -144,16 +144,21 @@ def _bundle_adjust_impl(
         if len(dfs_by_view[view]) == 0:
             raise RuntimeError(
                 f"Insufficient frames found after filtering for session {request.sessionKey}. Possible error in session extraction logic.")
-
     # Remove rows with NaN coordinates
+    # Get indices of rows with NaN coordinates in any view
+    nan_indices = set()
     for view in views:
         df = dfs_by_view[view]
         picked_columns = [c for c in df.columns if c[2] in ("x", "y")]
-        dfs_by_view[view] = df.loc[:, picked_columns].dropna()
+        nan_rows = df.loc[:, picked_columns].dropna().index.symmetric_difference(df.index)
+        nan_indices.update(df.index.get_indexer(nan_rows))
+
+    # Drop those indices from all views  
+    for view in views:
+        dfs_by_view[view] = dfs_by_view[view].drop(dfs_by_view[view].index[list(nan_indices)])
         if len(dfs_by_view[view]) == 0:
             raise RuntimeError(
                 f"Insufficient frames found after dropping NaN rows for session {request.sessionKey}.")
-
     # Normalize columns: x, y alternating.
     for view in views:
         df = dfs_by_view[view]
