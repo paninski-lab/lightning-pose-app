@@ -57,9 +57,8 @@ def bundle_adjust(
     return BundleAdjustResponse.model_validate(result)
 
 
-
 def _bundle_adjust_impl(
-    request: BundleAdjustRequest, project_info: ProjectInfo, config: Config
+        request: BundleAdjustRequest, project_info: ProjectInfo, config: Config
 ):
     camera_group_toml_path = find_calibration_file(
         request.sessionKey, project_info, config
@@ -76,7 +75,7 @@ def _bundle_adjust_impl(
         parts = framePath.split("/")
         if len(parts) < 3:
             return False
-        sessionViewNameWithDots = parts[-2] # e.g. 05272019_fly1_0_R1C24_Cam-A_rot-ccw-0.06_sec
+        sessionViewNameWithDots = parts[-2]  # e.g. 05272019_fly1_0_R1C24_Cam-A_rot-ccw-0.06_sec
 
         def processPart(sessionViewName):
             """Mirrors frame.model.ts get autolabelSessionKey()"""
@@ -145,19 +144,28 @@ def _bundle_adjust_impl(
         if len(dfs_by_view[view]) == 0:
             raise RuntimeError(
                 f"Insufficient frames found after filtering for session {request.sessionKey}. Possible error in session extraction logic.")
+
+    # Remove rows with NaN coordinates
+    for view in views:
+        df = dfs_by_view[view]
+        picked_columns = [c for c in df.columns if c[2] in ("x", "y")]
+        dfs_by_view[view] = df.loc[:, picked_columns].dropna()
+        if len(dfs_by_view[view]) == 0:
+            raise RuntimeError(
+                f"Insufficient frames found after dropping NaN rows for session {request.sessionKey}.")
+
     # Normalize columns: x, y alternating.
     for view in views:
         df = dfs_by_view[view]
-
         picked_columns = [c for c in df.columns if c[2] in ("x", "y")]
         assert len(picked_columns) % 2 == 0
         assert (
-            picked_columns[::2][0][2] == "x"
-            and len(set(list(map(lambda t: t[2], picked_columns[::2])))) == 1
+                picked_columns[::2][0][2] == "x"
+                and len(set(map(lambda t: t[2], picked_columns[::2]))) == 1
         )
         assert (
-            picked_columns[1::2][0][2] == "y"
-            and len(set(list(map(lambda t: t[2], picked_columns[1::2])))) == 1
+                picked_columns[1::2][0][2] == "y"
+                and len(set(map(lambda t: t[2], picked_columns[1::2]))) == 1
         )
         dfs_by_view[view] = df.loc[:, picked_columns]
 
@@ -181,9 +189,9 @@ def _bundle_adjust_impl(
 
     if target_path.exists():
         backup_path = (
-            project_info.data_dir
-            / config.CALIBRATION_BACKUPS_DIRNAME
-            / target_path.with_suffix(f".{time.time_ns()}.toml").name
+                project_info.data_dir
+                / config.CALIBRATION_BACKUPS_DIRNAME
+                / target_path.with_suffix(f".{time.time_ns()}.toml").name
         )
         backup_path.parent.mkdir(parents=True, exist_ok=True)
         os.rename(target_path, backup_path)
