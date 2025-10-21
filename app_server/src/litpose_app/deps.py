@@ -68,7 +68,7 @@ def project_info(config: Config = Depends(config)) -> ProjectInfo:
         # Unpack the dictionary into the Pydantic model
         return ProjectInfo.model_validate(toml_data)
     except FileNotFoundError:
-        return None
+        raise RuntimeError("project not yet setup, but project_info dep requested")
     except tomli.TOMLDecodeError as e:
         logger.error(f"Could not decode pyproject.toml. Invalid syntax: {e}")
         raise

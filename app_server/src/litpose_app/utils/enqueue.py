@@ -17,11 +17,17 @@ async def enqueue_all_new_fine_videos_task() -> None:
     """
     try:
         config = deps.config()
+        if not config.PROJECT_INFO_TOML_PATH.exists():
+            # Skip if project file doesn't exist.
+            return
         project_info = deps.project_info(config)
         scheduler = deps.scheduler()
 
         # get all mp4 video files that are less than config.AUTO_TRANSCODE_VIDEO_SIZE_LIMIT_MB
         base_path = project_info.data_dir
+        if base_path is None:
+            # Skip if data_dir not set.
+            return
         result = await asyncio.to_thread(
             _rglob, base_path, pattern="**/*.mp4", stat=True
         )

@@ -133,8 +133,11 @@ def _launch_training(model_dir: Path) -> None:
 def train_scheduler_loop(poll_interval_seconds: float = 2.0) -> None:
     """Periodically checks for PENDING tasks and launches at most one training."""
     while True:
+        lock_file = None
         try:
             config = deps.config()
+            if not config.PROJECT_INFO_TOML_PATH.exists():
+                continue
             project_info = deps.project_info(config)
             if (
                 project_info
@@ -194,14 +197,14 @@ def train_scheduler_loop(poll_interval_seconds: float = 2.0) -> None:
         except Exception:
             logger.exception("Error in train scheduler loop")
         finally:
+            # Finally also executes when `continue` from a try block.
             if lock_file:
                 try:
                     lock_file.release()  # Release the lock
                     logger.debug(f"Released lock.")
                 except Exception as e:
                     logger.error(f"Error releasing lock file {lock_path}: {e}")
-
-        time.sleep(poll_interval_seconds)
+            time.sleep(poll_interval_seconds)
 
 
 def _train_scheduler_process_target():
