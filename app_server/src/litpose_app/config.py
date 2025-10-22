@@ -19,7 +19,7 @@ class Config(BaseModel):
     FINE_VIDEO_DIR: Path = Path("~/.lightning_pose/finevideos").expanduser()
 
     # Name of the directory in data_dir where extract frames will output to
-    LABELED_DATA_DIRNAME: str = "labeled_data"
+    LABELED_DATA_DIRNAME: str = "labeled-data"
 
     # Name of the directory in data_dir containing session-specific calibration files
     CALIBRATIONS_DIRNAME: str = "calibrations"
