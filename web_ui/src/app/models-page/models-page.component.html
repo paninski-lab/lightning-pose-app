@@ -16,7 +16,21 @@
       >
         New model
       </button>
-      <button class="btn btn-accent">Actions</button>
+      <div class="dropdown dropdown-end">
+        <button class="btn btn-accent" [class.btn-disabled]="!selectedModel()" tabindex="0">
+          Actions
+        </button>
+        <ul
+          class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52"
+          tabindex="0"
+        >
+          <li>
+            <button (click)="openInferenceDialog()" [disabled]="!selectedModel()">
+              Run inference
+            </button>
+          </li>
+        </ul>
+      </div>
     </div>
 
     <div class="overflow-auto max-h-5/6">
@@ -31,4 +45,10 @@
   <app-create-model-dialog
     (done)="handleCreateModelDialogDone()"
   ></app-create-model-dialog>
+}
+@if (isInferenceDialogOpen()) {
+  <app-model-inference-dialog
+    [modelRelativePath]="selectedModel()?.model_relative_path ?? ''"
+    (done)="handleInferenceDialogDone()"
+  ></app-model-inference-dialog>
 }

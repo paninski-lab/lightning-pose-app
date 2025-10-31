@@ -13,7 +13,9 @@ import { provideHttpClient } from '@angular/common/http';
 // Import and configure Highlight.js
 import hljs from 'highlight.js/lib/core';
 import yaml from 'highlight.js/lib/languages/yaml';
+import bash from 'highlight.js/lib/languages/bash';
 hljs.registerLanguage('yaml', yaml);
+hljs.registerLanguage('bash', bash);
 
 export const appConfig: ApplicationConfig = {
   providers: [

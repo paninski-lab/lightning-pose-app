@@ -12,10 +12,17 @@
     </p>
   </div>
   @if (data.error) {
-    <p>Error body</p>
-    <p class="error-message w-fit h-fit">
-      {{ data?.error?.detail ?? data?.error | json }}
-    </p>
+    @if (data.status === 500) {
+      <p>Stacktrace</p>
+      <pre
+        class="error-message w-fit h-fit"
+      ><code [appHighlight]="data?.error" [language]="'bash'"></code></pre>
+    } @else {
+      <p>Error body</p>
+      <p class="error-message w-fit h-fit">
+        {{ data?.error?.detail ?? data?.error | json }}
+      </p>
+    }
   }
 </div>
 <div mat-dialog-actions>

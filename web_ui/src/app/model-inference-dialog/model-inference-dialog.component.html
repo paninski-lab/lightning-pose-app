@@ -1,0 +1,85 @@
+<dialog #dlg class="modal" (cancel)="$event.preventDefault(); closeDialog()">
+  <div class="modal-box overflow-x-hidden w-11/12 max-w-5xl h-[80vh] max-h-[90vh]">
+    <div class="flex flex-col h-full">
+      <button
+        class="btn btn-md btn-circle btn-ghost absolute right-4 top-4"
+        (click)="closeDialog()"
+        aria-label="Close run inference dialog"
+      >
+        ✕
+      </button>
+      <h3 class="text-xl font-bold mb-2">Run model inference</h3>
+      <p class="text-sm mb-4">
+        Select one or more local video files to upload and transcode. Filenames must follow the
+        <code class="code">session_view.ext</code> pattern. Only alphanumeric, dash and underscore are allowed before the extension.
+        The <code class="code">view</code> part must not contain underscores.
+      </p>
+
+      <div class="flex gap-3 items-center mb-4 flex-shrink-0">
+        <label class="btn btn-primary" [class.btn-disabled]="uploading()" for="videoFileInput">Choose videos</label>
+        <input
+          id="videoFileInput"
+          type="file"
+          #fileInput
+          class="hidden"
+          [disabled]="uploading()"
+          (change)="addFiles(fileInput.files)"
+          accept="video/*"
+          multiple
+        />
+        <button class="btn btn-ghost" (click)="clearAll()" [disabled]="items().length === 0 || uploading()">
+          Clear selection
+        </button>
+      </div>
+
+      <div class="overflow-y-auto grow min-h-0 border rounded-box" role="region" aria-label="Selected videos for inference">
+        <app-video-file-table
+          [items]="items()"
+          [uploading]="uploading()"
+          (removeAt)="removeAt($event)"
+        />
+      </div>
+
+      <!-- Inference summary/progress -->
+      <div class="mt-4">
+        @if (inference().status === 'running') {
+          <div class="flex items-center gap-3">
+            <span class="font-semibold">Running inference…</span>
+            <progress class="progress progress-secondary w-40" [value]="inference().progress" max="100"></progress>
+            <span class="text-sm">{{ inference().progress }}%</span>
+          </div>
+          @if (inference().message) {
+            <div class="text-xs opacity-70 mt-1">{{ inference().message }}</div>
+          }
+        } @else if (inference().status === 'done') {
+          <div class="flex items-center gap-2">
+            <span class="badge badge-success">Inference completed</span>
+            <span class="text-xs opacity-70" *ngIf="inference().message">{{ inference().message }}</span>
+          </div>
+        } @else if (inference().status === 'error') {
+          <div class="text-error">{{ inference().error ?? 'Inference failed' }}</div>
+        }
+      </div>
+
+      <div class="flex justify-between items-center mt-6 flex-shrink-0">
+        <div class="text-sm" [class.text-error]="!allValid()">
+          @if (!allValid() && items().length > 0) {
+            Fix invalid filenames before continuing.
+          }
+        </div>
+        <div class="flex gap-2">
+          <button class="btn btn-outline" (click)="closeDialog()">Close</button>
+          @if (uploading()) {
+            <span class="loading loading-spinner loading-sm" aria-label="Importing"></span>
+          }
+          <button class="btn btn-primary" [disabled]="!allValid() || uploading()" (click)="startImport()">
+            Import (upload + transcode)
+          </button>
+          <button class="btn btn-secondary" [disabled]="!allTranscoded() || inferenceRunning()" (click)="startInference()">
+            Run inference
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</dialog>

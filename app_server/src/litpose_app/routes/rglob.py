@@ -1,12 +1,17 @@
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
 
 router = APIRouter()
 
+from litpose_app import deps
+from litpose_app.deps import ProjectInfoGetter
+
 
 class RGlobRequest(BaseModel):
+    # Project scoping for new API; route will validate and otherwise ignore.
+    projectKey: str
     baseDir: Path
     pattern: str
     noDirs: bool = False
@@ -34,7 +39,12 @@ class RGlobResponse(BaseModel):
 
 
 @router.post("/app/v0/rpc/rglob")
-def rglob(request: RGlobRequest) -> RGlobResponse:
+def rglob(
+    request: RGlobRequest,
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+) -> RGlobResponse:
+    # Validate projectKey and obtain Project (not used further here)
+    _ = project_info_getter(request.projectKey)
     # Prevent secrets like /etc/passwd and ~/.ssh/ from being leaked.
     if not (
         request.pattern.endswith(".csv")

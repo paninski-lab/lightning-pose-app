@@ -1,23 +1,56 @@
-<div
-  class="not-prose grid grid-cols-1 gap-x-12 gap-y-12 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5"
->
-  @for (card of cards; track card.href) {
-    <a
-      class="card card-compact hover:bg-base-200 transition-all duration-200 hover:-translate-y-1"
-      [href]="card.href"
-      ><figure class="px-4 pt-4">
-        <img
-          loading="lazy"
-          class="border-base-content/5 bg-base-300 rounded-lg border"
-          [src]="card.imgSrc"
-          [alt]="card.imgAlt"
-        />
-      </figure>
+<div class="flex justify-center w-screen">
+  <section class="max-w-5xl p-4" aria-labelledby="projects-heading">
+    <h1 id="projects-heading" class="text-2xl font-semibold mb-4">Projects</h1>
 
-      <div class="card-body">
-        <h2 class="card-title">{{ card.title }}</h2>
-        <p class="text-xs opacity-60">{{ card.description }}</p>
-      </div></a
-    >
-  }
+    @if (projectInfo.projects() === undefined) {
+      <div class="flex items-center gap-3" aria-live="polite" aria-busy="true">
+        <span
+          class="loading loading-spinner text-primary"
+          aria-hidden="true"
+        ></span>
+        <span>Loading projects…</span>
+      </div>
+    } @else if (projectInfo.projects()?.length === 0) {
+      <p role="status">No projects found.</p>
+      <a
+        [routerLink]="['/']"
+        [queryParams]="{ createProject: true }"
+        class="btn btn-primary mt-4"
+        >New Project</a
+      >
+    } @else {
+      <a
+        [routerLink]="['/']"
+        [queryParams]="{ createProject: true }"
+        class="btn btn-primary mb-4"
+        >New Project</a
+      >
+      <ul
+        role="list"
+        class="divide-y divide-base-200 rounded-md border border-base-300 bg-base-100"
+      >
+        @for (p of projectInfo.projects(); track p.data_dir) {
+          <li role="listitem" class="p-0">
+            <a
+              class="block p-3 hover:bg-base-200 focus:bg-base-200 focus:outline-none"
+              [routerLink]="['/project', p.project_key]"
+              [attr.aria-label]="'Open project ' + p.project_key"
+            >
+              <div class="flex flex-col">
+                <span class="font-medium">{{ p.project_key }}</span>
+                <span class="text-sm text-base-content/70 break-all"
+                  >Data dir: {{ p.data_dir }}</span
+                >
+                @if (p.model_dir) {
+                  <span class="text-sm text-base-content/70 break-all"
+                    >Model dir: {{ p.model_dir }}</span
+                  >
+                }
+              </div>
+            </a>
+          </li>
+        }
+      </ul>
+    }
+  </section>
 </div>

@@ -17,10 +17,8 @@ from starlette.staticfiles import StaticFiles
 
 from . import deps
 from .routes.labeler.multiview_autolabel import warm_up_anipose
-from .tasks.management import setup_active_task_registry
+from .routes.videos import cleanup_old_uploads
 from .train_scheduler import _train_scheduler_process_target
-from .utils.config_watcher import setup_config_watcher
-from .utils.enqueue import enqueue_all_new_fine_videos_task
 from .utils.file_response import file_response
 
 ## Setup logging
@@ -34,19 +32,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Start apscheduler, which is responsible for executing background tasks
-    logger.info("Application startup: Initializing scheduler...")
-    # Quiet down apscheduler logging. Default INFO is too verbose
-    logging.getLogger("apscheduler").setLevel(logging.WARNING)
-    scheduler = deps.scheduler()
-    app.state.scheduler = scheduler
-    scheduler.start()
-    setup_active_task_registry(app)
-
-    # Kick off background task to enqueue any fine transcodes on startup
-    asyncio.create_task(enqueue_all_new_fine_videos_task())
-
-    # Setup watchdog for config file changes
-    app.state.config_file_observer = setup_config_watcher()
+    cleanup_old_uploads(deps.root_config())
 
     # Warm up anipose in the background (first run is ~1-2s slow).
     asyncio.create_task(anyio.to_thread.run_sync(warm_up_anipose))
@@ -54,7 +40,11 @@ async def lifespan(app: FastAPI):
     # Start model train scheduler loop in a separate process
     try:
         logger.info("Starting train scheduler in a separate process...")
-        _train_scheduler_process = multiprocessing.Process(
+        # Use 'spawn' start method.
+        # This ensures a fresh process that doesn't inherit uvicorn's signal handlers,
+        # allowing KeyboardInterrupt to work correctly without manual resets.
+        ctx = multiprocessing.get_context("spawn")
+        _train_scheduler_process = ctx.Process(
             target=_train_scheduler_process_target, daemon=True
         )
         _train_scheduler_process.start()
@@ -64,19 +54,6 @@ async def lifespan(app: FastAPI):
 
     yield  # Application is now ready to receive requests
 
-    logger.info("Application shutdown: Shutting down scheduler...")
-    if scheduler and scheduler.running:
-        scheduler.shutdown()
-        logger.info("Scheduler shut down.")
-    else:
-        logger.warning("Scheduler not found or not running during shutdown.")
-
-    if hasattr(app.state, "config_file_observer") and app.state.config_file_observer:
-        logger.info("Application shutdown: Shutting down config file observer...")
-        app.state.config_file_observer.stop()
-        app.state.config_file_observer.join()
-        logger.info("Config file observer shut down.")
-
 
 app = FastAPI(lifespan=lifespan)
 
@@ -85,21 +62,25 @@ from .routes import (
     ffprobe,
     rglob,
     project,
-    transcode,
     labeler,
     extract_frames,
     configs,
+    config_root,
     models,
+    videos,
+    inference,
 )
 
 router.include_router(ffprobe.router)
 router.include_router(rglob.router)
 router.include_router(labeler.router)
 router.include_router(project.router)
-router.include_router(transcode.router)
 router.include_router(extract_frames.router)
 router.include_router(configs.router)
+router.include_router(config_root.router)
 router.include_router(models.router)
+router.include_router(videos.router)
+router.include_router(inference.router)
 app.include_router(router)
 
 

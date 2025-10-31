@@ -1,5 +1,11 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { BehaviorSubject, catchError, firstValueFrom } from 'rxjs';
+import {
+  BehaviorSubject,
+  Observable,
+  catchError,
+  firstValueFrom,
+  of,
+} from 'rxjs';
 import { Session } from './session.model';
 import { RpcService } from './rpc.service';
 import { ProjectInfoService } from './project-info.service';
@@ -39,11 +45,120 @@ export class SessionService {
 
   private sessionModelMap = {} as SessionModelMap;
 
+  /**
+   * Upload a single video file to the server.
+   * Uses multipart/form-data and reports progress events.
+   */
+  uploadVideo(
+    file: File,
+    filename: string,
+    shouldOverwrite = false,
+  ): Observable<import('@angular/common/http').HttpEvent<unknown>> {
+    const form = new FormData();
+    form.append('projectKey', this.getProjectKeyOrThrow());
+    form.append('filename', filename);
+    form.append('should_overwrite', String(shouldOverwrite));
+    form.append('file', file, filename);
+
+    return this.httpClient.post('/app/v0/rpc/UploadVideo', form, {
+      reportProgress: true,
+      observe: 'events',
+    });
+  }
+
+  /**
+   * Start or attach to a transcode for a given uploaded filename and stream progress via SSE.
+   * Completes when server reports DONE or ERROR.
+   */
+  transcodeVideoSse(
+    filename: string,
+    shouldOverwrite = false,
+  ): Observable<VideoTaskStatus> {
+    const projectKey = this.getProjectKeyOrThrow();
+    const params = new URLSearchParams({
+      projectKey,
+      filename,
+      should_overwrite: String(shouldOverwrite),
+    });
+    const url = `/app/v0/sse/TranscodeVideo?${params.toString()}`;
+
+    return new Observable<VideoTaskStatus>((subscriber) => {
+      const es = new EventSource(url);
+      const onMessage = (ev: MessageEvent) => {
+        try {
+          const data = JSON.parse(ev.data) as VideoTaskStatus;
+          subscriber.next(data);
+          if (
+            data.transcodeStatus === 'DONE' ||
+            data.transcodeStatus === 'ERROR'
+          ) {
+            es.close();
+            subscriber.complete();
+          }
+        } catch (e) {
+          // Ignore malformed events
+        }
+      };
+      const onError = () => {
+        // Network/SSE error – close and error out
+        try {
+          es.close();
+        } catch {}
+        subscriber.error(new Error('Transcode stream error'));
+      };
+      es.onmessage = onMessage;
+      es.onerror = onError;
+      return () => {
+        try {
+          es.close();
+        } catch {}
+      };
+    });
+  }
+
+  /**
+   * TEMP: Check if a file already exists in the server uploads dir by name.
+   * Uses the existing rglob RPC. The uploads directory path is obtained from
+   * global context (RootConfig.uploadDir) provided by the backend.
+   */
+  async existsInUploads(filename: string): Promise<boolean> {
+    try {
+      const uploadDir = await this.getUploadDir();
+      const response = (await this.rpc.call('rglob', {
+        projectKey: this.getProjectKeyOrThrow(),
+        baseDir: uploadDir,
+        pattern: filename,
+        noDirs: true,
+      })) as RGlobResponse;
+      return response.entries.some((e) => this._basename(e.path) === filename);
+    } catch (e) {
+      // On error, assume it does not exist to allow uploads to proceed
+      return false;
+    }
+  }
+
+  private async getUploadDir(): Promise<string> {
+    const ctx = this.projectInfoService.globalContext();
+    if (ctx?.uploadDir && ctx.uploadDir.length > 0) {
+      return ctx.uploadDir;
+    }
+    throw new Error('uploadDir not in context');
+  }
+
+  private _basename(p: string): string {
+    const idx1 = p.lastIndexOf('/');
+    const idx2 = p.lastIndexOf('\\');
+    const idx = Math.max(idx1, idx2);
+    return idx >= 0 ? p.substring(idx + 1) : p;
+  }
+
+  private getProjectKeyOrThrow(): string {
+    const ctx = this.projectInfoService.projectContext();
+    if (!ctx?.key) throw new Error('Project key missing from project context');
+    return ctx.key;
+  }
+
   async loadSessions() {
-    /** This store is populated lazily the first time someone calls loadSessions.
-     * Subsequent loadSession calls are noop. User should refresh page, until
-     * we implement a {reload: true} option. */
-    if (this.allSessions().length > 1) return;
     try {
       this.sessionsLoading.set(true);
       const sessions = await this._loadSessions();
@@ -57,6 +172,7 @@ export class SessionService {
     const projectInfo = this.projectInfoService.projectInfo;
 
     const response = (await this.rpc.call('rglob', {
+      projectKey: this.getProjectKeyOrThrow(),
       baseDir: projectInfo.data_dir,
       pattern: '**/*.mp4',
       noDirs: true,
@@ -92,7 +208,9 @@ export class SessionService {
     }
   }
   async _loadLabelFiles() {
-    const response = (await this.rpc.call('findLabelFiles')) as {
+    const response = (await this.rpc.call('findLabelFiles', {
+      projectKey: this.getProjectKeyOrThrow(),
+    })) as {
       labelFiles: string[];
     };
 
@@ -124,6 +242,7 @@ export class SessionService {
     const projectInfo = this.projectInfoService.projectInfo;
     // Search for all CSV files.
     const response = (await this.rpc.call('rglob', {
+      projectKey: this.getProjectKeyOrThrow(),
       baseDir: projectInfo.model_dir,
       pattern: '**/video_preds/**/*.csv',
       noDirs: true,
@@ -234,6 +353,7 @@ export class SessionService {
 
   async ffprobe(file: string): Promise<FFProbeInfo> {
     const response = (await this.rpc.call('ffprobe', {
+      projectKey: this.getProjectKeyOrThrow(),
       path: file,
     })) as FFProbeInfo;
 
@@ -244,23 +364,36 @@ export class SessionService {
     // GET /app/v0/getYamlFile?file_path=...
     const url = `/app/v0/getYamlFile`;
     return await firstValueFrom(
-      this.httpClient.get(url, { params: { file_path: filePath } }).pipe(
-        catchError((error) => {
-          if (error.status === 404) {
-            return [null];
-          }
-          throw error;
-        }),
-      ),
+      this.httpClient
+        .get(url, {
+          params: {
+            file_path: filePath,
+            projectKey: this.getProjectKeyOrThrow(),
+          },
+        })
+        .pipe(
+          catchError((error) => {
+            if (error.status === 404) {
+              return of(null);
+            }
+            throw error;
+          }),
+        ),
     );
   }
 
-  async createTrainTask(yamlText: string): Promise<void> {
-    // RPC stub for creating a training task. Intentionally unimplemented.
-    // When implemented, it should likely call an RPC endpoint like '/app/v0/rpc/createTrainTask'
-    // with a payload containing the YAML string.
-    void yamlText;
-    return;
+  async getDefaultYamlFile(): Promise<Record<string, unknown>> {
+    return firstValueFrom(
+      this.httpClient.get<Record<string, unknown>>('/app/v0/configs/default'),
+    );
+  }
+
+  async getDefaultMultiviewYamlFile(): Promise<Record<string, unknown>> {
+    return firstValueFrom(
+      this.httpClient.get<Record<string, unknown>>(
+        '/app/v0/configs/default_multiview',
+      ),
+    );
   }
 
   getAvailableModelsForSession(sessionKey: string): string[] {
@@ -342,7 +475,10 @@ export class SessionService {
       };
     });
     const request: SaveMvFrame = { views };
-    return this.rpc.call('save_mvframe', request);
+    return this.rpc.call('save_mvframe', {
+      projectKey: this.getProjectKeyOrThrow(),
+      ...request,
+    });
   }
 
   async mvAutoLabel(
@@ -374,10 +510,10 @@ export class SessionService {
       keypoints,
     };
 
-    return this.rpc.call(
-      'getMVAutoLabels',
-      request,
-    ) as Promise<GetMVAutoLabelsResponse>;
+    return this.rpc.call('getMVAutoLabels', {
+      projectKey: this.getProjectKeyOrThrow(),
+      ...request,
+    }) as Promise<GetMVAutoLabelsResponse>;
   }
 
   async hasCameraCalibrationFiles(sessionKey: string): Promise<boolean> {
@@ -385,6 +521,7 @@ export class SessionService {
 
     // Search for session-level calibration file.
     let response = (await this.rpc.call('rglob', {
+      projectKey: this.getProjectKeyOrThrow(),
       baseDir: projectInfo.data_dir,
       pattern: `calibrations/${sessionKey}.toml`,
       noDirs: true,
@@ -395,6 +532,7 @@ export class SessionService {
 
     // Search for project-level calibration file.
     response = (await this.rpc.call('rglob', {
+      projectKey: this.getProjectKeyOrThrow(),
       baseDir: projectInfo.data_dir,
       pattern: `calibration.toml`,
       noDirs: true,
@@ -410,13 +548,86 @@ export class SessionService {
     modelName: string,
     configYaml: string,
   ): Promise<void> {
-    await this.rpc.call('createTrainTask', { modelName, configYaml });
+    await this.rpc.call('createTrainTask', {
+      projectKey: this.getProjectKeyOrThrow(),
+      modelName,
+      configYaml,
+    });
   }
 
   async listModels(): Promise<ModelListResponse> {
-    const resp = (await this.rpc.call('listModels')) as ModelListResponse;
+    const resp = (await this.rpc.call('listModels', {
+      projectKey: this.getProjectKeyOrThrow(),
+    })) as ModelListResponse;
     return resp;
   }
+
+  /**
+   * Start or attach to a model inference run for a set of videos and stream progress via SSE.
+   * Mirrors the TranscodeVideo SSE pattern.
+   */
+  inferModelSse(
+    modelRelativePath: string,
+    videoRelativePaths: string[],
+  ): Observable<InferenceTaskStatus> {
+    const projectKey = this.getProjectKeyOrThrow();
+    const params = new URLSearchParams({
+      projectKey,
+      modelRelativePath,
+    });
+    // Append multiple videoRelativePaths entries
+    for (const rel of videoRelativePaths) {
+      params.append('videoRelativePaths', rel);
+    }
+    const url = `/app/v0/sse/InferModel?${params.toString()}`;
+
+    return new Observable<InferenceTaskStatus>((subscriber) => {
+      const es = new EventSource(url);
+      const onMessage = (ev: MessageEvent) => {
+        try {
+          const data = JSON.parse(ev.data) as InferenceTaskStatus;
+          subscriber.next(data);
+          if (data.status === 'DONE' || data.status === 'ERROR') {
+            es.close();
+            subscriber.complete();
+          }
+        } catch {
+          // ignore malformed events
+        }
+      };
+      const onError = () => {
+        try {
+          es.close();
+        } catch {}
+        subscriber.error(new Error('Inference stream error'));
+      };
+      es.onmessage = onMessage;
+      es.onerror = onError;
+      return () => {
+        try {
+          es.close();
+        } catch {}
+      };
+    });
+  }
+}
+
+export type TranscodeStatus = 'PENDING' | 'ACTIVE' | 'DONE' | 'ERROR';
+export interface VideoTaskStatus {
+  transcodeStatus: TranscodeStatus;
+  framesDone: number | null;
+  totalFrames: number | null;
+  error?: string | null;
+}
+
+export type InferenceStatus = 'PENDING' | 'ACTIVE' | 'DONE' | 'ERROR';
+export interface InferenceTaskStatus {
+  taskId: string;
+  status: InferenceStatus;
+  completed: number | null;
+  total: number | null;
+  error?: string | null;
+  message?: string | null;
 }
 
 interface RGlobResponse {

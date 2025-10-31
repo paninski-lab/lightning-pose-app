@@ -10,7 +10,8 @@ from pydantic import BaseModel, field_validator
 from starlette.concurrency import run_in_threadpool
 
 from litpose_app import deps
-from litpose_app.routes.project import ProjectInfo
+from litpose_app.deps import ProjectInfoGetter
+from lightning_pose.data.datatypes import Project
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
 
 router = APIRouter()
@@ -45,19 +46,21 @@ class SaveFrameViewRequest(BaseModel):
 
 
 class SaveMvFrameRequest(BaseModel):
+    projectKey: str
     views: list[SaveFrameViewRequest]
 
 
 @router.post("/app/v0/rpc/save_mvframe")
 async def save_mvframe(
     request: SaveMvFrameRequest,
-    project_info: ProjectInfo = Depends(deps.project_info),
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> None:
     """
     Endpoint for saving a multiview frame (in a multiview labels file).
     Global lock: Only one execution allowed at a time.
     """
     async with lock:
+        project: Project = project_info_getter(request.projectKey)
         # Filter out views with no changed keypoints.
         request = request.model_copy()
         request.views = list(filter(lambda v: v.changedKeypoints, request.views))
@@ -70,13 +73,13 @@ async def save_mvframe(
 
         # Write to temp files multithreaded.
         write_tmp_results = await write_df_tmp_mvframe(
-            request, read_df_results, project_info.data_dir
+            request, read_df_results, project.paths.data_dir
         )
 
         # Rename all files (atomic for each file).
-        await commit_mvframe(request, write_tmp_results, project_info.data_dir)
+        await commit_mvframe(request, write_tmp_results, project.paths.data_dir)
 
-        await remove_from_unlabeled_sidecar_files(project_info.data_dir, request)
+        await remove_from_unlabeled_sidecar_files(project.paths.data_dir, request)
     return
 
 

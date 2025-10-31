@@ -1,0 +1,26 @@
+<div
+  class="not-prose grid grid-cols-1 gap-x-12 gap-y-12 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5"
+>
+  @for (card of cards(); track card.title) {
+    <a
+      class="card card-compact hover:bg-base-200 transition-all duration-200 hover:-translate-y-1"
+      [routerLink]="card.link"
+      [queryParams]="card.queryParams"
+      [attr.aria-label]="card.title"
+      ><figure class="px-4 pt-4">
+        <img
+          class="border-base-content/5 bg-base-300 rounded-lg border"
+          [src]="card.imgSrc"
+          [alt]="card.imgAlt"
+          width="320"
+          height="180"
+        />
+      </figure>
+
+      <div class="card-body">
+        <h2 class="card-title">{{ card.title }}</h2>
+        <p class="text-xs opacity-60">{{ card.description }}</p>
+      </div></a
+    >
+  }
+</div>

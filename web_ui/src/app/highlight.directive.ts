@@ -19,7 +19,7 @@ export class HighlightDirective implements OnChanges {
   ngOnChanges() {
     const element = this.el.nativeElement;
 
-    if (this.code && element) {
+    if (element) {
       const highlightedCode = hljs.highlight(this.code(), {
         language: this.language(),
       }).value;
