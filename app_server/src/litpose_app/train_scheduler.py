@@ -118,7 +118,7 @@ def _launch_training(model_dir: Path) -> None:
                 "train",
                 str(config_path),
                 "--output_dir",
-                str(model_dir.parent),
+                str(model_dir),
             ],
             stdout=out,
             stderr=err,

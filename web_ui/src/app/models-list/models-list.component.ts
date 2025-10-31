@@ -54,4 +54,12 @@ export class ModelsListComponent implements OnInit {
   getCdkListboxValue(): ModelListResponseEntry[] {
     return this.selectedModel() ? [this.selectedModel()!] : [];
   }
+
+  protected statusTooltip(m: ModelListResponseEntry) {
+    if (m.status?.status === 'FAILED') {
+      return 'probably training';
+    } else {
+      return 'matt demo';
+    }
+  }
 }
