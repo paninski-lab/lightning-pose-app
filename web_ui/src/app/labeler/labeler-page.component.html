@@ -56,7 +56,7 @@
                   <li class="text-nowrap" routerLinkActive="bg-sky-700">
                     <a
                       class="p-1 block hover:bg-base-content/10 rounded-sm flex items-center justify-between text-xs"
-                      [routerLink]="['/labeler']"
+                      [routerLink]="['/project', projectKey, 'labeler']"
                       [queryParams]="{
                         labelFileKey: selectedLabelFile()?.key,
                         frameKey: frame.key,
@@ -102,7 +102,7 @@
                   <li class="text-nowrap" routerLinkActive="bg-sky-700">
                     <a
                       class="p-1 block hover:bg-base-content/10 rounded-sm flex items-center justify-between text-xs"
-                      [routerLink]="['/labeler']"
+                      [routerLink]="['/project', projectKey, 'labeler']"
                       [queryParams]="{
                         labelFileKey: selectedLabelFile()?.key,
                         frameKey: frame.key,

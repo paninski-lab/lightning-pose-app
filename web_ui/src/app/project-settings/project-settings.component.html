@@ -9,94 +9,79 @@
   @if (!setupMode()) {
     <button
       class="btn btn-md btn-circle btn-ghost absolute right-4 top-4"
-      (click)="done.emit(null)"
+      (click)="closeButtonClick.emit(null)"
     >
       ✕
     </button>
   }
   <h3 class="text-xl font-bold mb-4 shrink-0">
-    @if (setupMode()) {
-      Setup
+    @if (!setupMode()) {
+      Project settings
     } @else {
-      Settings
+      Create project
     }
   </h3>
 
   <div class="flex gap-2 w-full grow shrink min-h-0">
     <ul class="menu min-w-40">
-      <li>
-        <a
-          [class.menu-active]="selectedTab() === 'directories'"
-          tabindex="0"
-          (click)="handleTabClick('directories')"
-          (keydown.enter)="handleTabClick('directories')"
-        >
-          <span class="material-icons text-sm!">folder</span>Directories</a
-        >
-      </li>
-      <li>
-        <a
-          [class.menu-active]="selectedTab() === 'keypoints'"
-          tabindex="0"
-          (click)="handleTabClick('keypoints')"
-          (keydown.enter)="handleTabClick('keypoints')"
-          ><span class="material-icons text-sm!">adjust</span>Keypoints</a
-        >
-      </li>
-      <li>
-        <a
-          [class.menu-active]="selectedTab() === 'multiview'"
-          tabindex="0"
-          (click)="handleTabClick('multiview')"
-          (keydown.enter)="handleTabClick('multiview')"
-          ><span class="material-icons text-sm!">camera_alt</span>Multiview</a
-        >
-      </li>
+      @for (tab of tabs; track tab.key; let i = $index) {
+        <li>
+          <a
+            [class.menu-active]="selectedTab() === tab.key"
+            tabindex="0"
+            (click)="handleTabClick(tab.key)"
+            (keydown.enter)="handleTabClick(tab.key)"
+          >
+            <span class="material-icons text-sm!">{{ tab.icon }}</span
+            >{{ tab.text }}</a
+          >
+        </li>
+      }
     </ul>
     <div class="divider divider-vertical"></div>
-    <div class="overflow-y-auto">
+    <div class="overflow-y-auto w-full">
       @if (selectedTab() === "directories") {
-        <form [formGroup]="projectInfoForm" class="prose px-4">
-          <fieldset class="fieldset my-6">
-            <p class="m-0!">
-              Configure the directories that the app uses for this project.
-            </p>
+        <form [formGroup]="directoriesForm" class="prose px-4">
+          <p class="m-0! text-sm">
+            Settings specific to this machine, stored in
+            <code>~/.lightning-pose/projects.toml</code>
+          </p>
+          @if (setupMode()) {
+            <fieldset class="fieldset">
+              <h3 class="text-md">Project Name</h3>
+              <p class="m-0!">The unique name used to identify this project.</p>
+              <div class="input w-full">
+                <span class="material-icons !text-sm opacity-50"
+                  >description</span
+                >
+                <input
+                  formControlName="projectKey"
+                  type="text"
+                  class="grow"
+                  placeholder="Enter Project Name (e.g., MyMouseTrackingStudy)"
+                  spellcheck="false"
+                />
+              </div>
+              @if (
+                directoriesForm.controls["projectKey"].invalid &&
+                directoriesForm.controls["projectKey"].touched
+              ) {
+                <p class="text-error text-xs">Project name is required.</p>
+              }
+            </fieldset>
+          }
+          <fieldset class="fieldset">
             <h3 class="text-md">Data directory</h3>
-            <p class="m-0!">Set the data directory for this project.</p>
             <p class="m-0!">
-              For new projects, create a directory at a location of your choice
-              and place your videos in the <code>videos</code> subdirectory.
+              The root of the data directory. Contains all data used to train
+              models, and the <code>project.yaml</code> metadata file. The
+              directory will be created if it doesn't exist.
             </p>
-            <div class="collapse collapse-plus">
-              <input type="checkbox" />
-              <div class="collapse-title font-semibold flex items-center gap-1">
-                <span class="material-icons text-sm!">help_outline</span>
-                More info
-              </div>
-              <div class="collapse-content">
-                It is not strictly necessary for videos to be in a subdirectory
-                called <code>videos</code>, but this is a sensible default for
-                most setups.
-                <ul class="mt-0!">
-                  <li>
-                    In the Viewer module, this is the root search directory for
-                    video files, including its subdirectories.
-                  </li>
-                  <li>
-                    In the Labeler module, this is the root search directory for
-                    label CSV files, including its subdirectories. Paths
-                    referenced from label files are relative to this directory.
-                    The labeler always extracts frames to the
-                    <code>labeled_data</code> subdirectory.
-                  </li>
-                  <li>
-                    In the Models module, this is the root search directory for
-                    label files and extracted frames for supervised training,
-                    and videos for semi-supervised training.
-                  </li>
-                </ul>
-              </div>
-            </div>
+            <p class="m-0!">
+              A good convention is
+              <code>/ HOME_DIR / LPProjects / PROJECT_NAME</code>
+            </p>
+
             <div class="input w-full">
               <span class="material-icons !text-sm opacity-50">folder</span>
               <input
@@ -107,33 +92,29 @@
                 spellcheck="false"
               />
             </div>
+            @if (
+              directoriesForm.controls["dataDir"].invalid &&
+              directoriesForm.controls["dataDir"].touched
+            ) {
+              <p class="text-error text-xs">Data directory is required.</p>
+            }
           </fieldset>
 
-          <fieldset class="my-4 fieldset">
+          <fieldset class="fieldset">
             <h3 class="text-md">Model directory</h3>
-            <p class="m-0!">Set the model directory for the project.</p>
-            <p class="m-0!">
-              For new projects, our recommendation is to create a
-              <code>models</code> subdirectory of your data directory.
-            </p>
-            <div class="collapse collapse-plus">
-              <input type="checkbox" />
-              <div class="collapse-title font-semibold flex items-center gap-1">
-                <span class="material-icons text-sm!">help_outline</span>
-                More info
-              </div>
-              <div class="collapse-content">
-                <ul class="mt-0!">
-                  <li>
-                    In the Models module, this is the search directory for model
-                    directories. New models are placed in this directory.
-                  </li>
-                  <li>
-                    In the Viewer module, this is the root search directory for
-                    model predictions including subdirectories.
-                  </li>
-                </ul>
-              </div>
+            <p class="m-0!">The directory containing the project's models.</p>
+
+            <div class="flex gap-2">
+              <input
+                type="checkbox"
+                class="checkbox"
+                formControlName="useDefaultModelDir"
+              />
+              <span class="m-0!">
+                Use the default model directory:<br />
+                <div class="inline-block w-4"></div>
+                <code>/ DATA_DIR&nbsp;/&nbsp;models&nbsp;/</code>
+              </span>
             </div>
 
             <div class="input w-full">
@@ -149,13 +130,37 @@
           </fieldset>
         </form>
       }
+      @if (selectedTab() === "keypoints") {
+        <form [formGroup]="keypointsForm" class="prose px-4 w-full">
+          <fieldset class="fieldset my-6">
+            <h3 class="text-md mt-0!">Keypoint names</h3>
+            <p class="m-0!">
+              Enter the names of the keypoints to label. This is also the
+              labeling order of the keypoints.
+            </p>
+            <textarea
+              class="textarea w-full"
+              [rows]="keypointInitialRows()"
+              formControlName="keypointNames"
+              spellcheck="false"
+            ></textarea>
+            <p>
+              Parsed:
+              {{
+                parseTextAsList(keypointsForm.controls["keypointNames"].value)
+                  | json
+              }}
+            </p>
+          </fieldset>
+        </form>
+      }
       @if (selectedTab() === "multiview") {
-        <form [formGroup]="projectInfoForm" class="prose px-4">
+        <form [formGroup]="multiviewForm" class="prose px-4 w-full">
           <fieldset class="fieldset my-6">
             <h3 class="text-md mt-0!">Camera view names</h3>
             <p class="m-0!">
-              Enter the names of the camera views, or leave blank if this is a
-              single view project.
+              Enter the names of the camera views, or
+              <em>leave blank if this is a single view project.</em>
             </p>
             <p class="m-0!">
               Used to group multiview files. Sessions are identified by removing
@@ -178,30 +183,8 @@
             ></textarea>
             <p>
               Parsed:
-              {{ parseTextAsList(projectInfoForm.get("views")?.value) | json }}
-            </p>
-          </fieldset>
-        </form>
-      }
-      @if (selectedTab() === "keypoints") {
-        <form [formGroup]="projectInfoForm" class="prose px-4">
-          <fieldset class="fieldset my-6">
-            <h3 class="text-md mt-0!">Keypoint names</h3>
-            <p class="m-0!">
-              Enter the names of the keypoints to label. This is also the
-              labeling order of the keypoints.
-            </p>
-            <textarea
-              class="textarea w-full"
-              [rows]="keypointInitialRows()"
-              formControlName="keypointNames"
-              spellcheck="false"
-            ></textarea>
-            <p>
-              Parsed:
               {{
-                parseTextAsList(projectInfoForm.get("keypointNames")?.value)
-                  | json
+                parseTextAsList(multiviewForm.controls["views"].value) | json
               }}
             </p>
           </fieldset>
@@ -211,12 +194,50 @@
   </div>
   <footer class="shrink-0 modal-action">
     <p class="text-sm text-info">{{ saveSuccessMessage() }}</p>
-    <button
-      class="btn btn-soft btn-primary"
-      (click)="onSaveClick()"
-      [disabled]="!projectInfoForm.dirty"
-    >
-      Save
-    </button>
+
+    <div class="flex gap-2">
+      <ng-template #backButtonTemplate>
+        <button class="btn btn-soft" (click)="handleBackClick()">Back</button>
+      </ng-template>
+
+      <ng-template #nextButtonTemplate>
+        <button
+          class="btn btn-soft btn-primary"
+          (click)="handleNextClick()"
+          [disabled]="
+            (selectedTab() === 'directories' && !isDirectoriesFormValid()) ||
+            (selectedTab() === 'keypoints' && !isKeypointsFormValid()) ||
+            (selectedTab() === 'multiview' && !isMultiviewFormValid())
+          "
+        >
+          Next
+        </button>
+      </ng-template>
+
+      <ng-template #saveButtonTemplate>
+        <button
+          class="btn btn-soft btn-primary"
+          (click)="handleSaveClick()"
+          [disabled]="!projectInfoForm.dirty"
+        >
+          Save
+        </button>
+      </ng-template>
+
+      @if (setupMode()) {
+        @if (selectedTabIndex() > 0) {
+          <ng-container *ngTemplateOutlet="backButtonTemplate"></ng-container>
+        }
+        <!-- Create: next until the last tab, then save -->
+        @if (selectedTabIndex() < tabs.length - 1) {
+          <ng-container *ngTemplateOutlet="nextButtonTemplate"></ng-container>
+        } @else {
+          <ng-container *ngTemplateOutlet="saveButtonTemplate"></ng-container>
+        }
+      } @else {
+        <!-- Edit: always a save button -->
+        <ng-container *ngTemplateOutlet="saveButtonTemplate"></ng-container>
+      }
+    </div>
   </footer>
 </div>

@@ -8,7 +8,7 @@ import numpy as np
 from pydantic import BaseModel
 
 from litpose_app.config import Config
-from litpose_app.routes.project import ProjectInfo
+from lightning_pose.data.datatypes import Project
 from litpose_app.utils.mv_label_file import (
     AddToUnlabeledFileView,
     add_to_unlabeled_sidecar_files,
@@ -50,7 +50,7 @@ DEFAULT_RANDOM_OPTIONS = RandomMethodOptions()
 def extract_frames_task(
     config: Config,
     session: Session,
-    project_info: ProjectInfo,
+    project: Project,
     mv_label_file,
     progress_callback: Callable[[str], None],
     method="random",
@@ -71,10 +71,10 @@ def extract_frames_task(
         else:
             raise ValueError("method not supported: " + method)
 
-        result = _export_frames(config, session, project_info, frame_idxs, process_pool)
+        result = _export_frames(config, session, project, frame_idxs, process_pool)
         progress_callback(f"Frame extraction complete.")
         logger.debug(result)
-        _update_unlabeled_files(project_info.data_dir, result, mv_label_file)
+        _update_unlabeled_files(project.paths.data_dir, result, mv_label_file)
         progress_callback(f"Update unlabeled files complete.")
 
 
@@ -97,7 +97,7 @@ def _frame_selection_kmeans(config, session, options, process_pool) -> list[int]
 def _export_frames(
     config: Config,
     session: Session,
-    project_info: ProjectInfo,
+    project: Project,
     frame_idxs,
     process_pool,
 ) -> dict[str, list[Path]]:
@@ -113,7 +113,7 @@ def _export_frames(
 
     def dest_path(video_path: Path, frame_idx: int) -> Path:
         return (
-            project_info.data_dir
+            project.paths.data_dir
             / config.LABELED_DATA_DIRNAME
             / video_path.stem
             / f"img{frame_idx:0{config.FMT_FRAME_INDEX_DIGITS}d}.jpg"

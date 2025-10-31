@@ -1,9 +1,11 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   computed,
   effect,
   inject,
+  input,
   output,
   signal,
 } from '@angular/core';
@@ -12,6 +14,7 @@ import {
   NonNullableFormBuilder,
   ReactiveFormsModule,
   Validators,
+  FormGroup,
 } from '@angular/forms';
 import {
   backbones,
@@ -22,7 +25,7 @@ import {
   validMvBackbones,
   validMvModelTypes,
 } from '../modelconf';
-import { JsonPipe } from '@angular/common';
+import { JsonPipe, NgTemplateOutlet } from '@angular/common';
 import { SessionService } from '../session.service';
 import _ from 'lodash';
 import { stringify as yamlStringify } from 'yaml';
@@ -47,6 +50,7 @@ import { DaisyFormControlDirective } from '../utils/daisy-form-control.directive
     JsonPipe,
     HighlightDirective,
     DaisyFormControlDirective,
+    NgTemplateOutlet,
   ],
   templateUrl: './create-model-dialog.component.html',
   styleUrl: './create-model-dialog.component.css',
@@ -54,92 +58,119 @@ import { DaisyFormControlDirective } from '../utils/daisy-form-control.directive
 })
 export class CreateModelDialogComponent {
   done = output<void>();
+  // Update mode support (currently effectively always setupMode=true for creation)
+  setupMode = input(true);
+
   selectedTab = signal<string>('general');
   yamlPreviewText = signal<string>('');
   private projectInfoService = inject(ProjectInfoService);
   private sessionService = inject(SessionService);
   private fb = inject(NonNullableFormBuilder);
+  private cdr = inject(ChangeDetectorRef);
   private previewAbortController: AbortController = new AbortController();
   checkboxOptions = ['temporal', 'pca_singleview'];
   checkboxOptionLabels = ['Temporal', 'Pose PCA'];
+
+  protected readonly tabs = [
+    { id: 'general', text: 'General' },
+    { id: 'data', text: 'Data' },
+    { id: 'training', text: 'Training' },
+  ];
+
+  protected selectedTabIndex = computed(() =>
+    this.tabs.findIndex((t) => t.id === this.selectedTab()),
+  );
+
   protected form = this.fb.group({
-    modelName: ['', [Validators.required, fileNameValidator]],
-    // Initialize to true only for multiview projects.
-    useTrueMultiviewModel: [this.isMultiviewProject()],
-    modelType: [
-      ModelType.SUP,
-      [Validators.required, mustBeInOptionsList(() => this.modelTypeOptions)],
-    ],
-    backbone: [
-      this.projectInfoService.projectInfo.views.length > 1
-        ? 'vits_dino'
-        : 'resnet50',
-      [Validators.required, mustBeInOptionsList(() => this.backboneOptions)],
-    ],
-    losses: this.fb.array(
-      this.checkboxOptions.map(() => true),
-      atLeastOneTrueValidator(),
-    ),
-    labelFile: 'CollectedData_*.csv',
-    trainValSplit: this.fb.group(
-      {
-        trainProb: [
-          0.95, // Initial value (must be non-zero and <= 1)
-          [
-            Validators.required,
-            Validators.min(0.000001), // Ensures value > 0
-            Validators.max(1),
+    general: this.fb.group({
+      modelName: ['', [Validators.required, fileNameValidator]],
+      // Initialize to true only for multiview projects.
+      useTrueMultiviewModel: [this.isMultiviewProject()],
+      modelType: [
+        ModelType.SUP,
+        [Validators.required, mustBeInOptionsList(() => this.modelTypeOptions)],
+      ],
+      backbone: [
+        this.projectInfoService.projectInfo.views.length > 1
+          ? 'vits_dino'
+          : 'resnet50',
+        [Validators.required, mustBeInOptionsList(() => this.backboneOptions)],
+      ],
+      losses: this.fb.array(
+        this.checkboxOptions.map(() => true),
+        atLeastOneTrueValidator(),
+      ),
+    }),
+    data: this.fb.group({
+      labelFile: 'CollectedData_*.csv',
+      trainValSplit: this.fb.group(
+        {
+          trainProb: [
+            0.95, // Initial value (must be non-zero and <= 1)
+            [
+              Validators.required,
+              Validators.min(0.000001), // Ensures value > 0
+              Validators.max(1),
+            ],
           ],
-        ],
-        valProb: [
-          0.05, // Initial value (must be non-zero and <= 1)
-          [
-            Validators.required,
-            Validators.min(0.000001), // Ensures value > 0
-            Validators.max(1),
+          valProb: [
+            0.05, // Initial value (must be non-zero and <= 1)
+            [
+              Validators.required,
+              Validators.min(0.000001), // Ensures value > 0
+              Validators.max(1),
+            ],
           ],
+        },
+        {
+          // Apply the custom validator to the entire form group
+          validators: sumToOneValidator,
+        },
+      ),
+      randomSeed: [0, [Validators.required, Validators.min(0)]],
+      videosDir: 'videos',
+    }),
+    training: this.fb.group({
+      epochs: [
+        300,
+        [
+          Validators.required,
+          Validators.min(5),
+          Validators.max(1000000),
+          Validators.pattern('^[0-9]+$'),
         ],
-      },
-      {
-        // Apply the custom validator to the entire form group
-        validators: sumToOneValidator,
-      },
-    ),
-    randomSeed: [0, [Validators.required, Validators.min(0)]],
-    videosDir: 'videos',
-    epochs: [
-      300,
-      [
-        Validators.required,
-        Validators.min(5),
-        Validators.max(1000000),
-        Validators.pattern('^[0-9]+$'),
       ],
-    ],
-    labeledBatchSize: [
-      16,
-      [
-        Validators.required,
-        Validators.min(1),
-        Validators.max(1000),
-        Validators.pattern('^[0-9]+$'),
+      labeledBatchSize: [
+        16,
+        [
+          Validators.required,
+          Validators.min(1),
+          Validators.max(1000),
+          Validators.pattern('^[0-9]+$'),
+        ],
       ],
-    ],
-    unlabeledBatchSize: [
-      32,
-      [
-        Validators.required,
-        Validators.min(1),
-        Validators.max(1000),
-        Validators.pattern('^[0-9]+$'),
+      unlabeledBatchSize: [
+        32,
+        [
+          Validators.required,
+          Validators.min(1),
+          Validators.max(1000),
+          Validators.pattern('^[0-9]+$'),
+        ],
       ],
-    ],
+    }),
   });
+
+  // Protected instance fields for nested form groups
+  protected generalForm: FormGroup = this.form.get('general') as FormGroup;
+  protected dataForm: FormGroup = this.form.get('data') as FormGroup;
+  protected trainingForm: FormGroup = this.form.get('training') as FormGroup;
+
   private useTrueMultiviewModelAsSignal = toSignal(
-    this.form.controls.useTrueMultiviewModel.valueChanges.pipe(
+    this.generalForm.controls['useTrueMultiviewModel'].valueChanges.pipe(
       takeUntilDestroyed(),
     ),
-    { initialValue: this.form.controls.useTrueMultiviewModel.value },
+    { initialValue: this.generalForm.controls['useTrueMultiviewModel'].value },
   );
 
   // expose to the template
@@ -157,13 +188,66 @@ export class CreateModelDialogComponent {
       // Read the signal to track the dependency.
       this.useTrueMultiviewModelAsSignal();
       // On change, update the form controls validity.
-      this.form.controls.backbone.updateValueAndValidity();
-      this.form.controls.modelType.updateValueAndValidity();
+      this.generalForm.controls['backbone'].updateValueAndValidity();
+      this.generalForm.controls['modelType'].updateValueAndValidity();
     });
   }
 
   handleCloseClick() {
     this.done.emit();
+  }
+
+  handleTabClick(tabId: string) {
+    this.selectedTab.set(tabId);
+  }
+
+  protected handleBackClick() {
+    const currentIndex = this.selectedTabIndex();
+    if (currentIndex > 0) {
+      this.selectedTab.set(this.tabs[currentIndex - 1].id);
+    }
+  }
+
+  protected handleNextClick() {
+    const currentTabId = this.selectedTab();
+    let currentFormGroup: FormGroup | undefined;
+
+    switch (currentTabId) {
+      case 'general':
+        currentFormGroup = this.generalForm;
+        break;
+      case 'data':
+        currentFormGroup = this.dataForm;
+        break;
+      case 'training':
+        currentFormGroup = this.trainingForm;
+        break;
+      default:
+        // Unknown tab (e.g. yaml)
+        return;
+    }
+
+    if (currentFormGroup && currentFormGroup.valid) {
+      const currentIndex = this.selectedTabIndex();
+      if (currentIndex >= 0 && currentIndex < this.tabs.length - 1) {
+        this.selectedTab.set(this.tabs[currentIndex + 1].id);
+      }
+    } else {
+      currentFormGroup?.markAllAsTouched();
+      this.cdr.detectChanges();
+    }
+  }
+
+  protected isGeneralFormValid(): boolean {
+    return this.generalForm.valid;
+  }
+
+  protected isDataFormValid(): boolean {
+    return this.dataForm.valid;
+  }
+
+  protected isTrainingFormValid(): boolean {
+    return this.trainingForm.valid;
   }
 
   async onCreateClick() {
@@ -172,7 +256,7 @@ export class CreateModelDialogComponent {
       return;
     }
     await this.sessionService.createTrainingTask(
-      this.form.controls.modelName.value!,
+      this.generalForm.controls['modelName'].value!,
       yamlText,
     );
     this.done.emit();
@@ -183,14 +267,22 @@ export class CreateModelDialogComponent {
   ): Promise<string | null> {
     const defaultPath = 'configs/default.yaml';
     try {
-      const baseConfig = await this.sessionService.getYamlFile(defaultPath);
+      let baseConfig = await this.sessionService.getYamlFile(defaultPath);
       if (abortSignal?.aborted) return null;
 
       if (!baseConfig) {
-        window.alert('configs/default.yaml was not found.');
-        return null;
+        if (this.isMultiviewProject()) {
+          baseConfig = await this.sessionService.getDefaultMultiviewYamlFile();
+        } else {
+          baseConfig = await this.sessionService.getDefaultYamlFile();
+        }
       }
-      const formObject = this.form.value;
+      // Combine values from all nested forms
+      const formObject = {
+        ...this.generalForm.value,
+        ...this.dataForm.value,
+        ...this.trainingForm.value,
+      };
       const patch = this.computeConfigPatch(formObject);
       if (abortSignal?.aborted) return null;
 
@@ -356,14 +448,23 @@ export class CreateModelDialogComponent {
     this.handleTabClick('yaml');
   }
 
-  handleTabClick(tabId: string) {
-    this.selectedTab.set(tabId);
-  }
-
   formInvalidReason(): string {
-    for (const [name, control] of Object.entries(this.form.controls)) {
-      if (control.invalid) {
-        return `${name} invalid`;
+    // Iterate over nested groups first
+    const groups = [
+      { name: 'general', group: this.generalForm },
+      { name: 'data', group: this.dataForm },
+      { name: 'training', group: this.trainingForm },
+    ];
+
+    for (const { name: groupName, group } of groups) {
+      if (group.invalid) {
+        // Check controls inside the group
+        for (const [ctrlName, control] of Object.entries(group.controls)) {
+          if (control.invalid) {
+            return `${groupName}.${ctrlName} invalid`;
+          }
+        }
+        return `${groupName} group invalid`;
       }
     }
     return '';

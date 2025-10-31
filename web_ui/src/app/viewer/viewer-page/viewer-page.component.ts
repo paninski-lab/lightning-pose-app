@@ -164,10 +164,17 @@ export class ViewerPageComponent implements OnInit {
   }
 
   protected handleSelectedSessionChange(session: Session | null) {
+    const projectKey = this.projectInfoService.projectContext()?.key as
+      | string
+      | undefined;
+    if (!projectKey) {
+      throw new Error('Project key missing from project context');
+    }
+
     if (session === null) {
-      this.router.navigate(['/viewer']);
+      this.router.navigate(['/project', projectKey, 'viewer']);
     } else {
-      this.router.navigate(['/viewer', session.key]);
+      this.router.navigate(['/project', projectKey, 'viewer', session.key]);
     }
   }
 }

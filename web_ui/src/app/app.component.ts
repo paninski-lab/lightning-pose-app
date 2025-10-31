@@ -1,6 +1,8 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
+  DestroyRef,
   effect,
   ElementRef,
   inject,
@@ -8,10 +10,22 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import {
+  ActivatedRoute,
+  ActivatedRouteSnapshot,
+  NavigationEnd,
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+} from '@angular/router'; // NEW: Import ActivatedRoute, Router
 import { ProjectSettingsComponent } from './project-settings/project-settings.component';
+
 import { ProjectInfoService } from './project-info.service';
+import { LoadingService } from './loading.service';
 import { FineVideoService } from './utils/fine-video.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs/operators'; // NEW: Import filter
 
 @Component({
   selector: 'app-root',
@@ -26,31 +40,81 @@ import { FineVideoService } from './utils/fine-video.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppComponent implements OnInit {
-  projectInfoService = inject(ProjectInfoService);
   protected fineVideoService = inject(FineVideoService);
+  protected loadingService = inject(LoadingService);
+  protected projectInfoService = inject(ProjectInfoService);
 
-  // Whether the required initial setup has been done.
-  // (Setting data directory, model directory, views).
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private destroyRef = inject(DestroyRef);
+
   protected projectInfoRequestCompleted = signal(false);
-  protected hasBeenSetup = signal(false);
+  protected hasBeenSetup = signal(true);
   protected settingsDialog = viewChild.required<ElementRef>('settingsDialog');
 
   settingsDialogOpen = signal(false);
+  protected settingsSetupMode = signal(false);
+  protected settingsProjectKey = signal<string | null>(null);
 
-  async ngOnInit() {
-    await this.projectInfoService.loadProjectInfo();
-    this.hasBeenSetup.set(Boolean(this.projectInfoService.projectInfo));
-    this.projectInfoRequestCompleted.set(true);
-  }
+  projectKey = computed(
+    () => this.projectInfoService.projectContext()?.key ?? null,
+  );
+  navLinks = computed(() => {
+    const key = this.projectKey();
+    if (!key) {
+      return [] as { link: unknown[]; text: string }[];
+    }
+    return [
+      { link: ['/project', key, 'labeler'] as unknown[], text: 'Labeler' },
+      { link: ['/project', key, 'models'] as unknown[], text: 'Models' },
+      { link: ['/project', key, 'viewer'] as unknown[], text: 'Viewer' },
+    ];
+  });
 
   constructor() {
     effect(() => {
       if (this.settingsDialogOpen()) {
         this.openSettingsDialog();
       } else {
-        this.closeSettingsDialog();
+        // Only close if the dialog is actually open, preventing early navigation override
+        if (this.settingsDialog().nativeElement.open) {
+          this.closeSettingsDialog();
+        }
       }
     });
+  }
+
+  ngOnInit(): void {
+    // Open dialog using query params.
+    this.router.events
+      .pipe(
+        filter((event) => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => {
+        let routeSnapshot: ActivatedRouteSnapshot =
+          this.router.routerState.snapshot.root;
+        while (routeSnapshot.firstChild) {
+          routeSnapshot = routeSnapshot.firstChild;
+        }
+        const params = routeSnapshot.queryParams;
+
+        const settingsOpenParam = params['settingsOpen'];
+        const createProjectKeyParam = params['createProject'];
+
+        const currentProjectKey = this.projectKey();
+
+        if (settingsOpenParam === 'true' && currentProjectKey) {
+          this.settingsSetupMode.set(false);
+          this.settingsProjectKey.set(currentProjectKey);
+          this.settingsDialogOpen.set(true);
+        } else if (createProjectKeyParam) {
+          this.settingsSetupMode.set(true);
+          this.settingsDialogOpen.set(true);
+        } else {
+          this.settingsDialogOpen.set(false);
+        }
+      });
   }
 
   private openSettingsDialog() {
@@ -58,8 +122,21 @@ export class AppComponent implements OnInit {
     (elementRef.nativeElement as HTMLDialogElement).showModal();
   }
 
-  private closeSettingsDialog() {
+  protected closeSettingsDialog() {
     const elementRef = this.settingsDialog();
     (elementRef.nativeElement as HTMLDialogElement).close();
+    let deepestRoute = this.route;
+    while (deepestRoute.firstChild) {
+      deepestRoute = deepestRoute.firstChild;
+    }
+    this.router.navigate([], {
+      queryParams: { settingsOpen: null, createProject: null },
+      queryParamsHandling: 'merge',
+      relativeTo: deepestRoute,
+    });
+  }
+
+  handleSettingsDialogDoneCreation(createdProjectKey: string) {
+    this.router.navigate(['/project', createdProjectKey]);
   }
 }

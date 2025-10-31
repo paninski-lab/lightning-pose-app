@@ -5,11 +5,13 @@ import {
   inject,
   input,
   OnChanges,
+  OnDestroy,
   signal,
 } from '@angular/core';
 import { ModelListResponseEntry } from '../../modelconf';
 import { JsonPipe } from '@angular/common';
 import { ProjectInfoService } from '../../project-info.service';
+import { ToastService } from '../../toast.service';
 
 @Component({
   selector: 'app-model-detail',
@@ -18,18 +20,18 @@ import { ProjectInfoService } from '../../project-info.service';
   styleUrl: './model-detail.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ModelDetailComponent implements OnChanges {
+export class ModelDetailComponent implements OnChanges, OnDestroy {
   selectedModel = input.required<ModelListResponseEntry | null>();
   activeTab = signal('general');
   logs = signal<{ filename: string; logUrl: string; content: string }[]>([]);
   private projectInfoService = inject(ProjectInfoService);
   private currentController: AbortController | null = null;
+  private toast = inject(ToastService);
+  private pollInterval?: number;
 
   ngOnChanges() {
     // Abort any async processes for the previous model
-    if (this.currentController) {
-      this.currentController.abort();
-    }
+    this.cleanup();
 
     this.logs.set([]);
 
@@ -42,48 +44,51 @@ export class ModelDetailComponent implements OnChanges {
 
     const basePath = this.getLogBasePath();
 
-    // Fetch both stdout and stderr logs
-    Promise.all([
-      fetch(`${basePath}/train_stdout.log`, {
-        signal: this.currentController.signal,
-      }),
-      fetch(`${basePath}/train_stderr.log`, {
-        signal: this.currentController.signal,
-      }),
-    ])
-      .then(async ([stdoutResponse, stderrResponse]) => {
-        const logs = [];
+    // Initialize logs metadata
+    const initialLogs = [
+      {
+        filename: 'train_stdout.log',
+        logUrl: `${basePath}/train_stdout.log`,
+        content: '',
+      },
+      {
+        filename: 'train_stderr.log',
+        logUrl: `${basePath}/train_stderr.log`,
+        content: '',
+      },
+    ];
 
-        if (stdoutResponse.ok) {
-          const content = await stdoutResponse.text();
-          logs.push({
-            filename: 'train_stdout.log',
-            logUrl: `${basePath}/train_stdout.log`,
-            // replace \r with \n for tqdm output: https://github.com/tqdm/tqdm/issues/506#issuecomment-373762049
-            content: content.replaceAll('\r', '\n'),
-          });
-        }
+    this.logs.set(initialLogs);
 
-        if (stderrResponse.ok) {
-          const content = await stderrResponse.text();
-          logs.push({
-            filename: 'train_stderr.log',
-            logUrl: `${basePath}/train_stderr.log`,
-            // replace \r with \n for tqdm output: https://github.com/tqdm/tqdm/issues/506#issuecomment-373762049
-            content: content.replaceAll('\r', '\n'),
-          });
-        }
-
-        this.logs.set(logs);
-      })
-      .catch(this.logFetchErrorHandler.bind(this));
+    // Start polling
+    this.logPollIter({ initial: true });
+    this.pollInterval = setInterval(
+      () => this.logPollIter(),
+      1500,
+    ) as unknown as number;
   }
 
-  private logFetchErrorHandler(error: any) {
-    // Only log errors that aren't from aborting
-    if (error.name !== 'AbortError') {
-      alert('Failed to fetch log, see console for error details');
-      console.error('Error fetching logs:', error);
+  ngOnDestroy() {
+    this.cleanup();
+  }
+
+  private cleanup() {
+    if (this.currentController) {
+      this.currentController.abort();
+      this.currentController = null;
+    }
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = undefined;
+    }
+  }
+
+  private logPollIter(options?: { initial: boolean }) {
+    // On initial we always fetch. On subsequent polls, only fetch if we're on the logs tab.
+    if (!options?.initial && this.activeTab() !== 'logs') return;
+
+    for (const log of this.logs()) {
+      this.reloadLog(log);
     }
   }
 
@@ -96,16 +101,16 @@ export class ModelDetailComponent implements OnChanges {
     return basePath;
   }
 
-  private cdr = inject(ChangeDetectorRef);
-  protected isReloading = new WeakMap<
-    { content: string; logUrl: string; filename: string },
-    boolean
-  >();
+  private reloadLog(logEntry: {
+    content: string;
+    logUrl: string;
+    filename: string;
+  }) {
+    // If controller is gone, don't fetch
+    if (!this.currentController) return;
 
-  reloadLog(logEntry: { content: string; logUrl: string; filename: string }) {
-    this.isReloading.set(logEntry, true);
     fetch(logEntry.logUrl, {
-      signal: this.currentController!.signal,
+      signal: this.currentController.signal,
     })
       .then((response) => {
         if (response.ok) {
@@ -115,8 +120,6 @@ export class ModelDetailComponent implements OnChanges {
         }
       })
       .then((newContent) => {
-        this.isReloading.set(logEntry, false);
-
         this.logs.update((logs) => {
           return logs.map((l) => {
             if (l.filename === logEntry.filename) {
@@ -128,9 +131,15 @@ export class ModelDetailComponent implements OnChanges {
         });
       })
       .catch((error: any) => {
-        this.isReloading.set(logEntry, false);
-        this.cdr.markForCheck();
-        this.logFetchErrorHandler(error);
+        if (error.name === 'AbortError') return;
+
+        // Only show toast if we haven't loaded content yet, or on explicit failure during polling
+        // But requirement was "tell which log failed in the toast"
+        this.toast.showToast({
+          content: `Failed to refresh ${logEntry.filename}`,
+          variant: 'error',
+        });
+        console.error(`Error fetching ${logEntry.filename}:`, error);
       });
   }
 }

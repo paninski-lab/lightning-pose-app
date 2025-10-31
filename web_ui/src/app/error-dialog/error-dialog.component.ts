@@ -8,6 +8,7 @@ import {
 } from '@angular/material/dialog';
 import { MatButton } from '@angular/material/button';
 import { JsonPipe } from '@angular/common';
+import { HighlightDirective } from '../highlight.directive';
 
 @Component({
   selector: 'app-error-dialog',
@@ -18,6 +19,7 @@ import { JsonPipe } from '@angular/common';
     MatButton,
     MatDialogClose,
     JsonPipe,
+    HighlightDirective,
   ],
   templateUrl: './error-dialog.component.html',
   styleUrl: './error-dialog.component.css',

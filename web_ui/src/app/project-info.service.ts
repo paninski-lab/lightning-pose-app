@@ -1,7 +1,17 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal, WritableSignal } from '@angular/core';
 import { ProjectInfo } from './project-info';
 import { RpcService } from './rpc.service';
-import { BehaviorSubject, distinctUntilChanged } from 'rxjs';
+import {
+  BehaviorSubject,
+  catchError,
+  distinctUntilChanged,
+  first,
+  forkJoin,
+  map,
+  Observable,
+  Subject,
+  timer,
+} from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 
 @Injectable({
@@ -17,52 +27,173 @@ export class ProjectInfoService {
   // The directory that we are storing fine videos in.
   fineVideoDir = '';
 
-  async loadProjectInfo() {
-    /** Returns null if ProjectInfo wasn't initialized yet.
-     * In this case the app should prompt the user for some project info. */
-    const promises = [] as Promise<unknown>[];
-    promises.push(
-      this.rpc
-        .call('getProjectInfo')
-        .then((response: unknown) => response as { projectInfo: ProjectInfo })
-        .then((response) => {
-          this._projectInfo = response.projectInfo
-            ? new ProjectInfo(response.projectInfo)
-            : null; // ProjectInfo | null
+  // ---------------------
+  // Resolver handshake API
+  // ---------------------
 
-          this.setAllViews(this._projectInfo?.views ?? []);
-        }),
-    );
+  private globalLoadedSubject = new BehaviorSubject<GlobalContext>({
+    uploadDir: '',
+  });
+  public globalLoaded$: Observable<GlobalContext> =
+    this.globalLoadedSubject.asObservable();
 
-    promises.push(
-      this.rpc
-        .call('getFineVideoDir')
-        .then((response: unknown) => response as { path: string })
-        .then((response) => {
-          this.fineVideoDir = response.path;
+  private projectLoadedSubject = new BehaviorSubject<ProjectContext | null>(
+    null,
+  );
+  public projectLoaded$: Observable<ProjectContext | null> =
+    this.projectLoadedSubject.asObservable();
+
+  public globalContext = toSignal(this.globalLoadedSubject.asObservable(), {
+    requireSync: true,
+  });
+  public projectContext = toSignal(this.projectLoadedSubject.asObservable(), {
+    requireSync: true,
+  });
+
+  fetchContext(projectKey: string | null): Observable<{
+    globalContext: GlobalContext;
+    projectContext: ProjectContext | null;
+  }> {
+    const globalContext$ = this.rpc
+      .callObservable('GetRootConfig')
+      .pipe(
+        first(),
+        map((response: unknown) => {
+          const body = response as Partial<GlobalContext>;
+          if (!body || typeof body.uploadDir !== 'string') {
+            throw new Error('Invalid GetRootConfig response');
+          }
+          const data: GlobalContext = { uploadDir: body.uploadDir };
+          this.globalLoadedSubject.next(data);
+          return data;
         }),
-    );
-    return Promise.allSettled(promises);
+      );
+
+    const projectContext$ = !projectKey
+      ? timer(100).pipe(
+          first(),
+          map(() => {
+            const data = null;
+            this.projectLoadedSubject.next(data);
+            return data;
+          }),
+        )
+      : this.rpc.callObservable('getProjectInfo', { projectKey }).pipe(
+          first(),
+          map((response: unknown) => {
+            const body = response as {
+              projectInfo?: Partial<ProjectInfo> | null;
+            };
+            if (body && body.projectInfo) {
+              this._projectInfo = new ProjectInfo(
+                body.projectInfo as Partial<ProjectInfo>,
+              );
+            } else {
+              throw Error('Invalid project info response');
+            }
+
+            if (this._projectInfo?.views) {
+              this.setAllViews(this._projectInfo.views as string[]);
+            }
+
+            const ctx: ProjectContext = {
+              key: projectKey,
+              projectInfo: this._projectInfo ?? null,
+            };
+            this.projectLoadedSubject.next(ctx);
+            return ctx;
+          }),
+          catchError((err) => {
+            console.error('Failed to fetch project context', err);
+            throw err;
+          }),
+        );
+
+    return forkJoin({
+      globalContext: globalContext$,
+      projectContext: projectContext$,
+    });
+  }
+  // ---------------------
+  // Projects listing API
+  // ---------------------
+  public projects = signal<ListProjectItem[] | undefined>(undefined);
+
+  async fetchProjects(): Promise<void> {
+    try {
+      const resp = (await this.rpc.call(
+        'listProjects',
+      )) as ListProjectInfoResponse;
+      // Normalize paths to strings
+      const items: ListProjectItem[] = resp.projects.map((p) => ({
+        project_key: p.project_key,
+        data_dir: String(p.data_dir),
+        model_dir: p.model_dir == null ? null : String(p.model_dir),
+      }));
+      this.projects.set(items);
+    } catch (err) {
+      console.error('Failed to fetch projects list', err);
+      this.projects.set([]);
+    }
   }
 
+  // Legacy getter retained for settings component
   get projectInfo(): ProjectInfo {
     return this._projectInfo as ProjectInfo;
   }
 
-  async setProjectInfo(projectInfo: Partial<ProjectInfo>) {
-    /** Saves changes to the project info.  */
-    await this.rpc.call('setProjectInfo', { projectInfo });
-    await this.loadProjectInfo();
+  private getProjectKeyOrThrow(): string {
+    const ctx = this.projectContext();
+    if (!ctx?.key) {
+      throw new Error('Project key is not available in project context');
+    }
+    return ctx.key;
   }
 
-  // Newer style of models.
+  // New explicit APIs
+  async updateProjectConfig(payload: {
+    projectKey: string;
+    projectInfo: Partial<ProjectInfo>;
+  }): Promise<void> {
+    // Strip undefined fields for patch semantics
+    const cleaned: Record<string, unknown> = {};
+    Object.entries(payload.projectInfo).forEach(([k, v]) => {
+      if (v !== undefined) cleaned[k] = v;
+    });
+    await this.rpc.call('UpdateProjectConfig', {
+      projectKey: payload.projectKey,
+      projectInfo: cleaned,
+    });
+  }
 
+  async createNewProject(payload: {
+    projectKey: string;
+    data_dir: string;
+    model_dir?: string | null;
+    projectInfo: ProjectInfo | Partial<ProjectInfo>;
+  }): Promise<void> {
+    const body: any = {
+      projectKey: payload.projectKey,
+      data_dir: payload.data_dir,
+      projectInfo: payload.projectInfo,
+    };
+    if (payload.model_dir) {
+      body.model_dir = payload.model_dir;
+    }
+    await this.rpc.call('CreateNewProject', body);
+  }
+
+  // Backward-compat shim used by existing UI code: delegates to UpdateProjectConfig
+  async setProjectInfo(projectInfo: Partial<ProjectInfo>) {
+    const projectKey = this.getProjectKeyOrThrow();
+    await this.updateProjectConfig({ projectKey, projectInfo });
+  }
+
+  // Modern model catalogs
   _allViews = new BehaviorSubject<string[]>([]);
   allViews$ = this._allViews.asObservable().pipe(distinctUntilChanged());
   allViews = toSignal(this.allViews$, { requireSync: true });
   setAllViews(views: string[]) {
-    // hack: concat unknown to fix other logic that iterates over all views
-    // instead that logic should iterate over the current session's views.
     this._allViews.next(views.concat(['unknown']));
   }
 
@@ -81,4 +212,23 @@ export class ProjectInfoService {
   setAllModels(models: string[]) {
     this._allModels.next(models);
   }
+}
+
+export interface GlobalContext {
+  uploadDir: string;
+}
+
+export interface ProjectContext {
+  key: string;
+  projectInfo: ProjectInfo | null;
+}
+
+export interface ListProjectItem {
+  project_key: string;
+  data_dir: string;
+  model_dir: string | null;
+}
+
+export interface ListProjectInfoResponse {
+  projects: ListProjectItem[];
 }

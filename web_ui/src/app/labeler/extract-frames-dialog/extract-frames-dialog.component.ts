@@ -25,6 +25,7 @@ import { ExtractFramesRequest } from '../../extract-frames-request';
 import { LabelFilePickerComponent } from '../../label-file-picker/label-file-picker.component';
 import { ProjectInfoService } from '../../project-info.service';
 import { SessionService } from '../../session.service';
+import { SessionImportComponent } from '../../session-import/session-import.component';
 
 @Directive({
   selector: '[appLabelFileTemplateValidator]',
@@ -48,7 +49,7 @@ class LabelFileTemplateValidatorDirective implements Validator {
     const errors = {} as Record<string, unknown>;
 
     // If multiview, one star is required.
-    if (this.projectInfoService.allViews().length > 0) {
+    if (this.projectInfoService.allViews().length > 1) {
       const starCount = (value.match(/\*/g) || []).length;
       if (starCount === 0) {
         errors['viewStarMissing'] = true;
@@ -96,6 +97,7 @@ class LabelFileTemplateValidatorDirective implements Validator {
     FormsModule,
     LabelFilePickerComponent,
     LabelFileTemplateValidatorDirective,
+    SessionImportComponent,
   ],
   templateUrl: './extract-frames-dialog.component.html',
   styleUrl: './extract-frames-dialog.component.css',
@@ -104,6 +106,7 @@ class LabelFileTemplateValidatorDirective implements Validator {
 export class ExtractFramesDialogComponent implements OnInit {
   protected step = signal<string>('labelFile');
   protected stepOrder = ['labelFile', 'session', 'settings'];
+  protected sessionImportOpen = signal<boolean>(false);
 
   initialStep = input<string>('labelFile');
   initialLabelFileSelectionType = input<'createNew' | 'useExisting'>(
@@ -149,6 +152,19 @@ export class ExtractFramesDialogComponent implements OnInit {
     this.session.set(session);
   }
 
+  /** Called when the Session Import dialog finishes/closed. */
+  protected async onImportDone() {
+    // Close the import dialog UI
+    this.sessionImportOpen.set(false);
+    // Refresh the sessions list so the table reflects any newly transcoded videos
+    try {
+      await this.sessionService.loadSessions();
+    } catch (e) {
+      // Non-fatal: keep UI responsive even if refresh fails
+      console.error('Failed to refresh sessions after import dialog closed', e);
+    }
+  }
+
   protected labelFileStepIsValid(): boolean {
     if (this.labelFileSelectionType() === 'createNew') {
       // We are blocked from using computed signals, because
@@ -192,6 +208,7 @@ export class ExtractFramesDialogComponent implements OnInit {
           }
         : null;
     return {
+      projectKey: this.projectInfoService['projectContext']()?.key as string,
       labelFileCreationRequest,
       session: {
         views: this.session()!.views,
@@ -237,7 +254,7 @@ export class ExtractFramesDialogComponent implements OnInit {
   }
 
   protected defaultLabelFileTemplate(): string {
-    return this.isMultiviewProject() ? 'CollectedData_*' : 'CollectedData.csv';
+    return this.isMultiviewProject() ? 'CollectedData_*' : 'CollectedData';
   }
 
   protected isMultiviewProject() {

@@ -245,23 +245,21 @@
             <span class="material-icons">save</span> Save
           </button>
         </div>
-        @if (mvf(frame2).isFromUnlabeledSet) {
-          <div
-            class="tooltip tooltip-bottom w-full"
-            [attr.data-tip]="saveAndContinueTooltip"
+        <div
+          class="tooltip tooltip-bottom w-full"
+          [attr.data-tip]="saveAndContinueTooltip"
+        >
+          <button
+            class="btn bg-sky-700 w-full mt-2"
+            [class.btn-disabled]="isSaveDisabled()"
+            (click)="handleSaveClick(lbfl, frame2, true)"
+            (keydown.enter)="handleSaveClick(lbfl, frame2, true)"
           >
-            <button
-              class="btn bg-sky-700 w-full mt-2"
-              [class.btn-disabled]="isSaveDisabled()"
-              (click)="handleSaveClick(lbfl, frame2, true)"
-              (keydown.enter)="handleSaveClick(lbfl, frame2, true)"
-            >
-              <span class="material-icons">save</span>
-              Save and view next frame
-              <span class="material-icons">arrow_forward</span>
-            </button>
-          </div>
-        }
+            <span class="material-icons">save</span>
+            Save and next
+            <span class="material-icons">arrow_forward</span>
+          </button>
+        </div>
       }
     </div>
   </div>

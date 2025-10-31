@@ -12,6 +12,7 @@ import { RpcService } from '../rpc.service';
 import { MVLabelFile } from '../label-file.model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, Subscription } from 'rxjs';
+import { ProjectInfoService } from '../project-info.service';
 
 interface BundleAdjustResponse {
   camList: string[];
@@ -29,6 +30,7 @@ interface BundleAdjustResponse {
 export class BundleAdjustDialogComponent implements AfterViewInit {
   private rpc = inject(RpcService);
   private destroyRef = inject(DestroyRef);
+  private projectInfoService = inject(ProjectInfoService);
 
   protected readonly mvf = mvf;
   labelFile = input.required<MVLabelFile | null>();
@@ -56,6 +58,7 @@ export class BundleAdjustDialogComponent implements AfterViewInit {
 
   protected handleBundleAdjustClick() {
     const baRequest = {
+      projectKey: this.projectInfoService['projectContext']()?.key as string,
       sessionKey: mvf(this.frame()!).autolabelSessionKey,
       mvlabelfile: this.labelFile(),
     };

@@ -12,7 +12,8 @@ from pydantic import BaseModel
 from litpose_app import deps
 from litpose_app.config import Config
 from litpose_app.routes.labeler import find_calibration_file, session_level_config_path
-from litpose_app.routes.project import ProjectInfo
+from litpose_app.deps import ProjectInfoGetter
+from lightning_pose.data.datatypes import Project
 from litpose_app.tasks.extract_frames import MVLabelFile
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
 
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 class BundleAdjustRequest(BaseModel):
+    projectKey: str
     mvlabelfile: MVLabelFile
     sessionKey: str  # name of the session with the view stripped out
 
@@ -42,14 +44,15 @@ class BundleAdjustResponse(BaseModel):
 @router.post("/app/v0/rpc/bundleAdjust")
 def bundle_adjust(
     request: BundleAdjustRequest,
-    project_info: ProjectInfo = Depends(deps.project_info),
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
     config: Config = Depends(deps.config),
 ) -> BundleAdjustResponse:
     with ProcessPoolExecutor(max_workers=1) as executor:
+        project: Project = project_info_getter(request.projectKey)
         fut = executor.submit(
             _bundle_adjust_impl,
             request,
-            project_info,
+            project,
             config,
         )
         result = fut.result()
@@ -58,10 +61,10 @@ def bundle_adjust(
 
 
 def _bundle_adjust_impl(
-        request: BundleAdjustRequest, project_info: ProjectInfo, config: Config
+        request: BundleAdjustRequest, project: Project, config: Config
 ):
     camera_group_toml_path = find_calibration_file(
-        request.sessionKey, project_info, config
+        request.sessionKey, project, config
     )
     if camera_group_toml_path is None:
         raise FileNotFoundError(
@@ -69,12 +72,13 @@ def _bundle_adjust_impl(
         )
     cg = CameraGroup.load(camera_group_toml_path)
     views = list(map(lambda c: c.name, cg.cameras))
-    assert set(project_info.views) == set(views)
+    project_views = project.config.view_names or []
+    assert set(project_views) == set(views)
 
     def autoLabelSessionKey(framePath: str) -> str | None:
         parts = framePath.split("/")
         if len(parts) < 3:
-            return False
+            return None
         sessionViewNameWithDots = parts[-2]  # e.g. 05272019_fly1_0_R1C24_Cam-A_rot-ccw-0.06_sec
 
         def processPart(sessionViewName):
@@ -190,11 +194,11 @@ def _bundle_adjust_impl(
     cg.bundle_adjust(p2ds, verbose=True)
     p3ds = cg.triangulate(p2ds)
     new_reprojection_error = cg.reprojection_error(p3ds, p2ds)
-    target_path = session_level_config_path(request.sessionKey, project_info, config)
+    target_path = session_level_config_path(request.sessionKey, project, config)
 
     if target_path.exists():
         backup_path = (
-                project_info.data_dir
+                project.paths.data_dir
                 / config.CALIBRATION_BACKUPS_DIRNAME
                 / target_path.with_suffix(f".{time.time_ns()}.toml").name
         )
@@ -204,7 +208,7 @@ def _bundle_adjust_impl(
     # Writes to session-level calibration file even if the
     # project level calibration file was used for bundle adjustment.
     session_level_calibration_path = session_level_config_path(
-        request.sessionKey, project_info, config
+        request.sessionKey, project, config
     )
     session_level_calibration_path.parent.mkdir(parents=True, exist_ok=True)
     cg.dump(session_level_calibration_path)

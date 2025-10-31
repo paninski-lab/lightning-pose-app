@@ -26,6 +26,7 @@ export interface LabelFileCreationRequest {
 }
 
 export interface ExtractFramesRequest {
+  projectKey: string;
   labelFileCreationRequest: LabelFileCreationRequest | null;
   session: EFRSession;
   // only present if using existing label file (not creating new)

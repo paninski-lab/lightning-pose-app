@@ -142,7 +142,7 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   protected handleSaved(data: {
     labelFile: MVLabelFile;
     frame: MVFrame;
-    shouldContinue: boolean;
+    shouldAdvanceFrame: boolean;
   }) {
     if (data.labelFile !== this.loadedLabelFile()) {
       return;
@@ -159,14 +159,14 @@ export class LabelerPageComponent implements OnInit, OnChanges {
         }
       });
     });
-    if (data.shouldContinue) {
-      const currentFrameIndex = this.labelFileDataUnLabeledSlice().findIndex(
+    if (data.shouldAdvanceFrame) {
+      const currentFrameIndex = this.labelFileData()!.findIndex(
         (mvf) => mvf.key === data.frame.key,
       );
-      const nextFrameKey =
-        this.labelFileDataUnLabeledSlice()[currentFrameIndex + 1]?.key ?? null;
-      if (nextFrameKey !== null) {
-        this.router.navigate(['/labeler'], {
+      const nextFrameKey: string | undefined =
+        this.labelFileData()![currentFrameIndex + 1]?.key;
+      if (nextFrameKey) {
+        this.router.navigate([], {
           queryParams: {
             labelFileKey: this.labelFileKey(),
             frameKey: nextFrameKey,
@@ -176,18 +176,30 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     }
   }
 
+  protected get projectKey() {
+    const projectKey = this.projectInfoService.projectContext()?.key as
+      | string
+      | undefined;
+    if (!projectKey) {
+      throw new Error('Project key missing from project context');
+    }
+    return projectKey;
+  }
+
   protected handleSelectLabelFile(labelFileKey: string | null) {
+    const projectKey = this.projectKey;
     if (labelFileKey !== null) {
-      this.router.navigate(['/labeler'], {
+      this.router.navigate(['/project', projectKey, 'labeler'], {
         queryParams: { labelFileKey: labelFileKey },
       });
     } else {
-      this.router.navigate(['/labeler'], { queryParams: {} });
+      this.router.navigate(['/project', projectKey, 'labeler'], {
+        queryParams: {},
+      });
     }
   }
 
   async ngOnInit() {
-    await this.projectInfoService.loadProjectInfo();
     await this.sessionService.loadLabelFiles();
 
     this.isIniting.set(false);
@@ -205,7 +217,7 @@ export class LabelerPageComponent implements OnInit, OnChanges {
       // Reload label files
       await this.sessionService.loadLabelFiles();
       // Switch to the label file the extract frames was for.
-      await this.router.navigate(['/labeler'], {
+      await this.router.navigate([], {
         queryParams: { labelFileKey: labelFileKey },
       });
     }

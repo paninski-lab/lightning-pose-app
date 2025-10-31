@@ -1,41 +1,33 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  OnInit,
+} from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { ProjectInfoService, ListProjectItem } from '../project-info.service';
 
 @Component({
   selector: 'app-home-page',
-  imports: [],
+  imports: [RouterLink],
   templateUrl: './home-page.component.html',
   styleUrl: './home-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class HomePageComponent {
-  cards = [
-    {
-      href: '/',
-      title: 'Project settings',
-      description: 'View and edit configuration for the current Project',
-      imgSrc: 'https://img.daisyui.com/images/components/accordion.webp',
-      imgAlt: 'Accordion',
-    },
-    {
-      href: '/labeler',
-      title: 'Labeler',
-      description: 'View labeled data and label new frames',
-      imgSrc: 'https://img.daisyui.com/images/components/accordion.webp',
-      imgAlt: 'Accordion',
-    },
-    {
-      href: '/models',
-      title: 'Models',
-      description: 'Train, evaluate, and run models',
-      imgSrc: 'https://img.daisyui.com/images/components/accordion.webp',
-      imgAlt: 'Accordion',
-    },
-    {
-      href: '/viewer/',
-      title: 'Viewer',
-      description: 'View sessions and model predictions',
-      imgSrc: 'https://img.daisyui.com/images/components/accordion.webp',
-      imgAlt: 'Accordion',
-    },
-  ];
+export class HomePageComponent implements OnInit {
+  protected projectInfo = inject(ProjectInfoService);
+
+  ngOnInit() {
+    // Fetch only once per app load (idempotent if already set)
+    if (!this.projectInfo.projects()) {
+      void this.projectInfo.fetchProjects();
+    }
+  }
+}
+
+function deriveProjectName(p: ListProjectItem): string {
+  // Prefer the last folder name of data_dir as a human-friendly name
+  const parts = p.data_dir.split('/').filter(Boolean);
+  return parts.length > 0 ? parts[parts.length - 1] : p.data_dir;
 }

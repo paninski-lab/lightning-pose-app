@@ -50,7 +50,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
   saved = output<{
     labelFile: MVLabelFile;
     frame: MVFrame;
-    shouldContinue: boolean;
+    shouldAdvanceFrame: boolean;
   }>();
 
   ngOnChanges(changes: SimpleChanges) {
@@ -67,10 +67,14 @@ export class LabelerCenterPanelComponent implements OnChanges {
       mvf(this.frame()!).isFromUnlabeledSet
     ) {
       this._selectedView.set(null);
-      this.selectedKeypoint.set(
-        this.selectedFrameView()?.keypoints[0]?.keypointName ?? null,
-      );
+      this.selectFirstKeypoint();
     }
+  }
+
+  private selectFirstKeypoint() {
+    this.selectedKeypoint.set(
+      this.selectedFrameView()?.keypoints[0]?.keypointName ?? null,
+    );
   }
 
   private checkIfHasCameraCalibrationFiles() {
@@ -153,6 +157,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
 
   handleViewClickFromFilmstrip(viewName: string) {
     this._selectedView.set(viewName);
+    this.selectFirstKeypoint();
   }
 
   // Set to a random value if you need to bust cache of computed signals.
@@ -247,7 +252,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
 
   protected get saveAndContinueTooltip(): string {
     if (!this.isSaveDisabled())
-      return 'Save and advance to next unlabeled frame.';
+      return 'Save and advance to next frame or view.';
     return 'No changes to save.';
   }
 
@@ -282,12 +287,25 @@ export class LabelerCenterPanelComponent implements OnChanges {
     shouldContinue: boolean,
   ) {
     this.isSaving.set(true);
+    const frameView = this.selectedFrameView()!;
+    const nextFrameView = frame.views[frame.views.indexOf(frameView) + 1];
+
     this.sessionService
       .saveMVFrame(labelFile, frame)
       .then(() => {
         this.isSaving.set(false);
-        this.saved.emit({ labelFile, frame, shouldContinue });
+        this.saved.emit({
+          labelFile,
+          frame,
+          // If save and next button clicked, and there is no next view, go to the next frame.
+          shouldAdvanceFrame: shouldContinue && !nextFrameView,
+        });
         this.toastService.showToast({ content: 'Saved successfully' });
+        // If save and next button clicked and there is a next view, select it.
+        if (shouldContinue && nextFrameView) {
+          this._selectedView.set(nextFrameView.viewName);
+        }
+        this.selectFirstKeypoint();
       })
       .catch((error) => {
         this.isSaving.set(false);
