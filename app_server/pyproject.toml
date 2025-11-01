@@ -26,6 +26,8 @@ dependencies = [
     "portalocker~=3.2.0",
     "psutil~=7.0.0",
     "PyYAML~=6.0.2",
+    "flask",
+    "waitress",
 ]
 
 [project.optional-dependencies]
@@ -40,5 +42,10 @@ dev = [
 packages = [
     { include = "litpose_app", from = "src" }
 ]
-# We need this to override the .gitignore.
-include = ["**/ngdist/**/*"]
+
+include = [
+    # We need this to override the .gitignore.
+    "**/ngdist/**/*",
+    "litpose_app/resources/Caddyfile",
+
+]

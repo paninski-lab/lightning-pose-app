@@ -1,0 +1,18 @@
+{
+    skip_install_trust
+	admin off
+    log default {
+        level WARN
+    }
+    http_port 8080
+    https_port 8443
+}
+localhost:8080 {
+    redir https://{host}:8443{uri} permanent
+}
+
+localhost:8443 {
+    tls internal
+
+    reverse_proxy localhost:5000
+}

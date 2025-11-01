@@ -4,28 +4,15 @@ Instead, prefer to inject `config: deps.config into the route using FastAPI's de
 See https://fastapi.tiangolo.com/tutorial/dependencies/."""
 
 import os
-from pathlib import Path
 
 from pydantic import BaseModel
+from pathlib import Path
 
 
-# Consider `pydantic_settings.BaseSettings` for potential future needs.
 class Config(BaseModel):
-    PROJECT_INFO_TOML_PATH: Path = Path("~/.lightning_pose/project.toml").expanduser()
+    LP_DIR: Path = Path.home() / ".lightning_pose"
 
-    ## Video transcoding settings
-
-    # Directory where finely transcoded videos are stored
-    FINE_VIDEO_DIR: Path = Path("~/.lightning_pose/finevideos").expanduser()
-
-    # Name of the directory in data_dir where extract frames will output to
-    LABELED_DATA_DIRNAME: str = "labeled-data"
-
-    # Name of the directory in data_dir containing session-specific calibration files
-    CALIBRATIONS_DIRNAME: str = "calibrations"
-    CALIBRATION_BACKUPS_DIRNAME: str = "calibration_backups"
-
-    GLOBAL_CALIBRATION_PATH: str = "calibration.toml"
+    CADDY_BIN_PATH: Path = LP_DIR / "bin" / "caddy_linux_amd64_v2_10_2" #TODO support Mac, windows.
 
     ###
     # Frame extraction config
@@ -35,3 +22,4 @@ class Config(BaseModel):
     FMT_FRAME_INDEX_DIGITS: int = 8
     N_WORKERS: int = os.cpu_count()
     FRAME_EXTRACT_RESIZE_DIMS: int = 64
+

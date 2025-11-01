@@ -29,9 +29,7 @@ def config() -> Config:
         app.state.config = Config()
     return app.state.config
 
-
 def scheduler() -> AsyncIOScheduler:
-    """Dependency that provides the app's APScheduler instance."""
     from .main import app
 
     if not hasattr(app.state, "scheduler"):
@@ -47,7 +45,6 @@ def scheduler() -> AsyncIOScheduler:
         }
         app.state.scheduler = AsyncIOScheduler(executors=executors)
     return app.state.scheduler
-
 
 if TYPE_CHECKING:
     from .routes.project import ProjectInfo
