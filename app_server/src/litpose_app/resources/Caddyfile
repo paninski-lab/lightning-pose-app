@@ -6,7 +6,9 @@
     }
     http_port 8080
     https_port 8443
+
 }
+
 localhost:8080 {
     redir https://{host}:8443{uri} permanent
 }
@@ -14,5 +16,31 @@ localhost:8080 {
 localhost:8443 {
     tls internal
 
-    reverse_proxy localhost:5000
+    handle /files/fly-anipose/* {
+        # Enable compression (applies to compressible MIME types like CSV)
+        encode gzip zstd
+
+        # Browser should not cache non-media files (e.g. label files).
+        @media path *.jpg *.jpeg *.png *.gif *.svg *.webp *.mp4 *.mp3 *.avi *.mov
+        header / not @media Cache-Control "no-cache"
+
+        root * /home/ksikka/fly-anipose
+
+        uri strip_prefix /files/fly-anipose/
+
+        file_server browse
+    }
+
+    rewrite /favicon.ico /static/favicon.ico
+
+    handle /app/* {
+        reverse_proxy localhost:5000
+    }
+    handle {
+        encode gzip zstd
+        uri strip_prefix /static
+        try_files {path} /index.html # This is the key line
+        root * {$ANGULAR_BUILD_DIR}
+        file_server
+    }
 }

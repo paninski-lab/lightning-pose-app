@@ -19,7 +19,6 @@ cd "${SCRIPT_DIR}/web_ui"
 DESTINATION="../app_server/src/litpose_app/ngdist/ng_app"
 
 ng build \
-  --output-path="$DESTINATION" \
-  --deploy-url="/static/"
+  --output-path="$DESTINATION"
 
 echo "✅ Build complete!"

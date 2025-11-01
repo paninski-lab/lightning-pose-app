@@ -27,6 +27,7 @@ dependencies = [
     "psutil~=7.0.0",
     "PyYAML~=6.0.2",
     "flask",
+    "flask-pydantic",
     "waitress",
 ]
 
