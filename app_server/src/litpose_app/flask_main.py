@@ -13,7 +13,7 @@ import subprocess  # Import subprocess for DEVNULL
 
 # Global variable to store the Caddy process
 caddy_process: psutil.Popen | None = None
-_shutdown_initiated = threading.Event()
+_shutdown_event = threading.Event()
 
 
 def start_caddy(show_output: bool):
@@ -42,31 +42,38 @@ def start_caddy(show_output: bool):
 
     def monitor_caddy():
         ret = caddy_process.wait()
-        if not _shutdown_initiated.is_set():
+        # If shutdown hasn't been initiated, it means Caddy died unexpectedly.
+        if not _shutdown_event.is_set():
             print(f"❌ Caddy server exited with return code {ret}")
-            os.kill(os.getpid(), signal.SIGTERM)
+            _shutdown_event.set()  # Signal the main thread to shut down.
 
-    threading.Thread(target=monitor_caddy, daemon=True).start()
+        threading.Thread(target=monitor_caddy, daemon=True).start()
 
 
 def cleanup_caddy():
     global caddy_process
-    _shutdown_initiated.set()
-    if caddy_process:
-        print("Terminating Caddy server...")
-        try:
-            # Attempt to terminate the Caddy process
-            caddy_process.terminate()
-            # Wait for Caddy to terminate gracefully, with a timeout
-            caddy_process.wait(timeout=5)
-        except psutil.TimeoutExpired:
-            print("Caddy process did not terminate gracefully within 5 seconds, killing...")
-            # If it didn't terminate, forcefully kill it
-            caddy_process.kill()
-        except Exception as e:
-            print(f"Error encountered during Caddy process termination: {e}")
-        finally:
-            caddy_process = None
+    _shutdown_event.set()  # Ensure the shutdown event is set
+    if not caddy_process:
+        return
+
+    print("Terminating Caddy server...")
+    try:
+        # Attempt to terminate the Caddy process gracefully
+        caddy_process.terminate()
+        # Wait for Caddy to terminate, with a timeout
+        caddy_process.wait(timeout=5)
+    except psutil.TimeoutExpired:
+        print("Caddy process did not terminate gracefully within 5 seconds, killing...")
+        # If it didn't terminate, forcefully kill it
+        caddy_process.kill()
+    except psutil.NoSuchProcess:
+        # Process already terminated, which is fine.
+        pass
+    except Exception as e:
+        print(f"Error encountered during Caddy process termination: {e}")
+    finally:
+        caddy_process = None
+
 
 def before_start_hook(show_caddy_output: bool):
     """Function to run immediately before the Waitress server starts blocking."""
