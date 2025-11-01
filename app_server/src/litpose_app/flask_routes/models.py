@@ -20,6 +20,8 @@ class LegacyGetProjectInfoResponse(BaseModel):
 class LegacySetProjectInfoRequest(BaseModel):
     projectInfo: LegacyProjectInfo
 
+class SessionImportRequest(BaseModel):
+    localVideoPath: Path
 
 class RGlobRequest(BaseModel):
     baseDir: Path
