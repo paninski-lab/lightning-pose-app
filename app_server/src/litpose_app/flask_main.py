@@ -1,17 +1,20 @@
 import sys
 import signal
+import os
 from pathlib import Path
 
 from waitress import serve
 from litpose_app import deps
 from litpose_app.flask_app import app
-import importlib.resources as pkg_resources
+import importlib.resources
 import threading
 import psutil
 import subprocess  # Import subprocess for DEVNULL
 
 # Global variable to store the Caddy process
 caddy_process: psutil.Popen | None = None
+_shutdown_initiated = threading.Event()
+
 
 def start_caddy(show_output: bool):
     global caddy_process
@@ -19,9 +22,10 @@ def start_caddy(show_output: bool):
     print("🚀 [Before Start Hook] Launching Caddy server...")
 
     # Use the packaged Caddyfile from resources
-    caddyfile_path = pkg_resources.files('litpose_app').joinpath('resources', 'Caddyfile')
+    caddyfile_path = importlib.resources.files('litpose_app').joinpath('resources', 'Caddyfile')
 
     ANGULAR_BUILD_DIR = Path(__file__).parent / "ngdist" / "ng_app" / "browser"
+    CADDY_ADMIN_PORT = 2019
 
     # Determine where to redirect stdout/stderr
     stdout_target = None if show_output else subprocess.DEVNULL
@@ -32,18 +36,22 @@ def start_caddy(show_output: bool):
         [str(config.CADDY_BIN_PATH), 'run', '--config', str(caddyfile_path), '--adapter', 'caddyfile'],
         stdout=stdout_target,
         stderr=stderr_target,
-        env={'ANGULAR_BUILD_DIR': str(ANGULAR_BUILD_DIR)}
+        env={'ANGULAR_BUILD_DIR': str(ANGULAR_BUILD_DIR),
+             'CADDY_ADMIN': f'localhost:{CADDY_ADMIN_PORT}'},
     )
 
     def monitor_caddy():
         ret = caddy_process.wait()
-        print(f"❌ Caddy server exited with return code {ret}")
-        sys.exit(1)
+        if not _shutdown_initiated.is_set():
+            print(f"❌ Caddy server exited with return code {ret}")
+            os.kill(os.getpid(), signal.SIGTERM)
 
     threading.Thread(target=monitor_caddy, daemon=True).start()
 
+
 def cleanup_caddy():
     global caddy_process
+    _shutdown_initiated.set()
     if caddy_process:
         print("Terminating Caddy server...")
         try:

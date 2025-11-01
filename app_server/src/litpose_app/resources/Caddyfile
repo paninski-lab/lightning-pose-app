@@ -1,6 +1,5 @@
 {
     skip_install_trust
-	admin off
     log default {
         level WARN
     }
