@@ -38,7 +38,7 @@ localhost:8443 {
     }
     handle {
         encode gzip zstd
-        uri strip_prefix /static
+        uri strip_prefix /static # TODO remove once build script removes use of deployUrl
         try_files {path} /index.html # This is the key line
         root * {$ANGULAR_BUILD_DIR}
         file_server
