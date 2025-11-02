@@ -43,9 +43,15 @@ export class LabelFileFetcherService {
       labelFile.views.map((labelFileView) => {
         const sidecarPath = this.getUnlabeledSidecarPath(labelFileView.csvPath);
         return firstValueFrom(
-          this.httpClient.get('/app/v0/files/' + sidecarPath, {
-            responseType: 'text',
-          }),
+          this.httpClient.get(
+            '/files/' +
+              this.projectInfoService.projectInfo.project_key +
+              '/data/' +
+              sidecarPath,
+            {
+              responseType: 'text',
+            },
+          ),
         )
           .catch((e) => {
             if (e.status === 404) {
@@ -130,7 +136,11 @@ export class LabelFileFetcherService {
   private async fetchCsvFile(csvPath: string): Promise<string | null> {
     try {
       // Construct the URL to the CSV file
-      const url = '/app/v0/files/' + csvPath;
+      const url =
+        '/files/' +
+        this.projectInfoService.projectInfo.project_key +
+        '/data/' +
+        csvPath;
       // Make a GET request to fetch the CSV file
       return await firstValueFrom(
         this.httpClient.get(url, { responseType: 'text' }),

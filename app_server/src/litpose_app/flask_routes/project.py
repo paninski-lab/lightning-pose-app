@@ -33,6 +33,7 @@ def get_project_info(config: Config) -> LegacyGetProjectInfoResponse:
     project = get_project_config(active_project_key)
     return LegacyGetProjectInfoResponse(
         projectInfo=LegacyProjectInfo(
+            project_key=project.project_key,
             data_dir=project.dirs.data_dir,
             model_dir=project.dirs.model_dir,
             views=project.view_names,

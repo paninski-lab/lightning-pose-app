@@ -18,31 +18,16 @@ export class ProjectInfoService {
   fineVideoDir = '';
 
   async loadProjectInfo() {
-    /** Returns null if ProjectInfo wasn't initialized yet.
-     * In this case the app should prompt the user for some project info. */
-    const promises = [] as Promise<unknown>[];
-    promises.push(
-      this.rpc
-        .call('getProjectInfo')
-        .then((response: unknown) => response as { projectInfo: ProjectInfo })
-        .then((response) => {
-          this._projectInfo = response.projectInfo
-            ? new ProjectInfo(response.projectInfo)
-            : null; // ProjectInfo | null
+    await this.rpc
+      .call('getProjectInfo')
+      .then((response: unknown) => response as { projectInfo: ProjectInfo })
+      .then((response) => {
+        this._projectInfo = response.projectInfo
+          ? new ProjectInfo(response.projectInfo)
+          : null; // ProjectInfo | null
 
-          this.setAllViews(this._projectInfo?.views ?? []);
-        }),
-    );
-
-    promises.push(
-      this.rpc
-        .call('getFineVideoDir')
-        .then((response: unknown) => response as { path: string })
-        .then((response) => {
-          this.fineVideoDir = response.path;
-        }),
-    );
-    return Promise.allSettled(promises);
+        this.setAllViews(this._projectInfo?.views ?? []);
+      });
   }
 
   get projectInfo(): ProjectInfo {

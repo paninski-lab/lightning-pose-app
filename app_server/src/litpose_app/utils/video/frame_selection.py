@@ -17,7 +17,6 @@ def frame_selection_kmeans_impl(
     config: Config,
     video_path: Path,
     n_frames: int,
-    beg_frame: int = 0,
     end_frame: int | None = None,
 ) -> list[int]:
     """

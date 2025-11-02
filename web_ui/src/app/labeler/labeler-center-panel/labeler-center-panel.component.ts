@@ -144,9 +144,9 @@ export class LabelerCenterPanelComponent implements OnChanges {
 
   protected imgPath(kpImgPath: string): string {
     return (
-      '/app/v0/files/' +
-      this.projectInfoService.projectInfo.data_dir +
-      '/' +
+      '/files/' +
+      this.projectInfoService.projectInfo.project_key +
+      '/data/' +
       kpImgPath
     );
   }

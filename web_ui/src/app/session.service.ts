@@ -107,7 +107,7 @@ export class SessionService {
     ).map(([key, groupedFiles]) => {
       const labelFileViews = groupedFiles.map(({ view, filename }) => ({
         viewName: view,
-        csvPath: this.projectInfoService.projectInfo.data_dir + '/' + filename,
+        csvPath: filename,
       }));
       return {
         key,
@@ -216,10 +216,13 @@ export class SessionService {
   }
 
   async getPredictionFile(pfile: PredictionFile): Promise<string | null> {
-    const modelDir = this.projectInfoService.projectInfo?.model_dir as string;
     // returns null if the prediction file did not exist.
 
-    const src = '/app/v0/files/' + modelDir + '/' + pfile.path;
+    const src =
+      '/files/' +
+      this.projectInfoService.projectInfo.project_key +
+      '/models/' +
+      pfile.path;
     return await firstValueFrom(
       this.httpClient.get(src, { responseType: 'text' }).pipe(
         catchError((error) => {
@@ -275,8 +278,7 @@ export class SessionService {
       ([relativePath, groupedFiles]) => {
         const sessionViews = groupedFiles.map(({ view, filename }) => ({
           viewName: view,
-          videoPath:
-            this.projectInfoService.projectInfo.data_dir + '/' + filename,
+          videoPath: filename,
         }));
         // The filename is the key.
         const key = relativePath

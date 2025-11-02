@@ -12,8 +12,12 @@ from pathlib import Path
 class Config(BaseModel):
     LP_DIR: Path = Path.home() / ".lightning_pose"
     ACTIVE_PROJECT_FILE_PATH: Path = LP_DIR / "active_project.txt"
+    UPLOADED_FILES_DIR: Path = LP_DIR / "app_uploads"
 
     CADDY_BIN_PATH: Path = LP_DIR / "bin" / "caddy_linux_amd64_v2_10_2" #TODO support Mac, windows.
+
+    # TODO Migrate to path resolver.
+    LABELED_DATA_DIRNAME: str = "labeled-data"
 
     ###
     # Frame extraction config

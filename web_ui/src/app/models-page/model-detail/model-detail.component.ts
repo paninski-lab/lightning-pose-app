@@ -89,9 +89,9 @@ export class ModelDetailComponent implements OnChanges {
 
   private getLogBasePath() {
     const basePath =
-      '/app/v0/files/' +
-      this.projectInfoService.projectInfo.model_dir +
-      '/' +
+      '/files/' +
+      this.projectInfoService.projectInfo.project_key +
+      '/models/' +
       this.selectedModel()?.model_relative_path;
     return basePath;
   }

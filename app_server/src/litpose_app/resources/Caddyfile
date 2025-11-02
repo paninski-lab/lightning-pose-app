@@ -15,7 +15,8 @@ localhost:8080 {
 localhost:8443 {
     tls internal
 
-    handle /files/fly-anipose/* {
+    # Data directory.
+    handle /files/fly-anipose/data/* {
         # Enable compression (applies to compressible MIME types like CSV)
         encode gzip zstd
 
@@ -23,9 +24,26 @@ localhost:8443 {
         @media path *.jpg *.jpeg *.png *.gif *.svg *.webp *.mp4 *.mp3 *.avi *.mov
         header / not @media Cache-Control "no-cache"
 
-        root * /home/ksikka/fly-anipose
+        #root * /home/ksikka/fly-anipose
+        root * /home/ksikka/work/LightningPoseData/fly-anipose
 
-        uri strip_prefix /files/fly-anipose/
+        uri strip_prefix /files/fly-anipose/data/
+
+        file_server browse
+    }
+    # Models directory.
+    handle /files/fly-anipose/models/* {
+        # Enable compression (applies to compressible MIME types like CSV)
+        encode gzip zstd
+
+        # Browser should not cache non-media files (e.g. label files).
+        @media path *.jpg *.jpeg *.png *.gif *.svg *.webp *.mp4 *.mp3 *.avi *.mov
+        header / not @media Cache-Control "no-cache"
+
+        root * /home/ksikka/work/LightningPoseData/fly-anipose/models
+        #root * /home/ksikka/fly-anipose/models
+
+        uri strip_prefix /files/fly-anipose/models/
 
         file_server browse
     }
