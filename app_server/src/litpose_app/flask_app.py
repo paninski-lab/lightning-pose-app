@@ -5,7 +5,6 @@ import re
 from pathlib import Path
 
 from flask import Flask, jsonify, request, Response
-from flask_pydantic import validate
 from werkzeug.exceptions import Forbidden
 
 from litpose_app.config import Config
@@ -56,32 +55,31 @@ def json_response(json_data: str | bytes, status: int = 200) -> Response:
     )
 
 @app.post('/getProjectInfo')
-@validate()
-def getProjectInfo() -> LegacyGetProjectInfoResponse | tuple[object, int]:
+def getProjectInfo() -> Response | tuple[object, int]:
     """Returns the ProjectLocation and ProjectConfig of the active project.
 
     If there are no projects, returns 404.
     """
     try:
-        return get_project_info(app.config['lpconfig'])
+        result = get_project_info(app.config['lpconfig'])
+        return json_response(result.model_dump_json())
     except FileNotFoundError:
         return jsonify({'error': 'No projects found'}), 404
 
 
 @app.post('/setProjectInfo')
-@validate()
-def setProjectInfo(body: LegacySetProjectInfoRequest):
+def setProjectInfo():
     """Sets the project information for the active project.
     
-    Args:
-        body: Request containing project information to set
-        
     Returns:
         Empty JSON object on success
     """
     try:
+        body = LegacySetProjectInfoRequest.model_validate(request.json)
         set_project_info(app.config['lpconfig'], body)
         return jsonify({})
+    except ValidationError as e:
+        return jsonify({'error': str(e)}), 400
     except FileNotFoundError as e:
         return jsonify({'error': str(e)}), 404
 
@@ -104,11 +102,14 @@ def rglob():
 
 
 @app.get('/getYamlFile')
-@validate()
-def getYamlFile(query: GetYamlFileQuery):
+def getYamlFile():
     """Loads a YAML file relative to the project's data_dir and returns a dict."""
     try:
+        data = request.args.to_dict()
+        query = GetYamlFileQuery.model_validate(data)
         return load_yaml_relative(query.file_path, app.config['lpconfig'])
+    except ValidationError as e:
+        return jsonify({'error': str(e)}), 400
     except FileNotFoundError as e:
         return jsonify({'error': str(e)}), 404
     except Exception as e:
@@ -116,11 +117,14 @@ def getYamlFile(query: GetYamlFileQuery):
 
 
 @app.post('/ffprobe')
-@validate()
-def ffprobe(body: FFProbeRequest):
+def ffprobe():
     """Runs ffprobe on a given video path and returns metadata."""
     try:
-        return ffprobe_logic(body, app.config['lpconfig'])
+        body = FFProbeRequest.model_validate(request.json)
+        result = ffprobe_logic(body, app.config['lpconfig'])
+        return json_response(result.model_dump_json())
+    except ValidationError as e:
+        return jsonify({'error': str(e)}), 400
     except FileNotFoundError as e:
         return jsonify({'error': str(e)}), 404
     except Forbidden as e:
@@ -177,12 +181,14 @@ def save_mvframe():
 
 
 @app.post('/getMVAutoLabels')
-@validate()
-def getMVAutoLabels(body: GetMVAutoLabelsRequest):
+def getMVAutoLabels():
     """Triangulate and project multiview keypoints using calibration files."""
     try:
+        body = GetMVAutoLabelsRequest.model_validate(request.json)
         result = get_mv_auto_labels_logic(body, app.config['lpconfig'])
         return json_response(result.model_dump_json())
+    except ValidationError as e:
+        return jsonify({'error': str(e)}), 400
     except FileNotFoundError as e:
         return jsonify({'error': str(e)}), 404
     except Exception as e:
@@ -222,12 +228,14 @@ def extractFrames():
 
 
 @app.post('/createTrainTask')
-@validate()
-def createTrainTask(body: CreateTrainTaskRequest):
+def createTrainTask():
     """Create a model training task directory and seed initial files."""
     try:
+        body = CreateTrainTaskRequest.model_validate(request.json)
         result = create_train_task_logic(body, app.config['lpconfig'])
         return jsonify(result.model_dump())
+    except ValidationError as e:
+        return jsonify({'error': str(e)}), 400
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
     except FileExistsError as e:
