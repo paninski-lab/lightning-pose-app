@@ -101,8 +101,17 @@ export class ProjectInfoService {
     return this._projectInfo as ProjectInfo;
   }
 
+  private getProjectKeyOrThrow(): string {
+    const ctx = this.projectContext();
+    if (!ctx?.key) {
+      throw new Error('Project key is not available in project context');
+    }
+    return ctx.key;
+  }
+
   async setProjectInfo(projectInfo: Partial<ProjectInfo>) {
-    await this.rpc.call('setProjectInfo', { projectInfo });
+    const projectKey = this.getProjectKeyOrThrow();
+    await this.rpc.call('setProjectInfo', { projectKey, projectInfo });
   }
 
   // Modern model catalogs

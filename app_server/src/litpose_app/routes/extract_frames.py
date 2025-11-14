@@ -5,8 +5,9 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
-from .project import ProjectInfo
+from lightning_pose.data.datatypes import Project
 from .. import deps
+from ..deps import ProjectInfoGetter
 from ..tasks.extract_frames import (
     extract_frames_task,
     Session,
@@ -32,6 +33,7 @@ class LabelFileCreationRequest(BaseModel):
 
 
 class ExtractFramesRequest(BaseModel):
+    projectKey: str
     labelFileCreationRequest: LabelFileCreationRequest | None = None
     session: Session
 
@@ -49,8 +51,9 @@ class ExtractFramesRequest(BaseModel):
 async def extract_frames(
     request: ExtractFramesRequest,
     config: Config = Depends(deps.config),
-    project_info: ProjectInfo = Depends(deps.project_info),
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ):
+    project: Project = project_info_getter(request.projectKey)
 
     def on_progress(x):
         logger.info(f"extractFrames progress: {x}")
@@ -60,7 +63,7 @@ async def extract_frames(
         mvlabelfile = await run_in_threadpool(
             init_label_file,
             request.labelFileCreationRequest,
-            project_info,
+            project,
         )
         request.labelFile = mvlabelfile
 
@@ -68,7 +71,7 @@ async def extract_frames(
         extract_frames_task,
         config,
         request.session,
-        project_info,
+        project,
         request.labelFile,
         on_progress,
         request.method,
@@ -80,16 +83,17 @@ async def extract_frames(
 
 def init_label_file(
     labelFileCreationRequest: LabelFileCreationRequest,
-    project_info: ProjectInfo,
+    project: Project,
 ) -> MVLabelFile:
     # Map of view to label file path
     files_to_create = []
     if "*" in labelFileCreationRequest.labelFileTemplate:
-        assert project_info.views and len(project_info.views) > 0
+        views = project.config.view_names or []
+        assert views and len(views) > 0
         lfviews = []
-        for view in project_info.views:
+        for view in views:
             files_to_create.append(
-                project_info.data_dir
+                project.paths.data_dir
                 / (
                     labelFileCreationRequest.labelFileTemplate.replace("*", view)
                     + ".csv"
@@ -100,7 +104,7 @@ def init_label_file(
 
     else:
         files_to_create.append(
-            project_info.data_dir
+            project.paths.data_dir
             / (labelFileCreationRequest.labelFileTemplate + ".csv")
         )
         mvlabelfile = MVLabelFile(
@@ -119,9 +123,9 @@ def init_label_file(
                         )
 
     # Create the DataFrame (it's the same for all files)
-    assert project_info.keypoint_names is not None
-    assert len(project_info.keypoint_names) > 0
-    column_levels = [["scorer"], project_info.keypoint_names, ["x", "y"]]
+    keypoint_names = project.config.bodyparts or []
+    assert len(keypoint_names) > 0
+    column_levels = [["scorer"], keypoint_names, ["x", "y"]]
     column_names = ["scorer", "bodyparts", "coords"]
     column_index = pd.MultiIndex.from_product(column_levels, names=column_names)
     df = pd.DataFrame([], index=[], columns=column_index)

@@ -39,6 +39,12 @@ export class SessionService {
 
   private sessionModelMap = {} as SessionModelMap;
 
+  private getProjectKeyOrThrow(): string {
+    const ctx = this.projectInfoService.projectContext();
+    if (!ctx?.key) throw new Error('Project key missing from project context');
+    return ctx.key;
+  }
+
   async loadSessions() {
     /** This store is populated lazily the first time someone calls loadSessions.
      * Subsequent loadSession calls are noop. User should refresh page, until
@@ -57,6 +63,7 @@ export class SessionService {
     const projectInfo = this.projectInfoService.projectInfo;
 
     const response = (await this.rpc.call('rglob', {
+      projectKey: this.getProjectKeyOrThrow(),
       baseDir: projectInfo.data_dir,
       pattern: '**/*.mp4',
       noDirs: true,
@@ -92,7 +99,9 @@ export class SessionService {
     }
   }
   async _loadLabelFiles() {
-    const response = (await this.rpc.call('findLabelFiles')) as {
+    const response = (await this.rpc.call('findLabelFiles', {
+      projectKey: this.getProjectKeyOrThrow(),
+    })) as {
       labelFiles: string[];
     };
 
@@ -124,6 +133,7 @@ export class SessionService {
     const projectInfo = this.projectInfoService.projectInfo;
     // Search for all CSV files.
     const response = (await this.rpc.call('rglob', {
+      projectKey: this.getProjectKeyOrThrow(),
       baseDir: projectInfo.model_dir,
       pattern: '**/video_preds/**/*.csv',
       noDirs: true,
@@ -234,6 +244,7 @@ export class SessionService {
 
   async ffprobe(file: string): Promise<FFProbeInfo> {
     const response = (await this.rpc.call('ffprobe', {
+      projectKey: this.getProjectKeyOrThrow(),
       path: file,
     })) as FFProbeInfo;
 
@@ -244,12 +255,19 @@ export class SessionService {
     // GET /app/v0/getYamlFile?file_path=...
     const url = `/app/v0/getYamlFile`;
     return await firstValueFrom(
-      this.httpClient.get(url, { params: { file_path: filePath } }).pipe(
-        catchError((error) => {
-          if (error.status === 404) {
-            return [null];
-          }
-          throw error;
+      this.httpClient
+        .get(url, {
+          params: {
+            file_path: filePath,
+            projectKey: this.getProjectKeyOrThrow(),
+          },
+        })
+        .pipe(
+          catchError((error) => {
+            if (error.status === 404) {
+              return [null];
+            }
+            throw error;
         }),
       ),
     );
@@ -342,7 +360,10 @@ export class SessionService {
       };
     });
     const request: SaveMvFrame = { views };
-    return this.rpc.call('save_mvframe', request);
+    return this.rpc.call('save_mvframe', {
+      projectKey: this.getProjectKeyOrThrow(),
+      ...request,
+    });
   }
 
   async mvAutoLabel(
@@ -374,10 +395,10 @@ export class SessionService {
       keypoints,
     };
 
-    return this.rpc.call(
-      'getMVAutoLabels',
-      request,
-    ) as Promise<GetMVAutoLabelsResponse>;
+    return this.rpc.call('getMVAutoLabels', {
+      projectKey: this.getProjectKeyOrThrow(),
+      ...request,
+    }) as Promise<GetMVAutoLabelsResponse>;
   }
 
   async hasCameraCalibrationFiles(sessionKey: string): Promise<boolean> {
@@ -385,6 +406,7 @@ export class SessionService {
 
     // Search for session-level calibration file.
     let response = (await this.rpc.call('rglob', {
+      projectKey: this.getProjectKeyOrThrow(),
       baseDir: projectInfo.data_dir,
       pattern: `calibrations/${sessionKey}.toml`,
       noDirs: true,
@@ -395,6 +417,7 @@ export class SessionService {
 
     // Search for project-level calibration file.
     response = (await this.rpc.call('rglob', {
+      projectKey: this.getProjectKeyOrThrow(),
       baseDir: projectInfo.data_dir,
       pattern: `calibration.toml`,
       noDirs: true,
@@ -410,11 +433,17 @@ export class SessionService {
     modelName: string,
     configYaml: string,
   ): Promise<void> {
-    await this.rpc.call('createTrainTask', { modelName, configYaml });
+    await this.rpc.call('createTrainTask', {
+      projectKey: this.getProjectKeyOrThrow(),
+      modelName,
+      configYaml,
+    });
   }
 
   async listModels(): Promise<ModelListResponse> {
-    const resp = (await this.rpc.call('listModels')) as ModelListResponse;
+    const resp = (await this.rpc.call('listModels', {
+      projectKey: this.getProjectKeyOrThrow(),
+    })) as ModelListResponse;
     return resp;
   }
 }

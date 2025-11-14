@@ -40,7 +40,10 @@ export const routes: Routes = [
   },
   {
     path: 'project/:projectKey',
-    resolve: { projectContext: projectContextResolver },
+    resolve: {
+      globalContext: globalContextResolver,
+      projectContext: projectContextResolver,
+    },
     children: [
       {
         path: 'viewer',

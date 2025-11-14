@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Query, status, Depends
 from omegaconf import OmegaConf
 
 from litpose_app import deps
-from litpose_app.routes.project import ProjectInfo
+from litpose_app.deps import ProjectInfoGetter
 
 router = APIRouter()
 
@@ -12,7 +12,8 @@ router = APIRouter()
 @router.get("/app/v0/getYamlFile")
 def get_yaml_file(
     file_path: Path = Query(..., alias="file_path"),
-    project_info: ProjectInfo = Depends(deps.project_info),
+    projectKey: str = Query(..., alias="projectKey"),
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> dict:
     """Reads a YAML file using OmegaConf and returns it as a plain dict.
 
@@ -27,7 +28,8 @@ def get_yaml_file(
         400 if the file cannot be parsed as YAML.
     """
     # Normalize to absolute path within the container
-    path = project_info.data_dir / file_path
+    project = project_info_getter(projectKey)
+    path = project.paths.data_dir / file_path
     if not path.is_file():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

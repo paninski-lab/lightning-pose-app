@@ -11,7 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from litpose_app import deps
-from litpose_app.routes.project import ProjectInfo
+from litpose_app.deps import ProjectInfoGetter
+from lightning_pose.data.datatypes import Project
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ class TrainStatus(BaseModel):
 
 
 class CreateTrainTaskRequest(BaseModel):
+    projectKey: str
     modelName: str = Field(..., min_length=1)
     # YAML as string, but we store it verbatim; client may send object -> we will stringify if needed
     configYaml: str
@@ -61,19 +63,20 @@ class ListModelsResponse(BaseModel):
 @router.post("/app/v0/rpc/createTrainTask")
 def create_train_task(
     request: CreateTrainTaskRequest,
-    project_info: ProjectInfo = Depends(deps.project_info),
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> CreateTrainTaskResponse:
-    if project_info is None or project_info.model_dir is None:
+    project: Project = project_info_getter(request.projectKey)
+    if project.paths.model_dir is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Project model_dir is not configured.",
         )
 
-    model_dir = Path(project_info.model_dir / request.modelName).resolve()
+    model_dir = Path(project.paths.model_dir / request.modelName).resolve()
 
     # Ensure model name maps within model_dir
     try:
-        model_dir.relative_to(project_info.model_dir)
+        model_dir.relative_to(project.paths.model_dir)
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -103,15 +106,21 @@ def create_train_task(
     return CreateTrainTaskResponse(ok=True)
 
 
+class ListModelsRequest(BaseModel):
+    projectKey: str
+
+
 @router.post("/app/v0/rpc/listModels")
 def list_models(
-    project_info: ProjectInfo = Depends(deps.project_info),
+    request: ListModelsRequest,
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> ListModelsResponse:
     models: list[ModelListResponseEntry] = []
-    if project_info is None or project_info.model_dir is None:
+    project: Project = project_info_getter(request.projectKey)
+    if project.paths.model_dir is None:
         return ListModelsResponse(models=models)
 
-    base = Path(project_info.model_dir)
+    base = Path(project.paths.model_dir)
     if not base.exists():
         return ListModelsResponse(models=models)
 

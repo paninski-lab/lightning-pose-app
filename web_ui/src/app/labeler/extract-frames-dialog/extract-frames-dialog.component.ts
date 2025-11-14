@@ -192,6 +192,7 @@ export class ExtractFramesDialogComponent implements OnInit {
           }
         : null;
     return {
+      projectKey: this.projectInfoService['projectContext']()?.key as string,
       labelFileCreationRequest,
       session: {
         views: this.session()!.views,
