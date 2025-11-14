@@ -101,7 +101,7 @@ def project_info_getter(
             with open(project_yaml_path, "r") as f:
                 yaml_data = yaml.safe_load(f)
         except FileNotFoundError:
-            yaml_data = {}
+            raise ApplicationError(f"Could not find a project.yaml")
         except yaml.YAMLError as e:
             raise ApplicationError(
                 f"Could not decode project.yaml. Invalid syntax: {e}"
