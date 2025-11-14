@@ -48,7 +48,7 @@ def test_get_project_info(client: TestClient, override_config, tmp_path):
     }
 
 
-def test_set_project_info_adds_existing_project(
+def test_add_existing_project_adds_to_projects_toml(
     client: TestClient, override_config, tmp_path
 ):
     # setup the projects TOML file contents: empty
@@ -60,14 +60,13 @@ def test_set_project_info_adds_existing_project(
     with open(Path(data_dir) / "project.yaml", "w") as f:
         yaml.safe_dump({"view_names": ["camA"]}, f)
 
-    # send a request to update paths, not the projectInfo
+    # send a request to add existing project paths to projects.toml
     payload = {
         "projectKey": "demo-project",
-        "projectInfo": {"data_dir": data_dir},
-        "delete": False,
+        "data_dir": data_dir,
     }
 
-    resp = client.post("/app/v0/rpc/setProjectInfo", json=payload)
+    resp = client.post("/app/v0/rpc/AddExistingProject", json=payload)
     assert resp.status_code == 200
     # Route returns None → encoded as JSON null
     assert resp.json() is None
@@ -87,7 +86,7 @@ def test_set_project_info_adds_existing_project(
     }
 
 
-def test_set_project_info_updates_existing_project(
+def test_update_project_config_patches_yaml(
     client: TestClient, override_config, tmp_path
 ):
     # setup the projects TOML file contents
@@ -102,13 +101,11 @@ def test_set_project_info_updates_existing_project(
     payload = {
         "projectKey": "demo-project",
         "projectInfo": {
-            "views": ["camA", "camB"],
             "keypoint_names": ["nose", "ear_left"],
         },
-        "delete": False,
     }
 
-    resp = client.post("/app/v0/rpc/setProjectInfo", json=payload)
+    resp = client.post("/app/v0/rpc/UpdateProjectConfig", json=payload)
     assert resp.status_code == 200
     # Route returns None → encoded as JSON null
     assert resp.json() is None
@@ -119,6 +116,38 @@ def test_set_project_info_updates_existing_project(
         data = yaml.safe_load(f)
 
     assert data == {
-        "view_names": ["camA", "camB"],
+        "view_names": ["camA"],
         "keypoint_names": ["nose", "ear_left"],
     }
+
+
+def test_create_new_project(client: TestClient, override_config, tmp_path):
+    # start with empty projects.toml
+    (override_config.LP_SYSTEM_DIR / "projects.toml").touch()
+
+    data_dir = tmp_path / "new_project"
+
+    payload = {
+        "projectKey": "new-project",
+        "data_dir": str(data_dir),
+    }
+
+    resp = client.post("/app/v0/rpc/CreateNewProject", json=payload)
+    assert resp.status_code == 200
+    assert resp.json() is None
+
+    # Verify directories created
+    assert data_dir.is_dir()
+    assert (data_dir / "models").is_dir()
+
+    # Verify project.yaml created with schema_version 1
+    with open(data_dir / "project.yaml", "r") as f:
+        y = yaml.safe_load(f)
+    assert y == {"schema_version": 1}
+
+    # Verify projects.toml updated
+    import toml
+
+    with open(override_config.LP_SYSTEM_DIR / "projects.toml", "r") as f:
+        data = toml.load(f)
+    assert data == {"new-project": {"data_dir": str(data_dir)}}

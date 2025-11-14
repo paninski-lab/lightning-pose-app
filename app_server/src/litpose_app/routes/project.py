@@ -48,9 +48,23 @@ class GetProjectInfoResponse(BaseModel):
     projectInfo: ProjectInfo | None  # None if project info not yet initialized
 
 
-class SetProjectInfoRequest(BaseModel):
+class AddExistingProjectRequest(BaseModel):
     projectKey: str
+    data_dir: Path
+    model_dir: Path | None = None
+
+
+class UpdateProjectConfigRequest(BaseModel):
+    projectKey: str
+
+    # Exclude data_dir and model_dir from the request, they are not relevant.
     projectInfo: ProjectInfo
+
+
+class CreateNewProjectRequest(BaseModel):
+    projectKey: str
+    data_dir: Path
+    model_dir: Path | None = None
 
 
 # list project
@@ -92,38 +106,33 @@ def _create_project_dir_if_needed(project: Project, project_util: ProjectUtil):
             yaml.dump({"schema_version": 1}, f)
 
 
-@router.post("/app/v0/rpc/setProjectInfo")
-def set_project_info(
-    request: SetProjectInfoRequest,
+@router.post("/app/v0/rpc/AddExistingProject")
+def add_existing_project(
+    request: AddExistingProjectRequest,
     project_util: ProjectUtil = Depends(deps.project_util),
-    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
-    config: Config = Depends(deps.config),
 ) -> None:
     """
-    Creates or updates projects.toml entry if needed.
-    Updates project.yaml by merging request data with existing data.
+    Adds an existing project's paths to projects.toml.
+    Does not modify project.yaml.
     """
-    try:
-        existing_project = project_info_getter(request.projectKey)
-    except ProjectNotInProjectsToml:
-        data_dir, model_dir = (
-            request.projectInfo.data_dir,
-            request.projectInfo.model_dir,
-        )
-        pp_dict = {"data_dir": data_dir}
-        # Don't populate model_dir if not provided
-        if model_dir is not None:
-            pp_dict["model_dir"] = model_dir
-        pp = ProjectPaths.model_validate(pp_dict)
-        project_util.update_project_paths(
-            project_key=request.projectKey, projectpaths=pp
-        )
+    pp_dict = {"data_dir": request.data_dir}
+    if request.model_dir is not None:
+        pp_dict["model_dir"] = request.model_dir
+    pp = ProjectPaths.model_validate(pp_dict)
+    project_util.update_project_paths(project_key=request.projectKey, projectpaths=pp)
+    return None
 
-        # Try again
-        existing_project = project_info_getter(request.projectKey)
 
-    # Create project dir if needed
-    _create_project_dir_if_needed(existing_project, project_util)
+@router.post("/app/v0/rpc/UpdateProjectConfig")
+def update_project_config(
+    request: UpdateProjectConfigRequest,
+    project_util: ProjectUtil = Depends(deps.project_util),
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+) -> None:
+    """
+    Updates the project's project.yaml in the model directory (data_dir) using patch semantics.
+    """
+    existing_project = project_info_getter(request.projectKey)
 
     # Merge request settings with saved project settings
     project_yaml_dict = request.projectInfo.model_dump(
@@ -146,5 +155,40 @@ def set_project_info(
             },
             f,
         )
+
+    return None
+
+
+@router.post("/app/v0/rpc/CreateNewProject")
+def create_new_project(
+    request: CreateNewProjectRequest,
+    project_util: ProjectUtil = Depends(deps.project_util),
+) -> None:
+    """
+    Creates a new project directory structure and initializes project.yaml with schema_version 1.
+    Adds the project paths to projects.toml.
+    """
+    # Update projects.toml first
+    pp_dict = {"data_dir": request.data_dir}
+    if request.model_dir is not None:
+        pp_dict["model_dir"] = request.model_dir
+    pp = ProjectPaths.model_validate(pp_dict)
+
+    try:
+        # Create directories and minimal yaml
+        data_dir = pp.data_dir
+        model_dir = pp.model_dir
+        data_dir.mkdir(parents=True)
+        model_dir.mkdir(parents=True)
+
+        project_yaml_path = project_util.get_project_yaml_path(data_dir)
+
+        with open(project_yaml_path, "x") as f:
+            yaml.dump({"schema_version": 1}, f)
+    except FileExistsError as e:
+        raise ApplicationError(
+            f"File in project {request.projectKey} already exists: {e.filename}"
+        )
+    project_util.update_project_paths(project_key=request.projectKey, projectpaths=pp)
 
     return None
