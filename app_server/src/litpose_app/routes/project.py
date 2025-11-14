@@ -3,11 +3,19 @@ from pathlib import Path
 
 import tomli
 import tomli_w
+import yaml
 from fastapi import APIRouter, Depends, BackgroundTasks
-from pydantic import BaseModel
+from lightning_pose.data.datatypes import ProjectPaths, Project
+from lightning_pose.utils.project import ProjectUtil
+from pydantic import BaseModel, ValidationError
 
 from litpose_app import deps
 from litpose_app.config import Config
+from litpose_app.deps import (
+    ProjectInfoGetter,
+    ProjectNotInProjectsToml,
+    ApplicationError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -23,73 +31,113 @@ class ProjectInfo(BaseModel):
     keypoint_names: list[str] | None = None
 
 
+class ListProjectItem(BaseModel):
+    data_dir: Path
+    model_dir: Path
+
+
+class ListProjectInfoResponse(BaseModel):
+    projects: list[ListProjectItem]
+
+
+class GetProjectInfoRequest(BaseModel):
+    projectKey: str
+
+
 class GetProjectInfoResponse(BaseModel):
     projectInfo: ProjectInfo | None  # None if project info not yet initialized
 
 
 class SetProjectInfoRequest(BaseModel):
+    projectKey: str
     projectInfo: ProjectInfo
+
+
+# list project
+# update project
 
 
 @router.post("/app/v0/rpc/getProjectInfo")
 def get_project_info(
-    project_info: ProjectInfo = Depends(deps.project_info),
+    request: GetProjectInfoRequest,
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> GetProjectInfoResponse:
+    project = project_info_getter(request.projectKey)
+
+    try:
+
+        # Merge data from ProjectConfig and ProjectPath
+        merged = {
+            **project.config.model_dump(),
+            **project.paths.model_dump(),
+            "views": project.config.model_dump()[
+                "view_names"
+            ],  # Rename view_names to views
+        }
+        del merged["view_names"]
+
+        project_info = ProjectInfo.model_validate(merged)
+
+    except ValidationError as e:
+        raise ApplicationError(f"project.yaml was invalid. {e}")
+
     return GetProjectInfoResponse(projectInfo=project_info)
+
+
+def _create_project_dir_if_needed(project: Project, project_util: ProjectUtil):
+    project.paths.data_dir.mkdir(parents=True, exist_ok=True)
+    project.paths.model_dir.mkdir(exist_ok=True)
+    if not project_util.get_project_yaml_path(project.paths.data_dir).is_file():
+        project_util.get_project_yaml_path(project.paths.data_dir).touch()
 
 
 @router.post("/app/v0/rpc/setProjectInfo")
 def set_project_info(
     request: SetProjectInfoRequest,
-    background_tasks: BackgroundTasks,
+    project_util: ProjectUtil = Depends(deps.project_util),
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
     config: Config = Depends(deps.config),
 ) -> None:
+    """
+    Creates or updates projects.toml entry if needed.
+    Updates project.yaml by merging request data with existing data.
+    """
     try:
-        config.PROJECT_INFO_TOML_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-        project_data_dict = request.projectInfo.model_dump(
-            mode="json", exclude_none=True
+        existing_project = project_info_getter(request.projectKey)
+    except ProjectNotInProjectsToml:
+        data_dir, model_dir = (
+            request.projectInfo.data_dir,
+            request.projectInfo.model_dir,
         )
-        try:
-            with open(config.PROJECT_INFO_TOML_PATH, "rb") as f:
-                existing_project_data = tomli.load(f)
-        except FileNotFoundError:
-            existing_project_data = {}
-
-        # Determine if data_dir changed
-        old_data_dir = existing_project_data.get("data_dir")
-        new_data_dir = project_data_dict.get("data_dir")
-
-        # Merge and persist
-        existing_project_data.update(project_data_dict)
-        with open(config.PROJECT_INFO_TOML_PATH, "wb") as f:
-            tomli_w.dump(existing_project_data, f)
-
-        # If data_dir changed (including being set for the first time), enqueue in background
-        try:
-            from litpose_app.utils.enqueue import enqueue_all_new_fine_videos_task
-
-            if new_data_dir is not None and new_data_dir != old_data_dir:
-                if background_tasks is not None:
-                    background_tasks.add_task(enqueue_all_new_fine_videos_task)
-                else:
-                    # Fallback: schedule fire-and-forget if BackgroundTasks not provided
-                    import asyncio
-
-                    asyncio.create_task(enqueue_all_new_fine_videos_task())
-        except Exception:
-            # Log and continue; saving project info should not fail due to enqueue trigger
-            logger.exception("Failed to schedule enqueue task after data_dir change.")
-
-        return None
-
-    except IOError as e:
-        error_message = f"Failed to write project information to file: {str(e)}"
-        print(error_message)
-        raise e
-    except Exception as e:
-        error_message = (
-            f"An unexpected error occurred while saving project info: {str(e)}"
+        pp = ProjectPaths.model_validate(data_dir=data_dir, model_dir=model_dir)
+        project_util.update_project_paths(
+            project_key=request.projectKey, projectpaths=pp
         )
-        print(error_message)
-        raise e
+
+        # Try again
+        existing_project = project_info_getter(request.projectKey)
+
+    # Create project dir if needed
+    _create_project_dir_if_needed(existing_project, project_util)
+
+    # Merge request settings with saved project settings
+    project_yaml_dict = request.projectInfo.model_dump(
+        mode="json", exclude_none=True, exclude={"data_dir", "model_dir"}
+    )
+    # Rename views to view_names
+    project_yaml_dict["view_names"] = project_yaml_dict["views"]
+    del project_yaml_dict["views"]
+
+    # Save merged config
+    with open(
+        project_util.get_project_yaml_path(existing_project.paths.data_dir), "w"
+    ) as f:
+        yaml.dump(
+            {
+                **existing_project.config.model_dump(),
+                **project_yaml_dict,
+            },
+            f,
+        )
+
+    return None

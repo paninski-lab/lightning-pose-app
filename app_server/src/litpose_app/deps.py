@@ -9,12 +9,17 @@ from __future__ import annotations
 import logging
 import math
 import os
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
+import yaml
 from apscheduler.executors.debug import DebugExecutor
 from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import Depends
+from lightning_pose import LP_ROOT_PATH
+from lightning_pose.data.datatypes import ProjectConfig, Project
+from lightning_pose.rootconfig import RootConfig
+from lightning_pose.utils.project import ProjectUtil
 
 from litpose_app.config import Config
 
@@ -52,26 +57,62 @@ def scheduler() -> AsyncIOScheduler:
 if TYPE_CHECKING:
     from .routes.project import ProjectInfo
 
+ProjectInfoGetter = Callable[[str], Project]
 
-def project_info(config: Config = Depends(config)) -> ProjectInfo:
-    import tomli
-    from .routes.project import ProjectInfo
 
-    from pydantic import ValidationError
+def root_config() -> RootConfig:
+    return RootConfig()
 
-    try:
-        # Open the file in binary read mode, as recommended by tomli
-        with open(config.PROJECT_INFO_TOML_PATH, "rb") as f:
-            # Load the TOML data into a Python dictionary
-            toml_data = tomli.load(f)
 
-        # Unpack the dictionary into the Pydantic model
-        return ProjectInfo.model_validate(toml_data)
-    except FileNotFoundError:
-        raise RuntimeError("project not yet setup, but project_info dep requested")
-    except tomli.TOMLDecodeError as e:
-        logger.error(f"Could not decode pyproject.toml. Invalid syntax: {e}")
-        raise
-    except ValidationError as e:
-        logger.error(f"pyproject.toml is invalid. {e}")
-        raise
+def project_util(root_config: RootConfig = Depends(root_config)) -> ProjectUtil:
+    return ProjectUtil(root_config)
+
+
+class ApplicationError(Exception):
+    user_facing_message: str
+
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.user_facing_message = message
+
+
+class ProjectNotInProjectsToml(ApplicationError):
+    def __init__(self, project_key: str):
+        super().__init__(f"Project {project_key} not found in projects.toml file")
+
+
+def project_info_getter(
+    project_util: ProjectUtil = Depends(project_util),
+) -> Callable[[str], Project]:
+    def get_project_info(project_key: str) -> Project:
+        from lightning_pose.data.datatypes import Project
+
+        project_paths = project_util.get_all_project_paths()
+        try:
+            project_path = project_paths[project_key]
+        except KeyError:
+            raise ProjectNotInProjectsToml(project_key)
+
+        try:
+            project_yaml_path = project_util.get_project_yaml_path(
+                project_path.data_dir
+            )
+            # Load YAML data into a Python dictionary
+            with open(project_yaml_path, "r") as f:
+                yaml_data = yaml.safe_load(f)
+        except FileNotFoundError:
+            yaml_data = {}
+        except yaml.YAMLError as e:
+            raise ApplicationError(
+                f"Could not decode project.yaml. Invalid syntax: {e}"
+            )
+
+        return Project.model_validate(
+            {
+                "project_key": project_key,
+                "paths": project_path,
+                "config": ProjectConfig.model_validate(yaml_data),
+            }
+        )
+
+    return get_project_info
