@@ -88,7 +88,8 @@ def _create_project_dir_if_needed(project: Project, project_util: ProjectUtil):
     project.paths.data_dir.mkdir(parents=True, exist_ok=True)
     project.paths.model_dir.mkdir(exist_ok=True)
     if not project_util.get_project_yaml_path(project.paths.data_dir).is_file():
-        project_util.get_project_yaml_path(project.paths.data_dir).touch()
+        with open(project_util.get_project_yaml_path(project.paths.data_dir), "w") as f:
+            yaml.dump({"schema_version": 1}, f)
 
 
 @router.post("/app/v0/rpc/setProjectInfo")
@@ -109,7 +110,11 @@ def set_project_info(
             request.projectInfo.data_dir,
             request.projectInfo.model_dir,
         )
-        pp = ProjectPaths.model_validate(data_dir=data_dir, model_dir=model_dir)
+        pp_dict = {"data_dir": data_dir}
+        # Don't populate model_dir if not provided
+        if model_dir is not None:
+            pp_dict["model_dir"] = model_dir
+        pp = ProjectPaths.model_validate(pp_dict)
         project_util.update_project_paths(
             project_key=request.projectKey, projectpaths=pp
         )
@@ -125,8 +130,9 @@ def set_project_info(
         mode="json", exclude_none=True, exclude={"data_dir", "model_dir"}
     )
     # Rename views to view_names
-    project_yaml_dict["view_names"] = project_yaml_dict["views"]
-    del project_yaml_dict["views"]
+    if "views" in project_yaml_dict:
+        project_yaml_dict["view_names"] = project_yaml_dict["views"]
+        del project_yaml_dict["views"]
 
     # Save merged config
     with open(
@@ -134,7 +140,8 @@ def set_project_info(
     ) as f:
         yaml.dump(
             {
-                **existing_project.config.model_dump(),
+                # Dump without generating default values
+                **existing_project.config.model_dump(exclude_unset=True),
                 **project_yaml_dict,
             },
             f,
