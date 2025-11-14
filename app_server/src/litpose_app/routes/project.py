@@ -67,10 +67,6 @@ class CreateNewProjectRequest(BaseModel):
     model_dir: Path | None = None
 
 
-# list project
-# update project
-
-
 @router.post("/app/v0/rpc/getProjectInfo")
 def get_project_info(
     request: GetProjectInfoRequest,

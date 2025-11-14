@@ -20,11 +20,6 @@ router = APIRouter()
 from litpose_app.config import Config
 
 
-@router.post("/app/v0/rpc/getFineVideoDir")
-def get_fine_video_dir(config: Config = Depends(deps.config)):
-    return {"path": config.FINE_VIDEO_DIR}
-
-
 class LabelFileCreationRequest(BaseModel):
     """
     Request to create label file

@@ -16,13 +16,16 @@ from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
 
 from . import deps
-#from .routes.labeler.multiview_autolabel import warm_up_anipose
+
+# from .routes.labeler.multiview_autolabel import warm_up_anipose
 warm_up_anipose = lambda: None
 from .tasks.management import setup_active_task_registry
-#from .train_scheduler import _train_scheduler_process_target
-_train_scheduler_process_target = lambda: None
-from .utils.config_watcher import setup_config_watcher
-from .utils.enqueue import enqueue_all_new_fine_videos_task
+
+
+# from .train_scheduler import _train_scheduler_process_target
+def _train_scheduler_process_target(): ...
+
+
 from .utils.file_response import file_response
 
 ## Setup logging
@@ -43,12 +46,6 @@ async def lifespan(app: FastAPI):
     app.state.scheduler = scheduler
     scheduler.start()
     setup_active_task_registry(app)
-
-    # Kick off background task to enqueue any fine transcodes on startup
-    asyncio.create_task(enqueue_all_new_fine_videos_task())
-
-    # Setup watchdog for config file changes
-    app.state.config_file_observer = setup_config_watcher()
 
     # Warm up anipose in the background (first run is ~1-2s slow).
     asyncio.create_task(anyio.to_thread.run_sync(warm_up_anipose))
@@ -97,6 +94,7 @@ from .routes import (
 from .routes import (
     project,
 )
+
 """
 router.include_router(ffprobe.router)
 router.include_router(rglob.router)

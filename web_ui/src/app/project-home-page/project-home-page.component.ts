@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 
 @Component({
-  selector: 'app-home-page',
+  selector: 'app-project-home-page',
   imports: [],
-  templateUrl: './home-page.component.html',
-  styleUrl: './home-page.component.css',
+  templateUrl: './project-home-page.component.html',
+  styleUrl: './project-home-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class HomePageComponent {
+export class ProjectHomePageComponent {
   cards = [
     {
       href: '/',

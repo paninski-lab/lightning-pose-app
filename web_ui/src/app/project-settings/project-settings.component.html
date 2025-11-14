@@ -15,10 +15,10 @@
     </button>
   }
   <h3 class="text-xl font-bold mb-4 shrink-0">
-    @if (setupMode()) {
-      Setup
+    @if (!setupMode()) {
+      Project settings
     } @else {
-      Settings
+      Create project
     }
   </h3>
 
@@ -59,44 +59,15 @@
         <form [formGroup]="projectInfoForm" class="prose px-4">
           <fieldset class="fieldset my-6">
             <p class="m-0!">
-              Configure the directories that the app uses for this project.
+              Where lightning pose should find the project's directories on this
+              machine.
             </p>
-            <h3 class="text-md">Data directory</h3>
-            <p class="m-0!">Set the data directory for this project.</p>
+            <h3 class="text-md">Project directory</h3>
             <p class="m-0!">
-              For new projects, create a directory at a location of your choice
-              and place your videos in the <code>videos</code> subdirectory.
+              The main project directory containing a metadata file called
+              <code>project.yaml</code>.
             </p>
-            <div class="collapse collapse-plus">
-              <input type="checkbox" />
-              <div class="collapse-title font-semibold flex items-center gap-1">
-                <span class="material-icons text-sm!">help_outline</span>
-                More info
-              </div>
-              <div class="collapse-content">
-                It is not strictly necessary for videos to be in a subdirectory
-                called <code>videos</code>, but this is a sensible default for
-                most setups.
-                <ul class="mt-0!">
-                  <li>
-                    In the Viewer module, this is the root search directory for
-                    video files, including its subdirectories.
-                  </li>
-                  <li>
-                    In the Labeler module, this is the root search directory for
-                    label CSV files, including its subdirectories. Paths
-                    referenced from label files are relative to this directory.
-                    The labeler always extracts frames to the
-                    <code>labeled_data</code> subdirectory.
-                  </li>
-                  <li>
-                    In the Models module, this is the root search directory for
-                    label files and extracted frames for supervised training,
-                    and videos for semi-supervised training.
-                  </li>
-                </ul>
-              </div>
-            </div>
+
             <div class="input w-full">
               <span class="material-icons !text-sm opacity-50">folder</span>
               <input
@@ -111,29 +82,15 @@
 
           <fieldset class="my-4 fieldset">
             <h3 class="text-md">Model directory</h3>
-            <p class="m-0!">Set the model directory for the project.</p>
-            <p class="m-0!">
-              For new projects, our recommendation is to create a
-              <code>models</code> subdirectory of your data directory.
-            </p>
-            <div class="collapse collapse-plus">
-              <input type="checkbox" />
-              <div class="collapse-title font-semibold flex items-center gap-1">
-                <span class="material-icons text-sm!">help_outline</span>
-                More info
-              </div>
-              <div class="collapse-content">
-                <ul class="mt-0!">
-                  <li>
-                    In the Models module, this is the search directory for model
-                    directories. New models are placed in this directory.
-                  </li>
-                  <li>
-                    In the Viewer module, this is the root search directory for
-                    model predictions including subdirectories.
-                  </li>
-                </ul>
-              </div>
+            <p class="m-0!">The directory containing the project's models.</p>
+
+            <div class="flex gap-2">
+              <input type="checkbox" class="checkbox" />
+              <span class="m-0!">
+                Use the default model directory:<br />
+                <div class="inline-block w-4"></div>
+                <code>&lt;project directory&gt;&nbsp;/&nbsp;models&nbsp;/</code>
+              </span>
             </div>
 
             <div class="input w-full">
