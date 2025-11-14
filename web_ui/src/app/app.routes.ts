@@ -4,6 +4,7 @@ import { LabelerPageComponent } from './labeler/labeler-page.component';
 import { SandboxComponent } from './sandbox/sandbox.component';
 import { HomePageComponent } from './home-page/home-page.component';
 import { ModelsPageComponent } from './models-page/models-page.component';
+import { ProjectHomePageComponent } from './project-home-page/project-home-page.component';
 import {
   GlobalContext,
   ProjectContext,
@@ -45,6 +46,11 @@ export const routes: Routes = [
       projectContext: projectContextResolver,
     },
     children: [
+      {
+        path: '',
+        component: ProjectHomePageComponent,
+        title: 'Project Home',
+      },
       {
         path: 'viewer',
         component: ViewerPageComponent,

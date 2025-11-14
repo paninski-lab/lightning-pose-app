@@ -12,21 +12,19 @@
   <nav class="navbar bg-base-200 shadow-lg">
     <div class="navbar-start">
       <a href="/"><span class="text-lg font-semibold">Lightning Pose</span></a>
+      @if (projectName()) {
+        <span class="ml-3 text-base-content/70" aria-label="Current project"
+          >— {{ projectName() }}</span
+        >
+      }
     </div>
 
     <div class="navbar-center">
       <ul class="menu menu-horizontal p-0">
-        @for (
-          entry of [
-            { path: "/project/fly-anipose/labeler", text: "Labeler" },
-            { path: "/project/fly-anipose/models", text: "Models" },
-            { path: "/project/fly-anipose/viewer", text: "Viewer" },
-          ];
-          track entry.path
-        ) {
+        @for (entry of navLinks(); track entry.text) {
           <li>
             <a
-              [routerLink]="entry.path"
+              [routerLink]="entry.link"
               routerLinkActive="menu-active"
               ariaCurrentWhenActive="page"
               >{{ entry.text }}</a

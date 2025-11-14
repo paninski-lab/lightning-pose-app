@@ -32,6 +32,7 @@ class ProjectInfo(BaseModel):
 
 
 class ListProjectItem(BaseModel):
+    project_key: str
     data_dir: Path
     model_dir: Path | None = None
 
@@ -82,7 +83,11 @@ def list_projects(
         for _key, paths in all_paths.items():
             # paths is a ProjectPaths instance
             projects.append(
-                ListProjectItem(data_dir=paths.data_dir, model_dir=paths.model_dir)
+                ListProjectItem(
+                    project_key=_key,
+                    data_dir=paths.data_dir,
+                    model_dir=paths.model_dir,
+                )
             )
     except Exception as e:
         logger.exception("Failed to list projects: %s", e)

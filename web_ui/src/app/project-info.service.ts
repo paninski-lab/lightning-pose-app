@@ -106,6 +106,7 @@ export class ProjectInfoService {
       const resp = (await this.rpc.call('listProjects')) as ListProjectInfoResponse;
       // Normalize paths to strings
       const items: ListProjectItem[] = resp.projects.map((p) => ({
+        project_key: p.project_key,
         data_dir: String(p.data_dir),
         model_dir: p.model_dir == null ? null : String(p.model_dir),
       }));
@@ -169,6 +170,7 @@ export interface ProjectContext {
 }
 
 export interface ListProjectItem {
+  project_key: string;
   data_dir: string;
   model_dir: string | null;
 }
