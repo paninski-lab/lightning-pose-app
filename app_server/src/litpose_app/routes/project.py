@@ -33,7 +33,7 @@ class ProjectInfo(BaseModel):
 
 class ListProjectItem(BaseModel):
     data_dir: Path
-    model_dir: Path
+    model_dir: Path | None = None
 
 
 class ListProjectInfoResponse(BaseModel):
@@ -65,6 +65,31 @@ class CreateNewProjectRequest(BaseModel):
     projectKey: str
     data_dir: Path
     model_dir: Path | None = None
+
+
+@router.post("/app/v0/rpc/listProjects")
+def list_projects(
+    project_util: ProjectUtil = Depends(deps.project_util),
+) -> ListProjectInfoResponse:
+    """Lists all projects known to the server (from projects.toml).
+
+    Returns a list of project entries with their data and model directories.
+    No request payload is required.
+    """
+    projects: list[ListProjectItem] = []
+    try:
+        all_paths = project_util.get_all_project_paths()
+        for _key, paths in all_paths.items():
+            # paths is a ProjectPaths instance
+            projects.append(
+                ListProjectItem(data_dir=paths.data_dir, model_dir=paths.model_dir)
+            )
+    except Exception as e:
+        logger.exception("Failed to list projects: %s", e)
+        # Return empty list on failure; frontend can display an empty state
+        return ListProjectInfoResponse(projects=[])
+
+    return ListProjectInfoResponse(projects=projects)
 
 
 @router.post("/app/v0/rpc/getProjectInfo")

@@ -96,6 +96,26 @@ export class ProjectInfoService {
       });
   }
 
+  // ---------------------
+  // Projects listing API
+  // ---------------------
+  public projects = signal<ListProjectItem[] | undefined>(undefined);
+
+  async fetchProjects(): Promise<void> {
+    try {
+      const resp = (await this.rpc.call('listProjects')) as ListProjectInfoResponse;
+      // Normalize paths to strings
+      const items: ListProjectItem[] = resp.projects.map((p) => ({
+        data_dir: String(p.data_dir),
+        model_dir: p.model_dir == null ? null : String(p.model_dir),
+      }));
+      this.projects.set(items);
+    } catch (err) {
+      console.error('Failed to fetch projects list', err);
+      this.projects.set([]);
+    }
+  }
+
   // Legacy getter retained for settings component
   get projectInfo(): ProjectInfo {
     return this._projectInfo as ProjectInfo;
@@ -146,4 +166,13 @@ export interface GlobalContext {
 export interface ProjectContext {
   key: string;
   projectInfo: ProjectInfo | null;
+}
+
+export interface ListProjectItem {
+  data_dir: string;
+  model_dir: string | null;
+}
+
+export interface ListProjectInfoResponse {
+  projects: ListProjectItem[];
 }
