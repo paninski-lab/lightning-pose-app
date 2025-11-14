@@ -1,7 +1,14 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal, WritableSignal } from '@angular/core';
 import { ProjectInfo } from './project-info';
 import { RpcService } from './rpc.service';
-import { BehaviorSubject, distinctUntilChanged } from 'rxjs';
+import {
+  BehaviorSubject,
+  distinctUntilChanged,
+  first,
+  Observable,
+  Subject,
+  timer,
+} from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 
 @Injectable({
@@ -17,37 +24,92 @@ export class ProjectInfoService {
   // The directory that we are storing fine videos in.
   fineVideoDir = '';
 
-  async loadProjectInfo() {
-    return this.rpc
-      .call('getProjectInfo')
-      .then((response: unknown) => response as { projectInfo: ProjectInfo })
-      .then((response) => {
-        this._projectInfo = response.projectInfo
-          ? new ProjectInfo(response.projectInfo)
-          : null; // ProjectInfo | null
+  // ---------------------
+  // Resolver handshake API
+  // ---------------------
+  public globalContext: WritableSignal<GlobalContext | undefined> =
+    signal(undefined);
+  public projectContext: WritableSignal<ProjectContext | undefined> =
+    signal(undefined);
 
-        this.setAllViews(this._projectInfo?.views ?? []);
+  private globalLoadedSubject = new Subject<GlobalContext>();
+  public globalLoaded$: Observable<GlobalContext> =
+    this.globalLoadedSubject.asObservable();
+
+  private projectLoadedSubject = new Subject<ProjectContext>();
+  public projectLoaded$: Observable<ProjectContext> =
+    this.projectLoadedSubject.asObservable();
+
+  fetchGlobalContext(): void {
+    if (this.globalContext()) {
+      this.globalLoadedSubject.next(this.globalContext() as GlobalContext);
+      return;
+    }
+    timer(500)
+      .pipe(first())
+      .subscribe(() => {
+        const data: GlobalContext = { hello: 'world' };
+        this.globalContext.set(data);
+        this.globalLoadedSubject.next(data);
       });
   }
 
+  fetchProjectContext(projectKey: string): void {
+    if (!projectKey) return;
+    const existing = this.projectContext();
+    if (existing && existing.key === projectKey) {
+      this.projectLoadedSubject.next(existing);
+      return;
+    }
+    this.rpc
+      .callObservable('getProjectInfo', { projectKey })
+      .pipe(first())
+      .subscribe({
+        next: (response: unknown) => {
+          // Expecting: { projectInfo: { data_dir, model_dir, views, keypoint_names } }
+          const body = response as {
+            projectInfo?: Partial<ProjectInfo> | null;
+          };
+          if (body && body.projectInfo) {
+            this._projectInfo = new ProjectInfo(
+              body.projectInfo as Partial<ProjectInfo>,
+            );
+          } else {
+            throw Error('Invalid project info response');
+          }
+
+          // Update helper catalogs/signals from the loaded project info
+          if (this._projectInfo?.views) {
+            this.setAllViews(this._projectInfo.views as string[]);
+          }
+
+          const ctx: ProjectContext = {
+            key: projectKey,
+            projectInfo: this._projectInfo ?? null,
+          };
+          this.projectContext.set(ctx);
+          this.projectLoadedSubject.next(ctx);
+        },
+        error: (err) => {
+          console.error('Failed to fetch project context', err);
+        },
+      });
+  }
+
+  // Legacy getter retained for settings component
   get projectInfo(): ProjectInfo {
     return this._projectInfo as ProjectInfo;
   }
 
   async setProjectInfo(projectInfo: Partial<ProjectInfo>) {
-    /** Saves changes to the project info.  */
     await this.rpc.call('setProjectInfo', { projectInfo });
-    await this.loadProjectInfo();
   }
 
-  // Newer style of models.
-
+  // Modern model catalogs
   _allViews = new BehaviorSubject<string[]>([]);
   allViews$ = this._allViews.asObservable().pipe(distinctUntilChanged());
   allViews = toSignal(this.allViews$, { requireSync: true });
   setAllViews(views: string[]) {
-    // hack: concat unknown to fix other logic that iterates over all views
-    // instead that logic should iterate over the current session's views.
     this._allViews.next(views.concat(['unknown']));
   }
 
@@ -66,4 +128,13 @@ export class ProjectInfoService {
   setAllModels(models: string[]) {
     this._allModels.next(models);
   }
+}
+
+export interface GlobalContext {
+  hello: string;
+}
+
+export interface ProjectContext {
+  key: string;
+  projectInfo: ProjectInfo | null;
 }

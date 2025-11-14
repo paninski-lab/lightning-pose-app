@@ -4,14 +4,13 @@ import {
   effect,
   ElementRef,
   inject,
-  OnInit,
   signal,
   viewChild,
 } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ProjectSettingsComponent } from './project-settings/project-settings.component';
-import { ProjectInfoService } from './project-info.service';
 import { FineVideoService } from './utils/fine-video.service';
+import { LoadingService } from './loading.service';
 
 @Component({
   selector: 'app-root',
@@ -25,23 +24,17 @@ import { FineVideoService } from './utils/fine-video.service';
   styleUrl: './app.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AppComponent implements OnInit {
-  projectInfoService = inject(ProjectInfoService);
+export class AppComponent {
   protected fineVideoService = inject(FineVideoService);
+  protected loadingService = inject(LoadingService);
 
   // Whether the required initial setup has been done.
   // (Setting data directory, model directory, views).
   protected projectInfoRequestCompleted = signal(false);
-  protected hasBeenSetup = signal(false);
+  protected hasBeenSetup = signal(true);
   protected settingsDialog = viewChild.required<ElementRef>('settingsDialog');
 
   settingsDialogOpen = signal(false);
-
-  async ngOnInit() {
-    await this.projectInfoService.loadProjectInfo();
-    this.hasBeenSetup.set(Boolean(this.projectInfoService.projectInfo));
-    this.projectInfoRequestCompleted.set(true);
-  }
 
   constructor() {
     effect(() => {

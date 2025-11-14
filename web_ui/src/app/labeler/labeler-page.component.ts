@@ -187,7 +187,6 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   }
 
   async ngOnInit() {
-    await this.projectInfoService.loadProjectInfo();
     await this.sessionService.loadLabelFiles();
 
     this.isIniting.set(false);

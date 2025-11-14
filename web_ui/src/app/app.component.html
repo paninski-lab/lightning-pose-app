@@ -18,9 +18,9 @@
       <ul class="menu menu-horizontal p-0">
         @for (
           entry of [
-            { path: "/labeler", text: "Labeler" },
-            { path: "/models", text: "Models" },
-            { path: "/viewer", text: "Viewer" },
+            { path: "/project/fly-anipose/labeler", text: "Labeler" },
+            { path: "/project/fly-anipose/models", text: "Models" },
+            { path: "/project/fly-anipose/viewer", text: "Viewer" },
           ];
           track entry.path
         ) {
@@ -62,17 +62,30 @@
   </nav>
 </header>
 
+<!-- Context loading spinner (resolver-driven) -->
+<div class="fixed top-4 right-4 z-50" aria-live="polite">
+  @if (loadingService.isContextLoading()) {
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  }
+  @if (fineVideoService.numPendingTranscodeTasks().pending > 0) {
+    <div
+      class="tooltip tooltip-left"
+      [attr.data-tip]="
+        'Transcoding videos: ' +
+        fineVideoService.numPendingTranscodeTasks().pending.toString() +
+        ' remaining'
+      "
+    >
+      <span class="loading loading-bars loading-xs"></span>
+    </div>
+  }
+</div>
+
 <!-- Set min-height: 0 to allow it to shrink if its content is too large.
   Default min-height for flex items is auto. -->
-<main class="flex-grow flex min-h-0" [class.justify-center]="!hasBeenSetup()">
-  @if (hasBeenSetup()) {
-    <router-outlet />
-  } @else {
-    <app-project-settings
-      [setupMode]="true"
-      class="w-lg mt-8"
-    ></app-project-settings>
-  }
+<main class="flex-grow flex min-h-0">
+  <router-outlet />
+
 </main>
 
 <!-- Settings dialog -->
