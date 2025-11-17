@@ -27,75 +27,76 @@ export class ProjectInfoService {
   // ---------------------
   // Resolver handshake API
   // ---------------------
-  public globalContext: WritableSignal<GlobalContext | undefined> =
-    signal(undefined);
-  public projectContext: WritableSignal<ProjectContext | undefined> =
-    signal(undefined);
 
-  private globalLoadedSubject = new Subject<GlobalContext>();
+  private globalLoadedSubject = new BehaviorSubject<GlobalContext>({
+    hello: 'world',
+  });
   public globalLoaded$: Observable<GlobalContext> =
     this.globalLoadedSubject.asObservable();
 
-  private projectLoadedSubject = new Subject<ProjectContext>();
-  public projectLoaded$: Observable<ProjectContext> =
+  private projectLoadedSubject = new BehaviorSubject<ProjectContext | null>(
+    null,
+  );
+  public projectLoaded$: Observable<ProjectContext | null> =
     this.projectLoadedSubject.asObservable();
 
-  fetchGlobalContext(): void {
-    if (this.globalContext()) {
-      this.globalLoadedSubject.next(this.globalContext() as GlobalContext);
-      return;
-    }
+  public globalContext = toSignal(this.globalLoadedSubject.asObservable(), {
+    requireSync: true,
+  });
+  public projectContext = toSignal(this.projectLoadedSubject.asObservable(), {
+    requireSync: true,
+  });
+
+  fetchContext(projectKey: string | null): void {
     timer(500)
       .pipe(first())
       .subscribe(() => {
         const data: GlobalContext = { hello: 'world' };
-        this.globalContext.set(data);
         this.globalLoadedSubject.next(data);
       });
-  }
+    if (!projectKey) {
+      // Emits on next tick so the caller of this fn has time to subscribe to
+      // observable after calling this fn.
+      timer(100)
+        .pipe(first())
+        .subscribe(() => {
+          this.projectLoadedSubject.next(null);
+        });
+    } else {
+      this.rpc
+        .callObservable('getProjectInfo', { projectKey })
+        .pipe(first())
+        .subscribe({
+          next: (response: unknown) => {
+            // Expecting: { projectInfo: { data_dir, model_dir, views, keypoint_names } }
+            const body = response as {
+              projectInfo?: Partial<ProjectInfo> | null;
+            };
+            if (body && body.projectInfo) {
+              this._projectInfo = new ProjectInfo(
+                body.projectInfo as Partial<ProjectInfo>,
+              );
+            } else {
+              throw Error('Invalid project info response');
+            }
 
-  fetchProjectContext(projectKey: string): void {
-    if (!projectKey) return;
-    const existing = this.projectContext();
-    if (existing && existing.key === projectKey) {
-      this.projectLoadedSubject.next(existing);
-      return;
+            // Update helper catalogs/signals from the loaded project info
+            if (this._projectInfo?.views) {
+              this.setAllViews(this._projectInfo.views as string[]);
+            }
+
+            const ctx: ProjectContext = {
+              key: projectKey,
+              projectInfo: this._projectInfo ?? null,
+            };
+            this.projectLoadedSubject.next(ctx);
+          },
+          error: (err) => {
+            console.error('Failed to fetch project context', err);
+          },
+        });
     }
-    this.rpc
-      .callObservable('getProjectInfo', { projectKey })
-      .pipe(first())
-      .subscribe({
-        next: (response: unknown) => {
-          // Expecting: { projectInfo: { data_dir, model_dir, views, keypoint_names } }
-          const body = response as {
-            projectInfo?: Partial<ProjectInfo> | null;
-          };
-          if (body && body.projectInfo) {
-            this._projectInfo = new ProjectInfo(
-              body.projectInfo as Partial<ProjectInfo>,
-            );
-          } else {
-            throw Error('Invalid project info response');
-          }
-
-          // Update helper catalogs/signals from the loaded project info
-          if (this._projectInfo?.views) {
-            this.setAllViews(this._projectInfo.views as string[]);
-          }
-
-          const ctx: ProjectContext = {
-            key: projectKey,
-            projectInfo: this._projectInfo ?? null,
-          };
-          this.projectContext.set(ctx);
-          this.projectLoadedSubject.next(ctx);
-        },
-        error: (err) => {
-          console.error('Failed to fetch project context', err);
-        },
-      });
   }
-
   // ---------------------
   // Projects listing API
   // ---------------------
@@ -103,7 +104,9 @@ export class ProjectInfoService {
 
   async fetchProjects(): Promise<void> {
     try {
-      const resp = (await this.rpc.call('listProjects')) as ListProjectInfoResponse;
+      const resp = (await this.rpc.call(
+        'listProjects',
+      )) as ListProjectInfoResponse;
       // Normalize paths to strings
       const items: ListProjectItem[] = resp.projects.map((p) => ({
         project_key: p.project_key,

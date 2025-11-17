@@ -12,24 +12,22 @@ import {
 } from './project-info.service';
 import { take } from 'rxjs/operators';
 import { inject } from '@angular/core';
+import { EMPTY, forkJoin } from 'rxjs';
 
-// Resolver functions kept close to their usage
-export const globalContextResolver: ResolveFn<GlobalContext> = () => {
-  const service = inject(ProjectInfoService);
-  service.fetchGlobalContext();
-  return service.globalLoaded$.pipe(take(1));
-};
-
-export const projectContextResolver: ResolveFn<ProjectContext> = (
-  route: ActivatedRouteSnapshot,
-) => {
+export const contextResolver: ResolveFn<{
+  projectContext: ProjectContext | null;
+  globalContext: GlobalContext;
+}> = (route: ActivatedRouteSnapshot) => {
   const service = inject(ProjectInfoService);
   const projectKey = route.paramMap.get('projectKey');
-  if (!projectKey) {
-    throw new Error('projectKey route param missing');
-  }
-  service.fetchProjectContext(projectKey);
-  return service.projectLoaded$.pipe(take(1));
+
+  service.fetchContext(projectKey);
+
+  // Use forkJoin to wait for both streams to complete
+  return forkJoin({
+    globalContext: service.globalLoaded$.pipe(take(1)),
+    projectContext: service.projectLoaded$.pipe(take(1)),
+  });
 };
 
 export const routes: Routes = [
@@ -37,13 +35,14 @@ export const routes: Routes = [
     path: '',
     component: HomePageComponent,
     title: 'Lightning Pose App',
-    resolve: { globalContext: globalContextResolver },
+    resolve: {
+      context: contextResolver,
+    },
   },
   {
     path: 'project/:projectKey',
     resolve: {
-      globalContext: globalContextResolver,
-      projectContext: projectContextResolver,
+      context: contextResolver,
     },
     children: [
       {
