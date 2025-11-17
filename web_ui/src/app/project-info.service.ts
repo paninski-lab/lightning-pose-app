@@ -3,8 +3,11 @@ import { ProjectInfo } from './project-info';
 import { RpcService } from './rpc.service';
 import {
   BehaviorSubject,
+  catchError,
   distinctUntilChanged,
   first,
+  forkJoin,
+  map,
   Observable,
   Subject,
   timer,
@@ -47,28 +50,31 @@ export class ProjectInfoService {
     requireSync: true,
   });
 
-  fetchContext(projectKey: string | null): void {
-    timer(500)
-      .pipe(first())
-      .subscribe(() => {
+  fetchContext(projectKey: string | null): Observable<{
+    globalContext: GlobalContext;
+    projectContext: ProjectContext | null;
+  }> {
+    const globalContext$ = timer(500).pipe(
+      first(),
+      map(() => {
         const data: GlobalContext = { hello: 'world' };
         this.globalLoadedSubject.next(data);
-      });
-    if (!projectKey) {
-      // Emits on next tick so the caller of this fn has time to subscribe to
-      // observable after calling this fn.
-      timer(100)
-        .pipe(first())
-        .subscribe(() => {
-          this.projectLoadedSubject.next(null);
-        });
-    } else {
-      this.rpc
-        .callObservable('getProjectInfo', { projectKey })
-        .pipe(first())
-        .subscribe({
-          next: (response: unknown) => {
-            // Expecting: { projectInfo: { data_dir, model_dir, views, keypoint_names } }
+        return data;
+      }),
+    );
+
+    const projectContext$ = !projectKey
+      ? timer(100).pipe(
+          first(),
+          map(() => {
+            const data = null;
+            this.projectLoadedSubject.next(data);
+            return data;
+          }),
+        )
+      : this.rpc.callObservable('getProjectInfo', { projectKey }).pipe(
+          first(),
+          map((response: unknown) => {
             const body = response as {
               projectInfo?: Partial<ProjectInfo> | null;
             };
@@ -80,7 +86,6 @@ export class ProjectInfoService {
               throw Error('Invalid project info response');
             }
 
-            // Update helper catalogs/signals from the loaded project info
             if (this._projectInfo?.views) {
               this.setAllViews(this._projectInfo.views as string[]);
             }
@@ -90,12 +95,18 @@ export class ProjectInfoService {
               projectInfo: this._projectInfo ?? null,
             };
             this.projectLoadedSubject.next(ctx);
-          },
-          error: (err) => {
+            return ctx;
+          }),
+          catchError((err) => {
             console.error('Failed to fetch project context', err);
-          },
-        });
-    }
+            throw err;
+          }),
+        );
+
+    return forkJoin({
+      globalContext: globalContext$,
+      projectContext: projectContext$,
+    });
   }
   // ---------------------
   // Projects listing API

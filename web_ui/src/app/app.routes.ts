@@ -12,7 +12,7 @@ import {
 } from './project-info.service';
 import { take } from 'rxjs/operators';
 import { inject } from '@angular/core';
-import { EMPTY, forkJoin } from 'rxjs';
+import { forkJoin } from 'rxjs';
 
 export const contextResolver: ResolveFn<{
   projectContext: ProjectContext | null;
@@ -21,13 +21,7 @@ export const contextResolver: ResolveFn<{
   const service = inject(ProjectInfoService);
   const projectKey = route.paramMap.get('projectKey');
 
-  service.fetchContext(projectKey);
-
-  // Use forkJoin to wait for both streams to complete
-  return forkJoin({
-    globalContext: service.globalLoaded$.pipe(take(1)),
-    projectContext: service.projectLoaded$.pipe(take(1)),
-  });
+  return service.fetchContext(projectKey);
 };
 
 export const routes: Routes = [
