@@ -13,12 +13,6 @@ export class FineVideoService {
   numPendingTranscodeTasks = signal({ pending: 0 });
 
   fineVideoPath(videoPath: string): string {
-    const filename = videoPath.split('/').pop()!;
-    return (
-      '/app/v0/files/' +
-      this.projectInfoService.projectInfo.data_dir +
-      '/videos/' +
-      filename
-    );
+    return '/app/v0/files/' + videoPath;
   }
 }

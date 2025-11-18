@@ -56,7 +56,7 @@ def find_label_files(
                 pattern="**/*.csv",
                 noDirs=True,
                 stat=False,
-            )
+            ), project_info_getter
         ).entries
     ]
     # For each path, read the first 3 rows of the CSV with pandas and check

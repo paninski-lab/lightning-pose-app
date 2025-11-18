@@ -176,13 +176,26 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     }
   }
 
+  protected get projectKey() {
+    const projectKey = this.projectInfoService.projectContext()?.key as
+      | string
+      | undefined;
+    if (!projectKey) {
+      throw new Error('Project key missing from project context');
+    }
+    return projectKey;
+  }
+
   protected handleSelectLabelFile(labelFileKey: string | null) {
+    const projectKey = this.projectKey;
     if (labelFileKey !== null) {
-      this.router.navigate(['/labeler'], {
+      this.router.navigate(['/project', projectKey, 'labeler'], {
         queryParams: { labelFileKey: labelFileKey },
       });
     } else {
-      this.router.navigate(['/labeler'], { queryParams: {} });
+      this.router.navigate(['/project', projectKey, 'labeler'], {
+        queryParams: {},
+      });
     }
   }
 
