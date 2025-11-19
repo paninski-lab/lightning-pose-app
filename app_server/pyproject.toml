@@ -26,6 +26,8 @@ dependencies = [
     "portalocker~=3.2.0",
     "psutil~=7.0.0",
     "PyYAML~=6.0.2",
+    "python-multipart",
+    "pydantic-settings",
 ]
 
 [project.optional-dependencies]

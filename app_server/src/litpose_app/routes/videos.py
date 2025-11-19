@@ -8,7 +8,7 @@ from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 from pathlib import Path
 from threading import Lock
-from typing import AsyncIterator, Dict, Optional
+from typing import Dict, Optional, Iterator
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
@@ -182,8 +182,13 @@ def _ffprobe_total_frames(path: Path) -> Optional[int]:
         return None
 
 
-async def _stream_sse(gen: AsyncIterator[dict]):
-    async for payload in gen:
+def _stream_sse_sync(gen: Iterator[dict]):
+    """Wrap a sync iterator of dict payloads into SSE text events.
+
+    Yields lines formatted as Server-Sent Events where each payload is JSON
+    serialized and emitted as a single `data: ...` event followed by a blank line.
+    """
+    for payload in gen:
         data = json.dumps(payload)
         yield f"data: {data}\n\n"
 
@@ -248,7 +253,7 @@ def _start_transcode_background(filename: str, input_path: Path, output_path: Pa
 # Routes
 # -----------------------------
 @router.post("/app/v0/rpc/UploadVideo")
-async def upload_video(
+def upload_video(
     projectKey: str = Form(...),
     filename: str = Form(...),
     should_overwrite: bool = Form(False),
@@ -256,6 +261,26 @@ async def upload_video(
     root_config: RootConfig = Depends(deps.root_config),
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ):
+    """Upload a single video file to the server's uploads directory.
+
+    This endpoint accepts a browser-style multipart/form-data upload. The file
+    is written atomically to `~/.lightning-pose/uploads/<filename>` and the
+    in-memory task status is updated to mark the upload as DONE.
+
+    Parameters
+    - projectKey: Project identifier used to validate the project exists.
+    - filename: Must be of the form `session_view.ext` with allowed characters.
+    - should_overwrite: If false and a file already exists at the destination,
+      the request fails with 409. If true, it will overwrite.
+    - file: The uploaded file.
+
+    Returns
+    - JSON object `{ "ok": true }` on success.
+
+    Errors
+    - 400: Invalid filename format or characters.
+    - 409: File exists and `should_overwrite` is false.
+    """
     # Validate project exists (also used to set videos dir later)
     _ = project_info_getter(projectKey)
     # Validate filename
@@ -267,12 +292,14 @@ async def upload_video(
         raise HTTPException(status_code=409, detail="File already exists. Set should_overwrite to replace.")
 
     try:
-        await asyncio.to_thread(_atomic_write, dst, file)
+        _atomic_write(dst, file)
         set_status(filename, uploadStatus=UploadStatus.DONE)
     finally:
         # Ensure file handle is closed
         try:
-            await file.close()
+            # UploadFile.close() is async; in a sync context close the underlying file
+            if hasattr(file, "file") and hasattr(file.file, "close"):
+                file.file.close()
         except Exception:
             pass
 
@@ -280,7 +307,16 @@ async def upload_video(
 
 
 @router.post("/app/v0/rpc/GetVideoStatus")
-async def get_video_status(request: GetVideoStatusRequest) -> GetVideoStatusResponse:
+def get_video_status(request: GetVideoStatusRequest) -> GetVideoStatusResponse:
+    """Get the current upload/transcode status for a given filename.
+
+    Parameters
+    - request: JSON body `{ "filename": "session_view.ext" }`.
+
+    Returns
+    - `GetVideoStatusResponse` including `uploadStatus`, `transcodeStatus`,
+      `framesDone`, `totalFrames`, and optional `error` string.
+    """
     st = get_or_create_status(request.filename)
     return GetVideoStatusResponse(
         uploadStatus=st.uploadStatus,
@@ -292,13 +328,36 @@ async def get_video_status(request: GetVideoStatusRequest) -> GetVideoStatusResp
 
 
 @router.get("/app/v0/sse/TranscodeVideo")
-async def transcode_video(
+def transcode_video(
     projectKey: str,
     filename: str,
     should_overwrite: bool = False,
     root_config: RootConfig = Depends(deps.root_config),
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ):
+    """Start or attach to a background transcode and stream progress via SSE.
+
+    This endpoint starts a background ffmpeg transcode of the previously
+    uploaded file `~/.lightning-pose/uploads/<filename>` into the project
+    videos directory `<project.data_dir>/videos/<filename>`. Progress events
+    are streamed as Server-Sent Events (SSE), each event being a JSON
+    serialization of the current `VideoTaskStatus` for the filename.
+
+    Query Parameters
+    - projectKey: Project identifier used to resolve the output videos folder.
+    - filename: Name of the uploaded file to transcode.
+    - should_overwrite: If false and output exists, a single DONE event is
+      emitted immediately without starting a new transcode.
+
+    Event payload shape
+    - `{ "uploadStatus": "DONE|NOTDONE", "transcodeStatus": "PENDING|ACTIVE|DONE|ERROR", "framesDone": int|null, "totalFrames": int|null, "error": str|null }`
+
+    Behavior
+    - If the output already exists and overwrite is false, emits one DONE event.
+    - Otherwise, launches a single background task per filename and polls
+      status periodically until reaching DONE or ERROR. On success, the
+      uploaded source file is removed.
+    """
     project: Project = project_info_getter(projectKey)
     in_path = uploads_dir(root_config) / filename
     if not in_path.exists():
@@ -310,10 +369,10 @@ async def transcode_video(
         # Already done – mark and return a single DONE event
         set_status(filename, transcodeStatus=TranscodeStatus.DONE, uploadStatus=UploadStatus.DONE)
 
-        async def _single():
+        def _single_sync() -> Iterator[dict]:
             yield asdict(get_or_create_status(filename))
 
-        return StreamingResponse(_stream_sse(_single()), media_type="text/event-stream")
+        return StreamingResponse(_stream_sse_sync(_single_sync()), media_type="text/event-stream")
 
     # Ensure parent exists
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -321,8 +380,10 @@ async def transcode_video(
     # Start background transcode if needed
     _start_transcode_background(filename, in_path, out_path)
 
-    async def poller() -> AsyncIterator[dict]:
+    def poller_sync() -> Iterator[dict]:
         # Periodically emit current status until terminal
+        import time
+
         while True:
             st = get_or_create_status(filename)
             yield asdict(st)
@@ -330,20 +391,26 @@ async def transcode_video(
                 # On success, cleanup the uploaded file
                 if st.transcodeStatus == TranscodeStatus.DONE:
                     try:
-                        await asyncio.to_thread(in_path.unlink)
+                        in_path.unlink()
                     except FileNotFoundError:
                         pass
                 break
-            await asyncio.sleep(0.25)
+            time.sleep(0.25)
 
-    return StreamingResponse(_stream_sse(poller()), media_type="text/event-stream")
+    return StreamingResponse(_stream_sse_sync(poller_sync()), media_type="text/event-stream")
 
 
 # -----------------------------
 # Startup cleanup
 # -----------------------------
 @router.on_event("startup")
-async def _cleanup_old_uploads():
+def _cleanup_old_uploads():
+    """Delete uploads older than 24 hours in the system uploads directory.
+
+    Runs at application startup as a best-effort maintenance task. Any
+    exceptions during individual file deletions are ignored to avoid blocking
+    app startup.
+    """
     rc = deps.root_config()
     up = uploads_dir(rc)
     cutoff = datetime.now() - timedelta(hours=24)
