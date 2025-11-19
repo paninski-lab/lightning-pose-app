@@ -88,6 +88,7 @@ from .routes import (
     extract_frames,
     configs,
     models,
+    videos,
 )
 
 router.include_router(ffprobe.router)
@@ -97,6 +98,7 @@ router.include_router(project.router)
 router.include_router(extract_frames.router)
 router.include_router(configs.router)
 router.include_router(models.router)
+router.include_router(videos.router)
 app.include_router(router)
 
 
