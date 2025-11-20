@@ -152,6 +152,19 @@ export class ExtractFramesDialogComponent implements OnInit {
     this.session.set(session);
   }
 
+  /** Called when the Session Import dialog finishes/closed. */
+  protected async onImportDone() {
+    // Close the import dialog UI
+    this.sessionImportOpen.set(false);
+    // Refresh the sessions list so the table reflects any newly transcoded videos
+    try {
+      await this.sessionService.loadSessions();
+    } catch (e) {
+      // Non-fatal: keep UI responsive even if refresh fails
+      console.error('Failed to refresh sessions after import dialog closed', e);
+    }
+  }
+
   protected labelFileStepIsValid(): boolean {
     if (this.labelFileSelectionType() === 'createNew') {
       // We are blocked from using computed signals, because

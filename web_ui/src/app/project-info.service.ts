@@ -32,7 +32,7 @@ export class ProjectInfoService {
   // ---------------------
 
   private globalLoadedSubject = new BehaviorSubject<GlobalContext>({
-    hello: 'world',
+    uploadDir: '',
   });
   public globalLoaded$: Observable<GlobalContext> =
     this.globalLoadedSubject.asObservable();
@@ -54,14 +54,20 @@ export class ProjectInfoService {
     globalContext: GlobalContext;
     projectContext: ProjectContext | null;
   }> {
-    const globalContext$ = timer(500).pipe(
-      first(),
-      map(() => {
-        const data: GlobalContext = { hello: 'world' };
-        this.globalLoadedSubject.next(data);
-        return data;
-      }),
-    );
+    const globalContext$ = this.rpc
+      .callObservable('GetRootConfig')
+      .pipe(
+        first(),
+        map((response: unknown) => {
+          const body = response as Partial<GlobalContext>;
+          if (!body || typeof body.uploadDir !== 'string') {
+            throw new Error('Invalid GetRootConfig response');
+          }
+          const data: GlobalContext = { uploadDir: body.uploadDir };
+          this.globalLoadedSubject.next(data);
+          return data;
+        }),
+      );
 
     const projectContext$ = !projectKey
       ? timer(100).pipe(
@@ -175,7 +181,7 @@ export class ProjectInfoService {
 }
 
 export interface GlobalContext {
-  hello: string;
+  uploadDir: string;
 }
 
 export interface ProjectContext {

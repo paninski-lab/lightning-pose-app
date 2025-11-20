@@ -286,7 +286,7 @@
       </div>
     </div>
     @if (sessionImportOpen()) {
-      <app-session-import (done)="sessionImportOpen.set(false)"></app-session-import>
+      <app-session-import (done)="onImportDone()"></app-session-import>
     }
   </div>
 </dialog>

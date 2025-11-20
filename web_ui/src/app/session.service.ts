@@ -112,14 +112,15 @@ export class SessionService {
 
   /**
    * TEMP: Check if a file already exists in the server uploads dir by name.
-   * Uses the existing rglob RPC. The uploads directory path is temporarily
-   * hardcoded and will be replaced by a backend-provided value later.
+   * Uses the existing rglob RPC. The uploads directory path is obtained from
+   * global context (RootConfig.uploadDir) provided by the backend.
    */
   async existsInUploads(filename: string): Promise<boolean> {
     try {
+      const uploadDir = await this.getUploadDir();
       const response = (await this.rpc.call('rglob', {
         projectKey: this.getProjectKeyOrThrow(),
-        baseDir: '/home/ksikka/.lightning-pose/uploads/',
+        baseDir: uploadDir,
         pattern: filename,
         noDirs: true,
       })) as RGlobResponse;
@@ -128,6 +129,14 @@ export class SessionService {
       // On error, assume it does not exist to allow uploads to proceed
       return false;
     }
+  }
+
+  private async getUploadDir(): Promise<string> {
+    const ctx = this.projectInfoService.globalContext();
+    if (ctx?.uploadDir && ctx.uploadDir.length > 0) {
+      return ctx.uploadDir;
+    }
+    throw new Error('uploadDir not in context');
   }
 
   private _basename(p: string): string {
@@ -144,10 +153,6 @@ export class SessionService {
   }
 
   async loadSessions() {
-    /** This store is populated lazily the first time someone calls loadSessions.
-     * Subsequent loadSession calls are noop. User should refresh page, until
-     * we implement a {reload: true} option. */
-    if (this.allSessions().length > 1) return;
     try {
       this.sessionsLoading.set(true);
       const sessions = await this._loadSessions();

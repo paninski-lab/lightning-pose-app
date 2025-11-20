@@ -21,11 +21,12 @@ import { SessionService } from '../session.service';
   imports: [CommonModule, FormsModule],
   templateUrl: './session-import.component.html',
   styleUrl: './session-import.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SessionImportComponent implements AfterViewInit, OnDestroy {
   done = output<void>();
-  @ViewChild('dlg', { static: true }) private dlg!: ElementRef<HTMLDialogElement>;
+  @ViewChild('dlg', { static: true })
+  private dlg!: ElementRef<HTMLDialogElement>;
 
   // Local state
   protected selectedFiles = signal<File[]>([]);
@@ -181,7 +182,11 @@ export class SessionImportComponent implements AfterViewInit, OnDestroy {
       try {
         const exists = await this.sessionService.existsInUploads(it.name);
         if (exists) {
-          this.setUploadState(it.name, { status: 'done', progress: 100, error: null });
+          this.setUploadState(it.name, {
+            status: 'done',
+            progress: 100,
+            error: null,
+          });
           this.startTranscode(it.name);
           // Proceed to next item
           runNext(index + 1);
@@ -192,35 +197,59 @@ export class SessionImportComponent implements AfterViewInit, OnDestroy {
       }
 
       // Init upload state and perform upload
-      this.setUploadState(it.name, { status: 'uploading', progress: 0, error: null });
-      const sub = this.sessionService.uploadVideo(it.file, it.name, false).subscribe({
-        next: (event: HttpEvent<unknown>) => {
-          if (event.type === HttpEventType.UploadProgress) {
-            const total = (event.total ?? 0) > 0 ? event.total! : undefined;
-            const loaded = event.loaded ?? 0;
-            const pct = total ? Math.floor((loaded / total) * 100) : Math.min(99, Math.floor(loaded / (1024 * 1024)));
-            this.setUploadState(it.name, { status: 'uploading', progress: Math.min(99, pct), error: null });
-          } else if (event.type === HttpEventType.Response) {
-            this.setUploadState(it.name, { status: 'done', progress: 100, error: null });
-            // Start transcode immediately
-            this.startTranscode(it.name);
-            // Proceed to next upload
-            runNext(index + 1);
-          }
-        },
-        error: (err) => {
-          // If 409, treat as already uploaded and continue
-          const status = err?.status as number | undefined;
-          if (status === 409) {
-            this.setUploadState(it.name, { status: 'done', progress: 100, error: null });
-            this.startTranscode(it.name);
-          } else {
-            const msg = err?.error?.detail || err?.message || 'Upload failed';
-            this.setUploadState(it.name, { status: 'error', progress: 0, error: String(msg) });
-          }
-          runNext(index + 1);
-        },
+      this.setUploadState(it.name, {
+        status: 'uploading',
+        progress: 0,
+        error: null,
       });
+      const sub = this.sessionService
+        .uploadVideo(it.file, it.name, false)
+        .subscribe({
+          next: (event: HttpEvent<unknown>) => {
+            if (event.type === HttpEventType.UploadProgress) {
+              const total = (event.total ?? 0) > 0 ? event.total! : undefined;
+              const loaded = event.loaded ?? 0;
+              const pct = total
+                ? Math.floor((loaded / total) * 100)
+                : Math.min(99, Math.floor(loaded / (1024 * 1024)));
+              this.setUploadState(it.name, {
+                status: 'uploading',
+                progress: Math.min(99, pct),
+                error: null,
+              });
+            } else if (event.type === HttpEventType.Response) {
+              this.setUploadState(it.name, {
+                status: 'done',
+                progress: 100,
+                error: null,
+              });
+              // Start transcode immediately
+              this.startTranscode(it.name);
+              // Proceed to next upload
+              runNext(index + 1);
+            }
+          },
+          error: (err) => {
+            // If 409, treat as already uploaded and continue
+            const status = err?.status as number | undefined;
+            if (status === 409) {
+              this.setUploadState(it.name, {
+                status: 'done',
+                progress: 100,
+                error: null,
+              });
+              this.startTranscode(it.name);
+            } else {
+              const msg = err?.error?.detail || err?.message || 'Upload failed';
+              this.setUploadState(it.name, {
+                status: 'error',
+                progress: 0,
+                error: String(msg),
+              });
+            }
+            runNext(index + 1);
+          },
+        });
       this.subs.push(sub);
     };
 
@@ -230,31 +259,56 @@ export class SessionImportComponent implements AfterViewInit, OnDestroy {
 
   private startTranscode(filename: string) {
     // Initialize transcode state
-    this.setTranscodeState(filename, { status: 'transcoding', progress: 0, error: null });
-    const sub = this.sessionService.transcodeVideoSse(filename, false).subscribe({
-      next: (e) => {
-        if (e.transcodeStatus === 'ACTIVE') {
-          const total = e.totalFrames ?? 0;
-          const done = e.framesDone ?? 0;
-          const pct = total > 0 ? Math.max(0, Math.min(100, Math.floor((done / total) * 100))) : undefined;
-          this.setTranscodeState(filename, {
-            status: 'transcoding',
-            progress: pct ?? 0,
-            error: null,
-          });
-        } else if (e.transcodeStatus === 'DONE') {
-          this.setTranscodeState(filename, { status: 'done', progress: 100, error: null });
-        } else if (e.transcodeStatus === 'ERROR') {
-          this.setTranscodeState(filename, { status: 'error', progress: 0, error: e.error ?? 'Transcode error' });
-        } else if (e.transcodeStatus === 'PENDING') {
-          this.setTranscodeState(filename, { status: 'transcoding', progress: 0, error: null });
-        }
-      },
-      error: (err) => {
-        const msg = err?.message || 'Transcode stream error';
-        this.setTranscodeState(filename, { status: 'error', progress: 0, error: msg });
-      },
+    this.setTranscodeState(filename, {
+      status: 'transcoding',
+      progress: 0,
+      error: null,
     });
+    const sub = this.sessionService
+      .transcodeVideoSse(filename, false)
+      .subscribe({
+        next: (e) => {
+          if (e.transcodeStatus === 'ACTIVE') {
+            const total = e.totalFrames ?? 0;
+            const done = e.framesDone ?? 0;
+            const pct =
+              total > 0
+                ? Math.max(0, Math.min(100, Math.floor((done / total) * 100)))
+                : undefined;
+            this.setTranscodeState(filename, {
+              status: 'transcoding',
+              progress: pct ?? 0,
+              error: null,
+            });
+          } else if (e.transcodeStatus === 'DONE') {
+            this.setTranscodeState(filename, {
+              status: 'done',
+              progress: 100,
+              error: null,
+            });
+          } else if (e.transcodeStatus === 'ERROR') {
+            this.setTranscodeState(filename, {
+              status: 'error',
+              progress: 0,
+              error: e.error ?? 'Transcode error',
+            });
+          } else if (e.transcodeStatus === 'PENDING') {
+            this.setTranscodeState(filename, {
+              status: 'transcoding',
+              progress: 0,
+              error: null,
+            });
+          }
+        },
+        error: (err) => {
+          const msg = err?.message || 'Transcode stream error';
+          this.setTranscodeState(filename, {
+            status: 'error',
+            progress: 0,
+            error: msg,
+          });
+        },
+      });
     this.subs.push(sub);
   }
 
@@ -287,7 +341,10 @@ function splitExtension(filename: string): { baseName: string; ext: string } {
   if (idx <= 0 || idx === filename.length - 1) {
     return { baseName: filename, ext: '' };
   }
-  return { baseName: filename.substring(0, idx), ext: filename.substring(idx + 1) };
+  return {
+    baseName: filename.substring(0, idx),
+    ext: filename.substring(idx + 1),
+  };
 }
 
 type UploadState = {
