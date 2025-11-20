@@ -82,7 +82,10 @@ export class SessionService {
         try {
           const data = JSON.parse(ev.data) as VideoTaskStatus;
           subscriber.next(data);
-          if (data.transcodeStatus === 'DONE' || data.transcodeStatus === 'ERROR') {
+          if (
+            data.transcodeStatus === 'DONE' ||
+            data.transcodeStatus === 'ERROR'
+          ) {
             es.close();
             subscriber.complete();
           }
@@ -92,13 +95,17 @@ export class SessionService {
       };
       const onError = () => {
         // Network/SSE error – close and error out
-        try { es.close(); } catch {}
+        try {
+          es.close();
+        } catch {}
         subscriber.error(new Error('Transcode stream error'));
       };
       es.onmessage = onMessage;
       es.onerror = onError;
       return () => {
-        try { es.close(); } catch {}
+        try {
+          es.close();
+        } catch {}
       };
     });
   }
@@ -332,8 +339,8 @@ export class SessionService {
               return [null];
             }
             throw error;
-        }),
-      ),
+          }),
+        ),
     );
   }
 
@@ -512,15 +519,13 @@ export class SessionService {
   }
 }
 
-export type UploadStatus = 'DONE' | 'NOTDONE';
 export type TranscodeStatus = 'PENDING' | 'ACTIVE' | 'DONE' | 'ERROR';
-export type VideoTaskStatus = {
-  uploadStatus: UploadStatus;
+export interface VideoTaskStatus {
   transcodeStatus: TranscodeStatus;
   framesDone: number | null;
   totalFrames: number | null;
   error?: string | null;
-};
+}
 
 interface RGlobResponse {
   entries: {

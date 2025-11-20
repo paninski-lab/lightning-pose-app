@@ -1,7 +1,6 @@
 import json
 import logging
 import re
-import shutil
 import threading
 import math
 import os
@@ -9,7 +8,6 @@ from concurrent.futures import ThreadPoolExecutor, Future
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 from pathlib import Path
-from threading import Lock
 from typing import Dict, Optional, Iterator
 import copy
 
@@ -94,9 +92,6 @@ def get_executor() -> ThreadPoolExecutor:
 # -----------------------------
 # Status tracking
 # -----------------------------
-class UploadStatus(str):
-    NOTDONE = "NOTDONE"
-    DONE = "DONE"
 
 
 class TranscodeStatus(str):
@@ -109,7 +104,6 @@ class TranscodeStatus(str):
 @dataclass
 class VideoTaskStatus:
     filename: str
-    uploadStatus: str = UploadStatus.NOTDONE
     transcodeStatus: str = TranscodeStatus.PENDING
     framesDone: int | None = None
     totalFrames: int | None = None
@@ -128,24 +122,16 @@ def _get_or_create_status_nolock(filename: str) -> VideoTaskStatus:
     return s
 
 
-def get_or_create_status(filename: str, upload_dir: Path = None) -> VideoTaskStatus:
+def get_or_create_status(filename: str) -> VideoTaskStatus:
     """Return a snapshot copy of the current status (thread‑safe).
-
-    If ``upload_dir`` is provided, update the in‑memory ``uploadStatus`` to
-    reflect whether the file exists on disk before returning the snapshot.
 
     The returned object is a deep copy, so callers must not mutate it expecting
     global state to change; use ``set_status`` for updates.
     """
     with _status_lock:
         s = _get_or_create_status_nolock(filename)
-        if upload_dir is not None:
-            s.uploadStatus = (
-                UploadStatus.DONE
-                if (upload_dir / filename).is_file()
-                else UploadStatus.NOTDONE
-            )
-        return copy.deepcopy(s)
+
+    return copy.deepcopy(s)
 
 
 def set_status(filename: str, **kwargs):
@@ -170,7 +156,6 @@ class GetVideoStatusRequest(BaseModel):
 
 
 class GetVideoStatusResponse(BaseModel):
-    uploadStatus: str
     transcodeStatus: str
     framesDone: int | None = None
     totalFrames: int | None = None
@@ -378,12 +363,11 @@ def get_video_status(
     - request: JSON body `{ "filename": "session_view.ext" }`.
 
     Returns
-    - `GetVideoStatusResponse` including `uploadStatus`, `transcodeStatus`,
+    - `GetVideoStatusResponse` including `transcodeStatus`,
       `framesDone`, `totalFrames`, and optional `error` string.
     """
-    st = get_or_create_status(request.filename, root_config.UPLOADS_DIR)
+    st = get_or_create_status(request.filename)
     return GetVideoStatusResponse(
-        uploadStatus=st.uploadStatus,
         transcodeStatus=st.transcodeStatus,
         framesDone=st.framesDone,
         totalFrames=st.totalFrames,
@@ -414,7 +398,7 @@ def transcode_video(
       emitted immediately without starting a new transcode.
 
     Event payload shape
-    - `{ "uploadStatus": "DONE|NOTDONE", "transcodeStatus": "PENDING|ACTIVE|DONE|ERROR", "framesDone": int|null, "totalFrames": int|null, "error": str|null }`
+    - `{ "transcodeStatus": "PENDING|ACTIVE|DONE|ERROR", "framesDone": int|null, "totalFrames": int|null, "error": str|null }`
 
     Behavior
     - If the output already exists and overwrite is false, emits one DONE event.
@@ -440,12 +424,10 @@ def transcode_video(
         set_status(
             filename,
             transcodeStatus=TranscodeStatus.DONE,
-            uploadStatus=UploadStatus.DONE,
         )
 
         def _single_sync() -> Iterator[dict]:
             # Ensure upload status reflects disk state, then return a snapshot
-            get_or_create_status(filename, root_config.UPLOADS_DIR)
             yield _status_snapshot_dict(filename)
 
         return StreamingResponse(

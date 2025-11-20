@@ -85,7 +85,6 @@ def test_upload_video_success_and_status(client: TestClient, override_config, tm
     status = client.post(
         "/app/v0/rpc/GetVideoStatus", json={"filename": filename}
     ).json()
-    assert status["uploadStatus"] == "DONE"
     assert status["transcodeStatus"] in {"PENDING", "ACTIVE", "DONE", "ERROR"}
 
     # File should exist in uploads dir
@@ -152,7 +151,6 @@ def test_transcode_sse_output_exists_returns_done(
 
     assert len(payloads) == 1
     assert payloads[0]["transcodeStatus"] == "DONE"
-    assert payloads[0]["uploadStatus"] == "DONE"
 
 
 def test_transcode_sse_success_flow(
@@ -169,7 +167,6 @@ def test_transcode_sse_success_flow(
     uploads = videos_mod.uploads_dir(override_config)
     uploads.mkdir(parents=True, exist_ok=True)
     (uploads / filename).write_bytes(b"content")
-    videos_mod.set_status(filename, uploadStatus="DONE")
 
     # Mock ffprobe to return a small total frame count
     def fake_run(cmd, stdout=None, stderr=None, text=None):
@@ -245,7 +242,6 @@ def test_transcode_sse_failure_flow(
     uploads = videos_mod.uploads_dir(override_config)
     uploads.mkdir(parents=True, exist_ok=True)
     (uploads / filename).write_bytes(b"content")
-    videos_mod.set_status(filename, uploadStatus="DONE")
 
     # ffprobe total frames unknown
     monkeypatch.setattr(videos_mod, "_ffprobe_total_frames", lambda p: None)
