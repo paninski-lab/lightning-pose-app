@@ -465,7 +465,10 @@ def transcode_video(
         while True:
             payload = get_status_snapshot(filename)
             yield payload
-            if payload["transcodeStatus"] in (TranscodeStatus.DONE, TranscodeStatus.ERROR):
+            if payload["transcodeStatus"] in (
+                TranscodeStatus.DONE,
+                TranscodeStatus.ERROR,
+            ):
                 break
             if time.monotonic() - start > TIMEOUT_SEC:
                 # Safety cutoff to avoid hanging streams if a background task deadlocks
@@ -486,14 +489,13 @@ def transcode_video(
 # -----------------------------
 # Startup cleanup
 # -----------------------------
-def cleanup_old_uploads():
+def cleanup_old_uploads(rc: RootConfig):
     """Delete uploads older than 24 hours in the system uploads directory.
 
     Runs at application startup as a best-effort maintenance task. Any
     exceptions during individual file deletions are ignored to avoid blocking
     app startup.
     """
-    rc = deps.root_config()
     cutoff = datetime.now() - timedelta(hours=24)
     try:
         for p in rc.UPLOADS_DIR.glob("*"):
@@ -506,8 +508,3 @@ def cleanup_old_uploads():
                 continue
     except Exception:
         logger.exception("Failed to cleanup old uploads directory")
-
-
-# Backwards-compat alias for tests expecting the previous private name
-def _cleanup_old_uploads():  # pragma: no cover - thin alias
-    return cleanup_old_uploads()

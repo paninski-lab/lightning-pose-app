@@ -20,7 +20,6 @@ from .routes.videos import cleanup_old_uploads
 
 # from .routes.labeler.multiview_autolabel import warm_up_anipose
 warm_up_anipose = lambda: None
-from .tasks.management import setup_active_task_registry
 
 
 # from .train_scheduler import _train_scheduler_process_target
@@ -40,8 +39,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Start apscheduler, which is responsible for executing background tasks
-    cleanup_old_uploads()
-    setup_active_task_registry(app)
+    cleanup_old_uploads(deps.root_config())
 
     # Warm up anipose in the background (first run is ~1-2s slow).
     asyncio.create_task(anyio.to_thread.run_sync(warm_up_anipose))

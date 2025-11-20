@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-import asyncio
 import io
 import json
-from dataclasses import asdict
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Iterator
+import os
 
-import pytest
 from fastapi.testclient import TestClient
 
 from lightning_pose.data.datatypes import Project, ProjectConfig, ProjectPaths
@@ -32,7 +29,9 @@ def _override_project(app, data_dir: Path):
     app.dependency_overrides[deps.project_info_getter] = getter
 
 
-def _collect_sse_data_lines(response, stop_on_terminal: bool = True, max_lines: int = 200) -> list[dict]:
+def _collect_sse_data_lines(
+    response, stop_on_terminal: bool = True, max_lines: int = 200
+) -> list[dict]:
     """Extract JSON payloads from an SSE StreamingResponse using TestClient.stream.
 
     If stop_on_terminal is True, returns as soon as an event with transcodeStatus in
@@ -59,7 +58,7 @@ def _collect_sse_data_lines(response, stop_on_terminal: bool = True, max_lines: 
 
 
 def test_upload_video_success_and_status(client: TestClient, override_config, tmp_path):
-    from litpose_app.routes import videos as videos_mod
+
     data_dir = tmp_path / "proj" / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
     # Create a minimal project.yaml so other routes would be happy if needed
@@ -90,12 +89,12 @@ def test_upload_video_success_and_status(client: TestClient, override_config, tm
     assert status["transcodeStatus"] in {"PENDING", "ACTIVE", "DONE", "ERROR"}
 
     # File should exist in uploads dir
-    uploads = videos_mod.uploads_dir(override_config)
+    uploads = override_config.UPLOADS_DIR
     assert (uploads / filename).exists()
 
 
 def test_upload_conflict_and_overwrite(client: TestClient, override_config, tmp_path):
-    from litpose_app.routes import videos as videos_mod
+
     data_dir = tmp_path / "proj" / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
     _override_project(client.app, data_dir)
@@ -121,9 +120,10 @@ def test_upload_conflict_and_overwrite(client: TestClient, override_config, tmp_
 
 
 def test_transcode_sse_output_exists_returns_done(
-    client: TestClient, override_config, tmp_path
+    client: TestClient, tmp_path, override_config
 ):
     from litpose_app.routes import videos as videos_mod
+
     data_dir = tmp_path / "proj" / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
     _override_project(client.app, data_dir)
@@ -131,11 +131,15 @@ def test_transcode_sse_output_exists_returns_done(
     filename = "sess_camB.mp4"
 
     # Ensure upload exists and output already present
-    uploads = videos_mod.uploads_dir(override_config)
+    uploads = override_config.UPLOADS_DIR
     uploads.mkdir(parents=True, exist_ok=True)
     (uploads / filename).write_bytes(b"dummy")
     out_dir = videos_mod.videos_dir_for_project(
-        Project(project_key="demo", paths=ProjectPaths(data_dir=data_dir), config=ProjectConfig())
+        Project(
+            project_key="demo",
+            paths=ProjectPaths(data_dir=data_dir),
+            config=ProjectConfig(),
+        )
     )
     (out_dir / filename).write_bytes(b"out")
 
@@ -151,8 +155,11 @@ def test_transcode_sse_output_exists_returns_done(
     assert payloads[0]["uploadStatus"] == "DONE"
 
 
-def test_transcode_sse_success_flow(client: TestClient, override_config, tmp_path, monkeypatch):
+def test_transcode_sse_success_flow(
+    client: TestClient, override_config, tmp_path, monkeypatch
+):
     from litpose_app.routes import videos as videos_mod
+
     data_dir = tmp_path / "proj" / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
     _override_project(client.app, data_dir)
@@ -185,7 +192,9 @@ def test_transcode_sse_success_flow(client: TestClient, override_config, tmp_pat
             output_path = Path(cmd[-1])
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_bytes(b"ok")
-            self._stderr_lines = iter(["frame=    5\n", "frame=   10\n"])  # simulate progress
+            self._stderr_lines = iter(
+                ["frame=    5\n", "frame=   10\n"]
+            )  # simulate progress
             self.returncode = 0
 
         @property
@@ -203,6 +212,7 @@ def test_transcode_sse_success_flow(client: TestClient, override_config, tmp_pat
             return ("", "done")
 
     import subprocess as _subprocess
+
     monkeypatch.setattr(_subprocess, "Popen", FakePopen)
 
     with client.stream(
@@ -217,12 +227,15 @@ def test_transcode_sse_success_flow(client: TestClient, override_config, tmp_pat
     assert payloads[-1]["transcodeStatus"] == "DONE"
     assert payloads[-1]["framesDone"] == 10
     # Uploaded file should have been removed
-    uploads = videos_mod.uploads_dir(override_config)
+    uploads = override_config.UPLOADS_DIR
     assert not (uploads / filename).exists()
 
 
-def test_transcode_sse_failure_flow(client: TestClient, override_config, tmp_path, monkeypatch):
+def test_transcode_sse_failure_flow(
+    client: TestClient, override_config, tmp_path, monkeypatch
+):
     from litpose_app.routes import videos as videos_mod
+
     data_dir = tmp_path / "proj" / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
     _override_project(client.app, data_dir)
@@ -256,6 +269,7 @@ def test_transcode_sse_failure_flow(client: TestClient, override_config, tmp_pat
             return ("", "error")
 
     import subprocess as _subprocess
+
     monkeypatch.setattr(_subprocess, "Popen", FailPopen)
 
     with client.stream(
@@ -267,17 +281,15 @@ def test_transcode_sse_failure_flow(client: TestClient, override_config, tmp_pat
 
     assert payloads[-1]["transcodeStatus"] == "ERROR"
     # Uploaded file should NOT have been removed on error
-    uploads = videos_mod.uploads_dir(override_config)
+    uploads = override_config.UPLOADS_DIR
+
     assert (uploads / filename).exists()
 
 
 def test_startup_cleanup_removes_old_uploads(override_config, tmp_path, monkeypatch):
     from litpose_app.routes import videos as videos_mod
-    # Point deps.root_config used inside the module to a temp LP_SYSTEM_DIR
-    rc = override_config
-    # Ensure the cleanup function uses the same RootConfig as the test
-    monkeypatch.setattr(videos_mod.deps, "root_config", lambda: rc)
-    uploads = videos_mod.uploads_dir(rc)
+
+    uploads = override_config.UPLOADS_DIR
     uploads.mkdir(parents=True, exist_ok=True)
 
     old_file = uploads / "old_camC.mp4"
@@ -288,15 +300,15 @@ def test_startup_cleanup_removes_old_uploads(override_config, tmp_path, monkeypa
     # Set mtime of old_file to >24h ago
     old_time = datetime.now() - timedelta(hours=25)
     new_time = datetime.now()
-    import os
+
     for p, t in [(old_file, old_time), (new_file, new_time)]:
         atime = t.timestamp()
         mtime = t.timestamp()
         Path(p).touch()
         os.utime(p, (atime, mtime))
 
-    # Call the cleanup function directly (now sync)
-    videos_mod._cleanup_old_uploads()
+    # Call the cleanup function
+    videos_mod.cleanup_old_uploads(override_config)
 
     assert not old_file.exists()
     assert new_file.exists()
