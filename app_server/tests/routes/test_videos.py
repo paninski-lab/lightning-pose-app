@@ -229,7 +229,7 @@ def test_transcode_sse_failure_flow(client: TestClient, override_config, tmp_pat
 
     filename = "bad_camA.mp4"
     # Create an uploaded file manually and mark upload DONE (avoid multipart dep)
-    uploads = videos_mod.uploads_dir(deps.root_config())
+    uploads = videos_mod.uploads_dir(override_config)
     uploads.mkdir(parents=True, exist_ok=True)
     (uploads / filename).write_bytes(b"content")
     videos_mod.set_status(filename, uploadStatus="DONE")
@@ -267,14 +267,16 @@ def test_transcode_sse_failure_flow(client: TestClient, override_config, tmp_pat
 
     assert payloads[-1]["transcodeStatus"] == "ERROR"
     # Uploaded file should NOT have been removed on error
-    uploads = videos_mod.uploads_dir(deps.root_config())
+    uploads = videos_mod.uploads_dir(override_config)
     assert (uploads / filename).exists()
 
 
 def test_startup_cleanup_removes_old_uploads(override_config, tmp_path, monkeypatch):
     from litpose_app.routes import videos as videos_mod
     # Point deps.root_config used inside the module to a temp LP_SYSTEM_DIR
-    rc = deps.root_config()
+    rc = override_config
+    # Ensure the cleanup function uses the same RootConfig as the test
+    monkeypatch.setattr(videos_mod.deps, "root_config", lambda: rc)
     uploads = videos_mod.uploads_dir(rc)
     uploads.mkdir(parents=True, exist_ok=True)
 

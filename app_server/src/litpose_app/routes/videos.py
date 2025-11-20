@@ -23,7 +23,6 @@ from .. import deps
 from ..deps import ProjectInfoGetter
 from ..tasks import transcode_fine
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
@@ -83,7 +82,8 @@ def get_executor() -> ThreadPoolExecutor:
     global _executor
     if _executor is None:
         # Modest default; ffmpeg itself is multi-core. Keep pool small.
-        transcode_workers = math.ceil(os.cpu_count() / 10)
+        cpu = os.cpu_count() or 2
+        transcode_workers = max(1, math.ceil(cpu / 10))
         _executor = ThreadPoolExecutor(
             max_workers=transcode_workers, thread_name_prefix="video-transcode"
         )
@@ -118,11 +118,18 @@ class VideoTaskStatus:
 _status_by_file: Dict[str, VideoTaskStatus] = {}
 
 
+def _get_or_create_status_nolock(filename: str) -> VideoTaskStatus:
+    """Internal helper. Caller must hold _status_lock."""
+    s = _status_by_file.get(filename)
+    if s is None:
+        s = VideoTaskStatus(filename=filename)
+        _status_by_file[filename] = s
+    return s
+
+
 def get_or_create_status(filename: str, upload_dir: Path = None) -> VideoTaskStatus:
     with _status_lock:
-        if filename not in _status_by_file:
-            _status_by_file[filename] = VideoTaskStatus(filename=filename)
-        s = _status_by_file[filename]
+        s = _get_or_create_status_nolock(filename)
         if upload_dir is not None:
             s.uploadStatus = (
                 UploadStatus.DONE
@@ -134,9 +141,23 @@ def get_or_create_status(filename: str, upload_dir: Path = None) -> VideoTaskSta
 
 def set_status(filename: str, **kwargs):
     with _status_lock:
-        st = get_or_create_status(filename)
+        st = _get_or_create_status_nolock(filename)
         for k, v in kwargs.items():
             setattr(st, k, v)
+
+
+def get_status_snapshot(filename: str) -> dict:
+    """Return a thread-safe snapshot dict of the current status for filename."""
+    with _status_lock:
+        st = _get_or_create_status_nolock(filename)
+        return {
+            "filename": st.filename,
+            "uploadStatus": st.uploadStatus,
+            "transcodeStatus": st.transcodeStatus,
+            "framesDone": st.framesDone,
+            "totalFrames": st.totalFrames,
+            "error": st.error,
+        }
 
 
 # -----------------------------
@@ -158,9 +179,19 @@ class GetVideoStatusResponse(BaseModel):
 # Helpers
 # -----------------------------
 def _atomic_save(dst: Path, src_file: UploadFile):
+    """Atomically save an uploaded file to destination path.
+
+    Writes to a temporary file alongside the destination and then moves it into
+    place to avoid partially written results on failure.
+    """
     tmp = dst.with_suffix(dst.suffix + ".tmp")
     with tmp.open("xb") as out:
-        shutil.copyfileobj(src_file.file, out)
+        # Copy in chunks to satisfy type checkers and keep memory usage modest
+        while True:
+            chunk = src_file.file.read(1024 * 1024)
+            if not chunk:
+                break
+            out.write(chunk)
     tmp.replace(dst)
 
 
@@ -217,49 +248,62 @@ def _start_transcode_background(filename: str, input_path: Path, output_path: Pa
     )
 
     def _run():
-        import subprocess
+        try:
+            import subprocess
 
-        cmd = [
-            "ffmpeg",
-            "-i",
-            str(input_path),
-            *transcode_fine.FFMPEG_OPTIONS,
-            "-y",
-            str(output_path),
-        ]
-        process = subprocess.Popen(
-            cmd,
-            # FFmpeg logs progress info and errors to stderr, stdout is not needed
-            stderr=subprocess.PIPE,
-            stdout=subprocess.DEVNULL,
-            text=True,
-        )
-        frames_done_local = 0
-        assert process.stderr is not None
-        for line in process.stderr:
-            print(f"ffmpeg[{threading.get_ident()}]: {line}", end="")
-            if "frame=" in line:
-                m = re.search(r"frame=\s*(\d+)", line)
-                if m:
-                    frames_done_local = int(m.group(1))
-                    set_status(filename, framesDone=frames_done_local)
-
-        if process.returncode == 0 and output_path.exists():
-            set_status(
-                filename,
-                transcodeStatus=TranscodeStatus.DONE,
-                framesDone=frames_done_local,
+            cmd = [
+                "ffmpeg",
+                "-i",
+                str(input_path),
+                *transcode_fine.FFMPEG_OPTIONS,
+                "-y",
+                str(output_path),
+            ]
+            process = subprocess.Popen(
+                cmd,
+                # FFmpeg logs progress info and errors to stderr, stdout is not needed
+                stderr=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                text=True,
             )
-            # Cleanup the uploaded file
+            frames_done_local = 0
+            assert process.stderr is not None
+            for line in process.stderr:
+                print(f"ffmpeg[{threading.get_ident()}]: {line}", end="")
+                if "frame=" in line:
+                    m = re.search(r"frame=\s*(\d+)", line)
+                    if m:
+                        frames_done_local = int(m.group(1))
+                        set_status(filename, framesDone=frames_done_local)
+
+            # Ensure process has finished if wait() is available (mock Popen may not implement it)
             try:
-                input_path.unlink()
-            except FileNotFoundError:
+                process.wait()
+            except AttributeError:
                 pass
-        else:
+            if process.returncode == 0 and output_path.exists():
+                set_status(
+                    filename,
+                    transcodeStatus=TranscodeStatus.DONE,
+                    framesDone=frames_done_local,
+                )
+                # Cleanup the uploaded file
+                try:
+                    input_path.unlink()
+                except FileNotFoundError:
+                    pass
+            else:
+                set_status(
+                    filename,
+                    transcodeStatus=TranscodeStatus.ERROR,
+                    error=f"FFmpeg failed with code {process.returncode}",
+                )
+        except Exception as e:
+            # Ensure terminal state on unexpected errors (e.g., ffmpeg missing)
             set_status(
                 filename,
                 transcodeStatus=TranscodeStatus.ERROR,
-                error=f"FFmpeg failed with code {process.returncode}",
+                error=f"Exception during transcode: {e}",
             )
 
     executor = get_executor()
@@ -398,7 +442,9 @@ def transcode_video(
         )
 
         def _single_sync() -> Iterator[dict]:
-            yield asdict(get_or_create_status(filename, root_config / "uploads"))
+            # Ensure upload status reflects disk state, then return a snapshot
+            get_or_create_status(filename, root_config.UPLOADS_DIR)
+            yield get_status_snapshot(filename)
 
         return StreamingResponse(
             _stream_sse_sync(_single_sync()), media_type="text/event-stream"
@@ -414,10 +460,21 @@ def transcode_video(
         # Periodically emit current status until terminal
         import time
 
+        start = time.monotonic()
+        TIMEOUT_SEC = 60
         while True:
-            st = get_or_create_status(filename)
-            yield asdict(st)
-            if st.transcodeStatus in (TranscodeStatus.DONE, TranscodeStatus.ERROR):
+            payload = get_status_snapshot(filename)
+            yield payload
+            if payload["transcodeStatus"] in (TranscodeStatus.DONE, TranscodeStatus.ERROR):
+                break
+            if time.monotonic() - start > TIMEOUT_SEC:
+                # Safety cutoff to avoid hanging streams if a background task deadlocks
+                set_status(
+                    filename,
+                    transcodeStatus=TranscodeStatus.ERROR,
+                    error=(payload.get("error") or "Transcode timed out"),
+                )
+                yield get_status_snapshot(filename)
                 break
             time.sleep(0.25)
 
@@ -449,3 +506,8 @@ def cleanup_old_uploads():
                 continue
     except Exception:
         logger.exception("Failed to cleanup old uploads directory")
+
+
+# Backwards-compat alias for tests expecting the previous private name
+def _cleanup_old_uploads():  # pragma: no cover - thin alias
+    return cleanup_old_uploads()
