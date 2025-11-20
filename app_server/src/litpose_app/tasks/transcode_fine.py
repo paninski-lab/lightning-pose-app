@@ -21,6 +21,9 @@ def transcode_video_task(input_file_path: Path, output_file_path: Path):
 # -c:a copy: Copy audio stream without re-encoding. If audio re-encoding is needed, change this.
 # -y: Overwrite output files without asking.
 FFMPEG_OPTIONS = [
+    "-loglevel",
+    "info",
+    "-stats",
     "-c:v",
     "libx264",
     "-g",

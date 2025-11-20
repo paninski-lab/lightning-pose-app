@@ -1,8 +1,10 @@
-import asyncio
 import json
 import logging
 import re
 import shutil
+import threading
+import math
+import os
 from concurrent.futures import ThreadPoolExecutor, Future
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
@@ -43,17 +45,17 @@ def parse_session_view(filename: str) -> tuple[str, str, str]:
         raise HTTPException(status_code=400, detail="Invalid filename path components.")
     stem, dot, ext = filename.rpartition(".")
     if dot == "":
-        raise HTTPException(status_code=400, detail="Filename must include an extension.")
+        raise HTTPException(
+            status_code=400, detail="Filename must include an extension."
+        )
     if "_" not in stem:
         raise HTTPException(
             status_code=400,
             detail="Filename must be of the form session_view.ext",
         )
-    session, _, view = stem.partition("_")
+    session, _, view = stem.rpartition("_")
     if not session or not view:
         raise HTTPException(status_code=400, detail="Invalid session/view in filename.")
-    if "_" in view:
-        raise HTTPException(status_code=400, detail="View name must not contain underscore.")
     return session, view, ext
 
 
@@ -73,7 +75,7 @@ def videos_dir_for_project(project: Project) -> Path:
 
 
 _executor: Optional[ThreadPoolExecutor] = None
-_status_lock = Lock()
+_status_lock = threading.RLock()
 _futures_by_file: Dict[str, Future] = {}
 
 
@@ -81,7 +83,10 @@ def get_executor() -> ThreadPoolExecutor:
     global _executor
     if _executor is None:
         # Modest default; ffmpeg itself is multi-core. Keep pool small.
-        _executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="video-transcode")
+        transcode_workers = math.ceil(os.cpu_count() / 10)
+        _executor = ThreadPoolExecutor(
+            max_workers=transcode_workers, thread_name_prefix="video-transcode"
+        )
     return _executor
 
 
@@ -113,11 +118,18 @@ class VideoTaskStatus:
 _status_by_file: Dict[str, VideoTaskStatus] = {}
 
 
-def get_or_create_status(filename: str) -> VideoTaskStatus:
+def get_or_create_status(filename: str, upload_dir: Path = None) -> VideoTaskStatus:
     with _status_lock:
         if filename not in _status_by_file:
             _status_by_file[filename] = VideoTaskStatus(filename=filename)
-        return _status_by_file[filename]
+        s = _status_by_file[filename]
+        if upload_dir is not None:
+            s.uploadStatus = (
+                UploadStatus.DONE
+                if (upload_dir / filename).is_file()
+                else UploadStatus.NOTDONE
+            )
+        return s
 
 
 def set_status(filename: str, **kwargs):
@@ -145,14 +157,10 @@ class GetVideoStatusResponse(BaseModel):
 # -----------------------------
 # Helpers
 # -----------------------------
-def _atomic_write(dst: Path, src_file: UploadFile):
-    tmp = dst.with_suffix(dst.suffix + ".part")
-    with tmp.open("wb") as out:
-        while True:
-            chunk = src_file.file.read(1024 * 1024)
-            if not chunk:
-                break
-            out.write(chunk)
+def _atomic_save(dst: Path, src_file: UploadFile):
+    tmp = dst.with_suffix(dst.suffix + ".tmp")
+    with tmp.open("xb") as out:
+        shutil.copyfileobj(src_file.file, out)
     tmp.replace(dst)
 
 
@@ -173,7 +181,9 @@ def _ffprobe_total_frames(path: Path) -> Optional[int]:
             "default=nokey=1:noprint_wrappers=1",
             str(path),
         ]
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        res = subprocess.run(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
         if res.returncode != 0:
             return None
         value = res.stdout.strip()
@@ -202,7 +212,9 @@ def _start_transcode_background(filename: str, input_path: Path, output_path: Pa
 
     # Compute total frames once
     total = _ffprobe_total_frames(input_path)
-    set_status(filename, totalFrames=total, transcodeStatus=TranscodeStatus.ACTIVE, error=None)
+    set_status(
+        filename, totalFrames=total, transcodeStatus=TranscodeStatus.ACTIVE, error=None
+    )
 
     def _run():
         import subprocess
@@ -216,25 +228,33 @@ def _start_transcode_background(filename: str, input_path: Path, output_path: Pa
             str(output_path),
         ]
         process = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            cmd,
+            # FFmpeg logs progress info and errors to stderr, stdout is not needed
+            stderr=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            text=True,
         )
-
         frames_done_local = 0
         assert process.stderr is not None
         for line in process.stderr:
+            print(f"ffmpeg[{threading.get_ident()}]: {line}", end="")
             if "frame=" in line:
                 m = re.search(r"frame=\s*(\d+)", line)
                 if m:
                     frames_done_local = int(m.group(1))
                     set_status(filename, framesDone=frames_done_local)
 
-        stdout, stderr = process.communicate()
         if process.returncode == 0 and output_path.exists():
             set_status(
                 filename,
                 transcodeStatus=TranscodeStatus.DONE,
                 framesDone=frames_done_local,
             )
+            # Cleanup the uploaded file
+            try:
+                input_path.unlink()
+            except FileNotFoundError:
+                pass
         else:
             set_status(
                 filename,
@@ -287,27 +307,25 @@ def upload_video(
     parse_session_view(filename)
 
     # Determine upload path
-    dst = uploads_dir(root_config) / filename
+    dst = root_config.UPLOADS_DIR / filename
     if dst.exists() and not should_overwrite:
-        raise HTTPException(status_code=409, detail="File already exists. Set should_overwrite to replace.")
-
+        raise HTTPException(
+            status_code=409,
+            detail="File already exists. Set should_overwrite to replace.",
+        )
     try:
-        _atomic_write(dst, file)
-        set_status(filename, uploadStatus=UploadStatus.DONE)
+        _atomic_save(dst, file)
     finally:
-        # Ensure file handle is closed
-        try:
-            # UploadFile.close() is async; in a sync context close the underlying file
-            if hasattr(file, "file") and hasattr(file.file, "close"):
-                file.file.close()
-        except Exception:
-            pass
+        file.file.close()
 
     return {"ok": True}
 
 
 @router.post("/app/v0/rpc/GetVideoStatus")
-def get_video_status(request: GetVideoStatusRequest) -> GetVideoStatusResponse:
+def get_video_status(
+    request: GetVideoStatusRequest,
+    root_config: RootConfig = Depends(deps.root_config),
+) -> GetVideoStatusResponse:
     """Get the current upload/transcode status for a given filename.
 
     Parameters
@@ -317,7 +335,7 @@ def get_video_status(request: GetVideoStatusRequest) -> GetVideoStatusResponse:
     - `GetVideoStatusResponse` including `uploadStatus`, `transcodeStatus`,
       `framesDone`, `totalFrames`, and optional `error` string.
     """
-    st = get_or_create_status(request.filename)
+    st = get_or_create_status(request.filename, root_config.UPLOADS_DIR)
     return GetVideoStatusResponse(
         uploadStatus=st.uploadStatus,
         transcodeStatus=st.transcodeStatus,
@@ -359,20 +377,32 @@ def transcode_video(
       uploaded source file is removed.
     """
     project: Project = project_info_getter(projectKey)
-    in_path = uploads_dir(root_config) / filename
+    # Validate filename (prevents path traversal)
+    parse_session_view(filename)
+
+    in_path = root_config.UPLOADS_DIR / filename
     if not in_path.exists():
-        raise HTTPException(status_code=404, detail="Uploaded file not found. Upload before transcoding.")
+        raise HTTPException(
+            status_code=404,
+            detail="Uploaded file not found. Upload before transcoding.",
+        )
 
     out_dir = videos_dir_for_project(project)
     out_path = out_dir / filename
     if out_path.exists() and not should_overwrite:
         # Already done – mark and return a single DONE event
-        set_status(filename, transcodeStatus=TranscodeStatus.DONE, uploadStatus=UploadStatus.DONE)
+        set_status(
+            filename,
+            transcodeStatus=TranscodeStatus.DONE,
+            uploadStatus=UploadStatus.DONE,
+        )
 
         def _single_sync() -> Iterator[dict]:
-            yield asdict(get_or_create_status(filename))
+            yield asdict(get_or_create_status(filename, root_config / "uploads"))
 
-        return StreamingResponse(_stream_sse_sync(_single_sync()), media_type="text/event-stream")
+        return StreamingResponse(
+            _stream_sse_sync(_single_sync()), media_type="text/event-stream"
+        )
 
     # Ensure parent exists
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -388,23 +418,18 @@ def transcode_video(
             st = get_or_create_status(filename)
             yield asdict(st)
             if st.transcodeStatus in (TranscodeStatus.DONE, TranscodeStatus.ERROR):
-                # On success, cleanup the uploaded file
-                if st.transcodeStatus == TranscodeStatus.DONE:
-                    try:
-                        in_path.unlink()
-                    except FileNotFoundError:
-                        pass
                 break
             time.sleep(0.25)
 
-    return StreamingResponse(_stream_sse_sync(poller_sync()), media_type="text/event-stream")
+    return StreamingResponse(
+        _stream_sse_sync(poller_sync()), media_type="text/event-stream"
+    )
 
 
 # -----------------------------
 # Startup cleanup
 # -----------------------------
-@router.on_event("startup")
-def _cleanup_old_uploads():
+def cleanup_old_uploads():
     """Delete uploads older than 24 hours in the system uploads directory.
 
     Runs at application startup as a best-effort maintenance task. Any
@@ -412,10 +437,9 @@ def _cleanup_old_uploads():
     app startup.
     """
     rc = deps.root_config()
-    up = uploads_dir(rc)
     cutoff = datetime.now() - timedelta(hours=24)
     try:
-        for p in up.glob("*"):
+        for p in rc.UPLOADS_DIR.glob("*"):
             try:
                 mtime = datetime.fromtimestamp(p.stat().st_mtime)
                 if mtime < cutoff:

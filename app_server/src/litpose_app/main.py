@@ -16,6 +16,7 @@ from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
 
 from . import deps
+from .routes.videos import cleanup_old_uploads
 
 # from .routes.labeler.multiview_autolabel import warm_up_anipose
 warm_up_anipose = lambda: None
@@ -39,12 +40,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Start apscheduler, which is responsible for executing background tasks
-    logger.info("Application startup: Initializing scheduler...")
-    # Quiet down apscheduler logging. Default INFO is too verbose
-    logging.getLogger("apscheduler").setLevel(logging.WARNING)
-    scheduler = deps.scheduler()
-    app.state.scheduler = scheduler
-    scheduler.start()
+    cleanup_old_uploads()
     setup_active_task_registry(app)
 
     # Warm up anipose in the background (first run is ~1-2s slow).
@@ -62,19 +58,6 @@ async def lifespan(app: FastAPI):
         logger.exception("Failed to start train scheduler process")
 
     yield  # Application is now ready to receive requests
-
-    logger.info("Application shutdown: Shutting down scheduler...")
-    if scheduler and scheduler.running:
-        scheduler.shutdown()
-        logger.info("Scheduler shut down.")
-    else:
-        logger.warning("Scheduler not found or not running during shutdown.")
-
-    if hasattr(app.state, "config_file_observer") and app.state.config_file_observer:
-        logger.info("Application shutdown: Shutting down config file observer...")
-        app.state.config_file_observer.stop()
-        app.state.config_file_observer.join()
-        logger.info("Config file observer shut down.")
 
 
 app = FastAPI(lifespan=lifespan)
