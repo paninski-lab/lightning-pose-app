@@ -110,6 +110,33 @@ export class SessionService {
     });
   }
 
+  /**
+   * TEMP: Check if a file already exists in the server uploads dir by name.
+   * Uses the existing rglob RPC. The uploads directory path is temporarily
+   * hardcoded and will be replaced by a backend-provided value later.
+   */
+  async existsInUploads(filename: string): Promise<boolean> {
+    try {
+      const response = (await this.rpc.call('rglob', {
+        projectKey: this.getProjectKeyOrThrow(),
+        baseDir: '/home/ksikka/.lightning-pose/uploads/',
+        pattern: filename,
+        noDirs: true,
+      })) as RGlobResponse;
+      return response.entries.some((e) => this._basename(e.path) === filename);
+    } catch (e) {
+      // On error, assume it does not exist to allow uploads to proceed
+      return false;
+    }
+  }
+
+  private _basename(p: string): string {
+    const idx1 = p.lastIndexOf('/');
+    const idx2 = p.lastIndexOf('\\');
+    const idx = Math.max(idx1, idx2);
+    return idx >= 0 ? p.substring(idx + 1) : p;
+  }
+
   private getProjectKeyOrThrow(): string {
     const ctx = this.projectInfoService.projectContext();
     if (!ctx?.key) throw new Error('Project key missing from project context');

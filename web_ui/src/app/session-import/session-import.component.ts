@@ -171,13 +171,27 @@ export class SessionImportComponent implements AfterViewInit, OnDestroy {
     if (queue.length === 0) return;
     this.uploading.set(true);
 
-    const runNext = (index: number) => {
+    const runNext = async (index: number) => {
       if (index >= queue.length) {
         this.uploading.set(false);
         return;
       }
       const it = queue[index];
-      // Init upload state
+      // Check if already uploaded in server uploads dir; if so, skip upload
+      try {
+        const exists = await this.sessionService.existsInUploads(it.name);
+        if (exists) {
+          this.setUploadState(it.name, { status: 'done', progress: 100, error: null });
+          this.startTranscode(it.name);
+          // Proceed to next item
+          runNext(index + 1);
+          return;
+        }
+      } catch {
+        // If the exists check fails, fall back to attempting upload
+      }
+
+      // Init upload state and perform upload
       this.setUploadState(it.name, { status: 'uploading', progress: 0, error: null });
       const sub = this.sessionService.uploadVideo(it.file, it.name, false).subscribe({
         next: (event: HttpEvent<unknown>) => {
