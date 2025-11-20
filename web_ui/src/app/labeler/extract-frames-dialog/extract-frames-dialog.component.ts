@@ -25,6 +25,7 @@ import { ExtractFramesRequest } from '../../extract-frames-request';
 import { LabelFilePickerComponent } from '../../label-file-picker/label-file-picker.component';
 import { ProjectInfoService } from '../../project-info.service';
 import { SessionService } from '../../session.service';
+import { SessionImportComponent } from '../../session-import/session-import.component';
 
 @Directive({
   selector: '[appLabelFileTemplateValidator]',
@@ -96,6 +97,7 @@ class LabelFileTemplateValidatorDirective implements Validator {
     FormsModule,
     LabelFilePickerComponent,
     LabelFileTemplateValidatorDirective,
+    SessionImportComponent,
   ],
   templateUrl: './extract-frames-dialog.component.html',
   styleUrl: './extract-frames-dialog.component.css',
@@ -104,6 +106,7 @@ class LabelFileTemplateValidatorDirective implements Validator {
 export class ExtractFramesDialogComponent implements OnInit {
   protected step = signal<string>('labelFile');
   protected stepOrder = ['labelFile', 'session', 'settings'];
+  protected sessionImportOpen = signal<boolean>(false);
 
   initialStep = input<string>('labelFile');
   initialLabelFileSelectionType = input<'createNew' | 'useExisting'>(

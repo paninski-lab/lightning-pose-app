@@ -180,7 +180,7 @@
           ></app-sessions-panel>
           <div class="divider divider-horizontal">OR</div>
           <div class="flex-1 min-w-0 flex justify-center">
-            <button class="btn tooltip" data-tip="Not yet implemented">
+            <button class="btn tooltip" data-tip="Upload local video files to create a new session" (click)="sessionImportOpen.set(true)">
               Upload a new session
             </button>
           </div>
@@ -285,5 +285,8 @@
         }
       </div>
     </div>
+    @if (sessionImportOpen()) {
+      <app-session-import (done)="sessionImportOpen.set(false)"></app-session-import>
+    }
   </div>
 </dialog>

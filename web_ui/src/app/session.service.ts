@@ -1,5 +1,5 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { BehaviorSubject, catchError, firstValueFrom } from 'rxjs';
+import { BehaviorSubject, Observable, catchError, firstValueFrom } from 'rxjs';
 import { Session } from './session.model';
 import { RpcService } from './rpc.service';
 import { ProjectInfoService } from './project-info.service';
@@ -38,6 +38,27 @@ export class SessionService {
   allSessions = toSignal(this.allSessions$, { requireSync: true });
 
   private sessionModelMap = {} as SessionModelMap;
+
+  /**
+   * Upload a single video file to the server.
+   * Uses multipart/form-data and reports progress events.
+   */
+  uploadVideo(
+    file: File,
+    filename: string,
+    shouldOverwrite = false,
+  ): Observable<import('@angular/common/http').HttpEvent<unknown>> {
+    const form = new FormData();
+    form.append('projectKey', this.getProjectKeyOrThrow());
+    form.append('filename', filename);
+    form.append('should_overwrite', String(shouldOverwrite));
+    form.append('file', file, filename);
+
+    return this.httpClient.post('/app/v0/rpc/UploadVideo', form, {
+      reportProgress: true,
+      observe: 'events',
+    });
+  }
 
   private getProjectKeyOrThrow(): string {
     const ctx = this.projectInfoService.projectContext();
