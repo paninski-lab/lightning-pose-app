@@ -56,6 +56,7 @@
                   <td>{{ it.sessionKey ?? '—' }}</td>
                   <td>{{ it.view ?? '—' }}</td>
                   <td>
+                    <!-- Upload phase -->
                     @if (it.upload) {
                       @if (it.upload.status === 'uploading') {
                         <div class="flex items-center gap-2">
@@ -63,7 +64,9 @@
                           <span>{{ it.upload.progress }}%</span>
                         </div>
                       } @else if (it.upload.status === 'done') {
-                        <span class="badge badge-success">Uploaded</span>
+                        <div class="flex items-center gap-2">
+                          <span class="badge badge-success">Uploaded</span>
+                        </div>
                       } @else if (it.upload.status === 'error') {
                         <div class="text-error text-xs">{{ it.upload.error }}</div>
                       }
@@ -74,6 +77,22 @@
                         <span class="badge badge-error" [attr.aria-label]="it.error ?? 'Invalid'">Invalid</span>
                         <div class="text-error text-xs">{{ it.error }}</div>
                       }
+                    }
+
+                    <!-- Transcode phase (shown after upload completes or when already uploaded) -->
+                    @if (it.upload?.status === 'done' || it.transcode) {
+                      <div class="mt-2">
+                        @if (it.transcode?.status === 'transcoding') {
+                          <div class="flex items-center gap-2">
+                            <progress class="progress w-40" [value]="it.transcode?.progress ?? 0" max="100"></progress>
+                            <span>{{ it.transcode?.progress ?? 0 }}%</span>
+                          </div>
+                        } @else if (it.transcode?.status === 'done') {
+                          <span class="badge badge-success">Transcoded</span>
+                        } @else if (it.transcode?.status === 'error') {
+                          <div class="text-error text-xs">{{ it.transcode?.error ?? '' }}</div>
+                        }
+                      </div>
                     }
                   </td>
                   <td class="text-right">
@@ -95,10 +114,10 @@
         <div class="flex gap-2">
           <button class="btn btn-outline" (click)="closeDialog()">Cancel</button>
           @if (uploading()) {
-            <span class="loading loading-spinner loading-sm" aria-label="Uploading"></span>
+            <span class="loading loading-spinner loading-sm" aria-label="Importing"></span>
           }
-          <button class="btn btn-primary" [disabled]="!allValid() || uploading()" (click)="startUploads()">
-            Upload
+          <button class="btn btn-primary" [disabled]="!allValid() || uploading()" (click)="startImport()">
+            Import
           </button>
         </div>
       </div>

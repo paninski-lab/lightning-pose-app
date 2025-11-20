@@ -60,6 +60,49 @@ export class SessionService {
     });
   }
 
+  /**
+   * Start or attach to a transcode for a given uploaded filename and stream progress via SSE.
+   * Completes when server reports DONE or ERROR.
+   */
+  transcodeVideoSse(
+    filename: string,
+    shouldOverwrite = false,
+  ): Observable<VideoTaskStatus> {
+    const projectKey = this.getProjectKeyOrThrow();
+    const params = new URLSearchParams({
+      projectKey,
+      filename,
+      should_overwrite: String(shouldOverwrite),
+    });
+    const url = `/app/v0/sse/TranscodeVideo?${params.toString()}`;
+
+    return new Observable<VideoTaskStatus>((subscriber) => {
+      const es = new EventSource(url);
+      const onMessage = (ev: MessageEvent) => {
+        try {
+          const data = JSON.parse(ev.data) as VideoTaskStatus;
+          subscriber.next(data);
+          if (data.transcodeStatus === 'DONE' || data.transcodeStatus === 'ERROR') {
+            es.close();
+            subscriber.complete();
+          }
+        } catch (e) {
+          // Ignore malformed events
+        }
+      };
+      const onError = () => {
+        // Network/SSE error – close and error out
+        try { es.close(); } catch {}
+        subscriber.error(new Error('Transcode stream error'));
+      };
+      es.onmessage = onMessage;
+      es.onerror = onError;
+      return () => {
+        try { es.close(); } catch {}
+      };
+    });
+  }
+
   private getProjectKeyOrThrow(): string {
     const ctx = this.projectInfoService.projectContext();
     if (!ctx?.key) throw new Error('Project key missing from project context');
@@ -468,6 +511,16 @@ export class SessionService {
     return resp;
   }
 }
+
+export type UploadStatus = 'DONE' | 'NOTDONE';
+export type TranscodeStatus = 'PENDING' | 'ACTIVE' | 'DONE' | 'ERROR';
+export type VideoTaskStatus = {
+  uploadStatus: UploadStatus;
+  transcodeStatus: TranscodeStatus;
+  framesDone: number | null;
+  totalFrames: number | null;
+  error?: string | null;
+};
 
 interface RGlobResponse {
   entries: {

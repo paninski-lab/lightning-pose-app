@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from threading import Lock
 from typing import Dict, Optional, Iterator
+import copy
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
@@ -128,6 +129,14 @@ def _get_or_create_status_nolock(filename: str) -> VideoTaskStatus:
 
 
 def get_or_create_status(filename: str, upload_dir: Path = None) -> VideoTaskStatus:
+    """Return a snapshot copy of the current status (thread‑safe).
+
+    If ``upload_dir`` is provided, update the in‑memory ``uploadStatus`` to
+    reflect whether the file exists on disk before returning the snapshot.
+
+    The returned object is a deep copy, so callers must not mutate it expecting
+    global state to change; use ``set_status`` for updates.
+    """
     with _status_lock:
         s = _get_or_create_status_nolock(filename)
         if upload_dir is not None:
@@ -136,7 +145,7 @@ def get_or_create_status(filename: str, upload_dir: Path = None) -> VideoTaskSta
                 if (upload_dir / filename).is_file()
                 else UploadStatus.NOTDONE
             )
-        return s
+        return copy.deepcopy(s)
 
 
 def set_status(filename: str, **kwargs):
@@ -146,18 +155,11 @@ def set_status(filename: str, **kwargs):
             setattr(st, k, v)
 
 
-def get_status_snapshot(filename: str) -> dict:
+def _status_snapshot_dict(filename: str) -> dict:
     """Return a thread-safe snapshot dict of the current status for filename."""
-    with _status_lock:
-        st = _get_or_create_status_nolock(filename)
-        return {
-            "filename": st.filename,
-            "uploadStatus": st.uploadStatus,
-            "transcodeStatus": st.transcodeStatus,
-            "framesDone": st.framesDone,
-            "totalFrames": st.totalFrames,
-            "error": st.error,
-        }
+    # Use the deepcopying accessor and convert to dict for SSE/JSON responses.
+    st = get_or_create_status(filename)
+    return asdict(st)
 
 
 # -----------------------------
@@ -444,7 +446,7 @@ def transcode_video(
         def _single_sync() -> Iterator[dict]:
             # Ensure upload status reflects disk state, then return a snapshot
             get_or_create_status(filename, root_config.UPLOADS_DIR)
-            yield get_status_snapshot(filename)
+            yield _status_snapshot_dict(filename)
 
         return StreamingResponse(
             _stream_sse_sync(_single_sync()), media_type="text/event-stream"
@@ -463,7 +465,7 @@ def transcode_video(
         start = time.monotonic()
         TIMEOUT_SEC = 60
         while True:
-            payload = get_status_snapshot(filename)
+            payload = _status_snapshot_dict(filename)
             yield payload
             if payload["transcodeStatus"] in (
                 TranscodeStatus.DONE,
@@ -477,7 +479,7 @@ def transcode_video(
                     transcodeStatus=TranscodeStatus.ERROR,
                     error=(payload.get("error") or "Transcode timed out"),
                 )
-                yield get_status_snapshot(filename)
+                yield _status_snapshot_dict(filename)
                 break
             time.sleep(0.25)
 
