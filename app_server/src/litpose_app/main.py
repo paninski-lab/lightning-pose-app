@@ -71,6 +71,7 @@ from .routes import (
     config_root,
     models,
     videos,
+    inference,
 )
 
 router.include_router(ffprobe.router)
@@ -82,6 +83,7 @@ router.include_router(configs.router)
 router.include_router(config_root.router)
 router.include_router(models.router)
 router.include_router(videos.router)
+router.include_router(inference.router)
 app.include_router(router)
 
 

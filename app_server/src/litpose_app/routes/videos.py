@@ -443,9 +443,6 @@ def transcode_video(
     def poller_sync() -> Iterator[dict]:
         # Periodically emit current status until terminal
         import time
-
-        start = time.monotonic()
-        TIMEOUT_SEC = 60
         while True:
             payload = _status_snapshot_dict(filename)
             yield payload
@@ -453,15 +450,6 @@ def transcode_video(
                 TranscodeStatus.DONE,
                 TranscodeStatus.ERROR,
             ):
-                break
-            if time.monotonic() - start > TIMEOUT_SEC:
-                # Safety cutoff to avoid hanging streams if a background task deadlocks
-                set_status(
-                    filename,
-                    transcodeStatus=TranscodeStatus.ERROR,
-                    error=(payload.get("error") or "Transcode timed out"),
-                )
-                yield _status_snapshot_dict(filename)
                 break
             time.sleep(0.25)
 
