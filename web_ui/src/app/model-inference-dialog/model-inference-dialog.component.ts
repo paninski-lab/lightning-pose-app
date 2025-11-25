@@ -322,8 +322,25 @@ export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
           const total = st.total ?? 0;
           const completed = st.completed ?? 0;
           const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+          // Map backend status to UI status keys
+          const backend = st.status ?? 'ACTIVE';
+          let uiStatus: InferenceUiState['status'];
+          switch (backend) {
+            case 'PENDING':
+            case 'ACTIVE':
+              uiStatus = 'running';
+              break;
+            case 'DONE':
+              uiStatus = 'done';
+              break;
+            case 'ERROR':
+              uiStatus = 'error';
+              break;
+            default:
+              uiStatus = 'running';
+          }
           this.inference.set({
-            status: (st.status?.toLowerCase() as any) ?? 'running',
+            status: uiStatus,
             progress,
             message: st.message ?? undefined,
             taskId: st.taskId,

@@ -116,7 +116,10 @@
             <div class="text-xs opacity-70 mt-1">{{ inference().message }}</div>
           }
         } @else if (inference().status === 'done') {
-          <div class="text-success">Inference completed.</div>
+          <div class="flex items-center gap-2">
+            <span class="badge badge-success">Inference completed</span>
+            <span class="text-xs opacity-70" *ngIf="inference().message">{{ inference().message }}</span>
+          </div>
         } @else if (inference().status === 'error') {
           <div class="text-error">{{ inference().error ?? 'Inference failed' }}</div>
         }
