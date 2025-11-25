@@ -33,75 +33,11 @@
       </div>
 
       <div class="overflow-y-auto grow min-h-0 border rounded-box" role="region" aria-label="Selected videos for inference">
-        @if (items().length === 0) {
-          <div class="p-6 text-sm">No files selected yet.</div>
-        } @else {
-          <table class="table table-zebra text-sm">
-            <thead>
-              <tr>
-                <th scope="col">File</th>
-                <th scope="col">Size</th>
-                <th scope="col">Session</th>
-                <th scope="col">View</th>
-                <th scope="col">Status</th>
-                <th scope="col"><span class="sr-only">Actions</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (it of items(); track it.name) {
-                <tr>
-                  <td class="break-all">{{ it.name }}</td>
-                  <td>{{ formatBytes(it.size) }}</td>
-                  <td>{{ it.sessionKey ?? '—' }}</td>
-                  <td>{{ it.view ?? '—' }}</td>
-                  <td>
-                    <!-- Upload phase -->
-                    @if (it.upload) {
-                      @if (it.upload.status === 'uploading') {
-                        <div class="flex items-center gap-2">
-                          <progress class="progress progress-primary w-40" [value]="it.upload.progress" max="100"></progress>
-                          <span>{{ it.upload.progress }}%</span>
-                        </div>
-                      } @else if (it.upload.status === 'done') {
-                        <div class="flex items-center gap-2">
-                          <span class="badge badge-success">Uploaded</span>
-                        </div>
-                      } @else if (it.upload.status === 'error') {
-                        <div class="text-error text-xs">{{ it.upload.error }}</div>
-                      }
-                    } @else {
-                      @if (it.valid) {
-                        <span class="badge badge-success">Valid</span>
-                      } @else {
-                        <span class="badge badge-error" [attr.aria-label]="it.error ?? 'Invalid'">Invalid</span>
-                        <div class="text-error text-xs">{{ it.error }}</div>
-                      }
-                    }
-
-                    <!-- Transcode phase (shown after upload completes or when already uploaded) -->
-                    @if (it.upload?.status === 'done' || it.transcode) {
-                      <div class="mt-2">
-                        @if (it.transcode?.status === 'transcoding') {
-                          <div class="flex items-center gap-2">
-                            <progress class="progress w-40" [value]="it.transcode?.progress ?? 0" max="100"></progress>
-                            <span>{{ it.transcode?.progress ?? 0 }}%</span>
-                          </div>
-                        } @else if (it.transcode?.status === 'done') {
-                          <span class="badge badge-success">Transcoded</span>
-                        } @else if (it.transcode?.status === 'error') {
-                          <div class="text-error text-xs">{{ it.transcode?.error ?? '' }}</div>
-                        }
-                      </div>
-                    }
-                  </td>
-                  <td class="text-right">
-                    <button class="btn btn-xs" (click)="removeAt($index)" [disabled]="uploading()">Remove</button>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        }
+        <app-video-file-table
+          [items]="items()"
+          [uploading]="uploading()"
+          (removeAt)="removeAt($event)"
+        />
       </div>
 
       <!-- Inference summary/progress -->
