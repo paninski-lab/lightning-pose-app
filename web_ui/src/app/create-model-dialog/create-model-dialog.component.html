@@ -44,7 +44,17 @@
           }
           @if (selectedTab() === "general") {
             <form class="prose px-4">
-              <fieldset class="fieldset my-6">
+              <fieldset class="fieldset my-2">
+                <h3 class="text-md mt-0">Default config file</h3>
+                <p>
+                  The settings in this form will be applied on top of the LP
+                  config file:
+                  <code class="whitespace-nowrap"
+                    >PROJECT_DIR / configs / default.yaml</code
+                  >
+                </p>
+              </fieldset>
+              <fieldset class="fieldset my-2">
                 <h3 class="text-md mt-0">Model name</h3>
                 <p class="m-0!">
                   The name of the model and the directory that will be created

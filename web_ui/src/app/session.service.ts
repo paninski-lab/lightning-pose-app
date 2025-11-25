@@ -549,6 +549,55 @@ export class SessionService {
     })) as ModelListResponse;
     return resp;
   }
+
+  /**
+   * Start or attach to a model inference run for a set of videos and stream progress via SSE.
+   * Mirrors the TranscodeVideo SSE pattern.
+   */
+  inferModelSse(
+    modelRelativePath: string,
+    videoRelativePaths: string[],
+  ): Observable<InferenceTaskStatus> {
+    const projectKey = this.getProjectKeyOrThrow();
+    const params = new URLSearchParams({
+      projectKey,
+      modelRelativePath,
+    });
+    // Append multiple videoRelativePaths entries
+    for (const rel of videoRelativePaths) {
+      params.append('videoRelativePaths', rel);
+    }
+    const url = `/app/v0/sse/InferModel?${params.toString()}`;
+
+    return new Observable<InferenceTaskStatus>((subscriber) => {
+      const es = new EventSource(url);
+      const onMessage = (ev: MessageEvent) => {
+        try {
+          const data = JSON.parse(ev.data) as InferenceTaskStatus;
+          subscriber.next(data);
+          if (data.status === 'DONE' || data.status === 'ERROR') {
+            es.close();
+            subscriber.complete();
+          }
+        } catch {
+          // ignore malformed events
+        }
+      };
+      const onError = () => {
+        try {
+          es.close();
+        } catch {}
+        subscriber.error(new Error('Inference stream error'));
+      };
+      es.onmessage = onMessage;
+      es.onerror = onError;
+      return () => {
+        try {
+          es.close();
+        } catch {}
+      };
+    });
+  }
 }
 
 export type TranscodeStatus = 'PENDING' | 'ACTIVE' | 'DONE' | 'ERROR';
@@ -557,6 +606,16 @@ export interface VideoTaskStatus {
   framesDone: number | null;
   totalFrames: number | null;
   error?: string | null;
+}
+
+export type InferenceStatus = 'PENDING' | 'ACTIVE' | 'DONE' | 'ERROR';
+export interface InferenceTaskStatus {
+  taskId: string;
+  status: InferenceStatus;
+  completed: number | null;
+  total: number | null;
+  error?: string | null;
+  message?: string | null;
 }
 
 interface RGlobResponse {
