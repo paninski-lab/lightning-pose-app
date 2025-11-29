@@ -31,7 +31,7 @@
           (click)="handleTabClick('directories')"
           (keydown.enter)="handleTabClick('directories')"
         >
-          <span class="material-icons text-sm!">folder</span>Directories</a
+          <span class="material-icons text-sm!">folder</span>Local setup</a
         >
       </li>
       <li>
@@ -57,15 +57,16 @@
     <div class="overflow-y-auto">
       @if (selectedTab() === "directories") {
         <form [formGroup]="projectInfoForm" class="prose px-4">
-          <fieldset class="fieldset my-6">
+          <p class="m-0! text-sm">
+            Settings specific to this machine, stored in
+            <code>~/.lightning-pose/projects.toml</code>
+          </p>
+          <fieldset class="fieldset">
+            <h3 class="text-md">Data directory</h3>
             <p class="m-0!">
-              Where lightning pose should find the project's directories on this
-              machine.
-            </p>
-            <h3 class="text-md">Project directory</h3>
-            <p class="m-0!">
-              The main project directory containing a metadata file called
-              <code>project.yaml</code>.
+              The root of the data directory. Contains all data used to train
+              models, and the <code>project.yaml</code> metadata file. The
+              directory will be created if it doesn't exist.
             </p>
 
             <div class="input w-full">
@@ -80,16 +81,20 @@
             </div>
           </fieldset>
 
-          <fieldset class="my-4 fieldset">
+          <fieldset class="fieldset">
             <h3 class="text-md">Model directory</h3>
             <p class="m-0!">The directory containing the project's models.</p>
 
             <div class="flex gap-2">
-              <input type="checkbox" class="checkbox" />
+              <input
+                type="checkbox"
+                class="checkbox"
+                formControlName="useDefaultModelDir"
+              />
               <span class="m-0!">
                 Use the default model directory:<br />
                 <div class="inline-block w-4"></div>
-                <code>&lt;project directory&gt;&nbsp;/&nbsp;models&nbsp;/</code>
+                <code>DATA_DIR&nbsp;/&nbsp;models&nbsp;/</code>
               </span>
             </div>
 

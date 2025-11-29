@@ -34,20 +34,54 @@ export class ProjectSettingsComponent implements OnInit {
     this.projectInfoForm = this.fb.group({
       dataDir: '',
       modelDir: '',
+      useDefaultModelDir: [true],
       views: [''],
       keypointNames: [''],
+    });
+
+    this.projectInfoForm
+      .get('useDefaultModelDir')
+      ?.valueChanges.subscribe((useDefault) => {
+        const modelDirControl = this.projectInfoForm.get('modelDir');
+        if (useDefault) {
+          modelDirControl?.disable();
+          modelDirControl?.setValue(
+            this.getDefaultModelDir(this.projectInfoForm.get('dataDir')?.value),
+          );
+        } else {
+          modelDirControl?.enable();
+        }
+      });
+
+    this.projectInfoForm.get('dataDir')?.valueChanges.subscribe((dataDir) => {
+      if (this.projectInfoForm.get('useDefaultModelDir')?.value) {
+        this.projectInfoForm
+          .get('modelDir')
+          ?.setValue(this.getDefaultModelDir(dataDir));
+      }
     });
   }
 
   ngOnInit() {
     const projectInfo = this.projectInfoService.projectInfo;
     if (projectInfo) {
+      const isDefault =
+        !projectInfo.model_dir ||
+        projectInfo.model_dir === this.getDefaultModelDir(projectInfo.data_dir);
+
       this.projectInfoForm.patchValue({
         dataDir: projectInfo.data_dir,
-        modelDir: projectInfo.model_dir,
         views: projectInfo.views.join('\n'),
         keypointNames: projectInfo.keypoint_names.join('\n'),
+        useDefaultModelDir: isDefault,
       });
+
+      if (!isDefault) {
+        this.projectInfoForm.patchValue({
+          modelDir: projectInfo.model_dir,
+        });
+      }
+
       this.projectInfoForm.markAsPristine();
 
       this.viewsInitialRows.update((x) =>
@@ -73,7 +107,10 @@ export class ProjectSettingsComponent implements OnInit {
       projectInfo.data_dir = this.projectInfoForm.get('dataDir')?.value ?? '';
     }
 
-    if (this.projectInfoForm.get('modelDir')?.dirty) {
+    const useDefaultModelDir =
+      this.projectInfoForm.get('useDefaultModelDir')?.value;
+
+    if (!useDefaultModelDir) {
       projectInfo.model_dir = this.projectInfoForm.get('modelDir')?.value ?? '';
     }
 
@@ -105,6 +142,10 @@ export class ProjectSettingsComponent implements OnInit {
       .replace(/[^\w\-]/g, ' ')
       .split(/\s+/)
       .filter(Boolean);
+  }
+
+  protected getDefaultModelDir(dataDir: string): string {
+    return dataDir ? `${dataDir.replace(/\/$/, '')}/models` : '';
   }
 
   protected readonly cameraViewPlaceholder = `view1
