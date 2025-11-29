@@ -132,15 +132,11 @@ def _create_project_dir_if_needed(project: Project, project_util: ProjectUtil):
             yaml.dump({"schema_version": 1}, f)
 
 
-@router.post("/app/v0/rpc/AddExistingProject")
+@router.post("/app/v0/rpc/UpdateProjectsTomlEntry")
 def add_existing_project(
     request: AddExistingProjectRequest,
     project_util: ProjectUtil = Depends(deps.project_util),
 ) -> None:
-    """
-    Adds an existing project's paths to projects.toml.
-    Does not modify project.yaml.
-    """
     pp_dict = {"data_dir": request.data_dir}
     if request.model_dir is not None:
         pp_dict["model_dir"] = request.model_dir

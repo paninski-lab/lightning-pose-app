@@ -83,7 +83,7 @@ class ProjectNotInProjectsToml(ApplicationError):
 
 def project_info_getter(
     project_util: ProjectUtil = Depends(project_util),
-) -> Callable[[str], Project]:
+) -> ProjectInfoGetter:
     def get_project_info(project_key: str) -> Project:
         from lightning_pose.data.datatypes import Project
 

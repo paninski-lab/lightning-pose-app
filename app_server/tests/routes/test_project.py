@@ -18,7 +18,7 @@ from fastapi.testclient import TestClient
 from lightning_pose.rootconfig import RootConfig
 
 
-def test_get_project_info(client: TestClient, override_config, tmp_path):
+def test_get_project_info(override_config, tmp_path, client: TestClient):
     # setup the projects TOML file contents
     with open(override_config.LP_SYSTEM_DIR / "projects.toml", "wb") as f:
         data_dir = str(tmp_path / "sometestpath")
@@ -66,13 +66,13 @@ def test_add_existing_project_adds_to_projects_toml(
         "data_dir": data_dir,
     }
 
-    resp = client.post("/app/v0/rpc/AddExistingProject", json=payload)
+    resp = client.post("/app/v0/rpc/UpdateProjectsTomlEntry", json=payload)
     assert resp.status_code == 200
     # Route returns None → encoded as JSON null
     assert resp.json() is None
 
     # Verify the TOML file contents updated
-    with open(override_config.LP_SYSTEM_DIR / "projects.toml", "r") as f:
+    with open(override_config.PROJECTS_TOML_PATH, "r") as f:
         data = toml.load(f)
         assert data == {"demo-project": {"data_dir": data_dir}}
 
@@ -90,7 +90,7 @@ def test_update_project_config_patches_yaml(
     client: TestClient, override_config, tmp_path
 ):
     # setup the projects TOML file contents
-    with open(override_config.LP_SYSTEM_DIR / "projects.toml", "wb") as f:
+    with open(override_config.PROJECTS_TOML_PATH, "wb") as f:
         data_dir = str(tmp_path / "sometestpath")
         tomli_w.dump({"demo-project": {"data_dir": data_dir}}, f)
 
@@ -123,7 +123,7 @@ def test_update_project_config_patches_yaml(
 
 def test_create_new_project(client: TestClient, override_config, tmp_path):
     # start with empty projects.toml
-    (override_config.LP_SYSTEM_DIR / "projects.toml").touch()
+    override_config.PROJECTS_TOML_PATH.unlink(missing_ok=True)
 
     data_dir = tmp_path / "new_project"
 
