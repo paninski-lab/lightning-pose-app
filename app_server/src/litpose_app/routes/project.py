@@ -1,4 +1,6 @@
 import logging
+import os
+import time
 from pathlib import Path
 
 import tomli
@@ -124,14 +126,6 @@ def get_project_info(
     return GetProjectInfoResponse(projectInfo=project_info)
 
 
-def _create_project_dir_if_needed(project: Project, project_util: ProjectUtil):
-    project.paths.data_dir.mkdir(parents=True, exist_ok=True)
-    project.paths.model_dir.mkdir(exist_ok=True)
-    if not project_util.get_project_yaml_path(project.paths.data_dir).is_file():
-        with open(project_util.get_project_yaml_path(project.paths.data_dir), "w") as f:
-            yaml.dump({"schema_version": 1}, f)
-
-
 @router.post("/app/v0/rpc/UpdateProjectsTomlEntry")
 def add_existing_project(
     request: AddExistingProjectRequest,
@@ -196,21 +190,19 @@ def create_new_project(
         pp_dict["model_dir"] = request.model_dir
     pp = ProjectPaths.model_validate(pp_dict)
 
-    try:
-        # Create directories and minimal yaml
-        data_dir = pp.data_dir
-        model_dir = pp.model_dir
-        data_dir.mkdir(parents=True)
-        model_dir.mkdir(parents=True)
+    data_dir = pp.data_dir
+    model_dir = pp.model_dir
 
-        project_yaml_path = project_util.get_project_yaml_path(data_dir)
+    data_dir.mkdir(parents=True, exist_ok=True)
+    (data_dir / "configs").mkdir(exist_ok=True)
+    project_yaml_path = project_util.get_project_yaml_path(data_dir)
 
-        with open(project_yaml_path, "x") as f:
-            yaml.dump({"schema_version": 1}, f)
-    except FileExistsError as e:
-        raise ApplicationError(
-            f"File in project {request.projectKey} already exists: {e.filename}"
-        )
+    with open(project_yaml_path, "x") as f:
+        default_yaml = {"schema_version": 1}
+        yaml.dump(default_yaml, f)
+
+    model_dir.mkdir(parents=True, exist_ok=True)
+
     project_util.update_project_paths(project_key=request.projectKey, projectpaths=pp)
 
     return None
