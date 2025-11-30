@@ -95,7 +95,7 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // Combine queryParams with projectLoaded$
+    // Open dialog using query params.
     this.router.events
       .pipe(
         filter((event) => event instanceof NavigationEnd),
