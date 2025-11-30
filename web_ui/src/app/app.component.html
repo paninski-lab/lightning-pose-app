@@ -48,14 +48,16 @@
         </div>
       }
 
-      <button
+      <!-- Settings button using routerLink to open the dialog -->
+      <a
         class="btn btn-ghost"
         tabindex="0"
-        (click)="settingsDialogOpen.set(true)"
-        (keydown.enter)="settingsDialogOpen.set(true)"
+        [routerLink]="[]"
+        [queryParams]="{ settingsOpen: 'true' }"
+        queryParamsHandling="merge"
       >
         <span class="material-icons">settings</span>
-      </button>
+      </a>
     </div>
   </nav>
 </header>
@@ -83,7 +85,6 @@
   Default min-height for flex items is auto. -->
 <main class="flex-grow flex min-h-0">
   <router-outlet />
-
 </main>
 
 <!-- Settings dialog -->
@@ -91,12 +92,14 @@
   @if (settingsDialogOpen()) {
     <app-project-settings
       class="modal-box w-5/6 max-w-3xl h-2/3 max-h-150"
-      (done)="settingsDialogOpen.set(false)"
+      [setupMode]="settingsSetupMode()"
+      [projectKey]="settingsProjectKey()"
+      (done)="handleSettingsDialogDone()"
     ></app-project-settings>
 
     <!-- Makes the dialog close when clicked from outside. -->
     <div class="modal-backdrop">
-      <button (click)="settingsDialogOpen.set(false)">close</button>
+      <button (click)="handleSettingsDialogDone()">close</button>
     </div>
   }
 </dialog>

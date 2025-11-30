@@ -10,9 +10,7 @@ import {
   ProjectContext,
   ProjectInfoService,
 } from './project-info.service';
-import { take } from 'rxjs/operators';
 import { inject } from '@angular/core';
-import { forkJoin } from 'rxjs';
 
 export const contextResolver: ResolveFn<{
   projectContext: ProjectContext | null;

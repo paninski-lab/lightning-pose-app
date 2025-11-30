@@ -11,6 +11,7 @@ import { ProjectInfoService } from '../project-info.service';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ProjectInfo } from '../project-info';
 import { JsonPipe } from '@angular/common';
+// import { ActivatedRoute, Router } from '@angular/router'; // REMOVE: No longer directly routed
 
 @Component({
   selector: 'app-project-settings',
@@ -21,8 +22,8 @@ import { JsonPipe } from '@angular/common';
 })
 export class ProjectSettingsComponent implements OnInit {
   done = output<null>();
+  // Update inputs to be signals
   setupMode = input(false);
-  // When in setupMode, the caller must provide the project key to create.
   projectKey = input<string | null>(null);
 
   protected selectedTab = signal<string>('directories');
@@ -31,6 +32,8 @@ export class ProjectSettingsComponent implements OnInit {
   protected keypointInitialRows = signal(4);
   private projectInfoService = inject(ProjectInfoService);
   private fb = inject(FormBuilder);
+  // private route = inject(ActivatedRoute); // REMOVE
+  // private router = inject(Router); // REMOVE
 
   constructor() {
     this.projectInfoForm = this.fb.group({
@@ -65,34 +68,51 @@ export class ProjectSettingsComponent implements OnInit {
   }
 
   ngOnInit() {
-    const projectInfo = this.projectInfoService.projectInfo;
-    if (projectInfo) {
-      const isDefault =
-        !projectInfo.model_dir ||
-        projectInfo.model_dir === this.getDefaultModelDir(projectInfo.data_dir);
+    // Use the input properties directly
+    if (!this.setupMode() && this.projectKey()) {
+      const projectInfo = this.projectInfoService.projectInfo;
+      if (projectInfo) {
+        const isDefault =
+          !projectInfo.model_dir ||
+          projectInfo.model_dir ===
+            this.getDefaultModelDir(projectInfo.data_dir);
 
-      this.projectInfoForm.patchValue({
-        dataDir: projectInfo.data_dir,
-        views: projectInfo.views.join('\n'),
-        keypointNames: projectInfo.keypoint_names.join('\n'),
-        useDefaultModelDir: isDefault,
-      });
-
-      if (!isDefault) {
         this.projectInfoForm.patchValue({
-          modelDir: projectInfo.model_dir,
+          dataDir: projectInfo.data_dir,
+          views: projectInfo.views.join('\n'),
+          keypointNames: projectInfo.keypoint_names.join('\n'),
+          useDefaultModelDir: isDefault,
         });
+
+        if (!isDefault) {
+          this.projectInfoForm.patchValue({
+            modelDir: projectInfo.model_dir,
+          });
+        }
+
+        this.projectInfoForm.markAsPristine();
+
+        this.viewsInitialRows.update((x) =>
+          Math.max(x, projectInfo.views.length),
+        );
+
+        this.keypointInitialRows.update((x) =>
+          Math.max(x, projectInfo.keypoint_names.length),
+        );
+      } else {
+        console.warn(
+          `Project info for key "${this.projectKey()}" not immediately available.`,
+        );
+        // Consider handling this by emitting 'done' or showing an error
+        this.done.emit(null);
       }
-
-      this.projectInfoForm.markAsPristine();
-
-      this.viewsInitialRows.update((x) =>
-        Math.max(x, projectInfo.views.length),
-      );
-
-      this.keypointInitialRows.update((x) =>
-        Math.max(x, projectInfo.keypoint_names.length),
-      );
+    } else if (this.setupMode()) {
+      // For new project creation, pre-fill projectKey if provided in URL
+      if (this.projectKey()) {
+        // You might want to pre-fill dataDir or modelDir based on conventions
+        // For example:
+        // this.projectInfoForm.patchValue({ dataDir: `/path/to/default/${this.projectKey()}` });
+      }
     }
   }
 
@@ -103,21 +123,22 @@ export class ProjectSettingsComponent implements OnInit {
       this.saveSuccessMessageClearTimerId = 0;
     }
 
-    const useDefaultModelDir = this.projectInfoForm.get('useDefaultModelDir')?.value;
+    const useDefaultModelDir =
+      this.projectInfoForm.get('useDefaultModelDir')?.value;
+    const key = this.projectKey();
+
+    if (!key) {
+      throw new Error('Project key is missing!');
+    }
 
     if (this.setupMode()) {
-      // Creation mode: send full object via CreateNewProject
-      const key = this.projectKey();
-      if (!key) {
-        throw new Error('projectKey is required in setup mode');
-      }
+      // Creation mode
       const dataDir: string = this.projectInfoForm.get('dataDir')?.value ?? '';
       const modelDir: string | null = useDefaultModelDir
         ? null
-        : this.projectInfoForm.get('modelDir')?.value ?? null;
+        : (this.projectInfoForm.get('modelDir')?.value ?? null);
 
       const projectInfo: Partial<ProjectInfo> = {
-        // data_dir in projectInfo is ignored by backend YAML writer, so omit
         views: this.parseTextAsList(
           this.projectInfoForm.get('views')?.value ?? '',
         ),
@@ -133,7 +154,7 @@ export class ProjectSettingsComponent implements OnInit {
         projectInfo,
       });
     } else {
-      // Edit mode: patch semantics via UpdateProjectConfig
+      // Edit mode
       const projectInfo = {} as Partial<ProjectInfo>;
       if (this.projectInfoForm.get('dataDir')?.dirty) {
         projectInfo.data_dir = this.projectInfoForm.get('dataDir')?.value ?? '';
@@ -141,10 +162,10 @@ export class ProjectSettingsComponent implements OnInit {
 
       if (!useDefaultModelDir) {
         if (this.projectInfoForm.get('modelDir')?.dirty) {
-          projectInfo.model_dir = this.projectInfoForm.get('modelDir')?.value ?? '';
+          projectInfo.model_dir =
+            this.projectInfoForm.get('modelDir')?.value ?? '';
         }
       } else if (this.projectInfoForm.get('useDefaultModelDir')?.dirty) {
-        // If toggled back to default, set model_dir to default derived path
         const d: string = this.projectInfoForm.get('dataDir')?.value ?? '';
         projectInfo.model_dir = this.getDefaultModelDir(d);
       }
@@ -161,27 +182,20 @@ export class ProjectSettingsComponent implements OnInit {
         );
       }
 
-      const projectKey = this.projectInfoService['getProjectKeyOrThrow']
-        ? (this.projectInfoService as any)['getProjectKeyOrThrow']()
-        : null;
-      const key = projectKey ?? this.projectInfoService.projectContext()?.key;
-      if (!key) {
-        throw new Error('Project key is not available for update');
-      }
       await this.projectInfoService.updateProjectConfig({
         projectKey: key,
         projectInfo,
       });
     }
-    // If successful reload the app because project info is global state.
     this.saveSuccessMessage.set(
       'Saved. Refresh the page for changes to take effect.',
     );
-    // @ts-ignore
-    this.saveSuccessMessageClearTimerId = setTimeout(() => {
+    // Emit 'done' output when saving is complete
+    setTimeout(() => {
       this.saveSuccessMessage.set('');
       this.saveSuccessMessageClearTimerId = 0;
-    }, 5000) as number;
+      this.done.emit(null);
+    }, 1500); // Short delay for user to see save message
   }
 
   protected parseTextAsList(text: string): string[] {
@@ -205,5 +219,7 @@ view2
     this.selectedTab.set(tabKey);
   }
 
-  handleCloseClick() {}
+  handleCloseClick() {
+    this.done.emit(null); // Emit 'done' when the close button is clicked
+  }
 }
