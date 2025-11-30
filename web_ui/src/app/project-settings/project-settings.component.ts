@@ -22,6 +22,8 @@ import { JsonPipe } from '@angular/common';
 export class ProjectSettingsComponent implements OnInit {
   done = output<null>();
   setupMode = input(false);
+  // When in setupMode, the caller must provide the project key to create.
+  projectKey = input<string | null>(null);
 
   protected selectedTab = signal<string>('directories');
   protected projectInfoForm: FormGroup;
@@ -101,31 +103,76 @@ export class ProjectSettingsComponent implements OnInit {
       this.saveSuccessMessageClearTimerId = 0;
     }
 
-    // Save the project info.
-    const projectInfo = {} as Partial<ProjectInfo>;
-    if (this.projectInfoForm.get('dataDir')?.dirty) {
-      projectInfo.data_dir = this.projectInfoForm.get('dataDir')?.value ?? '';
-    }
+    const useDefaultModelDir = this.projectInfoForm.get('useDefaultModelDir')?.value;
 
-    const useDefaultModelDir =
-      this.projectInfoForm.get('useDefaultModelDir')?.value;
+    if (this.setupMode()) {
+      // Creation mode: send full object via CreateNewProject
+      const key = this.projectKey();
+      if (!key) {
+        throw new Error('projectKey is required in setup mode');
+      }
+      const dataDir: string = this.projectInfoForm.get('dataDir')?.value ?? '';
+      const modelDir: string | null = useDefaultModelDir
+        ? null
+        : this.projectInfoForm.get('modelDir')?.value ?? null;
 
-    if (!useDefaultModelDir) {
-      projectInfo.model_dir = this.projectInfoForm.get('modelDir')?.value ?? '';
-    }
+      const projectInfo: Partial<ProjectInfo> = {
+        // data_dir in projectInfo is ignored by backend YAML writer, so omit
+        views: this.parseTextAsList(
+          this.projectInfoForm.get('views')?.value ?? '',
+        ),
+        keypoint_names: this.parseTextAsList(
+          this.projectInfoForm.get('keypointNames')?.value ?? '',
+        ),
+      };
 
-    if (this.projectInfoForm.get('views')?.dirty) {
-      projectInfo.views = this.parseTextAsList(
-        this.projectInfoForm.get('views')?.value ?? '',
-      );
-    }
+      await this.projectInfoService.createNewProject({
+        projectKey: key,
+        data_dir: dataDir,
+        model_dir: modelDir ?? undefined,
+        projectInfo,
+      });
+    } else {
+      // Edit mode: patch semantics via UpdateProjectConfig
+      const projectInfo = {} as Partial<ProjectInfo>;
+      if (this.projectInfoForm.get('dataDir')?.dirty) {
+        projectInfo.data_dir = this.projectInfoForm.get('dataDir')?.value ?? '';
+      }
 
-    if (this.projectInfoForm.get('keypointNames')?.dirty) {
-      projectInfo.keypoint_names = this.parseTextAsList(
-        this.projectInfoForm.get('keypointNames')?.value ?? '',
-      );
+      if (!useDefaultModelDir) {
+        if (this.projectInfoForm.get('modelDir')?.dirty) {
+          projectInfo.model_dir = this.projectInfoForm.get('modelDir')?.value ?? '';
+        }
+      } else if (this.projectInfoForm.get('useDefaultModelDir')?.dirty) {
+        // If toggled back to default, set model_dir to default derived path
+        const d: string = this.projectInfoForm.get('dataDir')?.value ?? '';
+        projectInfo.model_dir = this.getDefaultModelDir(d);
+      }
+
+      if (this.projectInfoForm.get('views')?.dirty) {
+        projectInfo.views = this.parseTextAsList(
+          this.projectInfoForm.get('views')?.value ?? '',
+        );
+      }
+
+      if (this.projectInfoForm.get('keypointNames')?.dirty) {
+        projectInfo.keypoint_names = this.parseTextAsList(
+          this.projectInfoForm.get('keypointNames')?.value ?? '',
+        );
+      }
+
+      const projectKey = this.projectInfoService['getProjectKeyOrThrow']
+        ? (this.projectInfoService as any)['getProjectKeyOrThrow']()
+        : null;
+      const key = projectKey ?? this.projectInfoService.projectContext()?.key;
+      if (!key) {
+        throw new Error('Project key is not available for update');
+      }
+      await this.projectInfoService.updateProjectConfig({
+        projectKey: key,
+        projectInfo,
+      });
     }
-    await this.projectInfoService.setProjectInfo(projectInfo);
     // If successful reload the app because project info is global state.
     this.saveSuccessMessage.set(
       'Saved. Refresh the page for changes to take effect.',

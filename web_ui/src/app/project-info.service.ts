@@ -150,9 +150,43 @@ export class ProjectInfoService {
     return ctx.key;
   }
 
+  // New explicit APIs
+  async updateProjectConfig(payload: {
+    projectKey: string;
+    projectInfo: Partial<ProjectInfo>;
+  }): Promise<void> {
+    // Strip undefined fields for patch semantics
+    const cleaned: Record<string, unknown> = {};
+    Object.entries(payload.projectInfo).forEach(([k, v]) => {
+      if (v !== undefined) cleaned[k] = v;
+    });
+    await this.rpc.call('UpdateProjectConfig', {
+      projectKey: payload.projectKey,
+      projectInfo: cleaned,
+    });
+  }
+
+  async createNewProject(payload: {
+    projectKey: string;
+    data_dir: string;
+    model_dir?: string | null;
+    projectInfo: ProjectInfo | Partial<ProjectInfo>;
+  }): Promise<void> {
+    const body: any = {
+      projectKey: payload.projectKey,
+      data_dir: payload.data_dir,
+      projectInfo: payload.projectInfo,
+    };
+    if (payload.model_dir) {
+      body.model_dir = payload.model_dir;
+    }
+    await this.rpc.call('CreateNewProject', body);
+  }
+
+  // Backward-compat shim used by existing UI code: delegates to UpdateProjectConfig
   async setProjectInfo(projectInfo: Partial<ProjectInfo>) {
     const projectKey = this.getProjectKeyOrThrow();
-    await this.rpc.call('setProjectInfo', { projectKey, projectInfo });
+    await this.updateProjectConfig({ projectKey, projectInfo });
   }
 
   // Modern model catalogs
