@@ -120,7 +120,6 @@ export class AppComponent implements OnInit {
           this.settingsDialogOpen.set(true);
         } else if (createProjectKeyParam) {
           this.settingsSetupMode.set(true);
-          this.settingsProjectKey.set(createProjectKeyParam);
           this.settingsDialogOpen.set(true);
         } else {
           this.settingsDialogOpen.set(false);

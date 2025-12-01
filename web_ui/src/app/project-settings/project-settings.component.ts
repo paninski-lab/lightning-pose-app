@@ -37,6 +37,7 @@ export class ProjectSettingsComponent implements OnInit {
 
   constructor() {
     this.projectInfoForm = this.fb.group({
+      projectKey: '',
       dataDir: '',
       modelDir: '',
       useDefaultModelDir: [true],
@@ -78,6 +79,7 @@ export class ProjectSettingsComponent implements OnInit {
             this.getDefaultModelDir(projectInfo.data_dir);
 
         this.projectInfoForm.patchValue({
+          projectKey: this.projectKey(),
           dataDir: projectInfo.data_dir,
           views: projectInfo.views.join('\n'),
           keypointNames: projectInfo.keypoint_names.join('\n'),

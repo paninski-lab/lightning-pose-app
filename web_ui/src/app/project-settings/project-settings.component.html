@@ -62,11 +62,31 @@
             <code>~/.lightning-pose/projects.toml</code>
           </p>
           <fieldset class="fieldset">
+            <h3 class="text-md">Project Name</h3>
+            <p class="m-0!">The unique name used to identify this project.</p>
+            <div class="input w-full">
+              <span class="material-icons !text-sm opacity-50"
+                >description</span
+              >
+              <input
+                formControlName="projectKey"
+                type="text"
+                class="grow"
+                placeholder="Enter Project Name (e.g., MyMouseTrackingStudy)"
+                spellcheck="false"
+              />
+            </div>
+          </fieldset>
+          <fieldset class="fieldset">
             <h3 class="text-md">Data directory</h3>
             <p class="m-0!">
               The root of the data directory. Contains all data used to train
               models, and the <code>project.yaml</code> metadata file. The
               directory will be created if it doesn't exist.
+            </p>
+            <p class="m-0!">
+              A good convention is
+              <code>HOME_DIR / LPProjects / PROJECT_NAME</code>
             </p>
 
             <div class="input w-full">
