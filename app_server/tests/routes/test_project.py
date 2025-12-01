@@ -121,7 +121,9 @@ def test_update_project_config_patches_yaml(
     }
 
 
-def test_create_new_project_requires_info_and_writes_yaml(client: TestClient, override_config, tmp_path):
+def test_create_new_project_requires_info_and_writes_yaml(
+    client: TestClient, override_config, tmp_path
+):
     # start with empty projects.toml
     override_config.PROJECTS_TOML_PATH.unlink(missing_ok=True)
 
@@ -147,6 +149,11 @@ def test_create_new_project_requires_info_and_writes_yaml(client: TestClient, ov
     assert data_dir.is_dir()
     assert (data_dir / "models").is_dir()
 
+    # Verify config files copied
+    assert (data_dir / "configs").is_dir()
+    assert (data_dir / "configs" / "config_default.yaml").exists()
+    assert (data_dir / "configs" / "config_default_multiview.yaml").exists()
+
     # Verify project.yaml created with merged info and schema_version 1
     with open(data_dir / "project.yaml", "r") as f:
         y = yaml.safe_load(f)
@@ -164,7 +171,9 @@ def test_create_new_project_requires_info_and_writes_yaml(client: TestClient, ov
     assert data == {"new-project": {"data_dir": str(data_dir)}}
 
 
-def test_update_project_config_updates_paths_and_writes_yaml_to_new_dir(client: TestClient, override_config, tmp_path):
+def test_update_project_config_updates_paths_and_writes_yaml_to_new_dir(
+    client: TestClient, override_config, tmp_path
+):
     # setup the projects TOML file contents with initial path
     with open(override_config.PROJECTS_TOML_PATH, "wb") as f:
         old_data_dir = str(tmp_path / "old_project")

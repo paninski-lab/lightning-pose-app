@@ -1,5 +1,6 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   inject,
   input,
@@ -32,19 +33,18 @@ export class ProjectSettingsComponent implements OnInit {
   protected keypointInitialRows = signal(4);
   private projectInfoService = inject(ProjectInfoService);
   private fb = inject(FormBuilder);
-  // private route = inject(ActivatedRoute); // REMOVE
-  // private router = inject(Router); // REMOVE
+
+  private cdr = inject(ChangeDetectorRef);
 
   constructor() {
     this.projectInfoForm = this.fb.group({
       projectKey: '',
       dataDir: '',
-      modelDir: '',
+      modelDir: [{ value: '', disabled: true }], // defaults to disabled due to useDefaultModelDir: true
       useDefaultModelDir: [true],
       views: [''],
       keypointNames: [''],
     });
-
     this.projectInfoForm
       .get('useDefaultModelDir')
       ?.valueChanges.subscribe((useDefault) => {
@@ -58,7 +58,6 @@ export class ProjectSettingsComponent implements OnInit {
           modelDirControl?.enable();
         }
       });
-
     this.projectInfoForm.get('dataDir')?.valueChanges.subscribe((dataDir) => {
       if (this.projectInfoForm.get('useDefaultModelDir')?.value) {
         this.projectInfoForm
@@ -116,6 +115,7 @@ export class ProjectSettingsComponent implements OnInit {
         // this.projectInfoForm.patchValue({ dataDir: `/path/to/default/${this.projectKey()}` });
       }
     }
+    this.cdr.markForCheck();
   }
 
   protected async onSaveClick() {

@@ -1,21 +1,16 @@
 import logging
-import os
-import time
+import shutil
 from pathlib import Path
 
-import tomli
-import tomli_w
 import yaml
-from fastapi import APIRouter, Depends, BackgroundTasks
-from lightning_pose.data.datatypes import ProjectPaths, Project
-from lightning_pose.utils.project import ProjectUtil
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ValidationError
 
+from lightning_pose.data.datatypes import ProjectPaths
+from lightning_pose.utils.project import ProjectUtil
 from litpose_app import deps
-from litpose_app.config import Config
 from litpose_app.deps import (
     ProjectInfoGetter,
-    ProjectNotInProjectsToml,
     ApplicationError,
 )
 
@@ -263,6 +258,17 @@ def create_new_project(
 
     data_dir.mkdir(parents=True, exist_ok=True)
     (data_dir / "configs").mkdir(exist_ok=True)
+    CONFIG_FILES = ("config_default.yaml", "config_default_multiview.yaml")
+    # Copy the config file stored in the same directory as the litpose_app package to the configs directory
+    # Get the directory where litpose_app package is installed
+    package_dir = Path(__file__).parent.parent
+
+    # Copy each config file to the project's configs directory
+    for config_file in CONFIG_FILES:
+        src = package_dir / config_file
+        if src.exists():
+            dst = data_dir / "configs" / config_file
+            shutil.copy2(src, dst)
     project_yaml_path = project_util.get_project_yaml_path(data_dir)
 
     # Build initial YAML contents

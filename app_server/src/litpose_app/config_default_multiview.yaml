@@ -45,7 +45,7 @@ training:
   # dlc-top-down: dlc augmentations plus vertical and horizontal flips
   imgaug: dlc
   # 3d augmentations require camera calibration
-  imgaug_3d: true
+  imgaug_3d: false
   # batch size of labeled data during training
   train_batch_size: 16
   # batch size of labeled data during validation

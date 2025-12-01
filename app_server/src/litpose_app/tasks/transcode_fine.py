@@ -13,27 +13,30 @@ def transcode_video_task(input_file_path: Path, output_file_path: Path):
 
 # --- Configuration ---
 # FFmpeg options for transcoding:
+# -loglevel info: Show detailed information about the progress of the transcoding.
+# -stats: Show progress information in real-time.
 # -g 1: Intra frame for every frame (Group of Pictures size 1)
 # -c:v libx264: Use libx264 encoder
+# -pix_fmt yuv420p: Use YUV420 pixel format.
 # -preset medium: A balance between encoding speed and compression.
 #                 Options: ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow.
 # -crf 23: Constant Rate Factor. Lower values mean better quality and larger files (0-51, default 23).
-# -c:a copy: Copy audio stream without re-encoding. If audio re-encoding is needed, change this.
-# -y: Overwrite output files without asking.
+# -an: Drop all audio streams.
 FFMPEG_OPTIONS = [
     "-loglevel",
     "info",
     "-stats",
     "-c:v",
     "libx264",
+    "-pix_fmt",
+    "yuv420p",
     "-g",
     "1",
     "-preset",
     "medium",
     "-crf",
     "23",
-    "-c:a",
-    "copy",
+    "-an",
 ]
 
 
