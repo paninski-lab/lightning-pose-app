@@ -59,16 +59,6 @@ export class AppComponent implements OnInit {
   projectKey = computed(
     () => this.projectInfoService.projectContext()?.key ?? null,
   );
-  projectName = computed(() => {
-    const ctx = this.projectInfoService.projectContext();
-    const key = ctx?.key ?? null;
-    const dataDir = ctx?.projectInfo?.data_dir ?? null;
-    if (dataDir) {
-      const parts = String(dataDir).split('/').filter(Boolean);
-      return parts.length > 0 ? parts[parts.length - 1] : key;
-    }
-    return key;
-  });
   navLinks = computed(() => {
     const key = this.projectKey();
     if (!key) {
@@ -146,15 +136,7 @@ export class AppComponent implements OnInit {
     });
   }
 
-  handleSettingsDialogDone() {
-    this.closeSettingsDialog();
-    if (this.projectKey()) {
-      this.projectInfoService.fetchContext(this.projectKey()).subscribe();
-    } else if (this.settingsProjectKey()) {
-      this.router.navigate(['/project', this.settingsProjectKey()]);
-      this.projectInfoService
-        .fetchContext(this.settingsProjectKey())
-        .subscribe();
-    }
+  handleSettingsDialogDoneCreation(createdProjectKey: string) {
+    this.router.navigate(['/project', createdProjectKey]);
   }
 }

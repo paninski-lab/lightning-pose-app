@@ -9,7 +9,7 @@
   @if (!setupMode()) {
     <button
       class="btn btn-md btn-circle btn-ghost absolute right-4 top-4"
-      (click)="done.emit(null)"
+      (click)="closeButtonClick.emit(null)"
     >
       ✕
     </button>
@@ -61,22 +61,24 @@
             Settings specific to this machine, stored in
             <code>~/.lightning-pose/projects.toml</code>
           </p>
-          <fieldset class="fieldset">
-            <h3 class="text-md">Project Name</h3>
-            <p class="m-0!">The unique name used to identify this project.</p>
-            <div class="input w-full">
-              <span class="material-icons !text-sm opacity-50"
-                >description</span
-              >
-              <input
-                formControlName="projectKey"
-                type="text"
-                class="grow"
-                placeholder="Enter Project Name (e.g., MyMouseTrackingStudy)"
-                spellcheck="false"
-              />
-            </div>
-          </fieldset>
+          @if (setupMode()) {
+            <fieldset class="fieldset">
+              <h3 class="text-md">Project Name</h3>
+              <p class="m-0!">The unique name used to identify this project.</p>
+              <div class="input w-full">
+                <span class="material-icons !text-sm opacity-50"
+                  >description</span
+                >
+                <input
+                  formControlName="projectKey"
+                  type="text"
+                  class="grow"
+                  placeholder="Enter Project Name (e.g., MyMouseTrackingStudy)"
+                  spellcheck="false"
+                />
+              </div>
+            </fieldset>
+          }
           <fieldset class="fieldset">
             <h3 class="text-md">Data directory</h3>
             <p class="m-0!">
@@ -86,7 +88,7 @@
             </p>
             <p class="m-0!">
               A good convention is
-              <code>HOME_DIR / LPProjects / PROJECT_NAME</code>
+              <code>/ HOME_DIR / LPProjects / PROJECT_NAME</code>
             </p>
 
             <div class="input w-full">
@@ -114,7 +116,7 @@
               <span class="m-0!">
                 Use the default model directory:<br />
                 <div class="inline-block w-4"></div>
-                <code>DATA_DIR&nbsp;/&nbsp;models&nbsp;/</code>
+                <code>/ DATA_DIR&nbsp;/&nbsp;models&nbsp;/</code>
               </span>
             </div>
 

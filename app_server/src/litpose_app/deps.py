@@ -101,10 +101,12 @@ def project_info_getter(
             with open(project_yaml_path, "r") as f:
                 yaml_data = yaml.safe_load(f)
         except FileNotFoundError:
-            raise ApplicationError(f"Could not find a project.yaml")
+            raise ApplicationError(
+                f"Could not find a project.yaml file in data directory."
+            )
         except yaml.YAMLError as e:
             raise ApplicationError(
-                f"Could not decode project.yaml. Invalid syntax: {e}"
+                f"Could not decode project.yaml file in data directory. Invalid syntax: {e}"
             )
 
         return Project.model_validate(

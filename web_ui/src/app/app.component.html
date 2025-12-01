@@ -12,9 +12,9 @@
   <nav class="navbar bg-base-200 shadow-lg">
     <div class="navbar-start">
       <a href="/"><span class="text-lg font-semibold">Lightning Pose</span></a>
-      @if (projectName()) {
+      @if (projectKey()) {
         <span class="ml-3 text-base-content/70" aria-label="Current project"
-          >— {{ projectName() }}</span
+          >— {{ projectKey() }}</span
         >
       }
     </div>
@@ -94,12 +94,13 @@
       class="modal-box w-5/6 max-w-3xl h-2/3 max-h-150"
       [setupMode]="settingsSetupMode()"
       [projectKey]="settingsProjectKey()"
-      (done)="handleSettingsDialogDone()"
+      (doneCreation)="handleSettingsDialogDoneCreation($event)"
+      (closeButtonClick)="closeSettingsDialog()"
     ></app-project-settings>
 
     <!-- Makes the dialog close when clicked from outside. -->
     <div class="modal-backdrop">
-      <button (click)="handleSettingsDialogDone()">close</button>
+      <button (click)="closeSettingsDialog()">close</button>
     </div>
   }
 </dialog>

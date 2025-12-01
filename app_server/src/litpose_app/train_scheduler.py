@@ -5,9 +5,9 @@ import subprocess
 import time
 from pathlib import Path
 from typing import Optional
-import sys  # Import sys to check the platform
-import portalocker  # Import the portalocker library
-import psutil  # Import the psutil library
+import sys
+import portalocker
+import psutil
 
 from . import deps
 from .routes.models import TrainStatus

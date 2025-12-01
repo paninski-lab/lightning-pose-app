@@ -22,9 +22,11 @@ import { JsonPipe } from '@angular/common';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProjectSettingsComponent implements OnInit {
-  done = output<null>();
+  closeButtonClick = output<null>();
+  doneCreation = output<string>();
   // Update inputs to be signals
   setupMode = input(false);
+  // required for setupMode=false
   projectKey = input<string | null>(null);
 
   protected selectedTab = signal<string>('directories');
@@ -69,7 +71,10 @@ export class ProjectSettingsComponent implements OnInit {
 
   ngOnInit() {
     // Use the input properties directly
-    if (!this.setupMode() && this.projectKey()) {
+    if (!this.setupMode()) {
+      if (!this.projectKey()) {
+        throw new Error('Attempt to edit a project without project key');
+      }
       const projectInfo = this.projectInfoService.projectInfo;
       if (projectInfo) {
         const isDefault =
@@ -100,22 +105,8 @@ export class ProjectSettingsComponent implements OnInit {
         this.keypointInitialRows.update((x) =>
           Math.max(x, projectInfo.keypoint_names.length),
         );
-      } else {
-        console.warn(
-          `Project info for key "${this.projectKey()}" not immediately available.`,
-        );
-        // Consider handling this by emitting 'done' or showing an error
-        this.done.emit(null);
-      }
-    } else if (this.setupMode()) {
-      // For new project creation, pre-fill projectKey if provided in URL
-      if (this.projectKey()) {
-        // You might want to pre-fill dataDir or modelDir based on conventions
-        // For example:
-        // this.projectInfoForm.patchValue({ dataDir: `/path/to/default/${this.projectKey()}` });
       }
     }
-    this.cdr.markForCheck();
   }
 
   protected async onSaveClick() {
@@ -127,7 +118,7 @@ export class ProjectSettingsComponent implements OnInit {
 
     const useDefaultModelDir =
       this.projectInfoForm.get('useDefaultModelDir')?.value;
-    const key = this.projectKey();
+    const key = this.projectInfoForm.get('projectKey')?.value;
 
     if (!key) {
       throw new Error('Project key is missing!');
@@ -196,7 +187,7 @@ export class ProjectSettingsComponent implements OnInit {
     setTimeout(() => {
       this.saveSuccessMessage.set('');
       this.saveSuccessMessageClearTimerId = 0;
-      this.done.emit(null);
+      this.doneCreation.emit(key);
     }, 1500); // Short delay for user to see save message
   }
 
@@ -219,9 +210,5 @@ view2
 
   protected handleTabClick(tabKey: string) {
     this.selectedTab.set(tabKey);
-  }
-
-  handleCloseClick() {
-    this.done.emit(null); // Emit 'done' when the close button is clicked
   }
 }
