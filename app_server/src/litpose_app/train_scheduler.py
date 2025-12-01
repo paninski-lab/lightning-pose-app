@@ -135,64 +135,66 @@ def train_scheduler_loop(poll_interval_seconds: float = 2.0) -> None:
     while True:
         lock_file = None
         try:
-            config = deps.config()
-            if not config.PROJECT_INFO_TOML_PATH.exists():
-                continue
-            project_info = deps.project_info(config)
-            if (
-                project_info
-                and project_info.model_dir
-                and project_info.model_dir.exists()
-            ):
-                base = project_info.model_dir
-                lock_path = base / "scheduler.lock"
+            project_util = deps.project_util(root_config=deps.root_config())
+            pps = project_util.get_all_project_paths()
+            for project_key, project_info in pps.items():
+                print(project_key)
+                if (
+                    project_info
+                    and project_info.model_dir
+                    and project_info.model_dir.exists()
+                ):
+                    base = project_info.model_dir
+                    lock_path = base / "scheduler.lock"
 
-                try:
-                    # Use portalocker.Lock to acquire an exclusive non-blocking lock
-                    # mode='a' is important to avoid truncating existing lock files on some platforms
-                    # timeout=0 means non-blocking
-                    lock_file = portalocker.Lock(str(lock_path), mode="a", timeout=0)
-                    lock_file.acquire()
-                    logger.debug(f"Acquired lock on {lock_path}")
-                except portalocker.exceptions.LockException:
-                    logger.debug(
-                        f"Another scheduler holds the lock on {lock_path}. Skipping this cycle."
-                    )
-                    continue  # Skip this cycle if lock cannot be acquired
+                    try:
+                        # Use portalocker.Lock to acquire an exclusive non-blocking lock
+                        # mode='a' is important to avoid truncating existing lock files on some platforms
+                        # timeout=0 means non-blocking
+                        lock_file = portalocker.Lock(
+                            str(lock_path), mode="a", timeout=0
+                        )
+                        lock_file.acquire()
+                        logger.debug(f"Acquired lock on {lock_path}")
+                    except portalocker.exceptions.LockException:
+                        logger.debug(
+                            f"Another scheduler holds the lock on {lock_path}. Skipping this cycle."
+                        )
+                        continue  # Skip this cycle if lock cannot be acquired
 
-                active_found = False
-                for d in [p for p in base.iterdir() if p.is_dir()]:
-                    status_path = d / "train_status.json"
-                    ts = _read_status(status_path)
-                    if (
-                        ts
-                        and ts.status
-                        in ("STARTING", "STARTED", "TRAINING", "EVALUATING")
-                        and ts.pid
-                    ):
-                        if _is_pid_alive(ts.pid):
-                            active_found = True
-                            break
-                        else:
-                            # Process died, update status to FAILED
-                            _write_status(
-                                status_path,
-                                TrainStatus(status="FAILED", pid=ts.pid),
-                            )
-                            logger.info(
-                                f"Marked {d.name} as FAILED due to defunct PID {ts.pid}"
-                            )
-
-                if not active_found:
-                    pending_dirs = []
-                    for d in sorted([p for p in base.iterdir() if p.is_dir()]):
+                    active_found = False
+                    for d in [p for p in base.iterdir() if p.is_dir()]:
                         status_path = d / "train_status.json"
                         ts = _read_status(status_path)
-                        if ts and ts.status == "PENDING":
-                            pending_dirs.append(d)
-                    if pending_dirs:
-                        _launch_training(pending_dirs[0])
-                        logger.info(f"Launched training for {pending_dirs[0].name}")
+                        if (
+                            ts
+                            and ts.status
+                            in ("STARTING", "STARTED", "TRAINING", "EVALUATING")
+                            and ts.pid
+                        ):
+                            if _is_pid_alive(ts.pid):
+                                active_found = True
+                                break
+                            else:
+                                # Process died, update status to FAILED
+                                _write_status(
+                                    status_path,
+                                    TrainStatus(status="FAILED", pid=ts.pid),
+                                )
+                                logger.info(
+                                    f"Marked {d.name} as FAILED due to defunct PID {ts.pid}"
+                                )
+
+                    if not active_found:
+                        pending_dirs = []
+                        for d in sorted([p for p in base.iterdir() if p.is_dir()]):
+                            status_path = d / "train_status.json"
+                            ts = _read_status(status_path)
+                            if ts and ts.status == "PENDING":
+                                pending_dirs.append(d)
+                        if pending_dirs:
+                            _launch_training(pending_dirs[0])
+                            logger.info(f"Launched training for {pending_dirs[0].name}")
 
         except Exception:
             logger.exception("Error in train scheduler loop")

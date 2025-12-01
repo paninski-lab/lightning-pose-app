@@ -16,16 +16,9 @@ from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
 
 from . import deps
+from .routes.labeler.multiview_autolabel import warm_up_anipose
 from .routes.videos import cleanup_old_uploads
-
-# from .routes.labeler.multiview_autolabel import warm_up_anipose
-warm_up_anipose = lambda: None
-
-
-# from .train_scheduler import _train_scheduler_process_target
-def _train_scheduler_process_target(): ...
-
-
+from .train_scheduler import _train_scheduler_process_target
 from .utils.file_response import file_response
 
 ## Setup logging
