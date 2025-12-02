@@ -217,7 +217,7 @@ export class LabelerPageComponent implements OnInit, OnChanges {
       // Reload label files
       await this.sessionService.loadLabelFiles();
       // Switch to the label file the extract frames was for.
-      await this.router.navigate(['/labeler'], {
+      await this.router.navigate([], {
         queryParams: { labelFileKey: labelFileKey },
       });
     }

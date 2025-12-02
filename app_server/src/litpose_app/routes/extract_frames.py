@@ -123,7 +123,7 @@ def init_label_file(
                         )
 
     # Create the DataFrame (it's the same for all files)
-    keypoint_names = project.config.bodyparts or []
+    keypoint_names = project.config.keypoint_names or []
     assert len(keypoint_names) > 0
     column_levels = [["scorer"], keypoint_names, ["x", "y"]]
     column_names = ["scorer", "bodyparts", "coords"]
