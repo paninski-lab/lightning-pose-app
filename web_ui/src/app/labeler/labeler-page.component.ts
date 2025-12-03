@@ -142,7 +142,7 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   protected handleSaved(data: {
     labelFile: MVLabelFile;
     frame: MVFrame;
-    shouldContinue: boolean;
+    shouldAdvanceFrame: boolean;
   }) {
     if (data.labelFile !== this.loadedLabelFile()) {
       return;
@@ -159,13 +159,13 @@ export class LabelerPageComponent implements OnInit, OnChanges {
         }
       });
     });
-    if (data.shouldContinue) {
+    if (data.shouldAdvanceFrame) {
       const currentFrameIndex = this.labelFileDataUnLabeledSlice().findIndex(
         (mvf) => mvf.key === data.frame.key,
       );
-      const nextFrameKey =
-        this.labelFileDataUnLabeledSlice()[currentFrameIndex + 1]?.key ?? null;
-      if (nextFrameKey !== null) {
+      const nextFrameKey: string | undefined =
+        this.labelFileDataUnLabeledSlice()[currentFrameIndex + 1]?.key;
+      if (!nextFrameKey) {
         this.router.navigate([], {
           queryParams: {
             labelFileKey: this.labelFileKey(),
