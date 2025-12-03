@@ -138,7 +138,6 @@ def train_scheduler_loop(poll_interval_seconds: float = 2.0) -> None:
             project_util = deps.project_util(root_config=deps.root_config())
             pps = project_util.get_all_project_paths()
             for project_key, project_info in pps.items():
-                print(project_key)
                 if (
                     project_info
                     and project_info.model_dir
