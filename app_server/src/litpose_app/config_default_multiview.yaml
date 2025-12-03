@@ -15,9 +15,9 @@ data:
   # location of bboxes; this should be relative to `data_dir` or an absolute path.
   # replace {camn} with your camera names, add more rows as necessary
   # if no bounding boxes, delete all list entries and "bbox_file" entry
-  bbox_file:
-    - bboxes_{cam0}.csv
-    - bboxes_{cam1}.csv
+  # bbox_file:
+  #   - bboxes_{cam0}.csv
+  #   - bboxes_{cam1}.csv
   view_names:
     - {cam0}
     - {cam1}
