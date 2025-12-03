@@ -40,7 +40,11 @@ async def lifespan(app: FastAPI):
     # Start model train scheduler loop in a separate process
     try:
         logger.info("Starting train scheduler in a separate process...")
-        _train_scheduler_process = multiprocessing.Process(
+        # Use 'spawn' start method.
+        # This ensures a fresh process that doesn't inherit uvicorn's signal handlers,
+        # allowing KeyboardInterrupt to work correctly without manual resets.
+        ctx = multiprocessing.get_context("spawn")
+        _train_scheduler_process = ctx.Process(
             target=_train_scheduler_process_target, daemon=True
         )
         _train_scheduler_process.start()

@@ -1,5 +1,4 @@
 from fastapi.testclient import TestClient
-import yaml
 
 
 def test_get_default_config(client: TestClient):
