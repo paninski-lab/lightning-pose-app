@@ -24,39 +24,24 @@
 
   <div class="flex gap-2 w-full grow shrink min-h-0">
     <ul class="menu min-w-40">
-      <li>
-        <a
-          [class.menu-active]="selectedTab() === 'directories'"
-          tabindex="0"
-          (click)="handleTabClick('directories')"
-          (keydown.enter)="handleTabClick('directories')"
-        >
-          <span class="material-icons text-sm!">folder</span>Local setup</a
-        >
-      </li>
-      <li>
-        <a
-          [class.menu-active]="selectedTab() === 'keypoints'"
-          tabindex="0"
-          (click)="handleTabClick('keypoints')"
-          (keydown.enter)="handleTabClick('keypoints')"
-          ><span class="material-icons text-sm!">adjust</span>Keypoints</a
-        >
-      </li>
-      <li>
-        <a
-          [class.menu-active]="selectedTab() === 'multiview'"
-          tabindex="0"
-          (click)="handleTabClick('multiview')"
-          (keydown.enter)="handleTabClick('multiview')"
-          ><span class="material-icons text-sm!">camera_alt</span>Multiview</a
-        >
-      </li>
+      @for (tab of tabs; track tab.key; let i = $index) {
+        <li>
+          <a
+            [class.menu-active]="selectedTab() === tab.key"
+            tabindex="0"
+            (click)="handleTabClick(tab.key)"
+            (keydown.enter)="handleTabClick(tab.key)"
+          >
+            <span class="material-icons text-sm!">{{ tab.icon }}</span
+            >{{ tab.text }}</a
+          >
+        </li>
+      }
     </ul>
     <div class="divider divider-vertical"></div>
-    <div class="overflow-y-auto">
+    <div class="overflow-y-auto w-full">
       @if (selectedTab() === "directories") {
-        <form [formGroup]="projectInfoForm" class="prose px-4">
+        <form [formGroup]="directoriesForm" class="prose px-4">
           <p class="m-0! text-sm">
             Settings specific to this machine, stored in
             <code>~/.lightning-pose/projects.toml</code>
@@ -77,6 +62,12 @@
                   spellcheck="false"
                 />
               </div>
+              @if (
+                directoriesForm.controls.projectKey.invalid &&
+                directoriesForm.controls.projectKey.touched
+              ) {
+                <p class="text-error text-xs">Project name is required.</p>
+              }
             </fieldset>
           }
           <fieldset class="fieldset">
@@ -101,6 +92,12 @@
                 spellcheck="false"
               />
             </div>
+            @if (
+              directoriesForm.controls.dataDir.invalid &&
+              directoriesForm.controls.dataDir.touched
+            ) {
+              <p class="text-error text-xs">Data directory is required.</p>
+            }
           </fieldset>
 
           <fieldset class="fieldset">
@@ -133,8 +130,32 @@
           </fieldset>
         </form>
       }
+      @if (selectedTab() === "keypoints") {
+        <form [formGroup]="keypointsForm" class="prose px-4 w-full">
+          <fieldset class="fieldset my-6">
+            <h3 class="text-md mt-0!">Keypoint names</h3>
+            <p class="m-0!">
+              Enter the names of the keypoints to label. This is also the
+              labeling order of the keypoints.
+            </p>
+            <textarea
+              class="textarea w-full"
+              [rows]="keypointInitialRows()"
+              formControlName="keypointNames"
+              spellcheck="false"
+            ></textarea>
+            <p>
+              Parsed:
+              {{
+                parseTextAsList(keypointsForm.controls["keypointNames"]?.value)
+                  | json
+              }}
+            </p>
+          </fieldset>
+        </form>
+      }
       @if (selectedTab() === "multiview") {
-        <form [formGroup]="projectInfoForm" class="prose px-4">
+        <form [formGroup]="multiviewForm" class="prose px-4 w-full">
           <fieldset class="fieldset my-6">
             <h3 class="text-md mt-0!">Camera view names</h3>
             <p class="m-0!">
@@ -162,30 +183,8 @@
             ></textarea>
             <p>
               Parsed:
-              {{ parseTextAsList(projectInfoForm.get("views")?.value) | json }}
-            </p>
-          </fieldset>
-        </form>
-      }
-      @if (selectedTab() === "keypoints") {
-        <form [formGroup]="projectInfoForm" class="prose px-4">
-          <fieldset class="fieldset my-6">
-            <h3 class="text-md mt-0!">Keypoint names</h3>
-            <p class="m-0!">
-              Enter the names of the keypoints to label. This is also the
-              labeling order of the keypoints.
-            </p>
-            <textarea
-              class="textarea w-full"
-              [rows]="keypointInitialRows()"
-              formControlName="keypointNames"
-              spellcheck="false"
-            ></textarea>
-            <p>
-              Parsed:
               {{
-                parseTextAsList(projectInfoForm.get("keypointNames")?.value)
-                  | json
+                parseTextAsList(multiviewForm.controls["views"]?.value) | json
               }}
             </p>
           </fieldset>
@@ -195,12 +194,43 @@
   </div>
   <footer class="shrink-0 modal-action">
     <p class="text-sm text-info">{{ saveSuccessMessage() }}</p>
-    <button
-      class="btn btn-soft btn-primary"
-      (click)="onSaveClick()"
-      [disabled]="!projectInfoForm.dirty"
-    >
-      Save
-    </button>
+
+    <div>
+      <ng-template #nextButtonTemplate>
+        <button
+          class="btn btn-soft btn-primary"
+          (click)="handleNextClick()"
+          [disabled]="
+            (selectedTab() === 'directories' && !isDirectoriesFormValid()) ||
+            (selectedTab() === 'keypoints' && !isKeypointsFormValid()) ||
+            (selectedTab() === 'multiview' && !isMultiviewFormValid())
+          "
+        >
+          Next
+        </button>
+      </ng-template>
+
+      <ng-template #saveButtonTemplate>
+        <button
+          class="btn btn-soft btn-primary"
+          (click)="handleSaveClick()"
+          [disabled]="!projectInfoForm.dirty"
+        >
+          Save
+        </button>
+      </ng-template>
+
+      @if (setupMode()) {
+        <!-- Create: next until the last tab, then save -->
+        @if (selectedTabIndex() < tabs.length - 1) {
+          <ng-container *ngTemplateOutlet="nextButtonTemplate"></ng-container>
+        } @else {
+          <ng-container *ngTemplateOutlet="saveButtonTemplate"></ng-container>
+        }
+      } @else {
+        <!-- Edit: always a save button -->
+        <ng-container *ngTemplateOutlet="saveButtonTemplate"></ng-container>
+      }
+    </div>
   </footer>
 </div>
