@@ -1,5 +1,11 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { BehaviorSubject, Observable, catchError, firstValueFrom } from 'rxjs';
+import {
+  BehaviorSubject,
+  Observable,
+  catchError,
+  firstValueFrom,
+  of,
+} from 'rxjs';
 import { Session } from './session.model';
 import { RpcService } from './rpc.service';
 import { ProjectInfoService } from './project-info.service';
@@ -368,7 +374,7 @@ export class SessionService {
         .pipe(
           catchError((error) => {
             if (error.status === 404) {
-              return [null];
+              return of(null);
             }
             throw error;
           }),
@@ -376,12 +382,18 @@ export class SessionService {
     );
   }
 
-  async createTrainTask(yamlText: string): Promise<void> {
-    // RPC stub for creating a training task. Intentionally unimplemented.
-    // When implemented, it should likely call an RPC endpoint like '/app/v0/rpc/createTrainTask'
-    // with a payload containing the YAML string.
-    void yamlText;
-    return;
+  async getDefaultYamlFile(): Promise<Record<string, unknown>> {
+    return firstValueFrom(
+      this.httpClient.get<Record<string, unknown>>('/app/v0/configs/default'),
+    );
+  }
+
+  async getDefaultMultiviewYamlFile(): Promise<Record<string, unknown>> {
+    return firstValueFrom(
+      this.httpClient.get<Record<string, unknown>>(
+        '/app/v0/configs/default_multiview',
+      ),
+    );
   }
 
   getAvailableModelsForSession(sessionKey: string): string[] {

@@ -183,12 +183,15 @@ export class CreateModelDialogComponent {
   ): Promise<string | null> {
     const defaultPath = 'configs/default.yaml';
     try {
-      const baseConfig = await this.sessionService.getYamlFile(defaultPath);
+      let baseConfig = await this.sessionService.getYamlFile(defaultPath);
       if (abortSignal?.aborted) return null;
 
       if (!baseConfig) {
-        window.alert('configs/default.yaml was not found.');
-        return null;
+        if (this.isMultiviewProject()) {
+          baseConfig = await this.sessionService.getDefaultMultiviewYamlFile();
+        } else {
+          baseConfig = await this.sessionService.getDefaultYamlFile();
+        }
       }
       const formObject = this.form.value;
       const patch = this.computeConfigPatch(formObject);

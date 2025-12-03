@@ -7,16 +7,10 @@ See FastAPI Dependency Injection docs: https://fastapi.tiangolo.com/tutorial/dep
 from __future__ import annotations
 
 import logging
-import math
-import os
 from typing import TYPE_CHECKING, Callable
 
 import yaml
-from apscheduler.executors.debug import DebugExecutor
-from apscheduler.executors.pool import ThreadPoolExecutor
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import Depends
-from lightning_pose import LP_ROOT_PATH
 from lightning_pose.data.datatypes import ProjectConfig, Project
 from lightning_pose.rootconfig import RootConfig
 from lightning_pose.utils.project import ProjectUtil
@@ -34,28 +28,6 @@ def config() -> Config:
         app.state.config = Config()
     return app.state.config
 
-
-def scheduler() -> AsyncIOScheduler:
-    """Dependency that provides the app's APScheduler instance."""
-    from .main import app
-
-    if not hasattr(app.state, "scheduler"):
-        # ffmpeg parallelizes transcoding to the optimal degree, but
-        # that doesn't always saturate a machine with a lot of cores.
-        # i.e. on a 24 logical core machine (12 physical * 2 hyperthreads per core)
-        # 3 was the ideal number of max_workers. Let's just guesstimate that
-        # ffmpeg uses 10 cores? No scientific evidence, but ceil(24/10) => 3.
-        transcode_workers = math.ceil(os.cpu_count() / 10)
-        executors = {
-            "transcode_pool": ThreadPoolExecutor(max_workers=transcode_workers),
-            "debug": DebugExecutor(),
-        }
-        app.state.scheduler = AsyncIOScheduler(executors=executors)
-    return app.state.scheduler
-
-
-if TYPE_CHECKING:
-    from .routes.project import ProjectInfo
 
 ProjectInfoGetter = Callable[[str], Project]
 
