@@ -166,7 +166,7 @@ export class LabelerPageComponent implements OnInit, OnChanges {
       const nextFrameKey =
         this.labelFileDataUnLabeledSlice()[currentFrameIndex + 1]?.key ?? null;
       if (nextFrameKey !== null) {
-        this.router.navigate(['/labeler'], {
+        this.router.navigate([], {
           queryParams: {
             labelFileKey: this.labelFileKey(),
             frameKey: nextFrameKey,
