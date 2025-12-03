@@ -136,6 +136,7 @@ def _start_inference_background(task_id: str, model_dir: Path, video_paths: list
             import subprocess
             import sys
 
+            """
             code = (
                 "import time, json, sys, pathlib;"
                 "p = pathlib.Path(sys.argv[1]);"
@@ -145,10 +146,12 @@ def _start_inference_background(task_id: str, model_dir: Path, video_paths: list
                 "    time.sleep(0.1)\n"
             )
             cmd = [sys.executable, "-c", code, str(progress_path)]
+            """
+            cmd = ["litpose", "predict", model_dir, *[str(p) for p in video_paths]]
             process = subprocess.Popen(
                 cmd,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,  # Avoid blocking reads on empty stderr
+                stdout=subprocess.STDOUT,
+                stderr=subprocess.STDERR,
                 text=True,
             )
 
@@ -256,6 +259,7 @@ def infer_model(
 
     def poller_sync() -> Iterator[dict]:
         import time
+
         while True:
             payload = _status_snapshot_dict(task_id)
             yield payload
