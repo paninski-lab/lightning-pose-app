@@ -13,20 +13,10 @@ import { ProjectInfoService, ListProjectItem } from '../project-info.service';
   imports: [RouterLink],
   templateUrl: './home-page.component.html',
   styleUrl: './home-page.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HomePageComponent implements OnInit {
-  private projectInfo = inject(ProjectInfoService);
-
-  // View model with derived name for display
-  protected projectsVm = computed(() => {
-    const items = this.projectInfo.projects();
-    if (!items) return undefined;
-    return items.map((p) => ({
-      ...p,
-      name: deriveProjectName(p),
-    }));
-  });
+  protected projectInfo = inject(ProjectInfoService);
 
   ngOnInit() {
     // Fetch only once per app load (idempotent if already set)

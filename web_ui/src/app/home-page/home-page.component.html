@@ -2,7 +2,7 @@
   <section class="max-w-5xl p-4" aria-labelledby="projects-heading">
     <h1 id="projects-heading" class="text-2xl font-semibold mb-4">Projects</h1>
 
-    @if (projectsVm() === undefined) {
+    @if (projectInfo.projects() === undefined) {
       <div class="flex items-center gap-3" aria-live="polite" aria-busy="true">
         <span
           class="loading loading-spinner text-primary"
@@ -10,7 +10,7 @@
         ></span>
         <span>Loading projects…</span>
       </div>
-    } @else if (projectsVm()?.length === 0) {
+    } @else if (projectInfo.projects()?.length === 0) {
       <p role="status">No projects found.</p>
       <a
         [routerLink]="['/']"
@@ -29,15 +29,15 @@
         role="list"
         class="divide-y divide-base-200 rounded-md border border-base-300 bg-base-100"
       >
-        @for (p of projectsVm(); track p.data_dir) {
+        @for (p of projectInfo.projects(); track p.data_dir) {
           <li role="listitem" class="p-0">
             <a
               class="block p-3 hover:bg-base-200 focus:bg-base-200 focus:outline-none"
               [routerLink]="['/project', p.project_key]"
-              [attr.aria-label]="'Open project ' + p.name"
+              [attr.aria-label]="'Open project ' + p.project_key"
             >
               <div class="flex flex-col">
-                <span class="font-medium">{{ p.name }}</span>
+                <span class="font-medium">{{ p.project_key }}</span>
                 <span class="text-sm text-base-content/70 break-all"
                   >Data dir: {{ p.data_dir }}</span
                 >
