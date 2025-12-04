@@ -154,6 +154,7 @@ def _start_inference_background(task_id: str, model_dir: Path, video_paths: list
                 *[str(p) for p in video_paths],
                 "--progress_file",
                 str(progress_path),
+                "--skip_viz",
             ]
             process = subprocess.Popen(cmd)
 
