@@ -32,9 +32,15 @@ StatusLiteral = Literal[
 ]
 
 
+class DetailedTrainStatus(BaseModel):
+    completed: int | None = None
+    total: int | None = None
+
+
 class TrainStatus(BaseModel):
     status: StatusLiteral
     pid: int | None = None
+    progress: DetailedTrainStatus | None = None
 
 
 class CreateTrainTaskRequest(BaseModel):
