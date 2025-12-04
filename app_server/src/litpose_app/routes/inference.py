@@ -5,6 +5,7 @@ import logging
 import math
 import os
 import threading
+import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, asdict
 from pathlib import Path
@@ -14,7 +15,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 from lightning_pose.data.datatypes import Project
-
 from .. import deps
 from ..deps import ProjectInfoGetter
 
@@ -147,17 +147,17 @@ def _start_inference_background(task_id: str, model_dir: Path, video_paths: list
             )
             cmd = [sys.executable, "-c", code, str(progress_path)]
             """
-            cmd = ["litpose", "predict", model_dir, *[str(p) for p in video_paths]]
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.STDOUT,
-                stderr=subprocess.STDERR,
-                text=True,
-            )
+            cmd = [
+                "litpose",
+                "predict",
+                model_dir,
+                *[str(p) for p in video_paths],
+                "--progress_file",
+                str(progress_path),
+            ]
+            process = subprocess.Popen(cmd)
 
             # Poll progress file periodically while process runs
-            import time as _t
-
             last_completed = 0
             while True:
                 # Update from file if present
@@ -191,7 +191,7 @@ def _start_inference_background(task_id: str, model_dir: Path, video_paths: list
                         )
                     break
 
-                _t.sleep(0.25)
+                time.sleep(0.25)
         except Exception as e:
             set_status(task_id, status=InferenceStatus.ERROR, error=f"Exception: {e}")
 
@@ -258,7 +258,6 @@ def infer_model(
     _start_inference_background(task_id, model_dir, resolved_videos)
 
     def poller_sync() -> Iterator[dict]:
-        import time
 
         while True:
             payload = _status_snapshot_dict(task_id)
