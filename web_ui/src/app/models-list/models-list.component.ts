@@ -32,13 +32,13 @@ export class ModelsListComponent implements OnInit, OnDestroy {
   private sessionService = inject(SessionService);
   private toast = inject(ToastService);
   selectedModel = model<ModelListResponseEntry | null>();
-  private pollInterval: any;
+  private pollInterval?: number;
 
   ngOnInit() {
     this.reloadModels();
     this.pollInterval = setInterval(() => {
       this.reloadModels();
-    }, 700);
+    }, 1500) as unknown as number;
   }
 
   ngOnDestroy() {
