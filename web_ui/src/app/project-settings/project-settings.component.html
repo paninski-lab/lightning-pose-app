@@ -63,8 +63,8 @@
                 />
               </div>
               @if (
-                directoriesForm.controls.projectKey.invalid &&
-                directoriesForm.controls.projectKey.touched
+                directoriesForm.controls["projectKey"].invalid &&
+                directoriesForm.controls["projectKey"].touched
               ) {
                 <p class="text-error text-xs">Project name is required.</p>
               }
@@ -93,8 +93,8 @@
               />
             </div>
             @if (
-              directoriesForm.controls.dataDir.invalid &&
-              directoriesForm.controls.dataDir.touched
+              directoriesForm.controls["dataDir"].invalid &&
+              directoriesForm.controls["dataDir"].touched
             ) {
               <p class="text-error text-xs">Data directory is required.</p>
             }
@@ -147,7 +147,7 @@
             <p>
               Parsed:
               {{
-                parseTextAsList(keypointsForm.controls["keypointNames"]?.value)
+                parseTextAsList(keypointsForm.controls["keypointNames"].value)
                   | json
               }}
             </p>
@@ -184,7 +184,7 @@
             <p>
               Parsed:
               {{
-                parseTextAsList(multiviewForm.controls["views"]?.value) | json
+                parseTextAsList(multiviewForm.controls["views"].value) | json
               }}
             </p>
           </fieldset>
