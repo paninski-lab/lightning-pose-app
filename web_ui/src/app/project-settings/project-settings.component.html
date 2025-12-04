@@ -195,7 +195,11 @@
   <footer class="shrink-0 modal-action">
     <p class="text-sm text-info">{{ saveSuccessMessage() }}</p>
 
-    <div>
+    <div class="flex gap-2">
+      <ng-template #backButtonTemplate>
+        <button class="btn btn-soft" (click)="handleBackClick()">Back</button>
+      </ng-template>
+
       <ng-template #nextButtonTemplate>
         <button
           class="btn btn-soft btn-primary"
@@ -221,6 +225,9 @@
       </ng-template>
 
       @if (setupMode()) {
+        @if (selectedTabIndex() > 0) {
+          <ng-container *ngTemplateOutlet="backButtonTemplate"></ng-container>
+        }
         <!-- Create: next until the last tab, then save -->
         @if (selectedTabIndex() < tabs.length - 1) {
           <ng-container *ngTemplateOutlet="nextButtonTemplate"></ng-container>

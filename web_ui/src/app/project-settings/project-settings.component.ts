@@ -265,6 +265,12 @@ export class ProjectSettingsComponent implements OnInit {
   protected selectedTabIndex = computed(() =>
     this.tabs.findIndex((t) => t.key === this.selectedTab()),
   );
+  protected handleBackClick() {
+    const currentIndex = this.selectedTabIndex();
+    if (currentIndex > 0) {
+      this.selectedTab.set(this.tabs[currentIndex - 1].key);
+    }
+  }
   protected handleNextClick() {
     const currentTabKey = this.tabs[this.selectedTabIndex()].key;
     let currentFormGroup: FormGroup | undefined;

@@ -43,7 +43,7 @@
             </div>
           }
           @if (selectedTab() === "general") {
-            <form class="prose px-4">
+            <form class="prose px-4" [formGroup]="generalForm">
               <fieldset class="fieldset my-2">
                 <h3 class="text-md mt-0">Default config file</h3>
                 <p>
@@ -67,13 +67,13 @@
                   class="input w-full"
                   placeholder="my_model"
                   spellcheck="false"
-                  [formControl]="form.controls.modelName"
+                  formControlName="modelName"
                 />
                 <p
                   class="my-0! text-error invisible"
                   [class.visible!]="
-                    form.controls.modelName.touched &&
-                    form.controls.modelName.invalid
+                    generalForm.controls['modelName'].touched &&
+                    generalForm.controls['modelName'].invalid
                   "
                 >
                   Invalid name
@@ -87,7 +87,7 @@
                     <input
                       type="checkbox"
                       class="checkbox"
-                      [formControl]="form.controls.useTrueMultiviewModel"
+                      formControlName="useTrueMultiviewModel"
                     />
                     Use true multi-view models (recommended)</label
                   >
@@ -99,14 +99,16 @@
                     <select
                       class="select"
                       spellcheck="false"
-                      [formControl]="form.controls.modelType"
+                      formControlName="modelType"
                     >
                       @if (
                         modelTypeOptions().indexOf(
-                          form.controls.modelType.value
+                          generalForm.controls["modelType"].value
                         ) === -1
                       ) {
-                        <option [ngValue]="form.controls.modelType.value">
+                        <option
+                          [ngValue]="generalForm.controls['modelType'].value"
+                        >
                           --- Select a model type ---
                         </option>
                       }
@@ -122,14 +124,16 @@
                     <select
                       class="select"
                       spellcheck="false"
-                      [formControl]="form.controls.backbone"
+                      formControlName="backbone"
                     >
                       @if (
                         backboneOptions().indexOf(
-                          form.controls.backbone.value
+                          generalForm.controls["backbone"].value
                         ) === -1
                       ) {
-                        <option [ngValue]="form.controls.backbone.value">
+                        <option
+                          [ngValue]="generalForm.controls['backbone'].value"
+                        >
                           --- Select a backbone ---
                         </option>
                       }
@@ -151,8 +155,8 @@
                 </p>
               </fieldset>
 
-              @if (isUnsupervised(form.controls.modelType.value)) {
-                <fieldset class="fieldset my-2">
+              @if (isUnsupervised(generalForm.controls["modelType"].value)) {
+                <fieldset class="fieldset my-2" formArrayName="losses">
                   <h3 class="text-md mt-0!">Semi-supervised losses</h3>
                   @for (
                     option of checkboxOptions;
@@ -163,7 +167,7 @@
                       <input
                         type="checkbox"
                         class="checkbox"
-                        [formControl]="form.controls.losses.at(i)"
+                        [formControlName]="i"
                       />
                       {{ checkboxOptionLabels[i] }}</label
                     >
@@ -173,7 +177,7 @@
             </form>
           }
           @if (selectedTab() === "data") {
-            <form class="prose px-4">
+            <form class="prose px-4" [formGroup]="dataForm">
               <fieldset class="fieldset my-6">
                 <h3 class="text-md mt-0">Labeled frames</h3>
                 <p class="m-0!">
@@ -183,14 +187,14 @@
                 <select
                   class="select"
                   spellcheck="false"
-                  [formControl]="form.controls.labelFile"
+                  formControlName="labelFile"
                 >
                   <option value="CollectedData_*.csv">
                     CollectedData_*.csv
                   </option>
                 </select>
               </fieldset>
-              <fieldset class="fieldset my-2">
+              <fieldset class="fieldset my-2" formGroupName="trainValSplit">
                 <h3 class="text-md mt-0!">Train / val split</h3>
                 <p class="m-0!">
                   Data is split accordingly. The values below must sum to 1.
@@ -201,9 +205,7 @@
                     <input
                       type="number"
                       class="input w-full"
-                      [formControl]="
-                        form.controls.trainValSplit.controls.trainProb
-                      "
+                      formControlName="trainProb"
                     />
                   </div>
                   <div class="grow">
@@ -211,22 +213,24 @@
                     <input
                       type="number"
                       class="input w-full"
-                      [formControl]="
-                        form.controls.trainValSplit.controls.valProb
-                      "
+                      formControlName="valProb"
                     />
                   </div>
                 </div>
                 <p class="m-0!">Random seed</p>
+              </fieldset>
+              <!-- Random seed outside trainValSplit group -->
+              <fieldset class="fieldset my-2">
                 <input
                   type="number"
                   step="1"
                   class="input"
                   min="0"
-                  [formControl]="form.controls.randomSeed"
+                  formControlName="randomSeed"
                 />
               </fieldset>
-              @if (isUnsupervised(form.controls.modelType.value)) {
+
+              @if (isUnsupervised(generalForm.controls["modelType"].value)) {
                 <fieldset class="fieldset my-2">
                   <h3 class="text-md mt-0!">Semisupervised training</h3>
                   <p class="m-0!">
@@ -235,7 +239,7 @@
                   <select
                     class="select"
                     spellcheck="false"
-                    [formControl]="form.controls.videosDir"
+                    formControlName="videosDir"
                   >
                     <option value="videos">videos</option>
                   </select>
@@ -244,22 +248,19 @@
             </form>
           }
           @if (selectedTab() === "training") {
-            <form class="prose px-4">
+            <form class="prose px-4" [formGroup]="trainingForm">
               <fieldset class="fieldset my-6">
                 <h3 class="text-md mt-0">Duration</h3>
                 <p class="m-0!">How many epochs to train for.</p>
-                <input
-                  type="number"
-                  class="input"
-                  [formControl]="form.controls.epochs"
-                />
+                <input type="number" class="input" formControlName="epochs" />
                 <p
                   class="my-0! text-error invisible"
                   [class.visible!]="
-                    form.controls.epochs.touched && form.controls.epochs.invalid
+                    trainingForm.controls['epochs'].touched &&
+                    trainingForm.controls['epochs'].invalid
                   "
                 >
-                  {{ form.controls.epochs.errors | json }}
+                  {{ trainingForm.controls["epochs"].errors | json }}
                 </p>
               </fieldset>
               <fieldset class="fieldset my-2">
@@ -270,16 +271,18 @@
                     <input
                       type="number"
                       class="input w-full"
-                      [formControl]="form.controls.labeledBatchSize"
+                      formControlName="labeledBatchSize"
                     />
                   </div>
-                  @if (isUnsupervised(form.controls.modelType.value)) {
+                  @if (
+                    isUnsupervised(generalForm.controls["modelType"].value)
+                  ) {
                     <div class="grow">
                       <p class="m-0!">Set the unlabeled batch size</p>
                       <input
                         type="number"
                         class="input w-full"
-                        [formControl]="form.controls.unlabeledBatchSize"
+                        formControlName="unlabeledBatchSize"
                       />
                     </div>
                   }
@@ -305,20 +308,68 @@
             </li>
           </ul>
         </div>
-        <div>
-          <!-- adding the tooltip causes horizontal scrollbar for some reason.
-          Fixed with overflow-x-hidden on the modal-box. -->
-          <span
-            class="tooltip tooltip-left"
-            [attr.data-tip]="formInvalidReason()"
-            ><button
+        <div class="flex gap-2">
+          <ng-template #backButtonTemplate>
+            <button class="btn btn-soft" (click)="handleBackClick()">
+              Back
+            </button>
+          </ng-template>
+
+          <ng-template #nextButtonTemplate>
+            <button
               class="btn btn-soft btn-primary"
-              (click)="onCreateClick()"
-              [class.btn-disabled]="!form.valid"
+              (click)="handleNextClick()"
+              [disabled]="
+                (selectedTab() === 'general' && !isGeneralFormValid()) ||
+                (selectedTab() === 'data' && !isDataFormValid()) ||
+                (selectedTab() === 'training' && !isTrainingFormValid())
+              "
             >
-              Create
-            </button></span
-          >
+              Next
+            </button>
+          </ng-template>
+
+          <ng-template #createButtonTemplate>
+            <!-- adding the tooltip causes horizontal scrollbar for some reason.
+            Fixed with overflow-x-hidden on the modal-box. -->
+            <span
+              class="tooltip tooltip-left"
+              [attr.data-tip]="formInvalidReason()"
+            >
+              <button
+                class="btn btn-soft btn-primary"
+                (click)="onCreateClick()"
+                [class.btn-disabled]="!form.valid"
+              >
+                Create
+              </button>
+            </span>
+          </ng-template>
+
+          @if (setupMode()) {
+            @if (selectedTabIndex() > 0 && selectedTab() !== "yaml") {
+              <ng-container
+                *ngTemplateOutlet="backButtonTemplate"
+              ></ng-container>
+            }
+            <!-- Show Next if not on the last step and not on the special yaml preview tab -->
+            @if (
+              selectedTabIndex() < tabs.length - 1 && selectedTab() !== "yaml"
+            ) {
+              <ng-container
+                *ngTemplateOutlet="nextButtonTemplate"
+              ></ng-container>
+            } @else {
+              <ng-container
+                *ngTemplateOutlet="createButtonTemplate"
+              ></ng-container>
+            }
+          } @else {
+            <!-- In update mode (not implemented yet), we might just show Save/Create always -->
+            <ng-container
+              *ngTemplateOutlet="createButtonTemplate"
+            ></ng-container>
+          }
         </div>
       </footer>
     </div>
