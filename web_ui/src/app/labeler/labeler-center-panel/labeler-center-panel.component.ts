@@ -67,10 +67,14 @@ export class LabelerCenterPanelComponent implements OnChanges {
       mvf(this.frame()!).isFromUnlabeledSet
     ) {
       this._selectedView.set(null);
-      this.selectedKeypoint.set(
-        this.selectedFrameView()?.keypoints[0]?.keypointName ?? null,
-      );
+      this.selectFirstKeypoint();
     }
+  }
+
+  private selectFirstKeypoint() {
+    this.selectedKeypoint.set(
+      this.selectedFrameView()?.keypoints[0]?.keypointName ?? null,
+    );
   }
 
   private checkIfHasCameraCalibrationFiles() {
@@ -153,6 +157,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
 
   handleViewClickFromFilmstrip(viewName: string) {
     this._selectedView.set(viewName);
+    this.selectFirstKeypoint();
   }
 
   // Set to a random value if you need to bust cache of computed signals.
@@ -300,6 +305,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
         if (shouldContinue && nextFrameView) {
           this._selectedView.set(nextFrameView.viewName);
         }
+        this.selectFirstKeypoint();
       })
       .catch((error) => {
         this.isSaving.set(false);

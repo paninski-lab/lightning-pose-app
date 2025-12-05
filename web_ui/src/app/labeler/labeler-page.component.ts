@@ -160,12 +160,12 @@ export class LabelerPageComponent implements OnInit, OnChanges {
       });
     });
     if (data.shouldAdvanceFrame) {
-      const currentFrameIndex = this.labelFileDataUnLabeledSlice().findIndex(
+      const currentFrameIndex = this.labelFileData()!.findIndex(
         (mvf) => mvf.key === data.frame.key,
       );
       const nextFrameKey: string | undefined =
-        this.labelFileDataUnLabeledSlice()[currentFrameIndex + 1]?.key;
-      if (!nextFrameKey) {
+        this.labelFileData()![currentFrameIndex + 1]?.key;
+      if (nextFrameKey) {
         this.router.navigate([], {
           queryParams: {
             labelFileKey: this.labelFileKey(),
