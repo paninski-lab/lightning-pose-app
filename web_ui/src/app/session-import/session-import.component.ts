@@ -37,6 +37,7 @@ export class SessionImportComponent implements AfterViewInit, OnDestroy {
   protected items = this.store.items;
   protected uploading = this.store.uploading;
   protected allValid = this.store.allValid;
+  protected allTranscoded = this.store.allTranscoded; // Inject the allTranscoded signal
 
   // Local state to track if an import cycle has finished
   protected importAttempted = signal(false);
@@ -48,17 +49,15 @@ export class SessionImportComponent implements AfterViewInit, OnDestroy {
   });
 
   constructor() {
-    let wasUploading = false;
     effect(() => {
-      const isUploading = this.uploading();
+      const allTranscodedNow = this.allTranscoded(); // Get the current value of allTranscoded
 
-      // Detect transition from uploading (true) -> finished (false)
-      if (wasUploading && !isUploading) {
+      if (allTranscodedNow) {
         if (this.hasErrors()) {
           // Keep dialog open, show error message
           this.importAttempted.set(true);
         } else {
-          // Success case
+          // Success case: uploads are done, no errors, and all transcodes are complete
           this.toast.showToast({
             content: 'Import successful',
             variant: 'success',
@@ -66,8 +65,6 @@ export class SessionImportComponent implements AfterViewInit, OnDestroy {
           this.closeDialog();
         }
       }
-
-      wasUploading = isUploading;
     });
   }
 
