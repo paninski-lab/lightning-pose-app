@@ -49,7 +49,7 @@ class LabelFileTemplateValidatorDirective implements Validator {
     const errors = {} as Record<string, unknown>;
 
     // If multiview, one star is required.
-    if (this.projectInfoService.allViews().length > 0) {
+    if (this.projectInfoService.allViews().length > 1) {
       const starCount = (value.match(/\*/g) || []).length;
       if (starCount === 0) {
         errors['viewStarMissing'] = true;
@@ -254,7 +254,7 @@ export class ExtractFramesDialogComponent implements OnInit {
   }
 
   protected defaultLabelFileTemplate(): string {
-    return this.isMultiviewProject() ? 'CollectedData_*' : 'CollectedData.csv';
+    return this.isMultiviewProject() ? 'CollectedData_*' : 'CollectedData';
   }
 
   protected isMultiviewProject() {
