@@ -40,6 +40,7 @@ import {
 } from '../utils/validators';
 import { ModelTypeLabelPipe } from '../utils/pipes';
 import { DaisyFormControlDirective } from '../utils/daisy-form-control.directive';
+import { LabelFilePickerComponent } from '../label-file-picker/label-file-picker.component';
 
 @Component({
   selector: 'app-create-model-dialog',
@@ -51,6 +52,7 @@ import { DaisyFormControlDirective } from '../utils/daisy-form-control.directive
     HighlightDirective,
     DaisyFormControlDirective,
     NgTemplateOutlet,
+    LabelFilePickerComponent,
   ],
   templateUrl: './create-model-dialog.component.html',
   styleUrl: './create-model-dialog.component.css',
@@ -102,7 +104,7 @@ export class CreateModelDialogComponent {
       ),
     }),
     data: this.fb.group({
-      labelFile: 'CollectedData_*.csv',
+      labelFile: ['CollectedData_*.csv', Validators.required],
       trainValSplit: this.fb.group(
         {
           trainProb: [

@@ -1,5 +1,6 @@
 <select
   class="select {{ selectSizeClass() }}"
+  [disabled]="isDisabled"
   (change)="handleSelectLabelFile($any($event.target).value)"
 >
   @let nullOption = { key: "None", views: [] };
