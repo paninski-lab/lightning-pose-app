@@ -4,7 +4,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { CreateModelDialogComponent } from '../create-model-dialog/create-model-dialog.component';
+import CreateModelDialogComponent from '../create-model-dialog/create-model-dialog.component';
 
 import { ModelsListComponent } from '../models-list/models-list.component';
 import { ModelListResponseEntry } from '../modelconf';

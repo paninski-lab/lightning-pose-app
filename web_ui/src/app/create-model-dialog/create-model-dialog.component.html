@@ -184,15 +184,7 @@
                   Select the label file for supervised training
                 </p>
 
-                <select
-                  class="select"
-                  spellcheck="false"
-                  formControlName="labelFile"
-                >
-                  <option value="CollectedData_*.csv">
-                    CollectedData_*.csv
-                  </option>
-                </select>
+                <app-label-file-picker formControlName="labelFile"></app-label-file-picker>
               </fieldset>
               <fieldset class="fieldset my-2" formGroupName="trainValSplit">
                 <h3 class="text-md mt-0!">Train / val split</h3>

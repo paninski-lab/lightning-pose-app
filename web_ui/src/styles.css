@@ -19,3 +19,18 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   @apply bg-base-100 p-1 text-sm;
 }
 
+.app-empty-select {
+  /* Step 1: 60% opacity using color-mix */
+  /* We mix the base content color with 'transparent' */
+  color: color-mix(in oklch, var(--color-base-content), transparent 40%);
+
+  /* Step 2: Background Glow using the primary color */
+  /* We mix primary with transparent to create a soft 30% glow */
+  box-shadow: 0 0 15px color-mix(in oklch, var(--color-primary), transparent 70%);
+
+  /* Step 3: Background and Border */
+  background-color: var(--color-base-100);
+  border: 1px solid color-mix(in oklch, var(--color-primary), transparent 50%) !important;
+
+  transition: all 0.3s ease;
+}

@@ -6,6 +6,7 @@ import {
   effect,
   inject,
   input,
+  OnInit,
   output,
   signal,
 } from '@angular/core';
@@ -40,6 +41,7 @@ import {
 } from '../utils/validators';
 import { ModelTypeLabelPipe } from '../utils/pipes';
 import { DaisyFormControlDirective } from '../utils/daisy-form-control.directive';
+import { LabelFilePickerComponent } from '../label-file-picker/label-file-picker.component';
 
 @Component({
   selector: 'app-create-model-dialog',
@@ -51,12 +53,13 @@ import { DaisyFormControlDirective } from '../utils/daisy-form-control.directive
     HighlightDirective,
     DaisyFormControlDirective,
     NgTemplateOutlet,
+    LabelFilePickerComponent,
   ],
   templateUrl: './create-model-dialog.component.html',
   styleUrl: './create-model-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CreateModelDialogComponent {
+class CreateModelDialogComponent {
   done = output<void>();
   // Update mode support (currently effectively always setupMode=true for creation)
   setupMode = input(true);
@@ -102,7 +105,7 @@ export class CreateModelDialogComponent {
       ),
     }),
     data: this.fb.group({
-      labelFile: 'CollectedData_*.csv',
+      labelFile: [null, Validators.required],
       trainValSplit: this.fb.group(
         {
           trainProb: [
@@ -190,6 +193,14 @@ export class CreateModelDialogComponent {
       // On change, update the form controls validity.
       this.generalForm.controls['backbone'].updateValueAndValidity();
       this.generalForm.controls['modelType'].updateValueAndValidity();
+    });
+  }
+
+  ngOnInit() {
+    this.sessionService.loadLabelFiles().then((_) => {
+      this.dataForm.controls['labelFile'].setValue(
+        this.sessionService.getDefaultLabelFile(),
+      );
     });
   }
 
@@ -482,3 +493,5 @@ export class CreateModelDialogComponent {
 
   protected isUnsupervised = isUnsupervised;
 }
+
+export default CreateModelDialogComponent;

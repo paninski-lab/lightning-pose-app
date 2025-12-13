@@ -60,6 +60,15 @@ def find_label_files(
             project_info_getter,
         ).entries
     ]
+
+    # Filter out paths in model dir. These tend to be predictions.
+    if project.paths.model_dir.is_relative_to(project.paths.data_dir):
+        candidate_label_files_relative_paths = [
+            p
+            for p in candidate_label_files_relative_paths
+            if not (project.paths.data_dir / p).is_relative_to(project.paths.model_dir)
+        ]
+
     # For each path, read the first 3 rows of the CSV with pandas and check
     # That the headers meet the requirements. Multithreaded.
 

@@ -235,6 +235,15 @@ export class SessionService {
 
     return this._allLabelFiles.next(files);
   }
+  getDefaultLabelFile(): string | null {
+    const allFiles = this.allLabelFiles();
+    // Try to find "CollectedData_*.csv" or "CollectedData.csv"
+    const defaultFile = allFiles.find(
+      (f) => f.key === 'CollectedData_*.csv' || f.key === 'CollectedData.csv',
+    );
+
+    return defaultFile?.key ?? null;
+  }
 
   async loadPredictionIndex() {
     /* Finds all prediction files in model directory to update

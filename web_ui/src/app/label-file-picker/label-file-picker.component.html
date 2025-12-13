@@ -1,17 +1,20 @@
 <select
   class="select {{ selectSizeClass() }}"
-  (change)="handleSelectLabelFile($any($event.target).value)"
+  [disabled]="isDisabled"
+  [class.app-empty-select]="labelFileKey() === null"
+  [(ngModel)]="labelFileKey"
+  (ngModelChange)="handleSelectLabelFile($event)"
 >
-  @let nullOption = { key: "None", views: [] };
+  @let nullOption = { key: null, views: [] };
   @for (
     labelFile of $any([nullOption]).concat(sessionService.allLabelFiles());
     track labelFile.key
   ) {
     <option
-      [value]="labelFile.key"
+      [ngValue]="labelFile.key"
       [selected]="labelFile.key === labelFileKey()"
     >
-      {{ labelFile.key }}
+      {{ labelFile.key ?? 'None' }}
     </option>
   }
 </select>
