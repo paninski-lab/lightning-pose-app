@@ -13,7 +13,7 @@ from litpose_app import deps
 from litpose_app.config import Config
 from litpose_app.routes.labeler import find_calibration_file, session_level_config_path
 from litpose_app.deps import ProjectInfoGetter
-from lightning_pose.data.datatypes import Project
+from litpose_app.datatypes import Project
 from litpose_app.tasks.extract_frames import MVLabelFile
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
 
@@ -60,12 +60,8 @@ def bundle_adjust(
     return BundleAdjustResponse.model_validate(result)
 
 
-def _bundle_adjust_impl(
-        request: BundleAdjustRequest, project: Project, config: Config
-):
-    camera_group_toml_path = find_calibration_file(
-        request.sessionKey, project, config
-    )
+def _bundle_adjust_impl(request: BundleAdjustRequest, project: Project, config: Config):
+    camera_group_toml_path = find_calibration_file(request.sessionKey, project, config)
     if camera_group_toml_path is None:
         raise FileNotFoundError(
             f"Could not find calibration file for {request.sessionKey}"
@@ -79,7 +75,9 @@ def _bundle_adjust_impl(
         parts = framePath.split("/")
         if len(parts) < 3:
             return None
-        sessionViewNameWithDots = parts[-2]  # e.g. 05272019_fly1_0_R1C24_Cam-A_rot-ccw-0.06_sec
+        sessionViewNameWithDots = parts[
+            -2
+        ]  # e.g. 05272019_fly1_0_R1C24_Cam-A_rot-ccw-0.06_sec
 
         def processPart(sessionViewName):
             """Mirrors frame.model.ts get autolabelSessionKey()"""
@@ -89,29 +87,29 @@ def _bundle_adjust_impl(
             )
 
             # View not in this token, so return identity.
-            if '*' not in sessionkey_from_frame:
+            if "*" not in sessionkey_from_frame:
                 return sessionkey_from_frame
 
             # Attempt to parse assuming - is the delimiter.
-            parts_hyphenated = sessionkey_from_frame.split('-')
-            if '*' in parts_hyphenated:
-                return '-'.join(filter(lambda x: x != '*', parts_hyphenated))
+            parts_hyphenated = sessionkey_from_frame.split("-")
+            if "*" in parts_hyphenated:
+                return "-".join(filter(lambda x: x != "*", parts_hyphenated))
 
             # Attempt to parse assuming _ is the delimiter.
-            parts_underscored = sessionkey_from_frame.split('_')
-            if '*' in parts_underscored:
-                return '_'.join(filter(lambda x: x != '*', parts_underscored))
+            parts_underscored = sessionkey_from_frame.split("_")
+            if "*" in parts_underscored:
+                return "_".join(filter(lambda x: x != "*", parts_underscored))
 
             # View present, but invalid delimiter: return None
             return None
 
         # Split on . and process each part.
-        processedParts = list(map(processPart, sessionViewNameWithDots.split('.')))
+        processedParts = list(map(processPart, sessionViewNameWithDots.split(".")))
         # If some part had * but without correct delimiters around it, return null.
         if None in processedParts:
             return None
         # Filter empty tokens after processPart (* got removed) and join by .
-        return '.'.join(filter(lambda p: bool(p), processedParts))
+        return ".".join(filter(lambda p: bool(p), processedParts))
 
     def is_of_current_session(imgpath: str):
         return autoLabelSessionKey(imgpath) == request.sessionKey
@@ -147,34 +145,40 @@ def _bundle_adjust_impl(
         dfs_by_view[view] = df.loc[df.index.to_series().apply(is_of_current_session)]
         if len(dfs_by_view[view]) == 0:
             raise RuntimeError(
-                f"Insufficient frames found after filtering for session {request.sessionKey}. Possible error in session extraction logic.")
+                f"Insufficient frames found after filtering for session {request.sessionKey}. Possible error in session extraction logic."
+            )
     # Remove rows with NaN coordinates
     # Get indices of rows with NaN coordinates in any view
     nan_indices = set()
     for view in views:
         df = dfs_by_view[view]
         picked_columns = [c for c in df.columns if c[2] in ("x", "y")]
-        nan_rows = df.loc[:, picked_columns].dropna().index.symmetric_difference(df.index)
+        nan_rows = (
+            df.loc[:, picked_columns].dropna().index.symmetric_difference(df.index)
+        )
         nan_indices.update(df.index.get_indexer(nan_rows))
 
-    # Drop those indices from all views  
+    # Drop those indices from all views
     for view in views:
-        dfs_by_view[view] = dfs_by_view[view].drop(dfs_by_view[view].index[list(nan_indices)])
+        dfs_by_view[view] = dfs_by_view[view].drop(
+            dfs_by_view[view].index[list(nan_indices)]
+        )
         if len(dfs_by_view[view]) == 0:
             raise RuntimeError(
-                f"Insufficient frames found after dropping NaN rows for session {request.sessionKey}.")
+                f"Insufficient frames found after dropping NaN rows for session {request.sessionKey}."
+            )
     # Normalize columns: x, y alternating.
     for view in views:
         df = dfs_by_view[view]
         picked_columns = [c for c in df.columns if c[2] in ("x", "y")]
         assert len(picked_columns) % 2 == 0
         assert (
-                picked_columns[::2][0][2] == "x"
-                and len(set(map(lambda t: t[2], picked_columns[::2]))) == 1
+            picked_columns[::2][0][2] == "x"
+            and len(set(map(lambda t: t[2], picked_columns[::2]))) == 1
         )
         assert (
-                picked_columns[1::2][0][2] == "y"
-                and len(set(map(lambda t: t[2], picked_columns[1::2]))) == 1
+            picked_columns[1::2][0][2] == "y"
+            and len(set(map(lambda t: t[2], picked_columns[1::2]))) == 1
         )
         dfs_by_view[view] = df.loc[:, picked_columns]
 
@@ -198,9 +202,9 @@ def _bundle_adjust_impl(
 
     if target_path.exists():
         backup_path = (
-                project.paths.data_dir
-                / config.CALIBRATION_BACKUPS_DIRNAME
-                / target_path.with_suffix(f".{time.time_ns()}.toml").name
+            project.paths.data_dir
+            / config.CALIBRATION_BACKUPS_DIRNAME
+            / target_path.with_suffix(f".{time.time_ns()}.toml").name
         )
         backup_path.parent.mkdir(parents=True, exist_ok=True)
         os.rename(target_path, backup_path)

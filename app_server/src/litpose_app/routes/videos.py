@@ -15,8 +15,8 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from lightning_pose.data.datatypes import Project
-from lightning_pose.rootconfig import RootConfig
+from ..datatypes import Project
+from litpose_app.rootconfig import RootConfig
 
 from .. import deps
 from ..deps import ProjectInfoGetter
@@ -443,6 +443,7 @@ def transcode_video(
     def poller_sync() -> Iterator[dict]:
         # Periodically emit current status until terminal
         import time
+
         while True:
             payload = _status_snapshot_dict(filename)
             yield payload

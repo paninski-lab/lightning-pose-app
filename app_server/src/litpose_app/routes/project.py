@@ -6,8 +6,8 @@ import yaml
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ValidationError
 
-from lightning_pose.data.datatypes import ProjectPaths
-from lightning_pose.utils.project import ProjectUtil
+from litpose_app.datatypes import ProjectPaths
+from litpose_app.project import ProjectUtil
 from litpose_app import deps
 from litpose_app.deps import (
     ProjectInfoGetter,

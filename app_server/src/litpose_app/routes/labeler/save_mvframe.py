@@ -11,7 +11,7 @@ from starlette.concurrency import run_in_threadpool
 
 from litpose_app import deps
 from litpose_app.deps import ProjectInfoGetter
-from lightning_pose.data.datatypes import Project
+from litpose_app.datatypes import Project
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
 
 router = APIRouter()

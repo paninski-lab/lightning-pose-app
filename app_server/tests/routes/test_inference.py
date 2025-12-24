@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from lightning_pose.data.datatypes import Project, ProjectConfig, ProjectPaths
+from litpose_app.datatypes import ProjectConfig, ProjectPaths, Project
 
 from litpose_app import deps
 

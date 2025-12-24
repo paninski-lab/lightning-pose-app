@@ -7,13 +7,13 @@ See FastAPI Dependency Injection docs: https://fastapi.tiangolo.com/tutorial/dep
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Callable
+from typing import Callable
 
 import yaml
 from fastapi import Depends
-from lightning_pose.data.datatypes import ProjectConfig, Project
-from lightning_pose.rootconfig import RootConfig
-from lightning_pose.utils.project import ProjectUtil
+from litpose_app.datatypes import ProjectConfig, Project
+from litpose_app.rootconfig import RootConfig
+from litpose_app.project import ProjectUtil
 
 from litpose_app.config import Config
 
@@ -57,8 +57,6 @@ def project_info_getter(
     project_util: ProjectUtil = Depends(project_util),
 ) -> ProjectInfoGetter:
     def get_project_info(project_key: str) -> Project:
-        from lightning_pose.data.datatypes import Project
-
         project_paths = project_util.get_all_project_paths()
         try:
             project_path = project_paths[project_key]

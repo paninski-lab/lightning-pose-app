@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from litpose_app import deps
 from litpose_app.routes.labeler import find_calibration_file
 from litpose_app.deps import ProjectInfoGetter
-from lightning_pose.data.datatypes import Project
+from litpose_app.datatypes import Project
 
 router = APIRouter()
 
@@ -73,9 +73,7 @@ def get_mv_auto_labels(
 ) -> GetMVAutoLabelsResponse:
     # Read the toml files for this session.
     project: Project = project_info_getter(request.projectKey)
-    camera_group_toml_path = find_calibration_file(
-        request.sessionKey, project, config
-    )
+    camera_group_toml_path = find_calibration_file(request.sessionKey, project, config)
     if camera_group_toml_path is None:
         raise FileNotFoundError(
             f"Could not find calibration file for session {request.sessionKey}"

@@ -3,7 +3,7 @@ import pytest
 
 from fastapi.testclient import TestClient
 from litpose_app import deps
-from lightning_pose.rootconfig import RootConfig
+from litpose_app.rootconfig import RootConfig
 
 
 @pytest.fixture()

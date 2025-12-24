@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 
 from litpose_app import deps
 from litpose_app.deps import ProjectInfoGetter
-from lightning_pose.data.datatypes import Project
+from litpose_app.datatypes import Project
 from litpose_app.routes.rglob import RGlobRequest, rglob
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
 
@@ -56,7 +56,8 @@ def find_label_files(
                 pattern="**/*.csv",
                 noDirs=True,
                 stat=False,
-            ), project_info_getter
+            ),
+            project_info_getter,
         ).entries
     ]
     # For each path, read the first 3 rows of the CSV with pandas and check
