@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from lightning_pose.rootconfig import RootConfig
+from litpose_app.rootconfig import RootConfig
 
 from .. import deps
 

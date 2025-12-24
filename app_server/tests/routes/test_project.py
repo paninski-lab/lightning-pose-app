@@ -15,7 +15,7 @@ import toml
 import tomli_w
 import yaml
 from fastapi.testclient import TestClient
-from lightning_pose.rootconfig import RootConfig
+from litpose_app.rootconfig import RootConfig
 
 
 def test_get_project_info(override_config, tmp_path, client: TestClient):

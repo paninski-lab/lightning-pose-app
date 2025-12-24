@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
-from lightning_pose.data.datatypes import Project
+from ..datatypes import Project
 from .. import deps
 from ..deps import ProjectInfoGetter
 from ..tasks.extract_frames import (

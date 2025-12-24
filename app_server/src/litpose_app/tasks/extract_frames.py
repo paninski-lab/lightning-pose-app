@@ -8,7 +8,7 @@ import numpy as np
 from pydantic import BaseModel
 
 from litpose_app.config import Config
-from lightning_pose.data.datatypes import Project
+from litpose_app.datatypes import Project
 from litpose_app.utils.mv_label_file import (
     AddToUnlabeledFileView,
     add_to_unlabeled_sidecar_files,

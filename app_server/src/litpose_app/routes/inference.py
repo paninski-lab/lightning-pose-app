@@ -14,7 +14,7 @@ from typing import Dict, Iterator, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
-from lightning_pose.data.datatypes import Project
+from ..datatypes import Project
 from .. import deps
 from ..deps import ProjectInfoGetter
 

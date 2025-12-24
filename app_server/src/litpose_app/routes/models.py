@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from litpose_app import deps
 from litpose_app.deps import ProjectInfoGetter
-from lightning_pose.data.datatypes import Project
+from litpose_app.datatypes import Project
 
 logger = logging.getLogger(__name__)
 

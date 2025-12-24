@@ -1,13 +1,13 @@
 from pathlib import Path
 
-from lightning_pose.data.datatypes import Project
+from ...datatypes import Project
 from ...config import Config
+
 
 def session_level_config_path(
     session_key: str, project: Project, config: Config
 ) -> Path:
     return project.paths.data_dir / config.CALIBRATIONS_DIRNAME / f"{session_key}.toml"
-
 
 
 def find_calibration_file(
@@ -22,6 +22,8 @@ def find_calibration_file(
         return global_calibrations_path
 
     return None
+
+
 from fastapi import APIRouter
 
 from . import multiview_autolabel as _multiview_autolabel
