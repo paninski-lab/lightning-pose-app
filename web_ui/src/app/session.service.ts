@@ -280,11 +280,17 @@ export class SessionService {
         // modelKey is everything before video_preds
         const modelKey = match[1];
         const sessionView = match[2];
-        const viewName = this.projectInfoService
+
+        let sessionKey: string;
+        let viewName = this.projectInfoService
           .allViews()
           .find((v) => sessionView.includes(v));
-        if (!viewName) return null; // cannot parse viewname.
-        const sessionKey = sessionView.replace(viewName, '*');
+        if (!viewName) {
+          sessionKey = sessionView;
+          viewName = 'unknown';
+        } else {
+          sessionKey = sessionView.replace(viewName, '*');
+        }
 
         // Parse out key metadata.
         return {
