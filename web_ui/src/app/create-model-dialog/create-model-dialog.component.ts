@@ -365,6 +365,19 @@ class CreateModelDialogComponent {
             }),
           },
         });
+
+        // TODO allow user to choose which columns to use for Pose PCA
+        patches.push({
+          data: {
+            columns_for_singleview_pca: Array.from(
+              {
+                length:
+                  this.projectInfoService.projectInfo.keypoint_names.length,
+              },
+              (_, i) => i,
+            ),
+          },
+        });
       } else {
         patches.push({
           model: {
