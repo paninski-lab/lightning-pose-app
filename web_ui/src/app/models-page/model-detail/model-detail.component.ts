@@ -23,7 +23,9 @@ import { ToastService } from '../../toast.service';
 export class ModelDetailComponent implements OnChanges, OnDestroy {
   selectedModel = input.required<ModelListResponseEntry | null>();
   activeTab = signal('general');
-  logs = signal<{ filename: string; logUrl: string; content: string }[]>([]);
+  logs = signal<
+    { filename: string; logUrl: string; content: string; nextOffset: number }[]
+  >([]);
   private projectInfoService = inject(ProjectInfoService);
   private currentController: AbortController | null = null;
   private toast = inject(ToastService);
@@ -50,11 +52,13 @@ export class ModelDetailComponent implements OnChanges, OnDestroy {
         filename: 'train_stdout.log',
         logUrl: `${basePath}/train_stdout.log`,
         content: '',
+        nextOffset: 0,
       },
       {
         filename: 'train_stderr.log',
         logUrl: `${basePath}/train_stderr.log`,
         content: '',
+        nextOffset: 0,
       },
     ];
 
@@ -105,25 +109,56 @@ export class ModelDetailComponent implements OnChanges, OnDestroy {
     content: string;
     logUrl: string;
     filename: string;
+    nextOffset: number;
   }) {
     // If controller is gone, don't fetch
     if (!this.currentController) return;
 
     fetch(logEntry.logUrl, {
       signal: this.currentController.signal,
+      headers: {
+        Range: `bytes=${logEntry.nextOffset}-`,
+      },
     })
-      .then((response) => {
-        if (response.ok) {
-          return response.text();
-        } else {
+      .then(async (response) => {
+        if (response.status === 416) {
+          throw '_skipPromiseChainSentinelValue';
+        }
+        if (!response.ok) {
           throw new Error('Failed to fetch log');
         }
+
+        // Parse the Content-Range header to get the total file size
+        // Header format: "bytes <start>-<end>/<total>"
+        const contentRange = response.headers.get('Content-Range');
+        let newOffset = logEntry.nextOffset;
+
+        if (contentRange) {
+          const totalSizeMatch = contentRange.match(/\/(\d+)$/);
+          if (totalSizeMatch) {
+            newOffset = parseInt(totalSizeMatch[1], 10);
+          }
+        } else if (response.status === 200) {
+          // If server returns 200 OK (doesn't support Range), use Content-Length
+          newOffset = parseInt(
+            response.headers.get('Content-Length') || '0',
+            10,
+          );
+        }
+
+        const text = await response.text();
+        return { text, newOffset };
       })
-      .then((newContent) => {
+      .then(({ text, newOffset }) => {
+        const newContent = text.replaceAll('\r', '\n');
         this.logs.update((logs) => {
           return logs.map((l) => {
             if (l.filename === logEntry.filename) {
-              return { ...l, content: newContent.replaceAll('\r', '\n') };
+              return {
+                ...l,
+                content: l.content + newContent,
+                nextOffset: newOffset,
+              };
             } else {
               return l;
             }
@@ -131,6 +166,7 @@ export class ModelDetailComponent implements OnChanges, OnDestroy {
         });
       })
       .catch((error: any) => {
+        if (error === '_skipPromiseChainSentinelValue') return;
         if (error.name === 'AbortError') return;
 
         // Only show toast if we haven't loaded content yet, or on explicit failure during polling
