@@ -181,7 +181,7 @@ eval:
   # predict? used in scripts/train_hydra.py
   predict_vids_after_training: true
   # str with an absolute path to a directory containing videos for prediction.
-  test_videos_directory: ${data.video_dir}
+  test_videos_directory: /replace/with/your/path
   # save labeled .mp4? used in scripts/train_hydra.py and scripts/predict_new_vids.py
   save_vids_after_training: false
   # matplotlib sequential or diverging colormap name for prediction visualization

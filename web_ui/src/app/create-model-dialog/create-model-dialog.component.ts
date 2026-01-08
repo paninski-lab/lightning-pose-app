@@ -393,12 +393,18 @@ export class CreateModelDialogComponent {
       });
     }
     if (formObject.videosDir) {
+      const absVideosDir =
+        this.projectInfoService.projectInfo.data_dir +
+        '/' +
+        formObject.videosDir;
       patches.push({
         data: {
-          video_dir:
-            this.projectInfoService.projectInfo.data_dir +
-            '/' +
-            formObject.videosDir,
+          video_dir: absVideosDir,
+        },
+      });
+      patches.push({
+        eval: {
+          test_videos_directory: absVideosDir,
         },
       });
     }
