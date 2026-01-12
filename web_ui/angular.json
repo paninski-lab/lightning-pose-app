@@ -28,7 +28,16 @@
             "assets": [
               {
                 "glob": "**/*",
-                "input": "public"
+                "input": "public",
+                "output": "static" /* for the dev server */
+              },
+              {
+                "glob": "**/*",
+                "input": "public" /* outputs to / for the prod server */
+              },
+              {
+                "glob": "favicon.ico",
+                "input": "public",
               }
             ],
             "styles": [
@@ -72,20 +81,8 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
-          "assets": [
-              {
-                "glob": "favicon.ico",
-                "input": "public",
-                "output": "/"
-              },
-              {
-                "glob": "**/*",
-                "input": "public",
-                "output": "/static/"
-              }
-            ],
           "options": {
-            "proxyConfig": "src/proxy.conf.json"
+            "proxyConfig": "src/proxy.conf.json",
           },
           "configurations": {
             "production": {

@@ -1,6 +1,5 @@
 import {
   ChangeDetectionStrategy,
-  ChangeDetectorRef,
   Component,
   inject,
   input,
@@ -9,7 +8,6 @@ import {
   signal,
 } from '@angular/core';
 import { ModelListResponseEntry } from '../../modelconf';
-import { JsonPipe } from '@angular/common';
 import { ProjectInfoService } from '../../project-info.service';
 import { ToastService } from '../../toast.service';
 import { HighlightDirective } from '../../highlight.directive';
@@ -17,7 +15,7 @@ import { YamlPipe } from '../../utils/pipes';
 
 @Component({
   selector: 'app-model-detail',
-  imports: [JsonPipe, HighlightDirective, YamlPipe],
+  imports: [HighlightDirective, YamlPipe],
   templateUrl: './model-detail.component.html',
   styleUrl: './model-detail.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
