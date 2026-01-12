@@ -28,7 +28,7 @@ export class ProjectHomePageComponent {
         queryParams: { settingsOpen: 'true' },
         title: 'Project settings',
         description: 'View and edit configuration for the current Project',
-        imgSrc: 'https://img.daisyui.com/images/components/accordion.webp',
+        imgSrc: '/project_home_card_settings.jpg',
         imgAlt: 'Accordion',
       },
       {
@@ -36,7 +36,7 @@ export class ProjectHomePageComponent {
         queryParams: undefined,
         title: 'Labeler',
         description: 'View labeled data and label new frames',
-        imgSrc: 'https://img.daisyui.com/images/components/accordion.webp',
+        imgSrc: '/project_home_card_labeler.jpg',
         imgAlt: 'Accordion',
       },
       {
@@ -44,7 +44,7 @@ export class ProjectHomePageComponent {
         queryParams: undefined,
         title: 'Models',
         description: 'Train, evaluate, and run models',
-        imgSrc: 'https://img.daisyui.com/images/components/accordion.webp',
+        imgSrc: '/project_home_card_models.png',
         imgAlt: 'Accordion',
       },
       {
@@ -52,7 +52,7 @@ export class ProjectHomePageComponent {
         queryParams: undefined,
         title: 'Viewer',
         description: 'View sessions and model predictions',
-        imgSrc: 'https://img.daisyui.com/images/components/accordion.webp',
+        imgSrc: '/project_home_card_viewer.png',
         imgAlt: 'Accordion',
       },
     ];
