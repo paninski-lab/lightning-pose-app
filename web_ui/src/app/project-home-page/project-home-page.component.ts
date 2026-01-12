@@ -28,7 +28,7 @@ export class ProjectHomePageComponent {
         queryParams: { settingsOpen: 'true' },
         title: 'Project settings',
         description: 'View and edit configuration for the current Project',
-        imgSrc: '/project_home_card_settings.jpg',
+        imgSrc: '/static/project_home_card_settings.jpg',
         imgAlt: 'Accordion',
       },
       {
@@ -36,7 +36,7 @@ export class ProjectHomePageComponent {
         queryParams: undefined,
         title: 'Labeler',
         description: 'View labeled data and label new frames',
-        imgSrc: '/project_home_card_labeler.jpg',
+        imgSrc: '/static/project_home_card_labeler.jpg',
         imgAlt: 'Accordion',
       },
       {
@@ -44,7 +44,7 @@ export class ProjectHomePageComponent {
         queryParams: undefined,
         title: 'Models',
         description: 'Train, evaluate, and run models',
-        imgSrc: '/project_home_card_models.png',
+        imgSrc: '/static/project_home_card_models.png',
         imgAlt: 'Accordion',
       },
       {
@@ -52,7 +52,7 @@ export class ProjectHomePageComponent {
         queryParams: undefined,
         title: 'Viewer',
         description: 'View sessions and model predictions',
-        imgSrc: '/project_home_card_viewer.png',
+        imgSrc: '/static/project_home_card_viewer.png',
         imgAlt: 'Accordion',
       },
     ];

@@ -72,6 +72,18 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "assets": [
+              {
+                "glob": "favicon.ico",
+                "input": "public",
+                "output": "/"
+              },
+              {
+                "glob": "**/*",
+                "input": "public",
+                "output": "/static/"
+              }
+            ],
           "options": {
             "proxyConfig": "src/proxy.conf.json"
           },
