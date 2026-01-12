@@ -1,3 +1,13 @@
+<style>
+  .frosted-soft {
+    /* Lower saturation makes colors less aggressive */
+    filter: saturate(0.85) brightness(1.15) contrast(0.75);
+
+    /* soften by blending into background */
+    opacity: 0.89;
+  }
+</style>
+
 <div
   class="not-prose grid grid-cols-1 gap-x-12 gap-y-12 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5"
 >
@@ -9,7 +19,7 @@
       [attr.aria-label]="card.title"
       ><figure class="px-4 pt-4">
         <img
-          class="border-base-content/5 bg-base-300 rounded-lg border"
+          class="frosted-soft border-base-content/5 bg-base-300 rounded-lg border"
           [src]="card.imgSrc"
           [alt]="card.imgAlt"
           width="320"
