@@ -6,10 +6,14 @@
     /* soften by blending into background */
     opacity: 0.89;
   }
+
+  :host {
+    flex-grow: 1;
+  }
 </style>
 
 <div
-  class="not-prose grid grid-cols-1 gap-x-12 gap-y-12 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5"
+  class="not-prose grid grid-cols-1 gap-x-12 gap-y-12 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4"
 >
   @for (card of cards(); track card.title) {
     <a
