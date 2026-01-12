@@ -23,6 +23,7 @@
     cdkListbox
     [cdkListboxValue]="getCdkListboxValue()"
     (cdkListboxValueChange)="handleCdkListboxChange($event.value)"
+    [cdkListboxCompareWith]="cdkListboxCompareFn"
   >
     @for (m of models().models; track m.model_relative_path) {
       @let u = mc_util(m);
