@@ -6,6 +6,7 @@ import {
   OnChanges,
   OnDestroy,
   signal,
+  SimpleChanges,
 } from '@angular/core';
 import { ModelListResponseEntry } from '../../modelconf';
 import { ProjectInfoService } from '../../project-info.service';
@@ -31,7 +32,17 @@ export class ModelDetailComponent implements OnChanges, OnDestroy {
   private toast = inject(ToastService);
   private pollInterval?: number;
 
-  ngOnChanges() {
+  ngOnChanges(changes: SimpleChanges) {
+    // Return early if model_relative_path hasn't changed (stable identifier)
+    if (
+      changes['selectedModel'] &&
+      !changes['selectedModel'].firstChange &&
+      changes['selectedModel'].previousValue?.model_relative_path ===
+        changes['selectedModel'].currentValue?.model_relative_path
+    ) {
+      return;
+    }
+
     // Abort any async processes for the previous model
     this.cleanup();
 
