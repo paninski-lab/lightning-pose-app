@@ -33,6 +33,12 @@ export class ModelsListComponent implements OnInit, OnDestroy {
   private toast = inject(ToastService);
   selectedModel = model<ModelListResponseEntry | null>();
   private pollInterval?: number;
+  protected cdkListboxCompareFn(
+    a: ModelListResponseEntry,
+    b: ModelListResponseEntry,
+  ): boolean {
+    return a.model_relative_path === b.model_relative_path;
+  }
 
   ngOnInit() {
     this.reloadModels();
@@ -50,7 +56,13 @@ export class ModelsListComponent implements OnInit, OnDestroy {
   async reloadModels() {
     try {
       const resp = await this.sessionService.listModels();
+      const newSelectedModelReference =
+        resp.models.find(
+          (m) =>
+            m.model_relative_path === this.selectedModel()?.model_relative_path,
+        ) ?? null;
       this.models.set(resp);
+      this.selectedModel.set(newSelectedModelReference);
     } catch (e) {
       this.toast.showToast({
         content: 'Failed to refresh models list',
