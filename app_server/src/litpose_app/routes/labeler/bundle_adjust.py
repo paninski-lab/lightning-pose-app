@@ -195,7 +195,7 @@ def _bundle_adjust_impl(request: BundleAdjustRequest, project: Project, config: 
     p2ds = np.stack([numpy_arrs[v] for v in views])
     p3ds = cg.triangulate(p2ds)
     old_reprojection_error = cg.reprojection_error(p3ds, p2ds)
-    cg.bundle_adjust(p2ds, verbose=True)
+    cg.bundle_adjust_iter(p2ds, verbose=True)
     p3ds = cg.triangulate(p2ds)
     new_reprojection_error = cg.reprojection_error(p3ds, p2ds)
     target_path = session_level_config_path(request.sessionKey, project, config)
