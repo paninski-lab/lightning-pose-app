@@ -267,9 +267,6 @@ export class mc_util {
   get c() {
     return this.m.config;
   }
-  get name() {
-    return this.m.model_name;
-  }
   get type() {
     if ((this.c!.model.losses_to_use?.length ?? 0) > 0) {
       return this.c!.model.model_type.endsWith('mhcrnn')

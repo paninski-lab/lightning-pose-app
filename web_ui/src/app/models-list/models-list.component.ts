@@ -9,7 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { ModelTypeLabelPipe } from '../utils/pipes';
+import { ModelTypeLabelPipe, PathPipe } from '../utils/pipes';
 import { SessionService } from '../session.service';
 import {
   ModelListResponse,
@@ -21,7 +21,7 @@ import { ToastService } from '../toast.service';
 
 @Component({
   selector: 'app-models-list',
-  imports: [DatePipe, ModelTypeLabelPipe, CdkListboxModule],
+  imports: [DatePipe, ModelTypeLabelPipe, CdkListboxModule, PathPipe],
   templateUrl: './models-list.component.html',
   styleUrl: './models-list.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

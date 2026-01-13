@@ -132,7 +132,7 @@ export class ModelDetailComponent implements OnChanges, OnDestroy {
       },
     })
       .then(async (response) => {
-        if (response.status === 416) {
+        if (response.status === 416 || response.status === 404) {
           throw '_skipPromiseChainSentinelValue';
         }
         if (!response.ok) {

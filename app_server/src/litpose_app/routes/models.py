@@ -126,9 +126,24 @@ def list_models(
     if project.paths.model_dir is None:
         return ListModelsResponse(models=models)
 
-    base = Path(project.paths.model_dir)
-    if not base.exists():
-        return ListModelsResponse(models=models)
+    model_dir = Path(project.paths.model_dir)
+    models = read_models_l1_from_base(model_dir, model_dir)
+    for m in models:
+        if m.config is None:
+            models.extend(
+                read_models_l1_from_base(model_dir, model_dir / m.model_relative_path)
+            )
+
+    models = [m for m in models if m.config is not None]
+
+    return ListModelsResponse(models=models)
+
+
+def read_models_l1_from_base(
+    model_dir: Path, iter_base: Path
+) -> list[ModelListResponseEntry]:
+    if not iter_base.exists():
+        return []
 
     def read_model_config(child_path: Path) -> ModelListResponseEntry:
         config_path = child_path / "config.yaml"
@@ -156,13 +171,13 @@ def list_models(
 
         return ModelListResponseEntry(
             model_name=child_path.name,
-            model_relative_path=str(child_path.relative_to(base)),
+            model_relative_path=str(child_path.relative_to(model_dir)),
             config=config,
             created_at=created_at,
             status=status,
         )
 
-    paths = sorted([p for p in base.iterdir() if p.is_dir()])
+    paths = sorted([p for p in iter_base.iterdir() if p.is_dir()])
     models = [read_model_config(p) for p in paths]
 
-    return ListModelsResponse(models=models)
+    return models

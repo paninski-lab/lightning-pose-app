@@ -21,7 +21,7 @@ def check_for_upgrade():
         current_version = importlib.metadata.version(package_name)
         # Fetch latest version from PyPI
         with urllib.request.urlopen(
-            f"https://pypi.org/pypi/{package_name}/json", timeout=5
+            f"https://pypi.org/pypi/{package_name}/json", timeout=2
         ) as response:
             data = json.load(response)
             latest_version = data["info"]["version"]
@@ -46,4 +46,4 @@ def check_for_upgrade():
             sys.exit(0)
     except Exception as e:
         # Don't block startup if PyPI is down or package isn't installed via pip
-        logger.debug(f"Upgrade check failed: {e}")
+        logger.info(f"Upgrade check failed: {e}")
