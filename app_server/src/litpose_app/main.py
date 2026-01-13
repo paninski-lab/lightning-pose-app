@@ -9,16 +9,18 @@ from textwrap import dedent
 
 import anyio
 import uvicorn
-from fastapi import FastAPI, HTTPException, APIRouter, Request
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, APIRouter, Request, Depends
+from fastapi.responses import FileResponse, HTMLResponse
 from starlette import status
 from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
 
 from . import deps
+from .rootconfig import RootConfig
 from .routes.labeler.multiview_autolabel import warm_up_anipose
 from .routes.videos import cleanup_old_uploads
 from .train_scheduler import _train_scheduler_process_target
+from .utils.check_for_upgrade import check_for_upgrade
 from .utils.file_response import file_response
 
 ## Setup logging
@@ -191,11 +193,42 @@ async def favicon():
 
 # Catch-all route. serve index.html.
 @app.get("/{full_path:path}")
-async def index():
-    return FileResponse(
-        Path(__file__).parent / "ngdist" / "ng_app" / "browser" / "index.html"
-    )
+def index(rc: RootConfig = Depends(deps.root_config)):
+    index_path = Path(__file__).parent / "ngdist" / "ng_app" / "browser" / "index.html"
+    content = index_path.read_text(encoding="utf-8")
+    analytics_tag_placeholder = "<!-- ANALYTICS_TAG_PLACEHOLDER -->"
+    assert analytics_tag_placeholder in content
+
+    # Skip analytics tag insertion if DO_NOT_TRACK is set
+    import os
+
+    if os.environ.get("DO_NOT_TRACK") != "1":
+        content = content.replace(analytics_tag_placeholder, rc.UMAMI_ANALYTICS_TAG)
+
+    return HTMLResponse(content=content)
 
 
 def run_app(host: str, port: int):
+    import os
+
+    if os.environ.get("DO_NOT_TRACK") != "1":
+        usage_message = dedent(
+            """
+            ================================================================================
+            📊  Lightning Pose App Usage Tracking
+            
+            To help us improve this tool and secure future grant funding, launching the app
+            in your browser will initiate privacy-focused web event tracking. We use Umami,
+            which ensures no personal data is ever collected or stored.
+            
+            To opt out, please restart the app with the environment variable DO_NOT_TRACK=1
+            For example: DO_NOT_TRACK=1 litpose run_app
+            ================================================================================
+            """
+        )
+        print(usage_message, file=sys.stderr)
+    else:
+        logger.info("App tracking is opted out, skipping analytics tag insertion")
+
+    check_for_upgrade()
     uvicorn.run(app, host=host, port=port, timeout_graceful_shutdown=1)

@@ -16,6 +16,11 @@ class RootConfig(BaseSettings):
         default_factory=lambda data: data["LP_SYSTEM_DIR"] / "uploads"
     )
 
+    UMAMI_ANALYTICS_TAG: str = (
+        '<script defer src="https://cloud.umami.is/script.js" '
+        'data-website-id="ba9731f2-f746-4c4e-8fc6-d876e1556a6e"></script>'
+    )
+
     @model_validator(mode="after")
     def init_dirs_and_files(self):
         """Creates directories as needed on application startup"""
