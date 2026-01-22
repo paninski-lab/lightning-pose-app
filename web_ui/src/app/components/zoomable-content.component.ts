@@ -100,11 +100,6 @@ export class ZoomableContentComponent
 
       // Initialize content dimensions directly from the projected element
       // This will get the current rendered size of the content.
-      console.log(
-        'ngAfterContentInit: ',
-        contentElement.offsetWidth,
-        contentElement.offsetHeight,
-      );
       this.setContentDimensions(
         contentElement.offsetWidth,
         contentElement.offsetHeight,
