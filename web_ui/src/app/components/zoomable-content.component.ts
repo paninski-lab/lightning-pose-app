@@ -1,10 +1,13 @@
 import {
   AfterContentInit,
   AfterViewInit,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   contentChild,
   ElementRef,
   HostListener,
+  inject,
   Input,
   input,
   OnDestroy,
@@ -49,10 +52,12 @@ import {
       }
     `,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ZoomableContentComponent
   implements AfterViewInit, OnDestroy, AfterContentInit
 {
+  private cdr = inject(ChangeDetectorRef);
   @Input() maxScale = 6; // Maximum zoom level
   @Input() zoomSpeed = 0.0015; // How fast to zoom per scroll tick
 
@@ -95,6 +100,11 @@ export class ZoomableContentComponent
 
       // Initialize content dimensions directly from the projected element
       // This will get the current rendered size of the content.
+      console.log(
+        'ngAfterContentInit: ',
+        contentElement.offsetWidth,
+        contentElement.offsetHeight,
+      );
       this.setContentDimensions(
         contentElement.offsetWidth,
         contentElement.offsetHeight,
@@ -193,6 +203,7 @@ export class ZoomableContentComponent
 
     // Ensure scale is not over max bound
     this.scale = Math.min(this.maxScale, this.scale);
+    this.cdr.markForCheck();
   }
 
   /**
