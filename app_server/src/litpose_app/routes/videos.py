@@ -418,7 +418,7 @@ def transcode_video(
         )
 
     out_dir = videos_dir_for_project(project)
-    out_path = out_dir / filename
+    out_path = out_dir / filename.with_suffix(".mp4")
     if out_path.exists() and not should_overwrite:
         # Already done – mark and return a single DONE event
         set_status(
