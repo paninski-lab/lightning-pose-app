@@ -23,7 +23,11 @@
         <h3 class="bg-base-200 px-2 text-md">
           {{ fv.viewName }}
         </h3>
-        <app-zoomable-content class="h-full w-full" [maxScale]="100">
+        <app-zoomable-content
+          #primaryZoomable
+          class="h-full w-full"
+          [maxScale]="100"
+        >
           <div #content class="relative">
             <!-- img has max-w-none to override a bad default value of 100% -->
             <img

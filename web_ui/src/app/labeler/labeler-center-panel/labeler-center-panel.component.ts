@@ -8,6 +8,7 @@ import {
   output,
   signal,
   SimpleChanges,
+  viewChild,
 } from '@angular/core';
 import { FrameView, mvf, MVFrame } from '../frame.model';
 import { LKeypoint, lkp } from '../types';
@@ -47,6 +48,9 @@ export class LabelerCenterPanelComponent implements OnChanges {
   frame = input<MVFrame | null>(null);
   numLabeledFrames = input.required<number>();
 
+  primaryZoomableElement =
+    viewChild<ZoomableContentComponent>('primaryZoomable');
+
   saved = output<{
     labelFile: MVLabelFile;
     frame: MVFrame;
@@ -60,6 +64,14 @@ export class LabelerCenterPanelComponent implements OnChanges {
       this.hasCameraCalibrationFiles.set(false);
       this.checkIfHasCameraCalibrationFiles();
     }
+
+    if (changes['frame']) {
+      // Reset scale.
+      if (this.primaryZoomableElement()) {
+        this.primaryZoomableElement()!.fitContentToViewport();
+      }
+    }
+
     // Unlabeled frames should start from the first view and keypoint.
     if (
       changes['frame'] &&

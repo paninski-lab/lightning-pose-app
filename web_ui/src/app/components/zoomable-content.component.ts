@@ -180,7 +180,7 @@ export class ZoomableContentComponent
   /**
    * Calculates the initial scale and position to fit the content within the viewport.
    */
-  private fitContentToViewport(): void {
+  fitContentToViewport(): void {
     if (
       this.contentWidth === 0 ||
       this.contentHeight === 0 ||
