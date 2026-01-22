@@ -180,7 +180,11 @@
           ></app-sessions-panel>
           <div class="divider divider-horizontal">OR</div>
           <div class="flex-1 min-w-0 flex justify-center">
-            <button class="btn tooltip" data-tip="Upload local video files to create a new session" (click)="sessionImportOpen.set(true)">
+            <button
+              class="btn tooltip"
+              data-tip="Upload local video files to create a new session"
+              (click)="sessionImportOpen.set(true)"
+            >
               Upload a new session
             </button>
           </div>
@@ -189,61 +193,113 @@
     } @else {
       <div>
         <sub class="text-sm">Choose which frames to extract.</sub>
-        <div class="p-4">
+        <div class="p-4 flex flex-col gap-2">
           <div class="flex gap-1">
             <input
               [disabled]="isProcessing()"
               type="radio"
               name="extraction-strategy"
               id="radio-auto"
-              value="auto"
-              class="radio radio-sm"
-              checked="checked"
+              value="random"
+              class="radio"
+              [checked]="method() === 'random'"
+              (change)="method.set('random')"
             />
-            <label for="radio-auto" class="text-sm">Auto</label>
+            <label for="radio-auto" class="cursor-pointer">Auto</label>
+          </div>
+          <div class="flex gap-1">
+            <input
+              [disabled]="isProcessing()"
+              type="radio"
+              name="extraction-strategy"
+              id="radio-manual"
+              value="manual"
+              class="radio"
+              [checked]="method() === 'manual'"
+              (change)="method.set('manual')"
+            />
+            <label for="radio-manual" class="cursor-pointer">Manual</label>
           </div>
         </div>
-        <div role="alert" class="alert text-sm">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            class="stroke-info h-6 w-6 shrink-0"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            ></path>
-          </svg>
-          <span>
-            Frames will be selected automatically across a diversity of frames,
-            using motion energy and PCA.</span
-          >
-        </div>
+        @if (method() === "random") {
+          <div role="alert" class="alert text-sm">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              class="stroke-info h-6 w-6 shrink-0"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
+            <span>
+              Frames will be selected automatically across a diversity of
+              frames, using motion energy and PCA.</span
+            >
+          </div>
+        }
       </div>
 
       <div class="mt-4">
-        <p class="text-sm">
-          Choose how many frames to extract. 20 is a good start, but extract as
-          many or as little as you'd like.
-        </p>
-        <div class="p-4">
-          <input
-            [disabled]="isProcessing()"
-            type="number"
-            [(ngModel)]="nFrames"
-            class="input validator"
-            required
-            placeholder="Enter a number"
-            min="1"
-            step="1"
-          />
-          <p class="validator-hint">Must be between be 1 to 10</p>
-        </div>
+        @if (method() === "random") {
+          <p class="text-sm">
+            Choose how many frames to extract. 20 is a good start, but extract
+            as many or as little as you'd like.
+          </p>
+          <div class="p-4">
+            <input
+              [disabled]="isProcessing()"
+              type="number"
+              [(ngModel)]="nFrames"
+              class="input validator"
+              required
+              placeholder="Enter a number"
+              min="1"
+              step="1"
+            />
+            <p class="validator-hint">Must be between be 1 to 10</p>
+          </div>
+        } @else {
+          <p class="text-sm">
+            Enter the exact frame indices to extract as a comma-separated list
+            (you can paste a long list).
+          </p>
+
+          <div class="p-4">
+            <textarea
+              [disabled]="isProcessing()"
+              class="textarea textarea-bordered w-full font-mono"
+              rows="4"
+              placeholder="Example: 0, 12, 42, 105"
+              [ngModel]="frameIndicesText()"
+              (ngModelChange)="handleFrameIndicesTextChange($event)"
+            ></textarea>
+
+            <div class="mt-2 text-sm">
+              @if (frameIndicesParseStatus().kind === "ok") {
+                <p class="text-success">
+                  {{ frameIndicesParseStatus().message }}
+                </p>
+              } @else if (frameIndicesParseStatus().kind === "error") {
+                <p class="text-error">
+                  {{ frameIndicesParseStatus().message }}
+                </p>
+              } @else {
+                <p class="text-base-content/70">
+                  Paste indices separated by commas (whitespace is also
+                  allowed).
+                </p>
+              }
+            </div>
+          </div>
+        }
       </div>
     }
+
     <!-- Footer -->
     <div class="flex justify-between mt-6 gap-2">
       @if (step() === "labelFile") {

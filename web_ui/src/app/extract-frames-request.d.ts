@@ -21,6 +21,11 @@ export interface EFRRandomOptions {
   nFrames: number;
 }
 
+export interface ManualFrameOptions {
+  // list of non-negative, ascending, unique integers.
+  frame_index_list: number[];
+}
+
 export interface LabelFileCreationRequest {
   labelFileTemplate: string;
 }
@@ -31,6 +36,9 @@ export interface ExtractFramesRequest {
   session: EFRSession;
   // only present if using existing label file (not creating new)
   labelFile: EFRLabelFile | null;
-  method: 'random' | 'active';
-  options: EFRRandomOptions;
+  method: 'random' | 'manual';
+  // applicable and required for method=random
+  options?: EFRRandomOptions;
+  // applicable and required for method=manual
+  manualFrameOptions?: ManualFrameOptions;
 }
