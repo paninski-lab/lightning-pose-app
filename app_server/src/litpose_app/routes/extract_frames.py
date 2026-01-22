@@ -5,8 +5,9 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
-from ..datatypes import Project
+from litpose_app.config import Config
 from .. import deps
+from ..datatypes import Project
 from ..deps import ProjectInfoGetter
 from ..tasks.extract_frames import (
     extract_frames_task,
@@ -14,11 +15,11 @@ from ..tasks.extract_frames import (
     MVLabelFile,
     RandomMethodOptions,
     LabelFileView,
+    ManualMethodOptions,
 )
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-from litpose_app.config import Config
 
 
 class LabelFileCreationRequest(BaseModel):
@@ -43,8 +44,13 @@ class ExtractFramesRequest(BaseModel):
     Internally it will be populated once the labelFileCreationRequest is processed.
     """
 
+    # "manual" or "random"
     method: str
-    options: RandomMethodOptions  # add more types here with union types
+
+    # This field is applicable and required for the random method
+    options: RandomMethodOptions | None = None
+    # This field is applicable and required for the manual method
+    manualFrameOptions: ManualMethodOptions | None = None
 
 
 @router.post("/app/v0/rpc/extractFrames")
@@ -67,6 +73,19 @@ async def extract_frames(
         )
         request.labelFile = mvlabelfile
 
+    if request.method == "manual":
+        assert request.manualFrameOptions is not None
+        # Ensure non-negative, unique, frame indices sorted ascending
+        request.manualFrameOptions.frame_index_list = list(
+            sorted(
+                set(
+                    idx
+                    for idx in request.manualFrameOptions.frame_index_list
+                    if idx >= 0
+                )
+            )
+        )
+
     await run_in_threadpool(
         extract_frames_task,
         config,
@@ -76,6 +95,7 @@ async def extract_frames(
         on_progress,
         request.method,
         request.options,
+        request.manualFrameOptions,
     )
 
     return "ok"

@@ -3,6 +3,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from tqdm import tqdm
@@ -19,7 +20,7 @@ def frame_selection_kmeans_impl(
     n_frames: int,
     beg_frame: int = 0,
     end_frame: int | None = None,
-) -> list[int]:
+) -> NDArray[np.integer]:
     """
     Reads all frames, computes motion energy, clusters into n_frames clusters
     and picks a frame out of each cluster.

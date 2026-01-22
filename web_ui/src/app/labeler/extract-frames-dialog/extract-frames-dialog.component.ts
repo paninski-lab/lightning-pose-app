@@ -138,7 +138,82 @@ export class ExtractFramesDialogComponent implements OnInit {
     'labelFileTemplateNgModel',
   );
   protected session = signal<Session | null>(null);
+
+  // random or manual
+  protected method = signal<'random' | 'manual'>('random');
+  // applicable for random method
   protected nFrames = signal<number | null>(null);
+
+  // applicable for manual method
+  protected frameIndices = signal<number[] | null>(null);
+
+  // NEW: raw text input for manual indices (can be long/pasted)
+  protected frameIndicesText = signal<string>('');
+
+  // NEW: parsing + validation status for the UI
+  protected frameIndicesParseStatus = computed(() => {
+    if (this.method() !== 'manual') {
+      return { kind: 'idle' as const };
+    }
+
+    const raw = this.frameIndicesText().trim();
+    if (raw.length === 0) {
+      return {
+        kind: 'error' as const,
+        message: 'Enter one or more comma-separated indices (e.g. 0, 12, 42).',
+      };
+    }
+
+    // Allow commas and/or whitespace as separators
+    const tokens = raw.split(/[\s,]+/).filter(Boolean);
+
+    const values: number[] = [];
+    for (const t of tokens) {
+      if (!/^\d+$/.test(t)) {
+        return {
+          kind: 'error' as const,
+          message: `Invalid token "${t}". Use only non-negative integers separated by commas.`,
+        };
+      }
+      const n = Number(t);
+      if (!Number.isSafeInteger(n)) {
+        return {
+          kind: 'error' as const,
+          message: `Value "${t}" is not a valid integer.`,
+        };
+      }
+      values.push(n);
+    }
+
+    if (values.length === 0) {
+      return {
+        kind: 'error' as const,
+        message: 'No indices found.',
+      };
+    }
+
+    // Client-side normalize to match API expectations (non-negative, unique, ascending)
+    const normalized = Array.from(new Set(values)).sort((a, b) => a - b);
+
+    return {
+      kind: 'ok' as const,
+      values: normalized,
+      message: `Parsed ${normalized.length} frame index${normalized.length === 1 ? '' : 'es'}.`,
+    };
+  });
+
+  // NEW: keep frameIndices signal in sync with the parsed result
+  protected handleFrameIndicesTextChange(value: string) {
+    this.frameIndicesText.set(value);
+
+    const status = this.frameIndicesParseStatus();
+    if (status.kind === 'ok') {
+      this.frameIndices.set(status.values);
+    } else {
+      this.frameIndices.set(null);
+    }
+  }
+
   protected isProcessing = signal(false);
 
   private rpc = inject(RpcService);
@@ -189,9 +264,18 @@ export class ExtractFramesDialogComponent implements OnInit {
   });
 
   protected settingsStepIsValid = computed(() => {
-    if (this.nFrames() === null || this.nFrames()! < 1) {
-      return false;
+    if (this.method() === 'random') {
+      if (this.nFrames() === null || this.nFrames()! < 1) {
+        return false;
+      }
     }
+
+    if (this.method() === 'manual') {
+      if (this.frameIndices() === null || this.frameIndices()!.length < 1) {
+        return false;
+      }
+    }
+
     return true;
   });
 
@@ -218,10 +302,17 @@ export class ExtractFramesDialogComponent implements OnInit {
             views: labelFile.views,
           }
         : null,
-      method: 'random',
-      options: {
-        nFrames: this.nFrames()!,
-      },
+      method: this.method(),
+      options:
+        this.method() === 'random'
+          ? {
+              nFrames: this.nFrames() ?? 10,
+            }
+          : undefined,
+      manualFrameOptions:
+        this.method() == 'manual'
+          ? { frame_index_list: this.frameIndices() ?? [] }
+          : undefined,
     };
   }
 

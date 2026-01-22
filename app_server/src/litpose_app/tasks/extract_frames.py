@@ -5,6 +5,7 @@ from typing import Callable
 
 import cv2
 import numpy as np
+from numpy.typing import NDArray
 from pydantic import BaseModel
 
 from litpose_app.config import Config
@@ -42,6 +43,10 @@ class RandomMethodOptions(BaseModel):
     nFrames: int = 10
 
 
+class ManualMethodOptions(BaseModel):
+    frame_index_list: list[int] = []
+
+
 DEFAULT_RANDOM_OPTIONS = RandomMethodOptions()
 
 # Other configuration
@@ -55,19 +60,22 @@ def extract_frames_task(
     progress_callback: Callable[[str], None],
     method="random",
     options: RandomMethodOptions = DEFAULT_RANDOM_OPTIONS,
+    manual_frame_options: ManualMethodOptions = ManualMethodOptions()
 ):
     """
     session: dict (serialized Session model)
     method: random (kmeans) | active (NYI)
     """
 
-    frame_idxs: list[int] = []
+    frame_idxs: NDArray[np.integer]
     with ProcessPoolExecutor(
         max_workers=min(config.N_WORKERS, len(session.views))
     ) as process_pool:
         if method == "random":
             frame_idxs = _frame_selection_kmeans(config, session, options, process_pool)
             progress_callback(f"Frame selection complete.")
+        elif method == "manual":
+            frame_idxs = np.array(manual_frame_options.frame_index_list, dtype=int)
         else:
             raise ValueError("method not supported: " + method)
 
@@ -78,7 +86,7 @@ def extract_frames_task(
         progress_callback(f"Update unlabeled files complete.")
 
 
-def _frame_selection_kmeans(config, session, options, process_pool) -> list[int]:
+def _frame_selection_kmeans(config, session, options, process_pool) -> NDArray[np.integer]:
     """
     Select `options.n_frames` frames using just the first video in the session.
 
@@ -98,7 +106,7 @@ def _export_frames(
     config: Config,
     session: Session,
     project: Project,
-    frame_idxs,
+    frame_idxs: NDArray[np.integer],
     process_pool,
 ) -> dict[str, list[Path]]:
     """
@@ -133,14 +141,13 @@ def _export_frames(
 
     # expand frame_idxs to include context frames
     context_frames = config.FRAME_EXTRACT_N_CONTEXT_FRAMES
-    if context_frames > 0:
-        context_vec = np.arange(-context_frames, context_frames + 1)
-        _result = (frame_idxs[None, :] + context_vec[:, None]).flatten()
-        _result.sort()
-        _result = _result[_result >= 0]
-        _result = _result[_result < int(frame_count)]
-        _result = np.unique(_result)
-        frame_idxs_with_context = _result
+    context_vec = np.arange(-context_frames, context_frames + 1)
+    _result = (frame_idxs[None, :] + context_vec[:, None]).flatten()
+    _result.sort()
+    _result = _result[_result >= 0]
+    _result = _result[_result < int(frame_count)]
+    _result = np.unique(_result)
+    frame_idxs_with_context = _result
 
     futures = {}
     for sv in session.views:
