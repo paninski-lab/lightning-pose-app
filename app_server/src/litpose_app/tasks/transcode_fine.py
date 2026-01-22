@@ -7,10 +7,6 @@ import subprocess
 logger = logging.getLogger("apscheduler")
 
 
-def transcode_video_task(input_file_path: Path, output_file_path: Path):
-    transcode_file(input_file_path, output_file_path)
-
-
 # --- Configuration ---
 # FFmpeg options for transcoding:
 # -loglevel info: Show detailed information about the progress of the transcoding.

@@ -2,12 +2,14 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   inject,
   input,
   OnChanges,
   output,
   signal,
   SimpleChanges,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { FrameView, mvf, MVFrame } from '../frame.model';
@@ -57,6 +59,19 @@ export class LabelerCenterPanelComponent implements OnChanges {
     shouldAdvanceFrame: boolean;
   }>();
 
+  constructor() {
+    effect(() => {
+      this.selectedView();
+
+      // Reset scale when view changes.
+      // Use untracked() to avoid creating a dependency on primaryZoomableElement
+      untracked(() => {
+        if (this.primaryZoomableElement()) {
+          this.primaryZoomableElement()!.fitContentToViewport();
+        }
+      });
+    });
+  }
   ngOnChanges(changes: SimpleChanges) {
     if (changes['frame']) {
       this.abortController.abort();
