@@ -17,7 +17,7 @@ Our full documentation, including installation guides, API references, and advan
 
 ## 📝 Release Notes
 
-### [2.0.4.2] — 2026-01-22
+### [2.0.5.1] — 2026-01-22
 
 **Added**
 * Extract frames: Manual frame selection. You can now specify a comma-separated list of frame indices to extract from a video.
@@ -28,6 +28,6 @@ Our full documentation, including installation guides, API references, and advan
 
 ---
 
-### [2.0.4.1] — 2026-01-13
+### [2.0.5.0] — 2026-01-13
 
 **Initial Release**
