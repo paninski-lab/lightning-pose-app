@@ -38,6 +38,9 @@ def check_for_upgrade():
 
                 To skip this check in the future, use the LP_IGNORE_UPGRADE env variable:
                     LP_IGNORE_UPGRADE=1 litpose run_app
+                
+                📝 For details on what's new, see the release notes:
+                    https://github.com/paninski-lab/lightning-pose-app/?tab=readme-ov-file#-release-notes
                 {'-' * 80}
             """
                 )
