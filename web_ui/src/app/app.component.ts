@@ -18,14 +18,13 @@ import {
   RouterLink,
   RouterLinkActive,
   RouterOutlet,
-} from '@angular/router'; // NEW: Import ActivatedRoute, Router
+} from '@angular/router';
 import { ProjectSettingsComponent } from './project-settings/project-settings.component';
 
 import { ProjectInfoService } from './project-info.service';
 import { LoadingService } from './loading.service';
-import { FineVideoService } from './utils/fine-video.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { filter } from 'rxjs/operators'; // NEW: Import filter
+import { filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-root',
@@ -40,7 +39,6 @@ import { filter } from 'rxjs/operators'; // NEW: Import filter
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppComponent implements OnInit {
-  protected fineVideoService = inject(FineVideoService);
   protected loadingService = inject(LoadingService);
   protected projectInfoService = inject(ProjectInfoService);
 
@@ -48,8 +46,6 @@ export class AppComponent implements OnInit {
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
 
-  protected projectInfoRequestCompleted = signal(false);
-  protected hasBeenSetup = signal(true);
   protected settingsDialog = viewChild.required<ElementRef>('settingsDialog');
 
   settingsDialogOpen = signal(false);
@@ -70,6 +66,32 @@ export class AppComponent implements OnInit {
       { link: ['/project', key, 'viewer'] as unknown[], text: 'Viewer' },
     ];
   });
+
+  private _isCompatibleBrowser: boolean | null = null;
+  protected get isCompatibleBrowser(): boolean {
+    if (this._isCompatibleBrowser === null) {
+      // @ts-expect-error TS2551
+      if (navigator.userAgentData) {
+        // @ts-expect-error TS2551
+        const brands = navigator.userAgentData.brands;
+
+        // Check specifically for Microsoft Edge
+        const isEdge = brands.some(
+          (b: { brand: string }) => b.brand === 'Microsoft Edge',
+        );
+
+        // Check for the Chromium engine in general (includes Chrome, Edge, Brave, etc.)
+        const isChromium = brands.some(
+          (b: { brand: string }) => b.brand === 'Chromium',
+        );
+
+        this._isCompatibleBrowser = isEdge || isChromium;
+      } else {
+        this._isCompatibleBrowser = false;
+      }
+    }
+    return this._isCompatibleBrowser!;
+  }
 
   constructor() {
     effect(() => {
