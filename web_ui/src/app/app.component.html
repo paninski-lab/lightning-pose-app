@@ -35,16 +35,12 @@
     </div>
 
     <div class="navbar-end">
-      @if (fineVideoService.numPendingTranscodeTasks().pending > 0) {
-        <div
-          class="tooltip tooltip-left"
-          [attr.data-tip]="
-            'Transcoding videos: ' +
-            fineVideoService.numPendingTranscodeTasks().pending.toString() +
-            ' remaining'
-          "
-        >
-          <span class="loading loading-bars loading-xs"></span>
+      @if (!isCompatibleBrowser) {
+        <div role="alert" class="alert alert-warning alert-soft">
+          <span
+            >Browser other than Chrome detected. <br />
+            Switch to Chrome for Labeling and Viewing keypoints.</span
+          >
         </div>
       }
 
@@ -66,18 +62,6 @@
 <div class="fixed top-4 right-4 z-50" aria-live="polite">
   @if (loadingService.isContextLoading()) {
     <span class="loading loading-spinner loading-lg text-primary"></span>
-  }
-  @if (fineVideoService.numPendingTranscodeTasks().pending > 0) {
-    <div
-      class="tooltip tooltip-left"
-      [attr.data-tip]="
-        'Transcoding videos: ' +
-        fineVideoService.numPendingTranscodeTasks().pending.toString() +
-        ' remaining'
-      "
-    >
-      <span class="loading loading-bars loading-xs"></span>
-    </div>
   }
 </div>
 
