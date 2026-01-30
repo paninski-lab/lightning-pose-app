@@ -5,6 +5,7 @@ import re
 import shutil
 import time
 from concurrent.futures import ProcessPoolExecutor
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -33,7 +34,7 @@ class BundleAdjustRequest(BaseModel):
     sessionKey: str  # name of the session with the view stripped out
 
     iterative: bool = True
-    addl_bundle_adjust_kwargs: dict = {"extrinsics_only": True}
+    addl_bundle_adjust_kwargs: dict = {"only_extrinsics": True}
 
 
 class BundleAdjustResponse(BaseModel):
@@ -46,6 +47,19 @@ class BundleAdjustResponse(BaseModel):
     newReprojectionError: list[float]
     """List: one per camera."""
 
+    oldCgDicts: list[dict[str, Any]]
+    """CameraGroup dictionaries (pre-adjustment), one per camera."""
+
+    newCgDicts: list[dict[str, Any]]
+    """CameraGroup dictionaries (post-adjustment), one per camera."""
+
+    oldCgToml: str
+    """Full CameraGroup TOML (pre-adjustment)."""
+
+    newCgToml: str
+    """Full CameraGroup TOML (post-adjustment)."""
+
+
 class SaveCalibrationForSessionRequest(BaseModel):
     projectKey: str
     sessionKey: str  # name of the session with the view stripped out
@@ -54,9 +68,9 @@ class SaveCalibrationForSessionRequest(BaseModel):
 
 @router.post("/app/v0/rpc/bundleAdjust")
 def bundle_adjust(
-    request: BundleAdjustRequest,
-    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
-    config: Config = Depends(deps.config),
+        request: BundleAdjustRequest,
+        project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+        config: Config = Depends(deps.config),
 ) -> BundleAdjustResponse:
     with ProcessPoolExecutor(max_workers=1) as executor:
         project: Project = project_info_getter(request.projectKey)
@@ -82,8 +96,6 @@ def _bundle_adjust_impl(request: BundleAdjustRequest, project: Project, config: 
     old_cg_toml = dump_as_string(cg)
 
     views = list(map(lambda c: c.name, cg.cameras))
-    project_views = project.config.view_names or []
-    assert set(project_views) == set(views)
 
     # Group multiview csv files
     files_by_view = {v.viewName: v.csvPath for v in request.mvlabelfile.views}
@@ -91,10 +103,15 @@ def _bundle_adjust_impl(request: BundleAdjustRequest, project: Project, config: 
     # Read DFs
     dfs_by_view = {}
     for view in views:
-        csv = files_by_view[view]
+        try:
+            csv = files_by_view[view]
+        except KeyError as e:
+            print(f"No CSV found for view from CameraGroup {view}")
+            raise e
         df = pd.read_csv(csv, header=[0, 1, 2], index_col=0)
         df = fix_empty_first_row(df)
         dfs_by_view[view] = df
+    views = list(dfs_by_view.keys())
 
     p2ds = get_p2ds(dfs_by_view, request.sessionKey)
 
@@ -131,11 +148,12 @@ def _bundle_adjust_impl(request: BundleAdjustRequest, project: Project, config: 
         "newCgToml": new_cg_toml,
     }
 
+
 @router.post("/app/v0/rpc/saveCalibrationForSession")
 def save_calibration_for_session(
-    request: SaveCalibrationForSessionRequest,
-    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
-    config: Config = Depends(deps.config),
+        request: SaveCalibrationForSessionRequest,
+        project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+        config: Config = Depends(deps.config),
 ) -> None:
     project = project_info_getter(request.projectKey)
 
@@ -148,10 +166,11 @@ def save_calibration_for_session(
 
     if session_level_calibration_path.exists():
         backup_path = (
-            project.paths.data_dir
-            / config.CALIBRATIONS_DIRNAME
-            / "backups"
-            / session_level_calibration_path.with_suffix(f"_og-{datetime.now().strftime('%Y%m%d_%H%M%S')}.toml").name
+                project.paths.data_dir
+                / config.CALIBRATIONS_DIRNAME
+                / "backups"
+                / session_level_calibration_path.with_suffix(
+            f"_og-{datetime.now().strftime('%Y%m%d_%H%M%S')}.toml").name
         )
         backup_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(session_level_calibration_path, backup_path)
@@ -165,54 +184,18 @@ def dump_as_string(cg: CameraGroup) -> str:
     with tempfile.NamedTemporaryFile(
             mode="w+", suffix=".toml"
     ) as f:
-        cg.dump(f)
+        cg.dump(f.name)
         # Move cursor back to the start
         f.seek(0)
         return f.read()
 
-def get_is_of_current_session(views, sessionKey):
-    def autoLabelSessionKey(framePath: str) -> str | None:
-        parts = framePath.split("/")
-        if len(parts) < 3:
-            return None
-        sessionViewNameWithDots = parts[
-            -2
-        ]  # e.g. 05272019_fly1_0_R1C24_Cam-A_rot-ccw-0.06_sec
 
-        def processPart(sessionViewName):
-            """Mirrors frame.model.ts get autolabelSessionKey()"""
-            # Replace view with *, e.g. 05272019_fly1_0_R1C24_*_rot-ccw-0.06_sec
-            sessionkey_from_frame = re.sub(
-                rf"({'|'.join([re.escape(_v) for _v in views])})", "*", sessionViewName
-            )
-
-            # View not in this token, so return identity.
-            if "*" not in sessionkey_from_frame:
-                return sessionkey_from_frame
-
-            # Attempt to parse assuming - is the delimiter.
-            parts_hyphenated = sessionkey_from_frame.split("-")
-            if "*" in parts_hyphenated:
-                return "-".join(filter(lambda x: x != "*", parts_hyphenated))
-
-            # Attempt to parse assuming _ is the delimiter.
-            parts_underscored = sessionkey_from_frame.split("_")
-            if "*" in parts_underscored:
-                return "_".join(filter(lambda x: x != "*", parts_underscored))
-
-            # View present, but invalid delimiter: return None
-            return None
-
-        # Split on . and process each part.
-        processedParts = list(map(processPart, sessionViewNameWithDots.split(".")))
-        # If some part had * but without correct delimiters around it, return null.
-        if None in processedParts:
-            return None
-        # Filter empty tokens after processPart (* got removed) and join by .
-        return ".".join(filter(lambda p: bool(p), processedParts))
-
+def get_is_of_current_session(sessionKey):
     def is_of_current_session(imgpath: str):
-        return autoLabelSessionKey(imgpath) == sessionKey
+        return re.search(f"^labeled-data/{re.escape(sessionKey)}_/", imgpath) is not None
+
+    return is_of_current_session
+
 
 def get_p2ds(dfs_by_view: dict[str, pd.DataFrame], sessionKey: str) -> list[np.ndarray]:
     # 1. Normalize Indices (Remove view-specific prefixes/suffixes)
@@ -225,20 +208,22 @@ def get_p2ds(dfs_by_view: dict[str, pd.DataFrame], sessionKey: str) -> list[np.n
     # 2. Identify the "Shared Valid Truth"
     valid_indices = None
 
-    is_of_current_session = get_is_of_current_session(views, sessionKey=sessionKey)
-
     for view in views:
         df = dfs_by_view[view]
 
         # Filter: Session
+        is_of_current_session = get_is_of_current_session(sessionKey=sessionKey.replace(view, ""))
         session_mask = df.index.map(is_of_current_session)
+        print(df.index[session_mask])
 
         # Filter: NaN coordinates (assuming MultiIndex level 2 is 'x' or 'y')
         coords_cols = df.columns.get_level_values(2).isin(["x", "y"])
         non_nan_mask = df.loc[:, coords_cols].notna().all(axis=1)
+        print(df.index[non_nan_mask])
 
         # Combined valid frames for this specific view
         current_valid = df.index[session_mask & non_nan_mask]
+        print(current_valid)
 
         if valid_indices is None:
             valid_indices = current_valid

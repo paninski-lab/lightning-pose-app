@@ -1,5 +1,5 @@
-<dialog class="modal" id="bundle_adjustment">
-  <div class="modal-box w-5/6 max-w-3xl prose">
+<dialog class="modal" id="bundle_adjustment" (close)="resetState()">
+  <div class="modal-box w-fit min-w-[33.3%] max-w-[83.3%] prose">
     <button
       class="btn btn-md btn-circle btn-ghost absolute right-4 top-4"
       onclick="bundle_adjustment.close()"
@@ -9,10 +9,7 @@
     <h2 class="mt-0">Bundle Adjustment</h2>
     <p>
       Optimizes the camera parameters for this session by minimizing the
-      reprojection error of the labeled frames for this session. Overwrites the
-      session-level camera calibration file. Backs up the original calibration
-      file to
-      <code>calibration_backups</code>.
+      reprojection error of the labeled frames for this session.
     </p>
     <table class="table table-sm w-fit">
       <tr>
@@ -57,6 +54,55 @@
             </tr>
           </tbody>
         </table>
+
+        <div class="divider"></div>
+
+        <div
+          class="not-prose flex flex-wrap items-center justify-between gap-3"
+        >
+          <h3 class="mt-0 mb-0">Camera parameters (old vs new)</h3>
+
+          <label class="label cursor-pointer gap-3">
+            <span class="label-text text-sm">JSON</span>
+            <input
+              type="checkbox"
+              class="toggle toggle-sm"
+              [checked]="cameraParamsViewMode() === 'toml'"
+              (change)="
+                handleCameraParamsModeToggle($any($event.target).checked)
+              "
+            />
+            <span class="label-text text-sm">TOML</span>
+          </label>
+        </div>
+
+        <div class="not-prose grid grid-cols-1 gap-4 lg:grid-cols-2 mt-3">
+          <section class="card bg-base-100 border border-base-300 shadow-sm">
+            <div class="card-body p-4">
+              <div class="text-sm font-semibold opacity-80">Old</div>
+
+              <pre
+                class="mt-2 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-3 text-xs leading-relaxed"
+              ><code
+          [appHighlight]="getOldCameraParamsText()"
+          [language]="cameraParamsViewMode()"
+        ></code></pre>
+            </div>
+          </section>
+
+          <section class="card bg-base-100 border border-base-300 shadow-sm">
+            <div class="card-body p-4">
+              <div class="text-sm font-semibold opacity-80">New</div>
+
+              <pre
+                class="mt-2 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-3 text-xs leading-relaxed"
+              ><code
+          [appHighlight]="getNewCameraParamsText()"
+          [language]="cameraParamsViewMode()"
+        ></code></pre>
+            </div>
+          </section>
+        </div>
       </div>
     }
     <div class="modal-action items-center">

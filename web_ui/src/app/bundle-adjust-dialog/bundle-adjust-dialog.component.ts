@@ -13,21 +13,36 @@ import { MVLabelFile } from '../label-file.model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, Subscription } from 'rxjs';
 import { ProjectInfoService } from '../project-info.service';
+import { HighlightDirective } from '../highlight.directive';
 
 interface BundleAdjustResponse {
   camList: string[];
   oldReprojectionError: number[];
   newReprojectionError: number[];
+
+  /** CameraGroup dictionaries (pre-adjustment), one per camera. */
+  oldCgDicts: Record<string, unknown>[];
+
+  /** CameraGroup dictionaries (post-adjustment), one per camera. */
+  newCgDicts: Record<string, unknown>[];
+
+  /** Full CameraGroup TOML (pre-adjustment). */
+  oldCgToml: string;
+
+  /** Full CameraGroup TOML (post-adjustment). */
+  newCgToml: string;
 }
+
+type CameraParamsViewMode = 'json' | 'toml';
 
 @Component({
   selector: 'app-bundle-adjust-dialog',
-  imports: [],
+  imports: [HighlightDirective],
   templateUrl: './bundle-adjust-dialog.component.html',
   styleUrl: './bundle-adjust-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class BundleAdjustDialogComponent implements AfterViewInit {
+export class BundleAdjustDialogComponent {
   private rpc = inject(RpcService);
   private destroyRef = inject(DestroyRef);
   private projectInfoService = inject(ProjectInfoService);
@@ -40,14 +55,38 @@ export class BundleAdjustDialogComponent implements AfterViewInit {
   private runSubscription?: Subscription;
   protected baLoading = signal(false);
   protected baResponse = signal<BundleAdjustResponse | null>(null);
-  private resetState() {
+
+  protected cameraParamsViewMode = signal<CameraParamsViewMode>('json');
+
+  protected getOldCameraParamsText(): string {
+    const resp = this.baResponse();
+    if (!resp) return '';
+    if (this.cameraParamsViewMode() === 'toml') return resp.oldCgToml;
+    return this.formatJson(resp.oldCgDicts);
+  }
+
+  protected getNewCameraParamsText(): string {
+    const resp = this.baResponse();
+    if (!resp) return '';
+    if (this.cameraParamsViewMode() === 'toml') return resp.newCgToml;
+    return this.formatJson(resp.newCgDicts);
+  }
+
+  protected handleCameraParamsModeToggle(checked: boolean) {
+    // unchecked => JSON, checked => TOML
+    this.cameraParamsViewMode.set(checked ? 'toml' : 'json');
+  }
+
+  protected resetState() {
     // Resets state on dialog close.
     this.baResponse.set(null);
     this.baLoading.set(false);
+    this.cameraParamsViewMode.set('json');
     if (this.runSubscription) {
       this.runSubscription.unsubscribe();
     }
   }
+  /*
   ngAfterViewInit() {
     (
       document.getElementById('bundle_adjustment') as HTMLDialogElement
@@ -55,7 +94,7 @@ export class BundleAdjustDialogComponent implements AfterViewInit {
       this.resetState();
     });
   }
-
+*/
   protected handleBundleAdjustClick() {
     const baRequest = {
       projectKey: this.projectInfoService['projectContext']()?.key as string,
@@ -85,5 +124,13 @@ export class BundleAdjustDialogComponent implements AfterViewInit {
     (
       document.getElementById('bundle_adjustment') as HTMLDialogElement
     ).showModal();
+  }
+
+  protected formatJson(value: unknown): string {
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
   }
 }

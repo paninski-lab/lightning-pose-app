@@ -532,6 +532,8 @@ export class SessionService {
   }
 
   async hasCameraCalibrationFiles(sessionKey: string): Promise<boolean> {
+    console.log('hasCameraCalibrationFiles', sessionKey);
+    console.log('hasCameraCalibrationFiles', `calibrations/${sessionKey}.toml`);
     const projectInfo = this.projectInfoService.projectInfo;
 
     // Search for session-level calibration file.
