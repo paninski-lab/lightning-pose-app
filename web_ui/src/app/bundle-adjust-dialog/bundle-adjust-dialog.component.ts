@@ -53,10 +53,14 @@ export class BundleAdjustDialogComponent {
   numLabeledFrames = input.required<number>();
 
   private runSubscription?: Subscription;
+  private saveSubscription?: Subscription;
+
   protected baLoading = signal(false);
+  protected baSaving = signal(false);
+  protected baSavingSuccess = signal(false);
   protected baResponse = signal<BundleAdjustResponse | null>(null);
 
-  protected cameraParamsViewMode = signal<CameraParamsViewMode>('json');
+  protected cameraParamsViewMode = signal<CameraParamsViewMode>('toml');
 
   protected getOldCameraParamsText(): string {
     const resp = this.baResponse();
@@ -81,20 +85,17 @@ export class BundleAdjustDialogComponent {
     // Resets state on dialog close.
     this.baResponse.set(null);
     this.baLoading.set(false);
+    this.baSaving.set(false);
     this.cameraParamsViewMode.set('json');
+
     if (this.runSubscription) {
       this.runSubscription.unsubscribe();
     }
+    if (this.saveSubscription) {
+      this.saveSubscription.unsubscribe();
+    }
   }
-  /*
-  ngAfterViewInit() {
-    (
-      document.getElementById('bundle_adjustment') as HTMLDialogElement
-    ).addEventListener('close', () => {
-      this.resetState();
-    });
-  }
-*/
+
   protected handleBundleAdjustClick() {
     const baRequest = {
       projectKey: this.projectInfoService['projectContext']()?.key as string,
@@ -119,11 +120,53 @@ export class BundleAdjustDialogComponent {
       });
   }
 
+  protected handleSaveClick() {
+    const resp = this.baResponse();
+    const projectKey = this.projectInfoService['projectContext']()?.key as
+      | string
+      | undefined;
+    const sessionKey = this.frame()
+      ? mvf(this.frame()!).autolabelSessionKey
+      : null;
+
+    if (!resp || !projectKey || !sessionKey) {
+      // Nothing to save (or we don't have enough context).
+      return;
+    }
+
+    const request = {
+      projectKey,
+      sessionKey, // expected to be "view stripped out" already
+      newCgToml: resp.newCgToml,
+    };
+
+    if (this.saveSubscription) {
+      this.saveSubscription.unsubscribe();
+    }
+
+    this.baSaving.set(true);
+    this.saveSubscription = this.rpc
+      .callObservable('saveCalibrationForSession', request)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        finalize(() => {
+          this.baSaving.set(false);
+        }),
+      )
+      .subscribe(() => {
+        this.baSavingSuccess.set(true);
+      });
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   open() {
     (
       document.getElementById('bundle_adjustment') as HTMLDialogElement
     ).showModal();
+  }
+
+  protected close() {
+    (document.getElementById('bundle_adjustment') as HTMLDialogElement).close();
   }
 
   protected formatJson(value: unknown): string {

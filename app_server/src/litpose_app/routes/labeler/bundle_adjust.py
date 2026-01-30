@@ -1,10 +1,8 @@
-import tempfile
-from datetime import datetime
-import os
 import re
 import shutil
-import time
+import tempfile
 from concurrent.futures import ProcessPoolExecutor
+from datetime import datetime
 from typing import Any
 
 import numpy as np
@@ -169,8 +167,8 @@ def save_calibration_for_session(
                 project.paths.data_dir
                 / config.CALIBRATIONS_DIRNAME
                 / "backups"
-                / session_level_calibration_path.with_suffix(
-            f"_og-{datetime.now().strftime('%Y%m%d_%H%M%S')}.toml").name
+                / session_level_calibration_path.name
+                .replace(".toml",f"_og-{datetime.now().strftime('%Y%m%d_%H%M%S')}.toml")
         )
         backup_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(session_level_calibration_path, backup_path)
@@ -214,16 +212,13 @@ def get_p2ds(dfs_by_view: dict[str, pd.DataFrame], sessionKey: str) -> list[np.n
         # Filter: Session
         is_of_current_session = get_is_of_current_session(sessionKey=sessionKey.replace(view, ""))
         session_mask = df.index.map(is_of_current_session)
-        print(df.index[session_mask])
 
         # Filter: NaN coordinates (assuming MultiIndex level 2 is 'x' or 'y')
         coords_cols = df.columns.get_level_values(2).isin(["x", "y"])
         non_nan_mask = df.loc[:, coords_cols].notna().all(axis=1)
-        print(df.index[non_nan_mask])
 
         # Combined valid frames for this specific view
         current_valid = df.index[session_mask & non_nan_mask]
-        print(current_valid)
 
         if valid_indices is None:
             valid_indices = current_valid
