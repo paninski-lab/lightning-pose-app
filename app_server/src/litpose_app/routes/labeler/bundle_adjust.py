@@ -168,7 +168,7 @@ def save_calibration_for_session(
                 / config.CALIBRATIONS_DIRNAME
                 / "backups"
                 / session_level_calibration_path.name
-                .replace(".toml",f"_og-{datetime.now().strftime('%Y%m%d_%H%M%S')}.toml")
+                .replace(".toml",f"_og-{datetime.now().strftime('%Y%m%d-%H%M%S')}.toml")
         )
         backup_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(session_level_calibration_path, backup_path)
