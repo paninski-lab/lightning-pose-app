@@ -1,5 +1,8 @@
+import tempfile
+from datetime import datetime
 import os
 import re
+import shutil
 import time
 from concurrent.futures import ProcessPoolExecutor
 
@@ -11,9 +14,9 @@ from pydantic import BaseModel
 
 from litpose_app import deps
 from litpose_app.config import Config
-from litpose_app.routes.labeler import find_calibration_file, session_level_config_path
-from litpose_app.deps import ProjectInfoGetter
 from litpose_app.datatypes import Project
+from litpose_app.deps import ProjectInfoGetter
+from litpose_app.routes.labeler import find_calibration_file, get_session_level_calibration_path
 from litpose_app.tasks.extract_frames import MVLabelFile
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
 
@@ -29,6 +32,9 @@ class BundleAdjustRequest(BaseModel):
     mvlabelfile: MVLabelFile
     sessionKey: str  # name of the session with the view stripped out
 
+    iterative: bool = True
+    addl_bundle_adjust_kwargs: dict = {"extrinsics_only": True}
+
 
 class BundleAdjustResponse(BaseModel):
     camList: list[str]
@@ -39,6 +45,11 @@ class BundleAdjustResponse(BaseModel):
 
     newReprojectionError: list[float]
     """List: one per camera."""
+
+class SaveCalibrationForSessionRequest(BaseModel):
+    projectKey: str
+    sessionKey: str  # name of the session with the view stripped out
+    newCgToml: str
 
 
 @router.post("/app/v0/rpc/bundleAdjust")
@@ -67,10 +78,99 @@ def _bundle_adjust_impl(request: BundleAdjustRequest, project: Project, config: 
             f"Could not find calibration file for {request.sessionKey}"
         )
     cg = CameraGroup.load(camera_group_toml_path)
+    old_cg_dicts = cg.get_dicts()
+    old_cg_toml = dump_as_string(cg)
+
     views = list(map(lambda c: c.name, cg.cameras))
     project_views = project.config.view_names or []
     assert set(project_views) == set(views)
 
+    # Group multiview csv files
+    files_by_view = {v.viewName: v.csvPath for v in request.mvlabelfile.views}
+
+    # Read DFs
+    dfs_by_view = {}
+    for view in views:
+        csv = files_by_view[view]
+        df = pd.read_csv(csv, header=[0, 1, 2], index_col=0)
+        df = fix_empty_first_row(df)
+        dfs_by_view[view] = df
+
+    p2ds = get_p2ds(dfs_by_view, request.sessionKey)
+
+    p3ds = cg.triangulate(p2ds)
+    old_reprojection_error = cg.reprojection_error(p3ds, p2ds)
+    if request.iterative:
+        cg.bundle_adjust_iter(
+            p2ds,
+            verbose=True,
+            **request.addl_bundle_adjust_kwargs,
+        )
+    else:
+        cg.bundle_adjust(
+            p2ds,
+            verbose=True,
+            **request.addl_bundle_adjust_kwargs,
+        )
+    new_cg_dicts = cg.get_dicts()
+    new_cg_toml = dump_as_string(cg)
+    p3ds = cg.triangulate(p2ds)
+    new_reprojection_error = cg.reprojection_error(p3ds, p2ds)
+
+    return {
+        "camList": views,  # Add the camList
+        "oldReprojectionError": np.linalg.norm(old_reprojection_error, axis=2)
+        .sum(axis=1)
+        .tolist(),
+        "newReprojectionError": np.linalg.norm(new_reprojection_error, axis=2)
+        .sum(axis=1)
+        .tolist(),
+        "oldCgDicts": old_cg_dicts,
+        "newCgDicts": new_cg_dicts,
+        "oldCgToml": old_cg_toml,
+        "newCgToml": new_cg_toml,
+    }
+
+@router.post("/app/v0/rpc/saveCalibrationForSession")
+def save_calibration_for_session(
+    request: SaveCalibrationForSessionRequest,
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+    config: Config = Depends(deps.config),
+) -> None:
+    project = project_info_getter(request.projectKey)
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml") as f:
+        f.write(request.newCgToml)
+        f.flush()
+        cg = CameraGroup.load(f.name)
+
+    session_level_calibration_path = get_session_level_calibration_path(request.sessionKey, project, config)
+
+    if session_level_calibration_path.exists():
+        backup_path = (
+            project.paths.data_dir
+            / config.CALIBRATIONS_DIRNAME
+            / "backups"
+            / session_level_calibration_path.with_suffix(f"_og-{datetime.now().strftime('%Y%m%d_%H%M%S')}.toml").name
+        )
+        backup_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(session_level_calibration_path, backup_path)
+
+    session_level_calibration_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(session_level_calibration_path, "w") as f:
+        f.write(request.newCgToml)
+
+
+def dump_as_string(cg: CameraGroup) -> str:
+    with tempfile.NamedTemporaryFile(
+            mode="w+", suffix=".toml"
+    ) as f:
+        cg.dump(f)
+        # Move cursor back to the start
+        f.seek(0)
+        return f.read()
+
+def get_is_of_current_session(views, sessionKey):
     def autoLabelSessionKey(framePath: str) -> str | None:
         parts = framePath.split("/")
         if len(parts) < 3:
@@ -112,121 +212,57 @@ def _bundle_adjust_impl(request: BundleAdjustRequest, project: Project, config: 
         return ".".join(filter(lambda p: bool(p), processedParts))
 
     def is_of_current_session(imgpath: str):
-        return autoLabelSessionKey(imgpath) == request.sessionKey
+        return autoLabelSessionKey(imgpath) == sessionKey
 
-    # Group multiview csv files
-    files_by_view = {v.viewName: v.csvPath for v in request.mvlabelfile.views}
-
-    numpy_arrs: dict[str, np.ndarray] = {}  # view -> np.ndarray
-
-    # Read DFs
-    dfs_by_view = {}
+def get_p2ds(dfs_by_view: dict[str, pd.DataFrame], sessionKey: str) -> list[np.ndarray]:
+    # 1. Normalize Indices (Remove view-specific prefixes/suffixes)
+    views = list(dfs_by_view.keys())
     for view in views:
-        csv = files_by_view[view]
-        df = pd.read_csv(csv, header=[0, 1, 2], index_col=0)
-        df = fix_empty_first_row(df)
-        dfs_by_view[view] = df
-
-    # Check that DFs are aligned
-    index_values = dfs_by_view[views[0]].index.values
-    firstview_framekeys = list(map(lambda s: s.replace(views[0], ""), index_values))
-    for view in views:
-        thisview_framekeys = list(
-            map(lambda s: s.replace(view, ""), dfs_by_view[view].index.values)
+        dfs_by_view[view].index = dfs_by_view[view].index.str.replace(
+            view, "", regex=False
         )
-        if not firstview_framekeys == thisview_framekeys:
-            print(f"Skipping {files_by_view[view]} because of misaligned indices")
-            del files_by_view[view]
-            continue
 
-    # Filter to frames of current session
+    # 2. Identify the "Shared Valid Truth"
+    valid_indices = None
+
+    is_of_current_session = get_is_of_current_session(views, sessionKey=sessionKey)
+
     for view in views:
         df = dfs_by_view[view]
-        dfs_by_view[view] = df.loc[df.index.to_series().apply(is_of_current_session)]
-        if len(dfs_by_view[view]) == 0:
-            raise RuntimeError(
-                f"Insufficient frames found after filtering for session {request.sessionKey}. Possible error in session extraction logic."
-            )
-    # Remove rows with NaN coordinates
-    # Get indices of rows with NaN coordinates in any view
-    nan_indices = set()
-    for view in views:
-        df = dfs_by_view[view]
-        picked_columns = [c for c in df.columns if c[2] in ("x", "y")]
-        nan_rows = (
-            df.loc[:, picked_columns].dropna().index.symmetric_difference(df.index)
+
+        # Filter: Session
+        session_mask = df.index.map(is_of_current_session)
+
+        # Filter: NaN coordinates (assuming MultiIndex level 2 is 'x' or 'y')
+        coords_cols = df.columns.get_level_values(2).isin(["x", "y"])
+        non_nan_mask = df.loc[:, coords_cols].notna().all(axis=1)
+
+        # Combined valid frames for this specific view
+        current_valid = df.index[session_mask & non_nan_mask]
+
+        if valid_indices is None:
+            valid_indices = current_valid
+        else:
+            valid_indices = valid_indices.intersection(current_valid)
+
+    if valid_indices is None or len(valid_indices) == 0:
+        raise RuntimeError(
+            f"No synchronized valid frames found for session {sessionKey}."
         )
-        nan_indices.update(df.index.get_indexer(nan_rows))
 
-    # Drop those indices from all views
-    for view in views:
-        dfs_by_view[view] = dfs_by_view[view].drop(
-            dfs_by_view[view].index[list(nan_indices)]
-        )
-        if len(dfs_by_view[view]) == 0:
-            raise RuntimeError(
-                f"Insufficient frames found after dropping NaN rows for session {request.sessionKey}."
-            )
-    # Normalize columns: x, y alternating.
-    for view in views:
-        df = dfs_by_view[view]
-        picked_columns = [c for c in df.columns if c[2] in ("x", "y")]
-        assert len(picked_columns) % 2 == 0
-        assert (
-            picked_columns[::2][0][2] == "x"
-            and len(set(map(lambda t: t[2], picked_columns[::2]))) == 1
-        )
-        assert (
-            picked_columns[1::2][0][2] == "y"
-            and len(set(map(lambda t: t[2], picked_columns[1::2]))) == 1
-        )
-        dfs_by_view[view] = df.loc[:, picked_columns]
+    logging.info(f"Final synchronized dataset contains {len(valid_indices)} frames.")
 
-    # Convert to numpy
-    for view in views:
-        df = dfs_by_view[view]
-        nparr = df.to_numpy()
-        # Convert from x, y alternating columns to just x, y columns
-        # (bodyparts move from columns to rows).
-        nparr = nparr.reshape(-1, 2)
-        numpy_arrs[view] = nparr
+    # 3. Extract, Reshape, and Stack (CxNx2)
+    # .reshape(-1, 2) turns [x1, y1, x2, y2...] into [[x1, y1], [x2, y2]...]
+    processed_arrays = [
+        dfs_by_view[v]
+        .loc[
+            valid_indices, (dfs_by_view[v].columns.get_level_values(2).isin(["x", "y"]))
+        ]
+        .to_numpy()
+        .reshape(-1, 2)
+        for v in views
+    ]
 
-    # Creates a CxNx2 np array for anipose
-    p2ds = np.stack([numpy_arrs[v] for v in views])
-    p3ds = cg.triangulate(p2ds)
-    old_reprojection_error = cg.reprojection_error(p3ds, p2ds)
-    cg.bundle_adjust(p2ds, only_extrinsics=True, verbose=True)
-    p3ds = cg.triangulate(p2ds)
-    new_reprojection_error = cg.reprojection_error(p3ds, p2ds)
-    target_path = session_level_config_path(request.sessionKey, project, config)
-
-    if target_path.exists():
-        backup_path = (
-            project.paths.data_dir
-            / config.CALIBRATION_BACKUPS_DIRNAME
-            / target_path.with_suffix(f".{time.time_ns()}.toml").name
-        )
-        backup_path.parent.mkdir(parents=True, exist_ok=True)
-        os.rename(target_path, backup_path)
-
-    # Writes to session-level calibration file even if the
-    # project level calibration file was used for bundle adjustment.
-    session_level_calibration_path = session_level_config_path(
-        request.sessionKey, project, config
-    )
-    session_level_calibration_path.parent.mkdir(parents=True, exist_ok=True)
-    cg.dump(session_level_calibration_path)
-
-    return {
-        "camList": views,  # Add the camList
-        "oldReprojectionError": np.linalg.norm(
-            old_reprojection_error, axis=2
-        )  # Change key to camelCase
-        .sum(axis=1)
-        .tolist(),
-        "newReprojectionError": np.linalg.norm(
-            new_reprojection_error, axis=2
-        )  # Change key to camelCase
-        .sum(axis=1)
-        .tolist(),
-    }
+    p2ds = np.stack(processed_arrays)
+    return p2ds
