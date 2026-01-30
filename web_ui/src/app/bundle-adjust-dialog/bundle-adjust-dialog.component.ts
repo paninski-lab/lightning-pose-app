@@ -62,6 +62,13 @@ export class BundleAdjustDialogComponent {
 
   protected cameraParamsViewMode = signal<CameraParamsViewMode>('toml');
 
+  /** If true: optimize extrinsics only. If false: optimize intrinsics + extrinsics. */
+  protected optimizeExtrinsicsOnly = signal(true);
+
+  protected handleOptimizeModeChange(onlyExtrinsics: boolean) {
+    this.optimizeExtrinsicsOnly.set(onlyExtrinsics);
+  }
+
   protected getOldCameraParamsText(): string {
     const resp = this.baResponse();
     if (!resp) return '';
@@ -81,11 +88,16 @@ export class BundleAdjustDialogComponent {
     this.cameraParamsViewMode.set(checked ? 'toml' : 'json');
   }
 
+  protected handleToggleOptimizeMode() {
+    this.optimizeExtrinsicsOnly.update((v) => !v);
+  }
+
   protected resetState() {
     // Resets state on dialog close.
     this.baResponse.set(null);
     this.baLoading.set(false);
     this.baSaving.set(false);
+    this.baSavingSuccess.set(false);
     this.cameraParamsViewMode.set('json');
 
     if (this.runSubscription) {
@@ -101,6 +113,9 @@ export class BundleAdjustDialogComponent {
       projectKey: this.projectInfoService['projectContext']()?.key as string,
       sessionKey: mvf(this.frame()!).autolabelSessionKey,
       mvlabelfile: this.labelFile(),
+      addl_bundle_adjust_kwargs: {
+        only_extrinsics: this.optimizeExtrinsicsOnly(),
+      },
     };
 
     if (this.runSubscription) {
