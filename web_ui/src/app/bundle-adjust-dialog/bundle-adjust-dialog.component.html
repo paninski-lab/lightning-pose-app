@@ -2,7 +2,8 @@
   <div class="modal-box w-fit min-w-[33.3%] max-w-[83.3%] prose">
     <button
       class="btn btn-md btn-circle btn-ghost absolute right-4 top-4"
-      onclick="bundle_adjustment.close()"
+      type="button"
+      (click)="close()"
     >
       ✕
     </button>
@@ -22,7 +23,26 @@
         <td>Session</td>
         <td>{{ mvf(this.frame()!).autolabelSessionKey }}</td>
       </tr>
+
+      <tr>
+        <td>Optimize</td>
+        <td>
+          <button
+            type="button"
+            class="link link-hover text-sm"
+            (click)="handleToggleOptimizeMode()"
+            [disabled]="baLoading()"
+          >
+            @if (optimizeExtrinsicsOnly()) {
+              Extrinsics only
+            } @else {
+              Intrinsics and Extrinsics
+            }
+          </button>
+        </td>
+      </tr>
     </table>
+
     <div class="modal-action items-center">
       @if (numLabeledFrames() < 3) {
         <p class="text-error">Not enough labeled frames</p>
