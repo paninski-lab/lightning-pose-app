@@ -13,21 +13,36 @@ import { MVLabelFile } from '../label-file.model';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, Subscription } from 'rxjs';
 import { ProjectInfoService } from '../project-info.service';
+import { HighlightDirective } from '../highlight.directive';
 
 interface BundleAdjustResponse {
   camList: string[];
   oldReprojectionError: number[];
   newReprojectionError: number[];
+
+  /** CameraGroup dictionaries (pre-adjustment), one per camera. */
+  oldCgDicts: Record<string, unknown>[];
+
+  /** CameraGroup dictionaries (post-adjustment), one per camera. */
+  newCgDicts: Record<string, unknown>[];
+
+  /** Full CameraGroup TOML (pre-adjustment). */
+  oldCgToml: string;
+
+  /** Full CameraGroup TOML (post-adjustment). */
+  newCgToml: string;
 }
+
+type CameraParamsViewMode = 'json' | 'toml';
 
 @Component({
   selector: 'app-bundle-adjust-dialog',
-  imports: [],
+  imports: [HighlightDirective],
   templateUrl: './bundle-adjust-dialog.component.html',
   styleUrl: './bundle-adjust-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class BundleAdjustDialogComponent implements AfterViewInit {
+export class BundleAdjustDialogComponent {
   private rpc = inject(RpcService);
   private destroyRef = inject(DestroyRef);
   private projectInfoService = inject(ProjectInfoService);
@@ -38,22 +53,47 @@ export class BundleAdjustDialogComponent implements AfterViewInit {
   numLabeledFrames = input.required<number>();
 
   private runSubscription?: Subscription;
+  private saveSubscription?: Subscription;
+
   protected baLoading = signal(false);
+  protected baSaving = signal(false);
+  protected baSavingSuccess = signal(false);
   protected baResponse = signal<BundleAdjustResponse | null>(null);
-  private resetState() {
+
+  protected cameraParamsViewMode = signal<CameraParamsViewMode>('toml');
+
+  protected getOldCameraParamsText(): string {
+    const resp = this.baResponse();
+    if (!resp) return '';
+    if (this.cameraParamsViewMode() === 'toml') return resp.oldCgToml;
+    return this.formatJson(resp.oldCgDicts);
+  }
+
+  protected getNewCameraParamsText(): string {
+    const resp = this.baResponse();
+    if (!resp) return '';
+    if (this.cameraParamsViewMode() === 'toml') return resp.newCgToml;
+    return this.formatJson(resp.newCgDicts);
+  }
+
+  protected handleCameraParamsModeToggle(checked: boolean) {
+    // unchecked => JSON, checked => TOML
+    this.cameraParamsViewMode.set(checked ? 'toml' : 'json');
+  }
+
+  protected resetState() {
     // Resets state on dialog close.
     this.baResponse.set(null);
     this.baLoading.set(false);
+    this.baSaving.set(false);
+    this.cameraParamsViewMode.set('json');
+
     if (this.runSubscription) {
       this.runSubscription.unsubscribe();
     }
-  }
-  ngAfterViewInit() {
-    (
-      document.getElementById('bundle_adjustment') as HTMLDialogElement
-    ).addEventListener('close', () => {
-      this.resetState();
-    });
+    if (this.saveSubscription) {
+      this.saveSubscription.unsubscribe();
+    }
   }
 
   protected handleBundleAdjustClick() {
@@ -80,10 +120,60 @@ export class BundleAdjustDialogComponent implements AfterViewInit {
       });
   }
 
+  protected handleSaveClick() {
+    const resp = this.baResponse();
+    const projectKey = this.projectInfoService['projectContext']()?.key as
+      | string
+      | undefined;
+    const sessionKey = this.frame()
+      ? mvf(this.frame()!).autolabelSessionKey
+      : null;
+
+    if (!resp || !projectKey || !sessionKey) {
+      // Nothing to save (or we don't have enough context).
+      return;
+    }
+
+    const request = {
+      projectKey,
+      sessionKey, // expected to be "view stripped out" already
+      newCgToml: resp.newCgToml,
+    };
+
+    if (this.saveSubscription) {
+      this.saveSubscription.unsubscribe();
+    }
+
+    this.baSaving.set(true);
+    this.saveSubscription = this.rpc
+      .callObservable('saveCalibrationForSession', request)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        finalize(() => {
+          this.baSaving.set(false);
+        }),
+      )
+      .subscribe(() => {
+        this.baSavingSuccess.set(true);
+      });
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   open() {
     (
       document.getElementById('bundle_adjustment') as HTMLDialogElement
     ).showModal();
+  }
+
+  protected close() {
+    (document.getElementById('bundle_adjustment') as HTMLDialogElement).close();
+  }
+
+  protected formatJson(value: unknown): string {
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
   }
 }

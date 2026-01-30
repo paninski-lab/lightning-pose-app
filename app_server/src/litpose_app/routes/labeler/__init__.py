@@ -4,7 +4,7 @@ from ...datatypes import Project
 from ...config import Config
 
 
-def session_level_config_path(
+def get_session_level_calibration_path(
     session_key: str, project: Project, config: Config
 ) -> Path:
     return project.paths.data_dir / config.CALIBRATIONS_DIRNAME / f"{session_key}.toml"
@@ -13,7 +13,7 @@ def session_level_config_path(
 def find_calibration_file(
     session_key: str, project: Project, config: Config
 ) -> None | Path:
-    session_level_path = session_level_config_path(session_key, project, config)
+    session_level_path = get_session_level_calibration_path(session_key, project, config)
     if session_level_path.is_file():
         return session_level_path
 

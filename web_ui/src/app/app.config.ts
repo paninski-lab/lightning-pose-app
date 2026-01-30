@@ -14,8 +14,13 @@ import { provideHttpClient } from '@angular/common/http';
 import hljs from 'highlight.js/lib/core';
 import yaml from 'highlight.js/lib/languages/yaml';
 import bash from 'highlight.js/lib/languages/bash';
+import json from 'highlight.js/lib/languages/json';
+import toml from 'highlight.js/lib/languages/ini';
+
 hljs.registerLanguage('yaml', yaml);
 hljs.registerLanguage('bash', bash);
+hljs.registerLanguage('json', json);
+hljs.registerLanguage('toml', toml);
 
 export const appConfig: ApplicationConfig = {
   providers: [
