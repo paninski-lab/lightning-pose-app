@@ -60,7 +60,7 @@ export class ModelRenameDialogComponent implements OnInit, AfterViewInit {
       this.newModelName.value!,
     );
     this.toastService.showToast({
-      content: 'Successfully deleted model',
+      content: 'Successfully renamed model',
     });
     this.done.emit(true);
   }

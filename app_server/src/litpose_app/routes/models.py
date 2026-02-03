@@ -204,12 +204,9 @@ def delete_model(
     project: Project = project_info_getter(request.projectKey)
     model_dir = project.paths.model_dir / request.modelRelativePath
 
-    try:
-        os.path.normpath(model_dir).startswith(
-            os.path.normpath(project.paths.model_dir)
-        )
-    except Exception:
-        assert False, "Source path is not in model_dir"
+    assert os.path.normpath(model_dir).startswith(
+        os.path.normpath(project.paths.model_dir)
+    )
 
     shutil.rmtree(model_dir)
 
@@ -222,10 +219,7 @@ def rename_model(
     project: Project = project_info_getter(request.projectKey)
     model_dir = project.paths.model_dir / request.modelRelativePath
 
-    try:
-        os.path.normpath(model_dir).startswith(
-            os.path.normpath(project.paths.model_dir)
-        )
-    except Exception:
-        assert False, "Source path is not in model_dir"
+    assert os.path.normpath(model_dir).startswith(
+        os.path.normpath(project.paths.model_dir)
+    )
     shutil.move(model_dir, project.paths.model_dir / request.newModelName)
