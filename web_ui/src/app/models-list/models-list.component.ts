@@ -32,6 +32,7 @@ export class ModelsListComponent implements OnInit, OnDestroy {
   private sessionService = inject(SessionService);
   private toast = inject(ToastService);
   selectedModel = model<ModelListResponseEntry | null>();
+  actionSelectedModels = model<ModelListResponseEntry[]>([]);
   private pollInterval?: number;
   protected cdkListboxCompareFn(
     a: ModelListResponseEntry,
@@ -85,5 +86,29 @@ export class ModelsListComponent implements OnInit, OnDestroy {
 
   getCdkListboxValue(): ModelListResponseEntry[] {
     return this.selectedModel() ? [this.selectedModel()!] : [];
+  }
+
+  protected handleSelectModelForAction(m: ModelListResponseEntry) {
+    this.actionSelectedModels.update((models) => {
+      if (
+        models.findIndex(
+          (x) => x.model_relative_path === m.model_relative_path,
+        ) === -1
+      ) {
+        return [...models, m];
+      } else {
+        return models.filter(
+          (x) => x.model_relative_path !== m.model_relative_path,
+        );
+      }
+    });
+  }
+
+  protected isModelSelectedForAction(m: ModelListResponseEntry) {
+    return (
+      this.actionSelectedModels().findIndex(
+        (x) => x.model_relative_path === m.model_relative_path,
+      ) !== -1
+    );
   }
 }

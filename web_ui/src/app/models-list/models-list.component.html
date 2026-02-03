@@ -29,11 +29,15 @@
       @let u = mc_util(m);
       <tr class="hover:bg-base-200 cursor-pointer" [cdkOption]="m">
         <td>
+          <!-- stopPropagation to prevent cdkListbox from listening -->
+          <!-- actionSelection is completely separate from cdkListbox state -->
           <label>
             <input
+              (click)="$event.stopPropagation()"
+              (change)="handleSelectModelForAction(m)"
+              [checked]="isModelSelectedForAction(m)"
               type="checkbox"
               class="checkbox"
-              [checked]="selectedModel() === m"
             />
           </label>
         </td>

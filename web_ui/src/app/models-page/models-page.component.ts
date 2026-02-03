@@ -29,6 +29,7 @@ export class ModelsPageComponent {
 
   private modelsListComponent = viewChild(ModelsListComponent);
   protected selectedModel = signal<ModelListResponseEntry | null>(null);
+  protected selectedModelsForAction = signal<ModelListResponseEntry[]>([]);
 
   handleCreateModelDialogDone() {
     this.isCreateModelDialogOpen.set(false);
