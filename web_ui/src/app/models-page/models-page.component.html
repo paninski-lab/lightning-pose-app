@@ -16,8 +16,12 @@
       >
         New model
       </button>
-      <div class="dropdown dropdown-end">
-        <button class="btn btn-accent" [class.btn-disabled]="!selectedModel()" tabindex="0">
+      <div class="dropdown">
+        <button
+          class="btn btn-accent"
+          [class.btn-disabled]="selectedModel() === null"
+          tabindex="0"
+        >
           Actions
         </button>
         <ul
@@ -25,7 +29,10 @@
           tabindex="0"
         >
           <li>
-            <button (click)="openInferenceDialog()" [disabled]="!selectedModel()">
+            <button
+              (click)="openInferenceDialog()"
+              [disabled]="!selectedModel()"
+            >
               Run inference
             </button>
           </li>
@@ -34,7 +41,10 @@
     </div>
 
     <div class="overflow-auto max-h-5/6">
-      <app-models-list [(selectedModel)]="selectedModel"></app-models-list>
+      <app-models-list
+        [(selectedModel)]="selectedModel"
+        [(actionSelectedModels)]="selectedModelsForAction"
+      ></app-models-list>
     </div>
   </div>
   <div class="min-w-0 min-h-0 grow">
@@ -43,7 +53,7 @@
 </div>
 @if (isCreateModelDialogOpen()) {
   <app-create-model-dialog
-    (done)="handleCreateModelDialogDone()"
+    (done)="handleCreateModelDialogDone($event)"
   ></app-create-model-dialog>
 }
 @if (isInferenceDialogOpen()) {

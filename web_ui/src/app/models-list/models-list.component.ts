@@ -18,20 +18,31 @@ import {
 } from '../modelconf';
 import { CdkListboxModule } from '@angular/cdk/listbox';
 import { ToastService } from '../toast.service';
+import { ModelDeleteDialogComponent } from '../models-page/model-delete-dialog/model-delete-dialog.component';
+import { ModelRenameDialogComponent } from '../models-page/model-rename-dialog/model-rename-dialog.component';
 
 @Component({
   selector: 'app-models-list',
-  imports: [DatePipe, ModelTypeLabelPipe, CdkListboxModule, PathPipe],
+  imports: [
+    DatePipe,
+    ModelTypeLabelPipe,
+    CdkListboxModule,
+    PathPipe,
+    ModelDeleteDialogComponent,
+    ModelRenameDialogComponent,
+  ],
   templateUrl: './models-list.component.html',
   styleUrl: './models-list.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ModelsListComponent implements OnInit, OnDestroy {
-  protected models = signal<ModelListResponse>({ models: [] });
+  models = signal<ModelListResponse>({ models: [] });
 
   private sessionService = inject(SessionService);
   private toast = inject(ToastService);
   selectedModel = model<ModelListResponseEntry | null>();
+  inlineActionModel = model<ModelListResponseEntry | null>();
+  actionSelectedModels = model<ModelListResponseEntry[]>([]);
   private pollInterval?: number;
   protected cdkListboxCompareFn(
     a: ModelListResponseEntry,
@@ -86,4 +97,66 @@ export class ModelsListComponent implements OnInit, OnDestroy {
   getCdkListboxValue(): ModelListResponseEntry[] {
     return this.selectedModel() ? [this.selectedModel()!] : [];
   }
+
+  /*
+  protected handleSelectModelForAction(m: ModelListResponseEntry) {
+    this.actionSelectedModels.update((models) => {
+      if (
+        models.findIndex(
+          (x) => x.model_relative_path === m.model_relative_path,
+        ) === -1
+      ) {
+        return [...models, m];
+      } else {
+        return models.filter(
+          (x) => x.model_relative_path !== m.model_relative_path,
+        );
+      }
+    });
+  }
+
+  protected isModelSelectedForAction(m: ModelListResponseEntry) {
+    return (
+      this.actionSelectedModels().findIndex(
+        (x) => x.model_relative_path === m.model_relative_path,
+      ) !== -1
+    );
+  }
+  */
+
+  protected handleModelInlineActionDelete(
+    e: MouseEvent,
+    m: ModelListResponseEntry,
+  ) {
+    e.stopPropagation();
+    this.inlineActionModel.set(m);
+    this.isDeleteDialogOpen.set(true);
+  }
+
+  protected handleModelInlineActionRename(
+    e: MouseEvent,
+    m: ModelListResponseEntry,
+  ) {
+    e.stopPropagation();
+    this.inlineActionModel.set(m);
+    this.isRenameDialogOpen.set(true);
+  }
+
+  protected handleDeleteDialogDone(deleted: boolean) {
+    this.isDeleteDialogOpen.set(false);
+    if (deleted) {
+      this.reloadModels();
+    }
+  }
+
+  protected isDeleteDialogOpen = signal(false);
+
+  protected handleRenameDialogDone(deleted: boolean) {
+    this.isRenameDialogOpen.set(false);
+    if (deleted) {
+      this.reloadModels();
+    }
+  }
+
+  protected isRenameDialogOpen = signal(false);
 }

@@ -7,13 +7,13 @@
 <table class="table table-pin-rows">
   <thead>
     <tr>
+      <!-- shelving multiselect for action for now, leaving
+        code in case we want to bring it back later
       <th>
-        <!--
-        <label>
-          <input type="checkbox" class="checkbox" />
-        </label>-->
-      </th>
+
+      </th> -->
       <th>Model Relative Path</th>
+      <th></th>
       <th>Model Type</th>
       <th>Date Created</th>
       <th>Status</th>
@@ -27,17 +27,45 @@
   >
     @for (m of models().models; track m.model_relative_path) {
       @let u = mc_util(m);
-      <tr class="hover:bg-base-200 cursor-pointer" [cdkOption]="m">
+      <tr class="group hover:bg-base-200 cursor-pointer" [cdkOption]="m">
+        <!-- shelving multiselect for action for now, leaving
+          code in case we want to bring it back later
+
+          stopPropagation to prevent cdkListbox from listening
+           actionSelection is completely separate from cdkListbox state
         <td>
+
+
           <label>
             <input
+              (click)="$event.stopPropagation()"
+              (change)="handleSelectModelForAction(m)"
+              [checked]="isModelSelectedForAction(m)"
               type="checkbox"
               class="checkbox"
-              [checked]="selectedModel() === m"
             />
           </label>
+
+        </td> -->
+        <td class="pl-2">{{ m.model_relative_path | path }}</td>
+        <td class="opacity-0 group-hover:opacity-100 transition-opacity">
+          <div class="tooltip" data-tip="Delete">
+            <button
+              class="btn btn-circle btn-ghost btn-error btn-sm material-icons"
+              (click)="handleModelInlineActionDelete($event, m)"
+            >
+              delete
+            </button>
+          </div>
+          <div class="tooltip" data-tip="Rename">
+            <button
+              class="btn btn-circle btn-ghost btn-info btn-sm material-icons"
+              (click)="handleModelInlineActionRename($event, m)"
+            >
+              edit
+            </button>
+          </div>
         </td>
-        <td>{{ m.model_relative_path | path }}</td>
         <td>{{ u.c ? (u.type | modelType) : "" }}</td>
         <td>{{ u.createdAt | date }}</td>
         <td>
@@ -53,3 +81,17 @@
     }
   </tbody>
 </table>
+
+
+@if (isDeleteDialogOpen()) {
+  <app-model-delete-dialog
+    [modelRelativePath]="inlineActionModel()?.model_relative_path ?? ''"
+    (done)="handleDeleteDialogDone($event)"
+  ></app-model-delete-dialog>
+}
+@if (isRenameDialogOpen()) {
+  <app-model-rename-dialog
+    [modelRelativePath]="inlineActionModel()?.model_relative_path ?? ''"
+    (done)="handleRenameDialogDone($event)"
+  ></app-model-rename-dialog>
+}

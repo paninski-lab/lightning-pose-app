@@ -218,8 +218,7 @@ def run_app(host: str, port: int):
             📊  Lightning Pose App Usage Tracking
             
             To help us improve this tool and secure future grant funding, launching the app
-            in your browser will initiate privacy-focused web event tracking. We use Umami,
-            which ensures no personal data is ever collected or stored.
+            in your browser will initiate web event tracking via analytics provider Umami.
             
             To opt out, please restart the app with the environment variable DO_NOT_TRACK=1
             For example: DO_NOT_TRACK=1 litpose run_app
