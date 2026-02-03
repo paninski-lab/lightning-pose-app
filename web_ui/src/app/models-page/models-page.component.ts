@@ -28,12 +28,22 @@ export class ModelsPageComponent {
   protected isInferenceDialogOpen = signal(false);
 
   private modelsListComponent = viewChild(ModelsListComponent);
+  private modelsDetailComponent = viewChild(ModelDetailComponent);
   protected selectedModel = signal<ModelListResponseEntry | null>(null);
   protected selectedModelsForAction = signal<ModelListResponseEntry[]>([]);
 
-  handleCreateModelDialogDone() {
+  async handleCreateModelDialogDone(modelName: string | null) {
     this.isCreateModelDialogOpen.set(false);
-    this.modelsListComponent()?.reloadModels();
+    await this.modelsListComponent()?.reloadModels();
+    if (modelName) {
+      const newlyCreatedModel = this.modelsListComponent()!
+        .models()
+        .models.find((m) => m.model_relative_path === modelName);
+      if (newlyCreatedModel) {
+        this.selectedModel.set(newlyCreatedModel);
+        this.modelsDetailComponent()?.activeTab.set('logs');
+      }
+    }
   }
 
   openInferenceDialog() {

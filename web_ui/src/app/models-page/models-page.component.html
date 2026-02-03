@@ -53,7 +53,7 @@
 </div>
 @if (isCreateModelDialogOpen()) {
   <app-create-model-dialog
-    (done)="handleCreateModelDialogDone()"
+    (done)="handleCreateModelDialogDone($event)"
   ></app-create-model-dialog>
 }
 @if (isInferenceDialogOpen()) {

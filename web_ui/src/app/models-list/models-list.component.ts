@@ -27,7 +27,7 @@ import { ToastService } from '../toast.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ModelsListComponent implements OnInit, OnDestroy {
-  protected models = signal<ModelListResponse>({ models: [] });
+  models = signal<ModelListResponse>({ models: [] });
 
   private sessionService = inject(SessionService);
   private toast = inject(ToastService);

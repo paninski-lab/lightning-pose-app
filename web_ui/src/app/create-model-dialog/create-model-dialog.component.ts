@@ -42,6 +42,7 @@ import {
 import { ModelTypeLabelPipe } from '../utils/pipes';
 import { DaisyFormControlDirective } from '../utils/daisy-form-control.directive';
 import { LabelFilePickerComponent } from '../label-file-picker/label-file-picker.component';
+import { ToastService } from '../toast.service';
 
 @Component({
   selector: 'app-create-model-dialog',
@@ -60,7 +61,7 @@ import { LabelFilePickerComponent } from '../label-file-picker/label-file-picker
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 class CreateModelDialogComponent {
-  done = output<void>();
+  done = output<string | null>();
   // Update mode support (currently effectively always setupMode=true for creation)
   setupMode = input(true);
 
@@ -68,6 +69,7 @@ class CreateModelDialogComponent {
   yamlPreviewText = signal<string>('');
   private projectInfoService = inject(ProjectInfoService);
   private sessionService = inject(SessionService);
+  private toastService = inject(ToastService);
   private fb = inject(NonNullableFormBuilder);
   private cdr = inject(ChangeDetectorRef);
   private previewAbortController: AbortController = new AbortController();
@@ -205,7 +207,7 @@ class CreateModelDialogComponent {
   }
 
   handleCloseClick() {
-    this.done.emit();
+    this.done.emit(null);
   }
 
   handleTabClick(tabId: string) {
@@ -266,11 +268,15 @@ class CreateModelDialogComponent {
     if (!yamlText) {
       return;
     }
-    await this.sessionService.createTrainingTask(
-      this.generalForm.controls['modelName'].value!,
-      yamlText,
-    );
-    this.done.emit();
+    const modelName: string = this.generalForm.controls['modelName'].value!;
+    await this.sessionService.createTrainingTask(modelName, yamlText);
+
+    this.toastService.showToast({
+      content: 'Successfully created model training task',
+      variant: 'success',
+    });
+
+    this.done.emit(modelName);
   }
 
   private async generateYamlText(
