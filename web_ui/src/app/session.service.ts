@@ -634,7 +634,7 @@ export class SessionService {
   }
 
   renameModel(modelRelativePath: string, newModelName: string) {
-    return this.rpc.call('deleteModel', {
+    return this.rpc.call('renameModel', {
       projectKey: this.getProjectKeyOrThrow(),
       modelRelativePath,
       newModelName,

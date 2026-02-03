@@ -76,7 +76,7 @@ class DeleteModelRequest(BaseModel):
 class RenameModelRequest(BaseModel):
     projectKey: str
     modelRelativePath: str
-    newName: str
+    newModelName: str
 
 
 @router.post("/app/v0/rpc/createTrainTask")
@@ -228,4 +228,4 @@ def rename_model(
         )
     except Exception:
         assert False, "Source path is not in model_dir"
-    shutil.move(model_dir, project.paths.model_dir / request.newName)
+    shutil.move(model_dir, project.paths.model_dir / request.newModelName)
