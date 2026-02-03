@@ -18,10 +18,19 @@ import {
 } from '../modelconf';
 import { CdkListboxModule } from '@angular/cdk/listbox';
 import { ToastService } from '../toast.service';
+import { ModelDeleteDialogComponent } from '../models-page/model-delete-dialog/model-delete-dialog.component';
+import { ModelRenameDialogComponent } from '../models-page/model-rename-dialog/model-rename-dialog.component';
 
 @Component({
   selector: 'app-models-list',
-  imports: [DatePipe, ModelTypeLabelPipe, CdkListboxModule, PathPipe],
+  imports: [
+    DatePipe,
+    ModelTypeLabelPipe,
+    CdkListboxModule,
+    PathPipe,
+    ModelDeleteDialogComponent,
+    ModelRenameDialogComponent,
+  ],
   templateUrl: './models-list.component.html',
   styleUrl: './models-list.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -32,6 +41,7 @@ export class ModelsListComponent implements OnInit, OnDestroy {
   private sessionService = inject(SessionService);
   private toast = inject(ToastService);
   selectedModel = model<ModelListResponseEntry | null>();
+  inlineActionModel = model<ModelListResponseEntry | null>();
   actionSelectedModels = model<ModelListResponseEntry[]>([]);
   private pollInterval?: number;
   protected cdkListboxCompareFn(
@@ -88,6 +98,7 @@ export class ModelsListComponent implements OnInit, OnDestroy {
     return this.selectedModel() ? [this.selectedModel()!] : [];
   }
 
+  /*
   protected handleSelectModelForAction(m: ModelListResponseEntry) {
     this.actionSelectedModels.update((models) => {
       if (
@@ -111,12 +122,15 @@ export class ModelsListComponent implements OnInit, OnDestroy {
       ) !== -1
     );
   }
+  */
 
   protected handleModelInlineActionDelete(
     e: MouseEvent,
     m: ModelListResponseEntry,
   ) {
     e.stopPropagation();
+    this.inlineActionModel.set(m);
+    this.isDeleteDialogOpen.set(true);
   }
 
   protected handleModelInlineActionRename(
@@ -124,5 +138,25 @@ export class ModelsListComponent implements OnInit, OnDestroy {
     m: ModelListResponseEntry,
   ) {
     e.stopPropagation();
+    this.inlineActionModel.set(m);
+    this.isRenameDialogOpen.set(true);
   }
+
+  protected handleDeleteDialogDone(deleted: boolean) {
+    this.isDeleteDialogOpen.set(false);
+    if (deleted) {
+      this.reloadModels();
+    }
+  }
+
+  protected isDeleteDialogOpen = signal(false);
+
+  protected handleRenameDialogDone(deleted: boolean) {
+    this.isRenameDialogOpen.set(false);
+    if (deleted) {
+      this.reloadModels();
+    }
+  }
+
+  protected isRenameDialogOpen = signal(false);
 }

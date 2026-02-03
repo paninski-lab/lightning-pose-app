@@ -625,6 +625,14 @@ export class SessionService {
       };
     });
   }
+
+  deleteModel(modelRelativePath: string) {
+    return this.rpc.call('deleteModel', { modelRelativePath });
+  }
+
+  renameModel(modelRelativePath: string, newModelName: string) {
+    return this.rpc.call('deleteModel', { modelRelativePath, newModelName });
+  }
 }
 
 export type TranscodeStatus = 'PENDING' | 'ACTIVE' | 'DONE' | 'ERROR';

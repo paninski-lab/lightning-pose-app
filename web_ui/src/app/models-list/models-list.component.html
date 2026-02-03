@@ -81,3 +81,17 @@
     }
   </tbody>
 </table>
+
+
+@if (isDeleteDialogOpen()) {
+  <app-model-delete-dialog
+    [modelRelativePath]="inlineActionModel()?.model_relative_path ?? ''"
+    (done)="handleDeleteDialogDone($event)"
+  ></app-model-delete-dialog>
+}
+@if (isRenameDialogOpen()) {
+  <app-model-rename-dialog
+    [modelRelativePath]="inlineActionModel()?.model_relative_path ?? ''"
+    (done)="handleRenameDialogDone($event)"
+  ></app-model-rename-dialog>
+}

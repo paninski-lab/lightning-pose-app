@@ -1,0 +1,31 @@
+<dialog
+  #dlg
+  class="modal modal-open"
+  (cancel)="$event.preventDefault(); closeDialog()"
+>
+  <div class="modal-box prose">
+    <h3>
+      Rename Model:
+      <code class="text-base-content">{{ modelRelativePath() }}</code>
+    </h3>
+    <p>This will rename model in the filesystem.</p>
+    <input
+      type="text"
+      placeholder="Enter new model name"
+      class="input input-bordered w-full"
+      [class.input-error]="newModelName.touched && newModelName.invalid"
+      [formControl]="newModelName"
+    />
+
+    <div class="modal-action">
+      <button class="btn btn-error" (click)="closeDialog()">Cancel</button>
+      <button
+        class="btn btn-primary"
+        (click)="handleRename()"
+        [disabled]="newModelName.invalid"
+      >
+        Rename model
+      </button>
+    </div>
+  </div>
+</dialog>
