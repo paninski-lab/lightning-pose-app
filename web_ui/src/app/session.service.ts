@@ -627,11 +627,18 @@ export class SessionService {
   }
 
   deleteModel(modelRelativePath: string) {
-    return this.rpc.call('deleteModel', { modelRelativePath });
+    return this.rpc.call('deleteModel', {
+      projectKey: this.getProjectKeyOrThrow(),
+      modelRelativePath,
+    });
   }
 
   renameModel(modelRelativePath: string, newModelName: string) {
-    return this.rpc.call('deleteModel', { modelRelativePath, newModelName });
+    return this.rpc.call('deleteModel', {
+      projectKey: this.getProjectKeyOrThrow(),
+      modelRelativePath,
+      newModelName,
+    });
   }
 }
 

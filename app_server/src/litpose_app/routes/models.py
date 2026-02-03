@@ -1,9 +1,11 @@
 import asyncio
 import json
 import logging
+import shutil
 from datetime import datetime
 from typing import Literal
 from pathlib import Path
+import os
 
 import yaml
 
@@ -64,6 +66,17 @@ class ModelListResponseEntry(BaseModel):
 
 class ListModelsResponse(BaseModel):
     models: list[ModelListResponseEntry]
+
+
+class DeleteModelRequest(BaseModel):
+    projectKey: str
+    modelRelativePath: str
+
+
+class RenameModelRequest(BaseModel):
+    projectKey: str
+    modelRelativePath: str
+    newName: str
 
 
 @router.post("/app/v0/rpc/createTrainTask")
@@ -181,3 +194,38 @@ def read_models_l1_from_base(
     models = [read_model_config(p) for p in paths]
 
     return models
+
+
+@router.post("/app/v0/rpc/deleteModel")
+def delete_model(
+    request: DeleteModelRequest,
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+) -> None:
+    project: Project = project_info_getter(request.projectKey)
+    model_dir = project.paths.model_dir / request.modelRelativePath
+
+    try:
+        os.path.normpath(model_dir).startswith(
+            os.path.normpath(project.paths.model_dir)
+        )
+    except Exception:
+        assert False, "Source path is not in model_dir"
+
+    shutil.rmtree(model_dir)
+
+
+@router.post("/app/v0/rpc/renameModel")
+def rename_model(
+    request: RenameModelRequest,
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+) -> None:
+    project: Project = project_info_getter(request.projectKey)
+    model_dir = project.paths.model_dir / request.modelRelativePath
+
+    try:
+        os.path.normpath(model_dir).startswith(
+            os.path.normpath(project.paths.model_dir)
+        )
+    except Exception:
+        assert False, "Source path is not in model_dir"
+    shutil.move(model_dir, project.paths.model_dir / request.newName)
