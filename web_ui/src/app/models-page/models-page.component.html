@@ -16,10 +16,10 @@
       >
         New model
       </button>
-      <div class="dropdown dropdown-end">
+      <div class="dropdown">
         <button
           class="btn btn-accent"
-          [class.btn-disabled]="selectedModelsForAction().length === 0"
+          [class.btn-disabled]="selectedModel() === null"
           tabindex="0"
         >
           Actions

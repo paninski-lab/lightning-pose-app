@@ -111,4 +111,18 @@ export class ModelsListComponent implements OnInit, OnDestroy {
       ) !== -1
     );
   }
+
+  protected handleModelInlineActionDelete(
+    e: MouseEvent,
+    m: ModelListResponseEntry,
+  ) {
+    e.stopPropagation();
+  }
+
+  protected handleModelInlineActionRename(
+    e: MouseEvent,
+    m: ModelListResponseEntry,
+  ) {
+    e.stopPropagation();
+  }
 }
