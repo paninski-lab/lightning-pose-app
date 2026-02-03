@@ -133,15 +133,15 @@ model:
 dali:
   base:
     train:
-      sequence_length: 32
+      sequence_length: 24
     predict:
-      sequence_length: 96
+      sequence_length: 48
 
   context:
     train:
       batch_size: 16
     predict:
-      sequence_length: 96
+      sequence_length: 24
 
 losses:
   # loss = projection onto the discarded eigenvectors
