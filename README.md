@@ -17,6 +17,22 @@ Our full documentation, including installation guides, API references, and advan
 
 ## 📝 Release Notes
 
+### [2.0.5.2] — 2026-02-04
+
+**Added**
+
+* **Bundle Adjustment**
+    * Preview calibration before saving
+    * Adjust extrinsics only by default, other algorithm improvements
+* **Model Management**
+    * Support for deleting and renaming models from the models table
+    * Auto-open model logs after creation
+* **Misc**
+    * Added in-browser recommendation to use Chrome
+    * Added release notes link in upgrade check
+
+---
+
 ### [2.0.5.1] — 2026-01-22
 
 **Added**
