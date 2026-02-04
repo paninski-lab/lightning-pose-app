@@ -25,6 +25,17 @@
       </tr>
 
       <tr>
+        <td>Points labeled across all views for this session</td>
+        <td class="flex gap-6 items-center">
+          {{ numLabeledFrames() }}
+          <div  class="alert alert-warning alert-outline">
+          @if (numLabeledFrames() < 10) {
+            Warning: more labeled points might lead to better results
+          }</div>
+        </td>
+      </tr>
+
+      <tr>
         <td>Optimize</td>
         <td>
           <button
@@ -34,23 +45,21 @@
             [disabled]="baLoading()"
           >
             @if (optimizeExtrinsicsOnly()) {
-              Extrinsics only
+              Extrinsic camera parameters: position and rotation
             } @else {
-              Intrinsics and Extrinsics
+              Intrinsic and Extrinsic: position, rotation, focal length, non-linear distortions
             }
           </button>
         </td>
       </tr>
+
     </table>
 
-    <div class="modal-action items-center">
-      @if (numLabeledFrames() < 3) {
-        <p class="text-error">Not enough labeled frames</p>
-      }
+    <div class="modal-action">
       <button
         class="btn btn-primary"
         (click)="handleBundleAdjustClick()"
-        [disabled]="baLoading() || numLabeledFrames() < 3"
+        [disabled]="baLoading()"
       >
         @if (baLoading()) {
           <span class="loading loading-spinner loading-sm"></span>
@@ -82,13 +91,13 @@
             <tr>
               <th>Old reprojection error</th>
               @for (err of baResponse()!.oldReprojectionError; track $index) {
-                <td>{{ err }}</td>
+                <td>{{ err | number:'1.2-2' }}</td>
               }
             </tr>
             <tr>
               <th>New reprojection error</th>
               @for (err of baResponse()!.newReprojectionError; track $index) {
-                <td>{{ err }}</td>
+                <td>{{ err | number:'1.2-2' }}</td>
               }
             </tr>
           </tbody>

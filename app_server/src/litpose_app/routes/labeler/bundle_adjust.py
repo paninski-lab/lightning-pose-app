@@ -112,13 +112,17 @@ def _bundle_adjust_impl(request: BundleAdjustRequest, project: Project, config: 
     views = list(dfs_by_view.keys())
 
     p2ds = get_p2ds(dfs_by_view, request.sessionKey)
-
     p3ds = cg.triangulate(p2ds)
     old_reprojection_error = cg.reprojection_error(p3ds, p2ds)
     if request.iterative:
         cg.bundle_adjust_iter(
             p2ds,
             verbose=True,
+            start_mu=1,  # Low because we are already close
+            end_mu=1,
+            n_samp_iter=min(p2ds.shape[1], 200),
+            n_samp_full=min(p2ds.shape[1], 1000),
+            error_threshold=10,  # Assume points are already good
             **request.addl_bundle_adjust_kwargs,
         )
     else:

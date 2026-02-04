@@ -14,6 +14,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, Subscription } from 'rxjs';
 import { ProjectInfoService } from '../project-info.service';
 import { HighlightDirective } from '../highlight.directive';
+import { DecimalPipe } from '@angular/common';
 
 interface BundleAdjustResponse {
   camList: string[];
@@ -37,7 +38,7 @@ type CameraParamsViewMode = 'json' | 'toml';
 
 @Component({
   selector: 'app-bundle-adjust-dialog',
-  imports: [HighlightDirective],
+  imports: [HighlightDirective, DecimalPipe],
   templateUrl: './bundle-adjust-dialog.component.html',
   styleUrl: './bundle-adjust-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
