@@ -21,6 +21,7 @@ import { mvf, MVFrame } from './frame.model';
 import { ExtractFramesDialogComponent } from './extract-frames-dialog/extract-frames-dialog.component';
 import { ToastService } from '../toast.service';
 import { LabelFilePickerComponent } from '../label-file-picker/label-file-picker.component';
+import _ from 'lodash';
 
 interface LoadError {
   message: string;
@@ -233,5 +234,21 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     setTimeout(() => {
       this.xfSuccessNotifyClasses.set('');
     }, this.notificationDisplayTimeMs);
+  }
+
+  protected getNumLabeledFrames() {
+    // count number of frames where all are labeled.
+    return this.labelFileDataLabeledSlice()
+      .map((entry) => {
+        const keypointHasNan: Record<string, boolean> = {};
+        entry.views.forEach((view) => {
+          view.keypoints.forEach((kp) => {
+            keypointHasNan[kp.keypointName] = isNaN(kp.x) || isNaN(kp.y);
+          });
+        });
+        // number of keys where value is false;
+        return _.invertBy(keypointHasNan)['false']?.length ?? 0;
+      })
+      .reduce((a, b) => a + b, 0);
   }
 }
