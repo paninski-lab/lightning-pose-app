@@ -16,9 +16,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SessionService } from '../../session.service';
 import { LoadingBarComponent } from '../../loading-bar/loading-bar.component';
 import { LoadingService } from '../../loading.service';
-import { FineVideoService } from '../../utils/fine-video.service';
 import { Session } from '../../session.model';
 import { Router } from '@angular/router';
+import { LabelFilePickerComponent } from '../../label-file-picker/label-file-picker.component';
 
 @Component({
   selector: 'app-viewer',
@@ -26,6 +26,7 @@ import { Router } from '@angular/router';
     ViewerSessionsPanelComponent,
     ViewerCenterPanelComponent,
     LoadingBarComponent,
+    LabelFilePickerComponent,
   ],
   templateUrl: './viewer-page.component.html',
   styleUrl: './viewer-page.component.css',
@@ -42,6 +43,7 @@ export class ViewerPageComponent implements OnInit {
   protected viewSelectionModel: SelectionModel<string>;
   protected allViews = [] as string[];
   private router = inject(Router);
+  private videoPlayerState = inject(VideoPlayerState);
 
   /**
    * Set by the router when there is a session key in the path.
@@ -81,7 +83,6 @@ export class ViewerPageComponent implements OnInit {
     }).then(() => {
       this.loadingService.isLoading.set(false);
     });
-
     this.viewSelectionModel.select(...this.allViews);
 
     if (this.projectInfoService.projectInfo == null) {
@@ -147,8 +148,7 @@ export class ViewerPageComponent implements OnInit {
   }
 
   protected noneOption = '- None -';
-  protected fineVideoService = inject(FineVideoService);
-
+  protected extractFramesLabelFileKey = signal<string | null>(null);
   protected onModelDropdownItemClick(index: number, event: Event) {
     const selectEl = event.target as HTMLSelectElement;
     const modelKey = selectEl.value;
@@ -176,5 +176,17 @@ export class ViewerPageComponent implements OnInit {
     } else {
       this.router.navigate(['/project', projectKey, 'viewer', session.key]);
     }
+  }
+
+  protected isExtractFramesInteractionDisabled() {
+    return !this._sessionKey() || this.videoPlayerState.isPlayingSignal();
+  }
+
+  protected handleExtractFramesClick() {
+    alert(
+      this.extractFramesLabelFileKey() +
+        ' ' +
+        this.videoPlayerState.currentFrameSignal(),
+    );
   }
 }

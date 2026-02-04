@@ -203,9 +203,6 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   async ngOnInit() {
     await this.sessionService.loadLabelFiles();
 
-    // Select a default label file if possible.
-    this.handleSelectLabelFile(this.sessionService.getDefaultLabelFile());
-
     this.isIniting.set(false);
     this.loadLabelFileData(this.selectedLabelFile());
   }
