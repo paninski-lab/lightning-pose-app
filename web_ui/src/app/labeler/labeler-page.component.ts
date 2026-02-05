@@ -144,28 +144,37 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     labelFile: MVLabelFile;
     frame: MVFrame;
     shouldAdvanceFrame: boolean;
+    deletion?: boolean;
   }) {
     if (data.labelFile !== this.loadedLabelFile()) {
       return;
     }
+    const currentFrameIndex = this.labelFileData()!.findIndex(
+      (mvf) => mvf.key === data.frame.key,
+    );
+    const nextFrameIndex = data.deletion
+      ? currentFrameIndex
+      : currentFrameIndex + 1;
+    // Updates local state without re-fetching the label file data.
     this.labelFileData.update((mvFrames) => {
       if (mvFrames === null) {
         return null;
       }
-      return mvFrames.map((mvFrame) => {
-        if (mvFrame.key === data.frame.key) {
-          return mvf(mvFrame).toSavedMvf();
-        } else {
-          return mvFrame;
-        }
-      });
+      if (data.deletion) {
+        return mvFrames.filter((mvFrame) => mvFrame.key !== data.frame.key);
+      } else {
+        return mvFrames.map((mvFrame) => {
+          if (mvFrame.key === data.frame.key) {
+            return mvf(mvFrame).toSavedMvf();
+          } else {
+            return mvFrame;
+          }
+        });
+      }
     });
-    if (data.shouldAdvanceFrame) {
-      const currentFrameIndex = this.labelFileData()!.findIndex(
-        (mvf) => mvf.key === data.frame.key,
-      );
+    if (data.shouldAdvanceFrame || data.deletion) {
       const nextFrameKey: string | undefined =
-        this.labelFileData()![currentFrameIndex + 1]?.key;
+        this.labelFileData()![nextFrameIndex]?.key;
       if (nextFrameKey) {
         this.router.navigate([], {
           queryParams: {
@@ -202,9 +211,6 @@ export class LabelerPageComponent implements OnInit, OnChanges {
 
   async ngOnInit() {
     await this.sessionService.loadLabelFiles();
-
-    // Select a default label file if possible.
-    this.handleSelectLabelFile(this.sessionService.getDefaultLabelFile());
 
     this.isIniting.set(false);
     this.loadLabelFileData(this.selectedLabelFile());

@@ -40,6 +40,7 @@ class SaveFrameViewRequest(BaseModel):
     csvPath: Path  # /home/user/.../CollectedData_lTop.csv
     indexToChange: str  # labeled-data/session01_left/img001.png
     changedKeypoints: list[Keypoint]
+    delete: bool = False
 
     # If you want to remove a frame, you'd add a flag here to signal that intent.
     # For now, removal is not supported.
@@ -48,6 +49,7 @@ class SaveFrameViewRequest(BaseModel):
 class SaveMvFrameRequest(BaseModel):
     projectKey: str
     views: list[SaveFrameViewRequest]
+    unlabeledQueueDeletionOnly: bool = False
 
 
 @router.post("/app/v0/rpc/save_mvframe")
@@ -61,23 +63,27 @@ async def save_mvframe(
     """
     async with lock:
         project: Project = project_info_getter(request.projectKey)
-        # Filter out views with no changed keypoints.
-        request = request.model_copy()
-        request.views = list(filter(lambda v: v.changedKeypoints, request.views))
 
-        if not request.views:
-            return
+        if not request.unlabeledQueueDeletionOnly:
+            # Filter out views with no changed keypoints.
+            request = request.model_copy()
+            request.views = list(
+                filter(lambda v: v.changedKeypoints or v.delete, request.views)
+            )
 
-        # Read files multithreaded and modify dataframes in memory.
-        read_df_results = await read_df_mvframe(request)
+            if not request.views:
+                return
 
-        # Write to temp files multithreaded.
-        write_tmp_results = await write_df_tmp_mvframe(
-            request, read_df_results, project.paths.data_dir
-        )
+            # Read files multithreaded and modify dataframes in memory.
+            read_df_results = await read_df_mvframe(request)
 
-        # Rename all files (atomic for each file).
-        await commit_mvframe(request, write_tmp_results, project.paths.data_dir)
+            # Write to temp files multithreaded.
+            write_tmp_results = await write_df_tmp_mvframe(
+                request, read_df_results, project.paths.data_dir
+            )
+
+            # Rename all files (atomic for each file).
+            await commit_mvframe(request, write_tmp_results, project.paths.data_dir)
 
         await remove_from_unlabeled_sidecar_files(project.paths.data_dir, request)
     return
@@ -89,6 +95,9 @@ def _modify_df(df: pd.DataFrame, changes: SaveFrameViewRequest) -> None:
     Modify the keypoints in the row at changes.index specified by changes.changedKeypoints.
     If the row doesn't exist (i.e. unlabeled frame) append to end of df.
     """
+    if changes.delete:
+        df.drop(changes.indexToChange, inplace=True)
+        return
     kp_names = set(map(lambda x: x.name, changes.changedKeypoints))
     changedkps_by_name = {c.name: c for c in changes.changedKeypoints}
     columns = list(

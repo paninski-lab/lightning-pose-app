@@ -239,15 +239,46 @@
     <div class="m-4">
       @if (frame(); as frame2) {
         @let lbfl = labelFile()!;
-        <div class="tooltip w-full" [attr.data-tip]="saveTooltip">
-          <button
-            class="btn bg-sky-700 w-full"
-            [class.btn-disabled]="isSaveDisabled()"
-            (click)="handleSaveClick(lbfl, frame2, false)"
-            (keydown.enter)="handleSaveClick(lbfl, frame2, false)"
-          >
-            <span class="material-icons">save</span> Save
-          </button>
+        <div class="flex gap-2">
+          <div class="tooltip flex-1" [attr.data-tip]="saveTooltip">
+            <button
+              class="btn bg-sky-700 w-full"
+              [class.btn-disabled]="isSaveDisabled()"
+              (click)="handleSaveClick(lbfl, frame2, false)"
+              (keydown.enter)="handleSaveClick(lbfl, frame2, false)"
+            >
+              <span class="material-icons">save</span> Save
+            </button>
+          </div>
+          @if (!mvf(this.frame()!).isFromUnlabeledSet) {
+            <div
+              class="tooltip tooltip-left"
+              data-tip="Remove frame from label file"
+            >
+              <button
+                class="btn btn-error btn-soft w-full"
+                [class.btn-disabled]="isSaving()"
+                (click)="handleSaveClick(lbfl, frame2, false, true)"
+                (keydown.enter)="handleSaveClick(lbfl, frame2, false, true)"
+              >
+                <span class="material-icons">delete</span>
+              </button>
+            </div>
+          } @else {
+            <div
+              class="tooltip tooltip-left"
+              data-tip="Remove frame from labeling queue"
+            >
+              <button
+                class="btn btn-soft w-full"
+                [class.btn-disabled]="isSaving()"
+                (click)="handleSaveClick(lbfl, frame2, false, true)"
+                (keydown.enter)="handleSaveClick(lbfl, frame2, false, true)"
+              >
+                <span class="material-icons">cancel</span>
+              </button>
+            </div>
+          }
         </div>
         <div
           class="tooltip tooltip-bottom w-full"
@@ -268,3 +299,23 @@
     </div>
   </div>
 </div>
+<dialog #deleteConfirmationDialog class="modal">
+  <div class="modal-box">
+    <p>Are you sure you want to remove this frame from the label file?</p>
+    <p>This cannot be undone.</p>
+    <div class="modal-action">
+      <button
+        class="btn btn-primary"
+        (click)="handleDeleteConfirmationDialogContinuation(true)"
+      >
+        Delete
+      </button>
+      <button
+        class="btn"
+        (click)="handleDeleteConfirmationDialogContinuation(false)"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+</dialog>

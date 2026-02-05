@@ -23,12 +23,6 @@
           [selectedSessionKey]="_sessionKey()"
           (selectedSessionChange)="handleSelectedSessionChange($event)"
         ></app-sessions-panel>
-        @if (fineVideoService.numPendingTranscodeTasks().pending > 0) {
-          <div class="text-sm flex">
-            <span class="material-icons !text-sm max-w-4">info_i</span>
-            <span>Videos will populate once they are transcoded.</span>
-          </div>
-        }
       </div>
       <app-loading-bar class="h-20 p-4"></app-loading-bar>
     </div>
@@ -119,6 +113,34 @@
               </li>
             }
           </ul>
+        </div>
+      </div>
+      <div class="panel m-4">
+        <div>
+          <!-- panel header -->
+          <h1 class="px-2 mb-1">Extract frames</h1>
+        </div>
+        <div class="panel-content p-2!">
+          <button
+            class="btn btn-primary btn-soft btn-sm"
+            [disabled]="
+              isExtractFramesInteractionDisabled() ||
+              !extractFramesLabelFileKey()
+            "
+            (click)="handleExtractFramesClick()"
+          >
+            Add
+            @if (isExtractFramesLoading()) {
+              <span class="loading loading-spinner loading-sm"></span>
+            }
+          </button>
+          current frame
+          <code>{{ videoPlayerState.currentFrameSignal() }}</code>
+          to labeling queue of
+          <app-label-file-picker
+            [disabled]="isExtractFramesInteractionDisabled()"
+            [(labelFileKey)]="extractFramesLabelFileKey"
+          ></app-label-file-picker>
         </div>
       </div>
     </div>

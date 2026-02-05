@@ -198,14 +198,6 @@ class CreateModelDialogComponent {
     });
   }
 
-  ngOnInit() {
-    this.sessionService.loadLabelFiles().then((_) => {
-      this.dataForm.controls['labelFile'].setValue(
-        this.sessionService.getDefaultLabelFile(),
-      );
-    });
-  }
-
   handleCloseClick() {
     this.done.emit(null);
   }

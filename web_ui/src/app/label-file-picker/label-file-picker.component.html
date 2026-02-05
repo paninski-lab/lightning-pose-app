@@ -1,6 +1,6 @@
 <select
   class="select {{ selectSizeClass() }}"
-  [disabled]="isDisabled"
+  [disabled]="disabled()"
   [class.app-empty-select]="labelFileKey() === null"
   [(ngModel)]="labelFileKey"
   (ngModelChange)="handleSelectLabelFile($event)"

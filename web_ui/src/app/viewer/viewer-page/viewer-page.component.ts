@@ -16,9 +16,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SessionService } from '../../session.service';
 import { LoadingBarComponent } from '../../loading-bar/loading-bar.component';
 import { LoadingService } from '../../loading.service';
-import { FineVideoService } from '../../utils/fine-video.service';
 import { Session } from '../../session.model';
 import { Router } from '@angular/router';
+import { LabelFilePickerComponent } from '../../label-file-picker/label-file-picker.component';
+import { RpcService } from '../../rpc.service';
+import { ExtractFramesRequest } from '../../extract-frames-request';
+import { ToastService } from '../../toast.service';
 
 @Component({
   selector: 'app-viewer',
@@ -26,6 +29,7 @@ import { Router } from '@angular/router';
     ViewerSessionsPanelComponent,
     ViewerCenterPanelComponent,
     LoadingBarComponent,
+    LabelFilePickerComponent,
   ],
   templateUrl: './viewer-page.component.html',
   styleUrl: './viewer-page.component.css',
@@ -42,6 +46,9 @@ export class ViewerPageComponent implements OnInit {
   protected viewSelectionModel: SelectionModel<string>;
   protected allViews = [] as string[];
   private router = inject(Router);
+  protected videoPlayerState = inject(VideoPlayerState);
+  private rpc = inject(RpcService);
+  private toastService = inject(ToastService);
 
   /**
    * Set by the router when there is a session key in the path.
@@ -81,7 +88,6 @@ export class ViewerPageComponent implements OnInit {
     }).then(() => {
       this.loadingService.isLoading.set(false);
     });
-
     this.viewSelectionModel.select(...this.allViews);
 
     if (this.projectInfoService.projectInfo == null) {
@@ -147,8 +153,6 @@ export class ViewerPageComponent implements OnInit {
   }
 
   protected noneOption = '- None -';
-  protected fineVideoService = inject(FineVideoService);
-
   protected onModelDropdownItemClick(index: number, event: Event) {
     const selectEl = event.target as HTMLSelectElement;
     const modelKey = selectEl.value;
@@ -176,5 +180,54 @@ export class ViewerPageComponent implements OnInit {
     } else {
       this.router.navigate(['/project', projectKey, 'viewer', session.key]);
     }
+  }
+
+  protected extractFramesLabelFileKey = signal<string | null>(null);
+  protected isExtractFramesLoading = signal(false);
+
+  protected isExtractFramesInteractionDisabled() {
+    return (
+      !this._sessionKey() ||
+      this.videoPlayerState.isPlayingSignal() ||
+      this.isExtractFramesLoading()
+    );
+  }
+
+  protected handleExtractFramesClick() {
+    const request = this.toExtractFramesRequest();
+    this.isExtractFramesLoading.set(true);
+    this.rpc
+      .call('extractFrames', request)
+      .then(() => {
+        this.toastService.showToast({
+          content: 'Successfully appended frame to label file. See in labeler.',
+        });
+      })
+      .finally(() => {
+        this.isExtractFramesLoading.set(false);
+      });
+  }
+  private toExtractFramesRequest(): ExtractFramesRequest {
+    const labelFile = this.sessionService
+      .allLabelFiles()
+      .find((mvf) => mvf.key === this.extractFramesLabelFileKey())!;
+
+    const session = this.sessionService
+      .allSessions()
+      .find((s) => s.key === this._sessionKey())!;
+    return {
+      projectKey: this.projectInfoService['projectContext']()?.key as string,
+      labelFileCreationRequest: null,
+      session: {
+        views: session.views,
+      },
+      labelFile: {
+        views: labelFile.views,
+      },
+      method: 'manual',
+      manualFrameOptions: {
+        frame_index_list: [this.videoPlayerState.currentFrameSignal()],
+      },
+    };
   }
 }

@@ -16,7 +16,7 @@ import { FFProbeInfo } from './ffprobe-info';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { createSessionViewComparator } from './utils/comparators';
 import { MVLabelFile } from './label-file.model';
-import { fv, MVFrame } from './labeler/frame.model';
+import { fv, mvf, MVFrame } from './labeler/frame.model';
 import { SaveFrameView, SaveMvFrame } from './labeler/save-mvframe';
 import {
   GetMVAutoLabelsRequest,
@@ -474,7 +474,11 @@ export class SessionService {
     return pathKeyToItsFiles;
   }
 
-  async saveMVFrame(labelFile: MVLabelFile, frame: MVFrame) {
+  async saveMVFrame(
+    labelFile: MVLabelFile,
+    frame: MVFrame,
+    deletion?: boolean,
+  ) {
     const views: SaveFrameView[] = frame.views.map((frameView) => {
       const lbl = labelFile.views.find(
         (v) => v.viewName === frameView.viewName,
@@ -487,9 +491,13 @@ export class SessionService {
             return { name: keypointName, x, y };
           },
         ),
+        delete: deletion,
       };
     });
-    const request: SaveMvFrame = { views };
+    const request: SaveMvFrame = {
+      views,
+      unlabeledQueueDeletionOnly: mvf(frame).isFromUnlabeledSet && deletion,
+    };
     return this.rpc.call('save_mvframe', {
       projectKey: this.getProjectKeyOrThrow(),
       ...request,

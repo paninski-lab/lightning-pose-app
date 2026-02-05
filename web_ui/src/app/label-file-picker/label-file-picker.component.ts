@@ -4,8 +4,10 @@ import {
   effect,
   forwardRef,
   inject,
+  Input,
   input,
   model,
+  OnInit,
 } from '@angular/core';
 import {
   ControlValueAccessor,
@@ -28,17 +30,27 @@ import { SessionService } from '../session.service';
     },
   ],
 })
-export class LabelFilePickerComponent implements ControlValueAccessor {
+export class LabelFilePickerComponent implements OnInit, ControlValueAccessor {
   labelFileKey = model<string | null>(null);
   sessionService = inject(SessionService);
   selectSizeClass = input<string>('select-sm');
 
   // ControlValueAccessor callbacks
   onChange: (value: string | null) => void = () => {};
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   onTouched: () => void = () => {};
-  isDisabled = false;
+  disabled = model(false);
 
-  handleSelectLabelFile(value: string) {
+  ngOnInit() {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    this.sessionService.loadLabelFiles().then((_) => {
+      if (this.labelFileKey() === null) {
+        this.handleSelectLabelFile(this.sessionService.getDefaultLabelFile());
+      }
+    });
+  }
+
+  handleSelectLabelFile(value: string | null) {
     this.labelFileKey.set(value);
     this.onChange(value);
     this.onTouched();
@@ -61,6 +73,6 @@ export class LabelFilePickerComponent implements ControlValueAccessor {
 
   // SetDisabledState: called by the forms API when the control status changes to or from 'DISABLED'.
   setDisabledState?(isDisabled: boolean): void {
-    this.isDisabled = isDisabled;
+    this.disabled.set(isDisabled);
   }
 }
