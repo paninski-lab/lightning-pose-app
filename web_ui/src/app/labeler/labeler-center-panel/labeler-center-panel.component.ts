@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   effect,
+  ElementRef,
   inject,
   input,
   OnChanges,
@@ -27,6 +28,7 @@ import { GetMVAutoLabelsResponse } from '../mv-autolabel';
 import { PathPipe } from '../../utils/pipes';
 import { BundleAdjustDialogComponent } from '../../bundle-adjust-dialog/bundle-adjust-dialog.component';
 import { ToastService } from '../../toast.service';
+import { firstValueFrom, Observable, Subject } from 'rxjs';
 
 @Component({
   selector: 'app-labeler-center-panel',
@@ -289,7 +291,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
 
   private sessionService = inject(SessionService);
   private abortController = new AbortController();
-  private isSaving = signal(false);
+  protected isSaving = signal(false);
   private isMVAutoLabeling = signal(false);
   protected hasCameraCalibrationFiles = signal(false);
   protected disableInteractions = computed(() => {
@@ -309,12 +311,23 @@ export class LabelerCenterPanelComponent implements OnChanges {
 
   newLabelFile = output();
 
-  protected handleSaveClick(
+  protected deleteConfirmationDialog = viewChild<ElementRef<HTMLDialogElement>>(
+    'deleteConfirmationDialog',
+  );
+  protected deletionShouldContinue = new Subject<boolean>();
+
+  protected async handleSaveClick(
     labelFile: MVLabelFile,
     frame: MVFrame,
     shouldContinue: boolean,
     deletion?: boolean,
   ) {
+    if (deletion) {
+      this.deleteConfirmationDialog()!.nativeElement.showModal();
+      if (!(await firstValueFrom(this.deletionShouldContinue.asObservable())))
+        return;
+    }
+
     this.isSaving.set(true);
     const frameView = this.selectedFrameView()!;
     const nextFrameView = frame.views[frame.views.indexOf(frameView) + 1];
@@ -378,5 +391,12 @@ export class LabelerCenterPanelComponent implements OnChanges {
         this.isMVAutoLabeling.set(false);
         throw error;
       });
+  }
+
+  protected handleDeleteConfirmationDialogContinuation(
+    shouldContinue: boolean,
+  ) {
+    this.deleteConfirmationDialog()!.nativeElement.close();
+    this.deletionShouldContinue.next(shouldContinue);
   }
 }

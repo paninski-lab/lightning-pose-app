@@ -239,8 +239,8 @@
     <div class="m-4">
       @if (frame(); as frame2) {
         @let lbfl = labelFile()!;
-        <div class="flex gap-2 w-full">
-          <div class="tooltip grow" [attr.data-tip]="saveTooltip">
+        <div class="flex gap-2">
+          <div class="tooltip flex-1" [attr.data-tip]="saveTooltip">
             <button
               class="btn bg-sky-700 w-full"
               [class.btn-disabled]="isSaveDisabled()"
@@ -257,7 +257,7 @@
             >
               <button
                 class="btn btn-error btn-soft w-full"
-                [class.btn-disabled]="false"
+                [class.btn-disabled]="isSaving()"
                 (click)="handleSaveClick(lbfl, frame2, false, true)"
                 (keydown.enter)="handleSaveClick(lbfl, frame2, false, true)"
               >
@@ -271,7 +271,7 @@
             >
               <button
                 class="btn btn-soft w-full"
-                [class.btn-disabled]="false"
+                [class.btn-disabled]="isSaving()"
                 (click)="handleSaveClick(lbfl, frame2, false, true)"
                 (keydown.enter)="handleSaveClick(lbfl, frame2, false, true)"
               >
@@ -299,3 +299,23 @@
     </div>
   </div>
 </div>
+<dialog #deleteConfirmationDialog class="modal">
+  <div class="modal-box">
+    <p>Are you sure you want to remove this frame from the label file?</p>
+    <p>This cannot be undone.</p>
+    <div class="modal-action">
+      <button
+        class="btn btn-primary"
+        (click)="handleDeleteConfirmationDialogContinuation(true)"
+      >
+        Delete
+      </button>
+      <button
+        class="btn"
+        (click)="handleDeleteConfirmationDialogContinuation(false)"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+</dialog>
