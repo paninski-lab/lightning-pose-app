@@ -120,13 +120,24 @@
           <!-- panel header -->
           <h1 class="px-2 mb-1">Extract frames</h1>
         </div>
-        <div class="panel-content max-h-60 overflow-y-visible">
-          <button class="btn btn-info btn-outline" [disabled]="isExtractFramesInteractionDisabled()"
-          (click)="handleExtractFramesClick()">
-            Extract current frame to label file
+        <div class="panel-content p-2!">
+          <button
+            class="btn btn-primary btn-soft btn-sm"
+            [disabled]="isExtractFramesInteractionDisabled()"
+            (click)="handleExtractFramesClick()"
+          >
+            Add
+            @if (isExtractFramesLoading()) {
+              <span class="loading loading-spinner loading-sm"></span>
+            }
           </button>
-          <app-label-file-picker [disabled]="isExtractFramesInteractionDisabled()"
-          [(labelFileKey)]="extractFramesLabelFileKey"></app-label-file-picker>
+          current frame
+          <code>{{ videoPlayerState.currentFrameSignal() }}</code>
+          to labeling queue of
+          <app-label-file-picker
+            [disabled]="isExtractFramesInteractionDisabled()"
+            [(labelFileKey)]="extractFramesLabelFileKey"
+          ></app-label-file-picker>
         </div>
       </div>
     </div>
