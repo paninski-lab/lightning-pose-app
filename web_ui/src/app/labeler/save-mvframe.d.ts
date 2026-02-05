@@ -12,8 +12,12 @@ export interface SaveFrameView {
 
   // an array of the keypoint changes.
   changedKeypoints: BackendKeypoint[];
+
+  delete?: boolean;
 }
 
 export interface SaveMvFrame {
   views: SaveFrameView[];
+
+  unlabeledQueueDeletionOnly?: boolean;
 }

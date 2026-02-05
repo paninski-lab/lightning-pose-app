@@ -57,6 +57,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
     labelFile: MVLabelFile;
     frame: MVFrame;
     shouldAdvanceFrame: boolean;
+    deletion?: boolean;
   }>();
 
   constructor() {
@@ -312,13 +313,14 @@ export class LabelerCenterPanelComponent implements OnChanges {
     labelFile: MVLabelFile,
     frame: MVFrame,
     shouldContinue: boolean,
+    deletion?: boolean,
   ) {
     this.isSaving.set(true);
     const frameView = this.selectedFrameView()!;
     const nextFrameView = frame.views[frame.views.indexOf(frameView) + 1];
 
     this.sessionService
-      .saveMVFrame(labelFile, frame)
+      .saveMVFrame(labelFile, frame, deletion)
       .then(() => {
         this.isSaving.set(false);
         this.saved.emit({
@@ -326,6 +328,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
           frame,
           // If save and next button clicked, and there is no next view, go to the next frame.
           shouldAdvanceFrame: shouldContinue && !nextFrameView,
+          deletion,
         });
         this.toastService.showToast({ content: 'Saved successfully' });
         // If save and next button clicked and there is a next view, select it.
