@@ -17,6 +17,18 @@ export interface EFRLabelFile {
   views: EFRLabelFileView[];
 }
 
+export interface ExtractedFramePredictionEntry {
+  keypoint_name: string;
+  x: number;
+  y: number;
+}
+
+export interface ExtractedFramePredictionList {
+  model_name: string;
+  date_time: number;
+  predictions: ExtractedFramePredictionEntry[];
+}
+
 export interface EFRRandomOptions {
   nFrames: number;
 }
@@ -24,6 +36,7 @@ export interface EFRRandomOptions {
 export interface ManualFrameOptions {
   // list of non-negative, ascending, unique integers.
   frame_index_list: number[];
+  predictions?: Record<string, ExtractedFramePredictionList>;
 }
 
 export interface LabelFileCreationRequest {

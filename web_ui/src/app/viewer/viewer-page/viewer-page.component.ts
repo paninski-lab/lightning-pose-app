@@ -1,10 +1,12 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  ElementRef,
   inject,
   Input,
   OnInit,
   signal,
+  viewChild,
 } from '@angular/core';
 import { ViewerSessionsPanelComponent } from '../viewer-left-panel/viewer-sessions-panel.component';
 import { ViewSettings } from '../../view-settings.model';
@@ -22,6 +24,7 @@ import { LabelFilePickerComponent } from '../../label-file-picker/label-file-pic
 import { RpcService } from '../../rpc.service';
 import { ExtractFramesRequest } from '../../extract-frames-request';
 import { ToastService } from '../../toast.service';
+import _ from 'lodash';
 
 @Component({
   selector: 'app-viewer',
@@ -193,7 +196,35 @@ export class ViewerPageComponent implements OnInit {
     );
   }
 
+  partialViewsErrorsDialog =
+    viewChild<ElementRef<HTMLDialogElement>>('partialViewsError');
+  partialModelsErrorsDialog =
+    viewChild<ElementRef<HTMLDialogElement>>('partialModelsError');
+
+  protected showPartialViewsErrors() {
+    this.partialViewsErrorsDialog()?.nativeElement.showModal();
+  }
+  protected showPartialModelsError() {
+    this.partialModelsErrorsDialog()?.nativeElement.showModal();
+  }
   protected handleExtractFramesClick() {
+    if (this.viewSettings.modelsShown().length > 1) {
+      this.showPartialModelsError();
+      return;
+    }
+    if (
+      !_.isEqual(
+        this.viewSettings.viewsShown(),
+        this.projectInfoService.allViews(),
+      ) ||
+      !_.isEqual(
+        this.viewSettings.keypointsShown(),
+        this.projectInfoService.allKeypoints(),
+      )
+    ) {
+      this.showPartialViewsErrors();
+      return;
+    }
     const request = this.toExtractFramesRequest();
     this.isExtractFramesLoading.set(true);
     this.rpc
@@ -207,6 +238,9 @@ export class ViewerPageComponent implements OnInit {
         this.isExtractFramesLoading.set(false);
       });
   }
+  private viewerCenterPanel = viewChild<ViewerCenterPanelComponent>(
+    ViewerCenterPanelComponent,
+  );
   private toExtractFramesRequest(): ExtractFramesRequest {
     const labelFile = this.sessionService
       .allLabelFiles()
@@ -227,6 +261,13 @@ export class ViewerPageComponent implements OnInit {
       method: 'manual',
       manualFrameOptions: {
         frame_index_list: [this.videoPlayerState.currentFrameSignal()],
+        predictions:
+          this.viewSettings.modelsShown().length > 0
+            ? this.viewerCenterPanel()!.getPredictionsForFrameExtraction(
+                // Uses the first model for simplicity.
+                this.viewSettings.modelsShown()[0],
+              )
+            : undefined,
       },
     };
   }

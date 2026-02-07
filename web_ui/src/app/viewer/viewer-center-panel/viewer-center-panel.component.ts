@@ -28,6 +28,8 @@ import { PredictionFile } from '../../prediction-file';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ZoomableContentComponent } from '../../components/zoomable-content.component';
 import { firstValueFrom, skipWhile } from 'rxjs';
+import { ExtractedFramePredictionList } from '../../extract-frames-request';
+import _ from 'lodash';
 
 @Component({
   selector: 'app-viewer-center-panel',
@@ -309,5 +311,47 @@ export class ViewerCenterPanelComponent implements OnChanges {
       // Reload session.
       this.loadSessionAbort(this._loadedSessionKey() as string);
     });
+  }
+
+  getPredictionsForFrameExtraction(
+    modelKey: string,
+  ): Record<string, ExtractedFramePredictionList> {
+    const pf = Array.from(this.predictionFiles.keys()).filter(
+      (key) =>
+        key.modelKey === modelKey && key.sessionKey === this.sessionKey(),
+    );
+
+    const predictionLists: ExtractedFramePredictionList[] = pf.map(
+      (predFile) => {
+        const df = this.predictionFiles.get(predFile)!;
+        const frameIndex = this.currentFrame();
+
+        const keypoints = _.keys(
+          _.keyBy(df.columns, (col) => Pair.fromMapKey(col).first),
+        );
+        return {
+          model_name: modelKey,
+          date_time: Date.now(),
+          view_name: predFile.viewName,
+          predictions: keypoints.map((keypoint) => {
+            const x = df.at(
+              frameIndex.toString(),
+              new Pair(keypoint, 'x').toMapKey(),
+            ) as number;
+            const y = df.at(
+              frameIndex.toString(),
+              new Pair(keypoint, 'y').toMapKey(),
+            ) as number;
+
+            return {
+              keypoint_name: keypoint,
+              x: x,
+              y: y,
+            };
+          }),
+        };
+      },
+    );
+    return _.keyBy(predictionLists, 'view_name');
   }
 }

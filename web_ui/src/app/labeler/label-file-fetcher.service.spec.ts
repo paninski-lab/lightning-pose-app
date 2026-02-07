@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
-import { LabelFileFetcherService } from './label-file-fetcher.service';
+import LabelFileFetcherService from './label-file-fetcher.service';
 
 describe('LabelFileFetcherService', () => {
   let service: LabelFileFetcherService;

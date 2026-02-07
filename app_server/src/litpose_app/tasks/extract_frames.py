@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Callable
@@ -13,6 +14,8 @@ from litpose_app.datatypes import Project
 from litpose_app.utils.mv_label_file import (
     AddToUnlabeledFileView,
     add_to_unlabeled_sidecar_files,
+    ExtractedFramePredictionList,
+    LabelingQueueEntry,
 )
 from litpose_app.utils.video import video_capture
 from litpose_app.utils.video.export_frames import export_frames_singleview_impl
@@ -46,6 +49,11 @@ class RandomMethodOptions(BaseModel):
 class ManualMethodOptions(BaseModel):
     frame_index_list: list[int] = []
 
+    # Optional predictions to store in the unlabeled queue.
+    # Powers extract from viewer functionality.
+    # Requires frame_index_list above to be length 1.
+    predictions: dict[str, ExtractedFramePredictionList] | None = None
+
 
 DEFAULT_RANDOM_OPTIONS = RandomMethodOptions()
 
@@ -60,7 +68,7 @@ def extract_frames_task(
     progress_callback: Callable[[str], None],
     method="random",
     options: RandomMethodOptions = DEFAULT_RANDOM_OPTIONS,
-    manual_frame_options: ManualMethodOptions = ManualMethodOptions()
+    manual_frame_options: ManualMethodOptions = ManualMethodOptions(),
 ):
     """
     session: dict (serialized Session model)
@@ -79,14 +87,23 @@ def extract_frames_task(
         else:
             raise ValueError("method not supported: " + method)
 
-        result = _export_frames(config, session, project, frame_idxs, process_pool)
+        view_to_frame_index_to_path = _export_frames(
+            config, session, project, frame_idxs, process_pool
+        )
         progress_callback(f"Frame extraction complete.")
-        logger.debug(result)
-        _update_unlabeled_files(project.paths.data_dir, result, mv_label_file)
+        logger.debug(view_to_frame_index_to_path)
+        _update_unlabeled_files(
+            project.paths.data_dir,
+            view_to_frame_index_to_path,
+            mv_label_file,
+            manual_frame_options.predictions if manual_frame_options else None,
+        )
         progress_callback(f"Update unlabeled files complete.")
 
 
-def _frame_selection_kmeans(config, session, options, process_pool) -> NDArray[np.integer]:
+def _frame_selection_kmeans(
+    config, session, options, process_pool
+) -> NDArray[np.integer]:
     """
     Select `options.n_frames` frames using just the first video in the session.
 
@@ -108,7 +125,7 @@ def _export_frames(
     project: Project,
     frame_idxs: NDArray[np.integer],
     process_pool,
-) -> dict[str, list[Path]]:
+) -> dict[str, dict[int, Path]]:
     """
     Extracts frames (frame_idxs) from each view.
 
@@ -116,7 +133,7 @@ def _export_frames(
     Tasks write to temp files.
     Upon all tasks finishing, the temp files are moved to final destination (atomic).
 
-    Returns a dict of view_name -> list of paths to extracted center frames (relative to data dir).
+    Returns a dict of view_name -> frame index -> paths to extracted center frames (relative to data dir).
     """
 
     def dest_path(video_path: Path, frame_idx: int) -> Path:
@@ -129,7 +146,9 @@ def _export_frames(
 
     # Compute destination paths for center frames as the return value of the function.
     retval = {
-        sv.viewName: [dest_path(sv.videoPath, frame_idx) for frame_idx in frame_idxs]
+        sv.viewName: {
+            frame_idx: dest_path(sv.videoPath, frame_idx) for frame_idx in frame_idxs
+        }
         for sv in session.views
     }
 
@@ -170,16 +189,33 @@ def _export_frames(
 
 
 def _update_unlabeled_files(
-    data_dir: Path, result: dict[str, list[Path]], mv_label_file: MVLabelFile
+    data_dir: Path,
+    result: dict[str, dict[int, Path]],
+    mv_label_file: MVLabelFile,
+    predictions: dict[str, ExtractedFramePredictionList] | None = None,
 ):
     """
     Appends the new frames in `result` to the `mv_label_file` as atomically as possible.
     """
     lfv_dict = {lfv.viewName: lfv for lfv in mv_label_file.views}
+    entriesToAdd = defaultdict(list)
+    predictions = predictions or {}
+    for view_name in result:
+        if len(predictions) > 0:
+            assert len(result[view_name]) == 1, (
+                "Prediction extraction only supported for manual frame extraction of length 1. Instead, was "
+                + str(len(result[view_name]))
+            )
+        for frame_idx in result[view_name]:
+            e = LabelingQueueEntry(
+                frame_path=str(result[view_name][frame_idx].relative_to(data_dir)),
+                predictions=predictions.get(view_name),
+            )
+            entriesToAdd[view_name].append(e)
     x = [
         AddToUnlabeledFileView(
             csvPath=lfv_dict[view_name].csvPath,
-            framePathsToAdd=[str(p.relative_to(data_dir)) for p in result[view_name]],
+            entriesToAdd=entriesToAdd[view_name],
         )
         for view_name in result
     ]
