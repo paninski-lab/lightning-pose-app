@@ -16,7 +16,7 @@ import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { SessionService } from '../session.service';
 import { MVLabelFile } from '../label-file.model';
 import { PathPipe } from '../utils/pipes';
-import { LabelFileFetcherService } from './label-file-fetcher.service';
+import LabelFileFetcherService from './label-file-fetcher.service';
 import { mvf, MVFrame } from './frame.model';
 import { ExtractFramesDialogComponent } from './extract-frames-dialog/extract-frames-dialog.component';
 import { ToastService } from '../toast.service';
@@ -152,9 +152,10 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     const currentFrameIndex = this.labelFileData()!.findIndex(
       (mvf) => mvf.key === data.frame.key,
     );
-    const nextFrameIndex = data.deletion
-      ? currentFrameIndex
-      : currentFrameIndex + 1;
+    const nextFrameIndex = Math.min(
+      data.deletion ? currentFrameIndex : currentFrameIndex + 1,
+      this.labelFileData()!.length - 2,
+    );
     // Updates local state without re-fetching the label file data.
     this.labelFileData.update((mvFrames) => {
       if (mvFrames === null) {

@@ -9,11 +9,16 @@ import { CsvParserService } from '../csv-parser.service';
 import { Pair } from '../utils/pair';
 import { ProjectInfoService } from '../project-info.service';
 import { orderStringsByUserSpecifiedOrder } from '../utils/comparators';
+import _ from 'lodash';
+import {
+  ExtractedFramePredictionEntry,
+  ExtractedFramePredictionList,
+} from '../extract-frames-request';
 
 @Injectable({
   providedIn: 'root',
 })
-export class LabelFileFetcherService {
+class LabelFileFetcherService {
   private projectInfoService = inject(ProjectInfoService);
   private httpClient = inject(HttpClient);
   private csvParser = inject(CsvParserService);
@@ -61,37 +66,19 @@ export class LabelFileFetcherService {
             const lines = filecontents
               .split('\n')
               .map((line) => line.trim())
-              .filter((x) => x);
+              .filter((x) => x)
+              .map((line) => {
+                return JSON.parse(line) as {
+                  frame_path: string;
+                  predictions: ExtractedFramePredictionList;
+                };
+              });
             return { lfv: labelFileView, lines };
           });
       }),
-    ).then((results) => {
-      if (results.some((r) => r == null)) {
-        return [];
-      }
-      // Create an array of MVFrame. the ith MVFrame is the
-      // ith line across all results.
-      const maxLines = Math.max(...results.map((r) => r!.lines.length));
-      return Array.from({ length: maxLines }).map((_, i): MVFrame => {
-        const views = results
-          .map((r): FrameView | null => {
-            const imgPath = r!.lines[i];
-
-            return {
-              viewName: r!.lfv.viewName,
-              imgPath,
-              keypoints: [], // we'll patch this later once labeledframes are loaded.
-              originalKeypoints: null,
-            };
-          })
-          .filter((x): x is FrameView => x !== null);
-        const key = views[0].imgPath.replace(views[0].viewName, '*');
-        return { key, views };
-      });
-    });
+    );
 
     const mvf = await mvFramePromise;
-    const unl = await unlabeledPromise;
 
     // Initialize keypoints for unlabeled frames to NaN.
     // TODO sort order as specified by user
@@ -106,24 +93,56 @@ export class LabelFileFetcherService {
           orderStringsByUserSpecifiedOrder(keypointsFromProjectConfig),
         )
       : keypointsFromProjectConfig;
-    if (allKeypoints !== null) {
-      unl.forEach((unlFrame) => {
-        unlFrame.views.forEach((unlView) => {
-          unlView.keypoints = allKeypoints.map((keypointName) => {
+
+    const unl = await unlabeledPromise.then((results) => {
+      if (results.some((r) => r == null)) {
+        return [];
+      }
+      // Create an array of MVFrame. the ith MVFrame is the
+      // ith line across all results.
+      const maxLines = Math.max(...results.map((r) => r!.lines.length));
+      return Array.from({ length: maxLines }).map((value, i): MVFrame => {
+        const views = results
+          .map((r): FrameView | null => {
+            const line = r!.lines[i];
+
+            const predictionsByKeypoint: Record<
+              string,
+              ExtractedFramePredictionEntry
+            > = _.keyBy(line.predictions?.predictions, 'keypoint_name');
             return {
-              x: NaN,
-              y: NaN,
-              keypointName,
+              viewName: r!.lfv.viewName,
+              imgPath: line.frame_path,
+              keypoints: allKeypoints.map((keypointName) => {
+                if (predictionsByKeypoint[keypointName]) {
+                  return {
+                    x: predictionsByKeypoint[keypointName].x,
+                    y: predictionsByKeypoint[keypointName].y,
+                    keypointName:
+                      predictionsByKeypoint[keypointName].keypoint_name,
+                  };
+                } else {
+                  return {
+                    x: NaN,
+                    y: NaN,
+                    keypointName,
+                  };
+                }
+              }),
+              originalKeypoints: null,
             };
-          });
-        });
+          })
+          .filter((x): x is FrameView => x !== null);
+        const key = views[0].imgPath.replace(views[0].viewName, '*');
+        return { key, views };
       });
-    }
+    });
+
     return mvf.concat(unl);
   }
 
   private getUnlabeledSidecarPath(csvPath: string): string {
-    return csvPath.replace(/\.csv$/, '.unlabeled');
+    return csvPath.replace(/\.csv$/, '.unlabeled.jsonl');
   }
 
   // Fetch the CSV file using HttpClient
@@ -231,3 +250,5 @@ export class LabelFileFetcherService {
     });
   }
 }
+
+export default LabelFileFetcherService;
