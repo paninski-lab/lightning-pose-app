@@ -7,32 +7,29 @@ from pathlib import Path
 from pydantic import BaseModel
 
 
-class LabelingQueueEntry(BaseModel):
-    frame_path: str
-    predictions: dict[str, list[tuple[str, float, float]]] | None = None
-
-
 class ExtractedFramePredictionEntry(BaseModel):
     keypoint_name: str
     x: float
     y: float
 
 
+# When changing this struct, be aware that it's used in ExtractFramesRequest.
 class ExtractedFramePredictionList(BaseModel):
     model_name: str
     date_time: int
     predictions: list[ExtractedFramePredictionEntry]
 
 
+class LabelingQueueEntry(BaseModel):
+    frame_path: str
+    predictions: ExtractedFramePredictionList | None = None
+
+
 class AddToUnlabeledFileView(BaseModel):
     # Path of the CSV file who's unlabeled sidecar file needs to be updated
     csvPath: Path
-    # String repr of the paths to the frame to add to the unlabeled sidecar file
-    # Relative to data dir.
-    framePathsToAdd: list[str]
 
-    # FramePath -> ExtractedFrameContext
-    entries: list[LabelingQueueEntry]
+    entriesToAdd: list[LabelingQueueEntry]
 
 
 def add_to_unlabeled_sidecar_files(views: list[AddToUnlabeledFileView]):
@@ -52,7 +49,7 @@ def add_to_unlabeled_sidecar_files(views: list[AddToUnlabeledFileView]):
             ]
 
         existing_frame_paths = [e.frame_path for e in entries]
-        for entry in vr.entries:
+        for entry in vr.entriesToAdd:
             if entry.frame_path not in existing_frame_paths:
                 needs_save = True
                 entries.append(entry)

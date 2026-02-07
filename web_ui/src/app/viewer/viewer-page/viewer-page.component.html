@@ -146,3 +146,23 @@
     </div>
   </div>
 }
+<dialog #partialViewsError class="modal">
+  <div class="modal-box">
+    <p>Enable view of all views and keypoints in the viewer and retry.</p>
+    <div class="modal-action">
+      <button class="btn btn-primary" (click)="partialViewsError.close()">
+        OK
+      </button>
+    </div>
+  </div>
+</dialog>
+<dialog #partialModelsError class="modal">
+  <div class="modal-box">
+    <p>Ensure only one model is shown in the viewer and retry.</p>
+    <div class="modal-action">
+      <button class="btn btn-primary" (click)="partialModelsError.close()">
+        OK
+      </button>
+    </div>
+  </div>
+</dialog>
