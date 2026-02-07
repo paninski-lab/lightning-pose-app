@@ -16,6 +16,7 @@ from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
 
 from . import deps
+from .migrations import run_migrations_for_all_projects
 from .rootconfig import RootConfig
 from .routes.labeler.multiview_autolabel import warm_up_anipose
 from .routes.videos import cleanup_old_uploads
@@ -35,6 +36,8 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # Start apscheduler, which is responsible for executing background tasks
     cleanup_old_uploads(deps.root_config())
+
+    await anyio.to_thread.run_sync(run_migrations_for_all_projects, deps.root_config())
 
     # Warm up anipose in the background (first run is ~1-2s slow).
     asyncio.create_task(anyio.to_thread.run_sync(warm_up_anipose))
@@ -163,8 +166,7 @@ async def read_file(request: Request, file_path: Path):
 # Serve ng assets (js, css)
 STATIC_DIR = Path(__file__).parent / "ngdist" / "ng_app" / "browser"
 if not STATIC_DIR.is_dir():
-    message = dedent(
-        """
+    message = dedent("""
         ⚠️  Warning: We couldn't find the necessary static assets (like HTML, CSS, JavaScript files).
         As a result, only the HTTP API is currently running.
 
@@ -176,8 +178,7 @@ if not STATIC_DIR.is_dir():
         version and place them in:
 
             {STATIC_DIR}
-        """
-    )
+        """)
     # print(f'{Fore.white}{Back.yellow}{message}{Style.reset}', file=sys.stderr)
     print(f"{message}", file=sys.stderr)
 
@@ -212,8 +213,7 @@ def run_app(host: str, port: int):
     import os
 
     if os.environ.get("DO_NOT_TRACK") != "1":
-        usage_message = dedent(
-            """
+        usage_message = dedent("""
             ================================================================================
             📊  Lightning Pose App Usage Tracking
             
@@ -223,8 +223,7 @@ def run_app(host: str, port: int):
             To opt out, please restart the app with the environment variable DO_NOT_TRACK=1
             For example: DO_NOT_TRACK=1 litpose run_app
             ================================================================================
-            """
-        )
+            """)
         print(usage_message, file=sys.stderr)
     else:
         logger.info("App tracking is opted out, skipping analytics tag insertion")
