@@ -29,6 +29,7 @@ import { PathPipe } from '../../utils/pipes';
 import { BundleAdjustDialogComponent } from '../../bundle-adjust-dialog/bundle-adjust-dialog.component';
 import { ToastService } from '../../toast.service';
 import { firstValueFrom, Subject } from 'rxjs';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-labeler-center-panel',
@@ -39,6 +40,7 @@ import { firstValueFrom, Subject } from 'rxjs';
     HorizontalScrollDirective,
     PathPipe,
     BundleAdjustDialogComponent,
+    FormsModule,
   ],
   templateUrl: './labeler-center-panel.component.html',
   styleUrl: './labeler-center-panel.component.css',
@@ -356,7 +358,13 @@ export class LabelerCenterPanelComponent implements OnChanges {
   );
   protected deletionShouldContinue = new Subject<boolean>();
   protected isShowingTemporalContext = signal<boolean>(false);
-  protected readonly temporalContextIndex = signal<number | null>(null);
+  protected temporalContextIndex = signal<number | null>(null);
+
+  protected imgBrightnessScalar = signal<number>(1);
+  protected imgContrastScalar = signal<number>(1);
+  protected imgCssFilterString = computed(() => {
+    return `brightness(${this.imgBrightnessScalar()}) contrast(${this.imgContrastScalar()})`;
+  });
 
   protected async handleSaveClick(
     labelFile: MVLabelFile,
