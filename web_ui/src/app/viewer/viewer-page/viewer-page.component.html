@@ -36,12 +36,23 @@
     <!-- Right pane -->
     <div class="shrink-0 w-40 xl:w-60 h-full">
       <div class="panel m-4">
-        <div>
+        <input
+          type="checkbox"
+          id="app-accordion-viewer-views"
+          class="app-accordion-toggle"
+        />
+        <label
+          for="app-accordion-viewer-views"
+          class="app-accordion-title flex justify-between px-2 pb-1"
+        >
           <!-- panel header -->
-          <h1 class="px-2 mb-1">Views</h1>
-        </div>
-        <div class="panel-content max-h-60 overflow-y-auto">
-          <ul>
+          <h1>Views</h1>
+          <span class="app-accordion-icon"></span>
+        </label>
+        <div
+          class="bg-base-100 text-sm max-h-60 overflow-y-auto app-accordion-content"
+        >
+          <ul class="p-1">
             @for (cam of allViews; track cam) {
               <li class="p-1 flex justify-between items-center">
                 <span>{{ cam }}</span>
@@ -58,12 +69,23 @@
       </div>
 
       <div class="panel m-4">
-        <div>
+        <input
+          type="checkbox"
+          id="app-accordion-viewer-keypoints"
+          class="app-accordion-toggle"
+        />
+        <label
+          for="app-accordion-viewer-keypoints"
+          class="app-accordion-title flex justify-between px-2 pb-1"
+        >
           <!-- panel header -->
-          <h1 class="px-2 mb-1">Keypoints</h1>
-        </div>
-        <div class="panel-content max-h-60 overflow-y-auto">
-          <ul>
+          <h1>Keypoints</h1>
+          <span class="app-accordion-icon"></span>
+        </label>
+        <div
+          class="bg-base-100 text-sm max-h-60 overflow-y-auto app-accordion-content"
+        >
+          <ul class="p-1">
             @for (kp of projectInfoService.allKeypoints(); track kp) {
               <li class="p-1 flex justify-between items-center">
                 <span>{{ kp }}</span>
