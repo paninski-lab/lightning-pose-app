@@ -42,6 +42,7 @@
             ],
             "styles": [
               "src/styles.css",
+              "src/fontfaces.css",
               "node_modules/highlight.js/styles/dark.css"
             ],
             "scripts": [],
