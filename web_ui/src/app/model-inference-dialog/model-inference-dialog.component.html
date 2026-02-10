@@ -5,7 +5,7 @@
         class="btn btn-md btn-circle btn-ghost absolute right-4 top-4"
         (click)="closeDialog()"
         aria-label="Close run inference dialog"
-      >
+        >
         ✕
       </button>
       <h3 class="text-xl font-bold mb-2">Run model inference</h3>
@@ -26,7 +26,7 @@
           (change)="addFiles(fileInput.files)"
           accept="video/*"
           multiple
-        />
+          />
         <button class="btn btn-ghost" (click)="clearAll()" [disabled]="items().length === 0 || uploading()">
           Clear selection
         </button>
@@ -37,7 +37,7 @@
           [items]="items()"
           [uploading]="uploading()"
           (removeAt)="removeAt($event)"
-        />
+          />
       </div>
 
       <!-- Inference summary/progress -->
@@ -54,7 +54,9 @@
         } @else if (inference().status === 'done') {
           <div class="flex items-center gap-2">
             <span class="badge badge-success">Inference completed</span>
-            <span class="text-xs opacity-70" *ngIf="inference().message">{{ inference().message }}</span>
+            @if (inference().message) {
+              <span class="text-xs opacity-70">{{ inference().message }}</span>
+            }
           </div>
         } @else if (inference().status === 'error') {
           <div class="text-error">{{ inference().error ?? 'Inference failed' }}</div>
