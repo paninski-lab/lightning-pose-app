@@ -10,7 +10,7 @@ import {
   output,
   signal,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { SessionService } from '../session.service';
@@ -19,7 +19,7 @@ import { VideoImportStore } from '../video-import/video-import.store';
 
 @Component({
   selector: 'app-model-inference-dialog',
-  imports: [CommonModule, FormsModule, VideoFileTableComponent],
+  imports: [FormsModule, VideoFileTableComponent],
   templateUrl: './model-inference-dialog.component.html',
   styleUrl: './model-inference-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

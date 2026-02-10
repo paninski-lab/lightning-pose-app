@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { ParsedItem } from '../video-import.types';
 
 @Component({
   selector: 'app-video-file-table',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './video-file-table.component.html',
   styleUrl: './video-file-table.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

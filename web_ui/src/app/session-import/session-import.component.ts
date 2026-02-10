@@ -11,7 +11,7 @@ import {
   signal,
   computed,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { VideoFileTableComponent } from '../video-import/video-file-table/video-file-table.component';
 import { VideoImportStore } from '../video-import/video-import.store';
@@ -19,7 +19,7 @@ import { ToastService } from '../toast.service';
 
 @Component({
   selector: 'app-session-import',
-  imports: [CommonModule, FormsModule, VideoFileTableComponent],
+  imports: [FormsModule, VideoFileTableComponent],
   templateUrl: './session-import.component.html',
   styleUrl: './session-import.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
