@@ -29,23 +29,31 @@
           [maxScale]="100"
         >
           <div #content class="relative">
-            <!-- img has max-w-none to override a bad default value of 100% -->
-            <img
-              [src]="imgPath(fv.imgPath)"
-              class="max-w-none"
-              alt="fv.imgPath"
-            />
-            <app-keypoint-container
-              [enableEditing]="!disableInteractions()"
-              [keypointModels]="getCachedKeypointViewModels(fv.keypoints)"
-              [(selectedKeypoint)]="selectedKeypoint"
-              [useCrossHairs]="true"
-              [editMode]="labelerDefaultsToEditMode"
-              (keypointUpdated)="
-                handleKeypointUpdated($event.kp, $event.position, fv)
-              "
-              class="absolute top-0 left-0 h-full w-full"
-            ></app-keypoint-container>
+            @for (imSrc of temporalImgPaths(fv.imgPath); track $index) {
+              <!-- img has max-w-none to override a bad default value of 100% -->
+              <img
+                [src]="imSrc"
+                class="max-w-none"
+                [alt]="imSrc"
+                [class.hidden]="
+                  $index !==
+                  (!isShowingTemporalContext() ? 2 : temporalContextIndex())
+                "
+              />
+            }
+            @if (!isShowingTemporalContext()) {
+              <app-keypoint-container
+                [enableEditing]="!disableInteractions()"
+                [keypointModels]="getCachedKeypointViewModels(fv.keypoints)"
+                [(selectedKeypoint)]="selectedKeypoint"
+                [useCrossHairs]="true"
+                [editMode]="labelerDefaultsToEditMode"
+                (keypointUpdated)="
+                  handleKeypointUpdated($event.kp, $event.position, fv)
+                "
+                class="absolute top-0 left-0 h-full w-full"
+              ></app-keypoint-container>
+            }
           </div>
         </app-zoomable-content>
       </div>
@@ -233,6 +241,53 @@
             [frame]="this.frame()"
             [numLabeledFrames]="numLabeledFrames()"
           ></app-bundle-adjust-dialog>
+        </div>
+      </div>
+      <div class="panel m-4 mt-0">
+        <input
+          type="checkbox"
+          id="app-accordion-1"
+          class="app-accordion-toggle"
+        />
+        <!-- panel header -->
+        <label
+          for="app-accordion-1"
+          class="app-accordion-title flex justify-between px-2 pb-1"
+        >
+          <h1>View options</h1>
+          <span class="app-accordion-icon"></span>
+        </label>
+        <div class="overflow-y-auto app-accordion-content">
+          <div class="panel-content p-2!">
+            <div>Temporal context</div>
+            <div class="p-2">
+              @if (!isShowingTemporalContext()) {
+                <button
+                  class="btn btn-primary btn-sm"
+                  (click)="handleShowTemporalContextClick()"
+                >
+                  <span class="material-icons">play_arrow</span> Show
+                </button>
+              } @else {
+                <div class="flex items-center gap-4">
+                  <button
+                    class="btn btn-error btn-sm"
+                    (click)="handleStopTemporalContextClick()"
+                  >
+                    <span class="material-icons">stop</span> Stop
+                  </button>
+                  <div class="grow flex gap-2">
+                    @for (i of [0, 1, 2, 3, 4]; track i) {
+                      <div
+                        class="status"
+                        [class.status-success]="i === temporalContextIndex()"
+                      ></div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
         </div>
       </div>
     }

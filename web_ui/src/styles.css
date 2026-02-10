@@ -34,3 +34,32 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 
   transition: all 0.3s ease;
 }
+
+
+/** Custom accordion. I don't like daisy's styles */
+/* Container styling */
+.app-accordion-toggle { display: none; }
+
+/* Header layout */
+.app-accordion-title {
+  cursor: pointer;
+}
+
+/* State Indicator */
+.app-accordion-icon::before { content: '+'; }
+
+/* Collapse Logic */
+.app-accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+/* Expand Logic */
+.app-accordion-toggle:checked + .app-accordion-title .app-accordion-icon::before {
+  content: '-';
+}
+
+.app-accordion-toggle:checked ~ .app-accordion-content {
+  max-height: 1000px;
+}

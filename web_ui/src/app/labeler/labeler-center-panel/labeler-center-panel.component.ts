@@ -28,7 +28,7 @@ import { GetMVAutoLabelsResponse } from '../mv-autolabel';
 import { PathPipe } from '../../utils/pipes';
 import { BundleAdjustDialogComponent } from '../../bundle-adjust-dialog/bundle-adjust-dialog.component';
 import { ToastService } from '../../toast.service';
-import { firstValueFrom, Observable, Subject } from 'rxjs';
+import { firstValueFrom, Subject } from 'rxjs';
 
 @Component({
   selector: 'app-labeler-center-panel',
@@ -61,6 +61,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
     shouldAdvanceFrame: boolean;
     deletion?: boolean;
   }>();
+  private temporalContextAbortController: AbortController | undefined;
 
   constructor() {
     effect(() => {
@@ -183,6 +184,45 @@ export class LabelerCenterPanelComponent implements OnChanges {
       '/' +
       kpImgPath
     );
+  }
+
+  protected temporalImgPaths(kpImgPath: string): string[] {
+    /* path is like a/b/c/fname000index.ext
+     * we want to return the paths where index is replaced with index-2, index -1, index, index+1 in an array.
+     * we want to learn the total number of digits in the index (it's zero padded) and maintain it constant.
+     * omit negative indices. */
+
+    // Match the pattern: capture everything before the index, the index digits, and the extension
+    const match = kpImgPath.match(/^(.+?)(\d+)(\.[^.]+)$/);
+
+    if (!match) {
+      return [];
+    }
+
+    const [, prefix, indexStr, extension] = match;
+    const currentIndex = parseInt(indexStr, 10);
+    const numDigits = indexStr.length;
+
+    const result: string[] = [];
+
+    // Generate paths for index-2, index-1, index, index+1
+    for (let offset = -2; offset <= 2; offset++) {
+      const newIndex = currentIndex + offset;
+
+      // Omit negative indices
+      if (newIndex < 0) {
+        continue;
+      }
+
+      // Pad the new index with zeros to maintain the same number of digits
+      const paddedIndex = newIndex.toString().padStart(numDigits, '0');
+
+      // Construct the new path
+      const newPath = `${prefix}${paddedIndex}${extension}`;
+      result.push(this.imgPath(newPath));
+    }
+
+    return result;
   }
 
   handleViewClickFromFilmstrip(viewName: string) {
@@ -315,6 +355,8 @@ export class LabelerCenterPanelComponent implements OnChanges {
     'deleteConfirmationDialog',
   );
   protected deletionShouldContinue = new Subject<boolean>();
+  protected isShowingTemporalContext = signal<boolean>(false);
+  protected readonly temporalContextIndex = signal<number | null>(null);
 
   protected async handleSaveClick(
     labelFile: MVLabelFile,
@@ -398,5 +440,39 @@ export class LabelerCenterPanelComponent implements OnChanges {
   ) {
     this.deleteConfirmationDialog()!.nativeElement.close();
     this.deletionShouldContinue.next(shouldContinue);
+  }
+
+  protected handleShowTemporalContextClick() {
+    this.temporalContextAbortController = new AbortController();
+
+    this.isShowingTemporalContext.set(true);
+    this.beginTemporalContextLoop(this.temporalContextAbortController.signal);
+  }
+  protected handleStopTemporalContextClick() {
+    this.temporalContextAbortController?.abort();
+    this.isShowingTemporalContext.set(false);
+  }
+  private beginTemporalContextLoop(abortSignal: AbortSignal) {
+    let direction = 1;
+    const loop = async () => {
+      while (!abortSignal.aborted) {
+        this.temporalContextIndex.update((index) => {
+          const currentIndex = index ?? -1;
+          let nextIndex = currentIndex + direction;
+
+          if (nextIndex > 4) {
+            direction = -1;
+            nextIndex = 3;
+          } else if (nextIndex <= 0) {
+            direction = 1;
+            nextIndex = 0;
+          }
+
+          return nextIndex;
+        });
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+    };
+    loop();
   }
 }
