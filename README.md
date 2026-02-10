@@ -17,6 +17,22 @@ Our full documentation, including installation guides, API references, and advan
 
 ## 📝 Release Notes
 
+### [2.0.5.3] — 2026-02-10
+
+**Added:**
+
+* Extract frame from Viewer feature
+    * You can now mark frames for labeling from the viewer, including the model's predictions on that frame.
+* Remove frame from Label File or Label Queue feature
+* Labeler View Options
+    * See temporal context of frame (+/- 2 frames)
+    * Image Brightness and Contrast slider
+
+**Behind the scenes**
+
+* Icons are now embedded in the app instead of CDN-hosted, so they can render locally without internet.
+* Upgraded Angular from v20 to v21
+
 ### [2.0.5.2] — 2026-02-04
 
 **Added**
