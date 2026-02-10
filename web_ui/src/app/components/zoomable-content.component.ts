@@ -80,7 +80,7 @@ export class ZoomableContentComponent
   private startY = 0;
   private viewportWidth = 0;
   private viewportHeight = 0;
-  private resizeUnlisten?: () => void;
+  private viewportResizeObserver?: ResizeObserver;
   private contentResizeObserver?: ResizeObserver; // Declare ResizeObserver
   interactivityDisabled = input(false);
 
@@ -88,9 +88,10 @@ export class ZoomableContentComponent
 
   ngAfterViewInit(): void {
     this.updateViewportDimensions();
-    this.resizeUnlisten = this.renderer.listen('window', 'resize', () =>
+    this.viewportResizeObserver = new ResizeObserver(() =>
       this.updateViewportDimensions(),
     );
+    this.viewportResizeObserver.observe(this.viewportRef.nativeElement);
   }
 
   ngAfterContentInit(): void {
@@ -123,8 +124,8 @@ export class ZoomableContentComponent
   }
 
   ngOnDestroy(): void {
-    if (this.resizeUnlisten) {
-      this.resizeUnlisten();
+    if (this.viewportResizeObserver) {
+      this.viewportResizeObserver.disconnect();
     }
     // Disconnect ResizeObserver to prevent memory leaks
     if (this.contentResizeObserver) {
