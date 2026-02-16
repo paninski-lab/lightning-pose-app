@@ -1,5 +1,6 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   inject,
   model,
@@ -20,6 +21,8 @@ import { CdkListboxModule } from '@angular/cdk/listbox';
 import { ToastService } from '../toast.service';
 import { ModelDeleteDialogComponent } from '../models-page/model-delete-dialog/model-delete-dialog.component';
 import { ModelRenameDialogComponent } from '../models-page/model-rename-dialog/model-rename-dialog.component';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-models-list',
@@ -40,10 +43,17 @@ export class ModelsListComponent implements OnInit, OnDestroy {
 
   private sessionService = inject(SessionService);
   private toast = inject(ToastService);
+  private router = inject(Router);
+  private route = inject(ActivatedRoute);
+
   selectedModel = model<ModelListResponseEntry | null>();
   inlineActionModel = model<ModelListResponseEntry | null>();
   actionSelectedModels = model<ModelListResponseEntry[]>([]);
   private pollInterval?: number;
+
+  private queryParamsSub?: Subscription;
+  private cdr = inject(ChangeDetectorRef);
+
   protected cdkListboxCompareFn(
     a: ModelListResponseEntry,
     b: ModelListResponseEntry,
@@ -52,15 +62,39 @@ export class ModelsListComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.reloadModels();
+    // Keep model selection in sync with URL (?modelKey=...)
+    // Any URL change triggers reloadModels(), then selects the model matching modelKey.
+    this.queryParamsSub = this.route.queryParamMap.subscribe((params) => {
+      const modelKeyFromUrl = params.get('modelKey');
+      (async () => {
+        await this.reloadModels();
+
+        if (!modelKeyFromUrl) return;
+
+        const fromUrl =
+          this.models().models.find(
+            (m) => m.model_relative_path === modelKeyFromUrl,
+          ) ?? null;
+
+        this.selectedModel.set(fromUrl);
+        // Some bug is preventing the selection from rendering in the UI
+        // on initial page load (until the first poll hits).
+        // This fixes it. Unknown why. Everything in this component uses signals.
+        setTimeout(() => this.cdr.markForCheck(), 0);
+      })();
+    });
+
     this.pollInterval = setInterval(() => {
-      this.reloadModels();
-    }, 1500) as unknown as number;
+      //this.reloadModels();
+    }, 2500) as unknown as number;
   }
 
   ngOnDestroy() {
     if (this.pollInterval) {
       clearInterval(this.pollInterval);
+    }
+    if (this.queryParamsSub) {
+      this.queryParamsSub.unsubscribe();
     }
   }
 
@@ -92,6 +126,17 @@ export class ModelsListComponent implements OnInit, OnDestroy {
     } else {
       this.selectedModel.set(cdkListboxValue[0]);
     }
+
+    // Store selected modelKey in URL query params.
+    // Updating the URL will trigger the queryParamMap subscription above, which calls
+    // reloadModels() and then re-selects based on the URL.
+    const modelKey = this.selectedModel()?.model_relative_path ?? undefined;
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { modelKey },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   getCdkListboxValue(): ModelListResponseEntry[] {
