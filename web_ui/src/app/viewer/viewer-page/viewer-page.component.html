@@ -6,167 +6,170 @@
 </style>
 
 @if (!isIniting()) {
-  <div class="grow flex flex-row items-stretch">
+  <as-split unit="pixel" direction="horizontal">
     <!-- Left pane -->
-    <div
-      class="bg-base-200 w-60 xl:w-80 flex flex-col justify-between shadow-lg"
-    >
-      <div class="p-4">
-        <div class="flex justify-between">
-          <!--header row-->
-          <h1 class="px-2">Sessions</h1>
-          <div></div>
+    <as-split-area size="280">
+      <div class="bg-base-200 h-full flex flex-col justify-between shadow-lg">
+        <div class="p-4">
+          <div class="flex justify-between">
+            <!--header row-->
+            <h1 class="px-2">Sessions</h1>
+            <div></div>
+          </div>
+          <app-sessions-panel
+            class="h-120"
+            [showModelAvailableMarkers]="true"
+            [selectedSessionKey]="_sessionKey()"
+            (selectedSessionChange)="handleSelectedSessionChange($event)"
+          ></app-sessions-panel>
         </div>
-        <app-sessions-panel
-          class="h-120"
-          [showModelAvailableMarkers]="true"
-          [selectedSessionKey]="_sessionKey()"
-          (selectedSessionChange)="handleSelectedSessionChange($event)"
-        ></app-sessions-panel>
+        <app-loading-bar class="h-20 p-4"></app-loading-bar>
       </div>
-      <app-loading-bar class="h-20 p-4"></app-loading-bar>
-    </div>
+    </as-split-area>
 
-    <!-- Center content -->
-    <app-viewer-center-panel
-      class="grow z-30"
-      [sessionKey]="_sessionKey()"
-    ></app-viewer-center-panel>
+    <as-split-area size="*">
+      <div class="flex h-full">
+        <!-- Center content -->
+        <app-viewer-center-panel
+          class="grow z-30"
+          [sessionKey]="_sessionKey()"
+        ></app-viewer-center-panel>
+        <!-- Right pane -->
+        <div class="flex-none w-60 h-full">
+          <div class="panel m-4">
+            <input
+              type="checkbox"
+              id="app-accordion-viewer-views"
+              class="app-accordion-toggle"
+            />
+            <label
+              for="app-accordion-viewer-views"
+              class="app-accordion-title flex justify-between px-2 pb-1"
+            >
+              <!-- panel header -->
+              <h1>Views</h1>
+              <span class="app-accordion-icon"></span>
+            </label>
+            <div
+              class="bg-base-100 text-sm max-h-60 overflow-y-auto app-accordion-content"
+            >
+              <ul class="p-1">
+                @for (cam of allViews; track cam) {
+                  <li class="p-1 flex justify-between items-center">
+                    <span>{{ cam }}</span>
+                    <input
+                      type="checkbox"
+                      [checked]="viewSelectionModel.isSelected(cam)"
+                      class="checkbox checkbox-xs"
+                      (change)="onViewCheckboxChange($event, cam)"
+                    />
+                  </li>
+                }
+              </ul>
+            </div>
+          </div>
 
-    <!-- Right pane -->
-    <div class="shrink-0 w-40 xl:w-60 h-full">
-      <div class="panel m-4">
-        <input
-          type="checkbox"
-          id="app-accordion-viewer-views"
-          class="app-accordion-toggle"
-        />
-        <label
-          for="app-accordion-viewer-views"
-          class="app-accordion-title flex justify-between px-2 pb-1"
-        >
-          <!-- panel header -->
-          <h1>Views</h1>
-          <span class="app-accordion-icon"></span>
-        </label>
-        <div
-          class="bg-base-100 text-sm max-h-60 overflow-y-auto app-accordion-content"
-        >
-          <ul class="p-1">
-            @for (cam of allViews; track cam) {
-              <li class="p-1 flex justify-between items-center">
-                <span>{{ cam }}</span>
-                <input
-                  type="checkbox"
-                  [checked]="viewSelectionModel.isSelected(cam)"
-                  class="checkbox checkbox-xs"
-                  (change)="onViewCheckboxChange($event, cam)"
-                />
-              </li>
-            }
-          </ul>
-        </div>
-      </div>
+          <div class="panel m-4">
+            <input
+              type="checkbox"
+              id="app-accordion-viewer-keypoints"
+              class="app-accordion-toggle"
+            />
+            <label
+              for="app-accordion-viewer-keypoints"
+              class="app-accordion-title flex justify-between px-2 pb-1"
+            >
+              <!-- panel header -->
+              <h1>Keypoints</h1>
+              <span class="app-accordion-icon"></span>
+            </label>
+            <div
+              class="bg-base-100 text-sm max-h-60 overflow-y-auto app-accordion-content"
+            >
+              <ul class="p-1">
+                @for (kp of projectInfoService.allKeypoints(); track kp) {
+                  <li class="p-1 flex justify-between items-center">
+                    <span>{{ kp }}</span>
+                    <input
+                      type="checkbox"
+                      [checked]="keypointSelectionModel.isSelected(kp)"
+                      class="checkbox checkbox-xs"
+                      (change)="onKeypointCheckboxChange($event, kp)"
+                    />
+                  </li>
+                }
+              </ul>
+            </div>
+          </div>
 
-      <div class="panel m-4">
-        <input
-          type="checkbox"
-          id="app-accordion-viewer-keypoints"
-          class="app-accordion-toggle"
-        />
-        <label
-          for="app-accordion-viewer-keypoints"
-          class="app-accordion-title flex justify-between px-2 pb-1"
-        >
-          <!-- panel header -->
-          <h1>Keypoints</h1>
-          <span class="app-accordion-icon"></span>
-        </label>
-        <div
-          class="bg-base-100 text-sm max-h-60 overflow-y-auto app-accordion-content"
-        >
-          <ul class="p-1">
-            @for (kp of projectInfoService.allKeypoints(); track kp) {
-              <li class="p-1 flex justify-between items-center">
-                <span>{{ kp }}</span>
-                <input
-                  type="checkbox"
-                  [checked]="keypointSelectionModel.isSelected(kp)"
-                  class="checkbox checkbox-xs"
-                  (change)="onKeypointCheckboxChange($event, kp)"
-                />
-              </li>
-            }
-          </ul>
-        </div>
-      </div>
-
-      <div class="panel m-4">
-        <div>
-          <!-- panel header -->
-          <h1 class="px-2 mb-1">Models</h1>
-        </div>
-        <div class="panel-content max-h-60 overflow-y-visible">
-          <ul>
-            @let modelSelectors =
-              viewSettings.modelsShown().length < 2
-                ? viewSettings.modelsShown().concat([noneOption])
-                : viewSettings.modelsShown();
-            <!-- it's important to track index, not model.
+          <div class="panel m-4">
+            <div>
+              <!-- panel header -->
+              <h1 class="px-2 mb-1">Models</h1>
+            </div>
+            <div class="panel-content max-h-60 overflow-y-visible">
+              <ul>
+                @let modelSelectors =
+                  viewSettings.modelsShown().length < 2
+                    ? viewSettings.modelsShown().concat([noneOption])
+                    : viewSettings.modelsShown();
+                <!-- it's important to track index, not model.
              if we put model here, something weird happens when you clear all models and then set a model. -->
-            @for (model of modelSelectors; track $index) {
-              @let modelIndex = $index;
-              <li class="p-1 w-full">
-                <select
-                  class="select select-sm w-full flex-grow"
-                  [disabled]="viewSettings.modelOptions().length === 0"
-                  [class.border-red-300]="modelIndex === 0"
-                  [class.border-green-300]="modelIndex === 1"
-                  (change)="onModelDropdownItemClick(modelIndex, $event)"
-                >
-                  @let options =
-                    [noneOption].concat(viewSettings.modelOptions());
-                  @for (dropdownItem of options; track dropdownItem) {
-                    <option [selected]="dropdownItem === model">
-                      {{ dropdownItem }}
-                    </option>
-                  }
-                </select>
-              </li>
-            }
-          </ul>
+                @for (model of modelSelectors; track $index) {
+                  @let modelIndex = $index;
+                  <li class="p-1 w-full">
+                    <select
+                      class="select select-sm w-full flex-grow"
+                      [disabled]="viewSettings.modelOptions().length === 0"
+                      [class.border-red-300]="modelIndex === 0"
+                      [class.border-green-300]="modelIndex === 1"
+                      (change)="onModelDropdownItemClick(modelIndex, $event)"
+                    >
+                      @let options =
+                        [noneOption].concat(viewSettings.modelOptions());
+                      @for (dropdownItem of options; track dropdownItem) {
+                        <option [selected]="dropdownItem === model">
+                          {{ dropdownItem }}
+                        </option>
+                      }
+                    </select>
+                  </li>
+                }
+              </ul>
+            </div>
+          </div>
+          <div class="panel m-4">
+            <div>
+              <!-- panel header -->
+              <h1 class="px-2 mb-1">Extract frames</h1>
+            </div>
+            <div class="panel-content p-2!">
+              <button
+                class="btn btn-primary btn-soft btn-sm"
+                [disabled]="
+                  isExtractFramesInteractionDisabled() ||
+                  !extractFramesLabelFileKey()
+                "
+                (click)="handleExtractFramesClick()"
+              >
+                Add
+                @if (isExtractFramesLoading()) {
+                  <span class="loading loading-spinner loading-sm"></span>
+                }
+              </button>
+              current frame
+              <code>{{ videoPlayerState.currentFrameSignal() }}</code>
+              to labeling queue of
+              <app-label-file-picker
+                [disabled]="isExtractFramesInteractionDisabled()"
+                [(labelFileKey)]="extractFramesLabelFileKey"
+              ></app-label-file-picker>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="panel m-4">
-        <div>
-          <!-- panel header -->
-          <h1 class="px-2 mb-1">Extract frames</h1>
-        </div>
-        <div class="panel-content p-2!">
-          <button
-            class="btn btn-primary btn-soft btn-sm"
-            [disabled]="
-              isExtractFramesInteractionDisabled() ||
-              !extractFramesLabelFileKey()
-            "
-            (click)="handleExtractFramesClick()"
-          >
-            Add
-            @if (isExtractFramesLoading()) {
-              <span class="loading loading-spinner loading-sm"></span>
-            }
-          </button>
-          current frame
-          <code>{{ videoPlayerState.currentFrameSignal() }}</code>
-          to labeling queue of
-          <app-label-file-picker
-            [disabled]="isExtractFramesInteractionDisabled()"
-            [(labelFileKey)]="extractFramesLabelFileKey"
-          ></app-label-file-picker>
-        </div>
-      </div>
-    </div>
-  </div>
+    </as-split-area>
+  </as-split>
 }
 <dialog #partialViewsError class="modal">
   <div class="modal-box">
