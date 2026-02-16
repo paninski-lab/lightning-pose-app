@@ -48,7 +48,9 @@
 
         </td> -->
         <td class="pl-2">{{ m.model_relative_path | path }}</td>
-        <td class="opacity-0 group-hover:opacity-100 transition-opacity">
+        <td
+          class="opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"
+        >
           <div class="tooltip" data-tip="Delete">
             <button
               class="btn btn-circle btn-ghost btn-error btn-sm material-icons"
@@ -81,7 +83,6 @@
     }
   </tbody>
 </table>
-
 
 @if (isDeleteDialogOpen()) {
   <app-model-delete-dialog
