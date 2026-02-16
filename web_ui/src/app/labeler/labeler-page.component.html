@@ -6,149 +6,153 @@
 </style>
 
 @if (!isIniting()) {
-  <div class="grow flex flex-row items-stretch">
-    <!-- Left pane -->
-    <div
-      class="bg-base-200 w-60 xl:w-80 flex flex-col justify-between shadow-lg"
-    >
-      <div>
-        <div class="p-4">
-          <h1 class="mb-2">Label file</h1>
-          <div class="flex join">
-            <app-label-file-picker
-              class="grow"
-              [labelFileKey]="labelFileKey() ?? null"
-              (labelFileKeyChange)="handleSelectLabelFile($event)"
-              [selectSizeClass]="'select-sm join-item'"
-            ></app-label-file-picker>
-            @if (!this.labelFileKey()) {
-              <button
-                class="btn btn-sm btn-primary join-item"
-                (click)="extractFramesDialogOpen.set(true)"
-              >
-                +
-              </button>
-            }
-          </div>
-        </div>
-        @if (isLoading()) {
-          <div class="p-4">Loading CSV file...</div>
-        }
-        <div class="p-4">
-          <!-- labeled frames panel -->
-
-          <div class="flex justify-between bg-base-300 items-center">
-            <!--header row-->
-            <h1 class="">Labeled frames</h1>
-            <div class="text-xs">
-              {{ labelFileDataLabeledSlice().length }}
+  <as-split unit="pixel" direction="horizontal">
+    <as-split-area size="280">
+      <!-- Left pane -->
+      <div class="bg-base-200 h-full flex flex-col justify-between shadow-lg">
+        <div>
+          <div class="p-4">
+            <h1 class="mb-2">Label file</h1>
+            <div class="flex join">
+              <app-label-file-picker
+                class="grow"
+                [labelFileKey]="labelFileKey() ?? null"
+                (labelFileKeyChange)="handleSelectLabelFile($event)"
+                [selectSizeClass]="'select-sm join-item'"
+              ></app-label-file-picker>
+              @if (!this.labelFileKey()) {
+                <button
+                  class="btn btn-sm btn-primary join-item"
+                  (click)="extractFramesDialogOpen.set(true)"
+                >
+                  +
+                </button>
+              }
             </div>
           </div>
-          <div
-            class="panel-content inset-shadow-xs inset-shadow-black/30 overflow-auto h-60"
-          >
-            <!--panel content-->
-            <ul class="w-fit relative" tabindex="0" role="listbox">
-              @if (labelFileDataLabeledSlice() === null) {
-                <li class="p-1">No labeled frames</li>
-              } @else {
-                @for (frame of labelFileDataLabeledSlice(); track frame.key) {
-                  <li class="text-nowrap" routerLinkActive="bg-sky-700">
-                    <a
-                      class="p-1 block hover:bg-base-content/10 rounded-sm flex items-center justify-between text-xs"
-                      [routerLink]="['/project', projectKey, 'labeler']"
-                      [queryParams]="{
-                        labelFileKey: selectedLabelFile()?.key,
-                        frameKey: frame.key,
-                      }"
-                    >
-                      <span>{{ frame.key | path }}</span>
-                      <!-- left hand side -->
-                    </a>
-                  </li>
-                }
-              }
-            </ul>
-          </div>
-        </div>
-        <div class="p-4">
-          <!-- unlabeled frames panel -->
-          <div class="bg-base-300">
-            <!--header row-->
+          @if (isLoading()) {
+            <div class="p-4">Loading CSV file...</div>
+          }
+          <div class="p-4">
+            <!-- labeled frames panel -->
+
             <div class="flex justify-between bg-base-300 items-center">
               <!--header row-->
-              <h1 class="">Remaining frames to label</h1>
+              <h1 class="">Labeled frames</h1>
               <div class="text-xs">
-                {{ labelFileDataUnLabeledSlice().length }}
+                {{ labelFileDataLabeledSlice().length }}
               </div>
             </div>
-            <div class="text-sm">Please label one at a time</div>
+            <div
+              class="panel-content inset-shadow-xs inset-shadow-black/30 overflow-auto h-60"
+            >
+              <!--panel content-->
+              <ul class="w-fit relative" tabindex="0" role="listbox">
+                @if (labelFileDataLabeledSlice() === null) {
+                  <li class="p-1">No labeled frames</li>
+                } @else {
+                  @for (frame of labelFileDataLabeledSlice(); track frame.key) {
+                    <li class="text-nowrap" routerLinkActive="bg-sky-700">
+                      <a
+                        class="p-1 block hover:bg-base-content/10 rounded-sm flex items-center justify-between text-xs"
+                        [routerLink]="['/project', projectKey, 'labeler']"
+                        [queryParams]="{
+                          labelFileKey: selectedLabelFile()?.key,
+                          frameKey: frame.key,
+                        }"
+                      >
+                        <span>{{ frame.key | path }}</span>
+                        <!-- left hand side -->
+                      </a>
+                    </li>
+                  }
+                }
+              </ul>
+            </div>
           </div>
-          <div
-            class="panel-content
+          <div class="p-4">
+            <!-- unlabeled frames panel -->
+            <div class="bg-base-300">
+              <!--header row-->
+              <div class="flex justify-between bg-base-300 items-center">
+                <!--header row-->
+                <h1 class="">Remaining frames to label</h1>
+                <div class="text-xs">
+                  {{ labelFileDataUnLabeledSlice().length }}
+                </div>
+              </div>
+              <div class="text-sm">Please label one at a time</div>
+            </div>
+            <div
+              class="panel-content
               inset-shadow-xs inset-shadow-black/30
               overflow-auto
               h-60 flex flex-col justify-between
               transition-color duration-500 ease-in-out {{
-              xfSuccessNotifyClasses()
-            }}"
-          >
-            <!--panel content-->
-            <ul class="w-fit relative" tabindex="0" role="listbox">
-              @if (labelFileDataUnLabeledSlice() === null) {
-                <li class="p-1">No labeled frames</li>
-              } @else {
-                @for (frame of labelFileDataUnLabeledSlice(); track frame.key) {
-                  <li class="text-nowrap" routerLinkActive="bg-sky-700">
-                    <a
-                      class="p-1 block hover:bg-base-content/10 rounded-sm flex items-center justify-between text-xs"
-                      [routerLink]="['/project', projectKey, 'labeler']"
-                      [queryParams]="{
-                        labelFileKey: selectedLabelFile()?.key,
-                        frameKey: frame.key,
-                      }"
-                    >
-                      <span>{{ frame.key | path }}</span>
-                      <!-- left hand side -->
-                    </a>
-                  </li>
-                }
-              }
-            </ul>
-          </div>
-          @if (this.loadedLabelFile()) {
-            <button
-              class="btn btn-soft btn-primary btn-circle btn-sm my-2 w-full"
-              (click)="extractFramesDialogOpen.set(true)"
+                xfSuccessNotifyClasses()
+              }}"
             >
-              Add more frames from a session
-            </button>
-          }
+              <!--panel content-->
+              <ul class="w-fit relative" tabindex="0" role="listbox">
+                @if (labelFileDataUnLabeledSlice() === null) {
+                  <li class="p-1">No labeled frames</li>
+                } @else {
+                  @for (
+                    frame of labelFileDataUnLabeledSlice();
+                    track frame.key
+                  ) {
+                    <li class="text-nowrap" routerLinkActive="bg-sky-700">
+                      <a
+                        class="p-1 block hover:bg-base-content/10 rounded-sm flex items-center justify-between text-xs"
+                        [routerLink]="['/project', projectKey, 'labeler']"
+                        [queryParams]="{
+                          labelFileKey: selectedLabelFile()?.key,
+                          frameKey: frame.key,
+                        }"
+                      >
+                        <span>{{ frame.key | path }}</span>
+                        <!-- left hand side -->
+                      </a>
+                    </li>
+                  }
+                }
+              </ul>
+            </div>
+            @if (this.loadedLabelFile()) {
+              <button
+                class="btn btn-soft btn-primary btn-circle btn-sm my-2 w-full"
+                (click)="extractFramesDialogOpen.set(true)"
+              >
+                Add more frames from a session
+              </button>
+            }
+          </div>
         </div>
+        <app-loading-bar class="h-20 p-4"></app-loading-bar>
       </div>
-      <app-loading-bar class="h-20 p-4"></app-loading-bar>
-    </div>
-
-    @if (extractFramesDialogOpen()) {
-      <app-extract-frames-dialog
-        [initialStep]="labelFileKey() == null ? 'labelFile' : 'session'"
-        [initialLabelFileSelectionType]="
-          labelFileKey() == null ? 'createNew' : 'useExisting'
-        "
-        [initialSelectedLabelFileKey]="labelFileKey() ?? null"
-        (exit)="extractFramesDialogOpen.set(false)"
-        (done)="handleExtractFramesDone($event)"
-      ></app-extract-frames-dialog>
-    }
+    </as-split-area>
 
     <!-- Center content -->
-    <app-labeler-center-panel
-      class="grow z-30"
-      [labelFile]="loadedLabelFile()"
-      [frame]="selectedFrame()"
-      [numLabeledFrames]="getNumLabeledFrames()"
-      (saved)="handleSaved($event)"
-      (newLabelFile)="extractFramesDialogOpen.set(true)"
-    ></app-labeler-center-panel>
-  </div>
+    <as-split-area size="*">
+      <app-labeler-center-panel
+        class="grow z-30"
+        [labelFile]="loadedLabelFile()"
+        [frame]="selectedFrame()"
+        [numLabeledFrames]="getNumLabeledFrames()"
+        (saved)="handleSaved($event)"
+        (newLabelFile)="extractFramesDialogOpen.set(true)"
+      ></app-labeler-center-panel>
+    </as-split-area>
+  </as-split>
+  @if (extractFramesDialogOpen()) {
+    <app-extract-frames-dialog
+      [initialStep]="labelFileKey() == null ? 'labelFile' : 'session'"
+      [initialLabelFileSelectionType]="
+        labelFileKey() == null ? 'createNew' : 'useExisting'
+      "
+      [initialSelectedLabelFileKey]="labelFileKey() ?? null"
+      (exit)="extractFramesDialogOpen.set(false)"
+      (done)="handleExtractFramesDone($event)"
+    ></app-extract-frames-dialog>
+  }
 }

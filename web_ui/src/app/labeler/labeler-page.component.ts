@@ -22,6 +22,7 @@ import { ExtractFramesDialogComponent } from './extract-frames-dialog/extract-fr
 import { ToastService } from '../toast.service';
 import { LabelFilePickerComponent } from '../label-file-picker/label-file-picker.component';
 import _ from 'lodash';
+import { SplitAreaComponent, SplitComponent } from 'angular-split';
 
 interface LoadError {
   message: string;
@@ -37,6 +38,8 @@ interface LoadError {
     PathPipe,
     LabelFilePickerComponent,
     ExtractFramesDialogComponent,
+    SplitComponent,
+    SplitAreaComponent,
   ],
   templateUrl: './labeler-page.component.html',
   styleUrl: './labeler-page.component.css',
