@@ -25,6 +25,7 @@ import { RpcService } from '../../rpc.service';
 import { ExtractFramesRequest } from '../../extract-frames-request';
 import { ToastService } from '../../toast.service';
 import _ from 'lodash';
+import { SplitAreaComponent, SplitComponent } from 'angular-split';
 
 @Component({
   selector: 'app-viewer',
@@ -33,6 +34,8 @@ import _ from 'lodash';
     ViewerCenterPanelComponent,
     LoadingBarComponent,
     LabelFilePickerComponent,
+    SplitComponent,
+    SplitAreaComponent,
   ],
   templateUrl: './viewer-page.component.html',
   styleUrl: './viewer-page.component.css',
