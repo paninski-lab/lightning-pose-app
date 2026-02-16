@@ -67,6 +67,3 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 body {
   --as-gutter-background-color: var(--color-base-200) !important;
 }
-.as-split-gutter-icon {
-  background-image: none !important;
-}

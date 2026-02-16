@@ -10,6 +10,7 @@ import { ModelsListComponent } from '../models-list/models-list.component';
 import { ModelListResponseEntry } from '../modelconf';
 import { ModelDetailComponent } from './model-detail/model-detail.component';
 import { ModelInferenceDialogComponent } from '../model-inference-dialog/model-inference-dialog.component';
+import { SplitAreaComponent, SplitComponent } from 'angular-split';
 
 @Component({
   selector: 'app-models-page',
@@ -18,6 +19,8 @@ import { ModelInferenceDialogComponent } from '../model-inference-dialog/model-i
     ModelsListComponent,
     ModelDetailComponent,
     ModelInferenceDialogComponent,
+    SplitComponent,
+    SplitAreaComponent,
   ],
   templateUrl: './models-page.component.html',
   styleUrl: './models-page.component.css',
