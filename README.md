@@ -17,7 +17,21 @@ Our full documentation, including installation guides, API references, and advan
 
 ## 📝 Release Notes
 
+### [2.0.5.4] — 2026-02-17
+
+**Added:**
+
+* Ability to resize left pane in Viewer, Labeler
+* Selected model in the URL within the models module
+
+**Bugs Fixed:**
+
+* Labeled frames duplicated in unlabeled frames queue (https://github.com/paninski-lab/lightning-pose-app/issues/51)
+
 ### [2.0.5.3] — 2026-02-10
+
+Update (2026-02-17): This version introduced a bug https://github.com/paninski-lab/lightning-pose-app/issues/51 that was
+resolved in the next version, 2.0.5.4
 
 **Added:**
 
