@@ -30,8 +30,8 @@ Our full documentation, including installation guides, API references, and advan
 
 ### [2.0.5.3] — 2026-02-10
 
-**Update (2026-02-17): This version introduced a bug https://github.com/paninski-lab/lightning-pose-app/issues/51 that was
-resolved in the next version, 2.0.5.4**
+Update (2026-02-17): This version introduced a bug https://github.com/paninski-lab/lightning-pose-app/issues/51 that was
+resolved in the next version, 2.0.5.4
 
 **Added:**
 
