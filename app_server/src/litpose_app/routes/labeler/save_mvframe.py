@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 import time
@@ -178,20 +179,28 @@ async def remove_from_unlabeled_sidecar_files(
     timestamp = time.time_ns()
 
     def remove_task(vr: SaveFrameViewRequest):
-        unlabeled_sidecar_file = vr.csvPath.with_suffix(".unlabeled")
+        unlabeled_sidecar_file = vr.csvPath.with_suffix(".unlabeled.jsonl")
         if not unlabeled_sidecar_file.exists():
             return
-        lines = unlabeled_sidecar_file.read_text().splitlines()
+        lines = [
+            json.loads(line) for line in unlabeled_sidecar_file.read_text().splitlines()
+        ]
+        filtered_lines = [
+            line for line in lines if line.get("frame_path") != vr.indexToChange
+        ]
+
         needs_save = False
-        while vr.indexToChange in lines:
+        if len(filtered_lines) != len(lines):
             needs_save = True
-            lines.remove(vr.indexToChange)
+            lines = filtered_lines
 
         if needs_save:
             temp_file_name = f"{unlabeled_sidecar_file.name}.{timestamp}.tmp"
             temp_file_path = unlabeled_sidecar_file.parent / temp_file_name
 
-            temp_file_path.write_text("\n".join(lines) + "\n")
+            temp_file_path.write_text(
+                "\n".join(json.dumps(line) for line in lines) + "\n"
+            )
             return temp_file_path
         else:
             return None
@@ -204,4 +213,4 @@ async def remove_from_unlabeled_sidecar_files(
 
     for vr, temp_file_path in zip(request.views, results):
         if temp_file_path is not None:
-            os.replace(temp_file_path, vr.csvPath.with_suffix(".unlabeled"))
+            os.replace(temp_file_path, vr.csvPath.with_suffix(".unlabeled.jsonl"))
