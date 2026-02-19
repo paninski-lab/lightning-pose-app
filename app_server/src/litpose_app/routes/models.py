@@ -139,13 +139,25 @@ def list_models(
     if project.paths.model_dir is None:
         return ListModelsResponse(models=models)
 
+    data_dir = Path(project.paths.data_dir)
     model_dir = Path(project.paths.model_dir)
-    models = read_models_l1_from_base(model_dir, model_dir)
-    for m in models:
-        if m.config is None:
-            models.extend(
-                read_models_l1_from_base(model_dir, model_dir / m.model_relative_path)
-            )
+
+    # Search model_dir (e.g. outputs/) and multirun/ for trained models.
+    # Both use data_dir as the base for relative paths so that
+    # delete/rename can resolve them back to full paths.
+    search_dirs = [model_dir]
+    multirun_dir = data_dir / "multirun"
+    if multirun_dir.is_dir():
+        search_dirs.append(multirun_dir)
+
+    for search_dir in search_dirs:
+        found = read_models_l1_from_base(data_dir, search_dir)
+        for m in found:
+            if m.config is None:
+                found.extend(
+                    read_models_l1_from_base(data_dir, data_dir / m.model_relative_path)
+                )
+        models.extend(found)
 
     models = [m for m in models if m.config is not None]
 
@@ -153,7 +165,7 @@ def list_models(
 
 
 def read_models_l1_from_base(
-    model_dir: Path, iter_base: Path
+    relative_base: Path, iter_base: Path
 ) -> list[ModelListResponseEntry]:
     if not iter_base.exists():
         return []
@@ -184,7 +196,7 @@ def read_models_l1_from_base(
 
         return ModelListResponseEntry(
             model_name=child_path.name,
-            model_relative_path=str(child_path.relative_to(model_dir)),
+            model_relative_path=str(child_path.relative_to(relative_base)),
             config=config,
             created_at=created_at,
             status=status,
@@ -202,13 +214,8 @@ def delete_model(
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> None:
     project: Project = project_info_getter(request.projectKey)
-    model_dir = project.paths.model_dir / request.modelRelativePath
-
-    assert os.path.normpath(model_dir).startswith(
-        os.path.normpath(project.paths.model_dir)
-    )
-
-    shutil.rmtree(model_dir)
+    resolved = _resolve_model_path(project, request.modelRelativePath)
+    shutil.rmtree(resolved)
 
 
 @router.post("/app/v0/rpc/renameModel")
@@ -217,9 +224,17 @@ def rename_model(
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> None:
     project: Project = project_info_getter(request.projectKey)
-    model_dir = project.paths.model_dir / request.modelRelativePath
+    resolved = _resolve_model_path(project, request.modelRelativePath)
+    shutil.move(resolved, resolved.parent / request.newModelName)
 
-    assert os.path.normpath(model_dir).startswith(
-        os.path.normpath(project.paths.model_dir)
-    )
-    shutil.move(model_dir, project.paths.model_dir / request.newModelName)
+
+def _resolve_model_path(project: Project, model_relative_path: str) -> Path:
+    """Resolve a model relative path to a full path, checking it stays within data_dir."""
+    data_dir = project.paths.data_dir
+    resolved = (data_dir / model_relative_path).resolve()
+    if not os.path.normpath(resolved).startswith(os.path.normpath(data_dir)):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid model path.",
+        )
+    return resolved

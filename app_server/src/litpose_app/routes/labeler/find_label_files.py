@@ -53,7 +53,7 @@ def find_label_files(
             RGlobRequest(
                 projectKey=request.projectKey,
                 baseDir=project.paths.data_dir,
-                pattern="**/*.csv",
+                pattern="*.csv",
                 noDirs=True,
                 stat=False,
             ),
