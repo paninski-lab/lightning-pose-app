@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import re
 import shutil
 from datetime import datetime
 from typing import Literal
@@ -191,8 +192,8 @@ def read_models_l1_from_base(
             except Exception:
                 logger.exception("Failed to read train_status.json for %s", child_path)
 
-        stat = child_path.stat()
-        created_at = datetime.fromtimestamp(stat.st_ctime).isoformat()
+        # Parse date from path (YYYY-MM-DD component) instead of filesystem ctime
+        created_at = _parse_date_from_path(child_path)
 
         return ModelListResponseEntry(
             model_name=child_path.name,
@@ -226,6 +227,17 @@ def rename_model(
     project: Project = project_info_getter(request.projectKey)
     resolved = _resolve_model_path(project, request.modelRelativePath)
     shutil.move(resolved, resolved.parent / request.newModelName)
+
+
+_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def _parse_date_from_path(path: Path) -> str:
+    """Extract YYYY-MM-DD date from path components, fall back to filesystem ctime."""
+    for part in path.parts:
+        if _DATE_RE.fullmatch(part):
+            return datetime.strptime(part, "%Y-%m-%d").isoformat()
+    return datetime.fromtimestamp(path.stat().st_ctime).isoformat()
 
 
 def _resolve_model_path(project: Project, model_relative_path: str) -> Path:
