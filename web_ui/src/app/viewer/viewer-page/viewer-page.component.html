@@ -33,7 +33,9 @@
         <app-viewer-center-panel
           class="grow z-30"
           [sessionKey]="_sessionKey()"
+          [tileSizePx]="videoTileSizePx()"
         ></app-viewer-center-panel>
+
         <!-- Right pane -->
         <div class="flex-none w-60 h-full">
           <div class="panel m-4">
@@ -138,6 +140,53 @@
               </ul>
             </div>
           </div>
+
+          <div class="panel m-4">
+            <input
+              type="checkbox"
+              id="app-accordion-viewer-view-options"
+              class="app-accordion-toggle"
+              checked
+            />
+            <label
+              for="app-accordion-viewer-view-options"
+              class="app-accordion-title flex justify-between px-2 pb-1"
+            >
+              <h1>View options</h1>
+              <span class="app-accordion-icon"></span>
+            </label>
+            <div
+              class="bg-base-100 text-sm overflow-y-auto app-accordion-content"
+            >
+              <div class="panel-content p-2!">
+                <div class="flex items-center gap-2">
+                  <span class="material-icons text-sm!">aspect_ratio</span>
+                  Video tile size
+                </div>
+                <div class="pl-2 flex items-center">
+                  <input
+                    type="range"
+                    min="200"
+                    max="900"
+                    step="10"
+                    [(ngModel)]="videoTileSizePx"
+                    class="range range-xs"
+                  />
+                  <button
+                    class="btn btn-ghost btn-xs tooltip"
+                    data-tip="Reset"
+                    (click)="videoTileSizePx.set(250)"
+                  >
+                    <span class="material-icons text-sm!">restart_alt</span>
+                  </button>
+                </div>
+                <div class="pl-2 opacity-60 text-xs">
+                  {{ videoTileSizePx() }}px
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="panel m-4">
             <div>
               <!-- panel header -->

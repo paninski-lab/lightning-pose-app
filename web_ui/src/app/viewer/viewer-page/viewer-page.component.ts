@@ -26,6 +26,7 @@ import { ExtractFramesRequest } from '../../extract-frames-request';
 import { ToastService } from '../../toast.service';
 import _ from 'lodash';
 import { SplitAreaComponent, SplitComponent } from 'angular-split';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-viewer',
@@ -36,6 +37,7 @@ import { SplitAreaComponent, SplitComponent } from 'angular-split';
     LabelFilePickerComponent,
     SplitComponent,
     SplitAreaComponent,
+    FormsModule,
   ],
   templateUrl: './viewer-page.component.html',
   styleUrl: './viewer-page.component.css',
@@ -55,6 +57,9 @@ export class ViewerPageComponent implements OnInit {
   protected videoPlayerState = inject(VideoPlayerState);
   private rpc = inject(RpcService);
   private toastService = inject(ToastService);
+
+  // Video tile sizing (viewer center panel)
+  protected videoTileSizePx = signal<number>(250);
 
   /**
    * Set by the router when there is a session key in the path.

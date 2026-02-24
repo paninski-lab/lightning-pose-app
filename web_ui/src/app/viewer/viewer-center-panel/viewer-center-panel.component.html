@@ -22,7 +22,11 @@
                 >close</span
               >
             </div>
-            <app-zoomable-content class="!h-[250px] !w-[250px]">
+
+            <app-zoomable-content
+              [style.height.px]="tileSizePx()"
+              [style.width.px]="tileSizePx()"
+            >
               <app-video-tile #content [src]="w.videoSrc" class="relative">
                 <app-keypoint-container
                   class="absolute top-0 left-0 h-full w-full"
