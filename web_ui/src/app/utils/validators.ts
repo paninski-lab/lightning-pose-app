@@ -30,9 +30,11 @@ export function mustBeInOptionsList<T>(
     return found ? null : { notInOptions: true };
   };
 }
-export function atLeastOneTrueValidator(): ValidatorFn {
+export function atLeastOneTrueValidator(
+  shouldApply?: () => boolean,
+): ValidatorFn {
   return (control: AbstractControl): ValidationErrors | null => {
-    if (control instanceof FormArray) {
+    if (control instanceof FormArray && shouldApply?.()) {
       const formArray = control as FormArray;
       const isAtLeastOneTrue = formArray.controls.some((c) => c.value === true);
       return isAtLeastOneTrue ? null : { atLeastOneTrue: true };
