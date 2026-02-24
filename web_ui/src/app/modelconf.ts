@@ -254,7 +254,6 @@ export interface ModelListResponseEntry {
   model_name: string;
   model_relative_path: string;
   config?: ModelConfig;
-  created_at: string; // of the model dir. ISO format
   status?: TrainStatus;
 }
 
@@ -278,8 +277,8 @@ export class mc_util {
         : ModelType.SUP;
     }
   }
-  get createdAt(): string {
-    return this.m.created_at;
+  get createdAt(): string | undefined {
+    return (this.c as any)?.creation_datetime;
   }
   get status(): string {
     return this.m.status?.status ?? '';

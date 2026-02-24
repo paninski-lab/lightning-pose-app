@@ -1,9 +1,7 @@
 import asyncio
 import json
 import logging
-import re
 import shutil
-from datetime import datetime
 from typing import Literal
 from pathlib import Path
 import os
@@ -61,7 +59,6 @@ class ModelListResponseEntry(BaseModel):
     model_name: str
     model_relative_path: str
     config: dict | None
-    created_at: str  # ISO format
     status: TrainStatus | None = None
 
 
@@ -140,25 +137,13 @@ def list_models(
     if project.paths.model_dir is None:
         return ListModelsResponse(models=models)
 
-    data_dir = Path(project.paths.data_dir)
     model_dir = Path(project.paths.model_dir)
-
-    # Search model_dir (e.g. outputs/) and multirun/ for trained models.
-    # Both use data_dir as the base for relative paths so that
-    # delete/rename can resolve them back to full paths.
-    search_dirs = [model_dir]
-    multirun_dir = data_dir / "multirun"
-    if multirun_dir.is_dir():
-        search_dirs.append(multirun_dir)
-
-    for search_dir in search_dirs:
-        found = read_models_l1_from_base(data_dir, search_dir)
-        for m in found:
-            if m.config is None:
-                found.extend(
-                    read_models_l1_from_base(data_dir, data_dir / m.model_relative_path)
-                )
-        models.extend(found)
+    models = read_models_l1_from_base(model_dir, model_dir)
+    for m in models:
+        if m.config is None:
+            models.extend(
+                read_models_l1_from_base(model_dir, model_dir / m.model_relative_path)
+            )
 
     models = [m for m in models if m.config is not None]
 
@@ -192,14 +177,10 @@ def read_models_l1_from_base(
             except Exception:
                 logger.exception("Failed to read train_status.json for %s", child_path)
 
-        # Parse date from path (YYYY-MM-DD component) instead of filesystem ctime
-        created_at = _parse_date_from_path(child_path)
-
         return ModelListResponseEntry(
             model_name=child_path.name,
             model_relative_path=str(child_path.relative_to(relative_base)),
             config=config,
-            created_at=created_at,
             status=status,
         )
 
@@ -229,22 +210,11 @@ def rename_model(
     shutil.move(resolved, resolved.parent / request.newModelName)
 
 
-_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
-
-
-def _parse_date_from_path(path: Path) -> str:
-    """Extract YYYY-MM-DD date from path components, fall back to filesystem ctime."""
-    for part in path.parts:
-        if _DATE_RE.fullmatch(part):
-            return datetime.strptime(part, "%Y-%m-%d").isoformat()
-    return datetime.fromtimestamp(path.stat().st_ctime).isoformat()
-
-
 def _resolve_model_path(project: Project, model_relative_path: str) -> Path:
-    """Resolve a model relative path to a full path, checking it stays within data_dir."""
-    data_dir = project.paths.data_dir
-    resolved = (data_dir / model_relative_path).resolve()
-    if not os.path.normpath(resolved).startswith(os.path.normpath(data_dir)):
+    """Resolve a model relative path to a full path, checking it stays within model_dir."""
+    model_dir = project.paths.model_dir
+    resolved = (model_dir / model_relative_path).resolve()
+    if not os.path.normpath(resolved).startswith(os.path.normpath(model_dir)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid model path.",

@@ -6,21 +6,23 @@ import json
 import os
 from pathlib import Path
 
+from litpose_app.datatypes import ProjectPaths
+
 MIGRATION_ID = "001_unlabeled_to_jsonl"
 DESCRIPTION = "Convert *.unlabeled sidecar files to *.unlabeled.jsonl"
 
 
-def needs_migration(data_dir: Path) -> bool:
+def needs_migration(paths: ProjectPaths) -> bool:
     # Needed if any legacy .unlabeled exists.
-    return any(p.is_file() for p in data_dir.rglob("*.unlabeled"))
+    return any(p.is_file() for p in paths.data_dir.rglob("*.unlabeled"))
 
 
-def migrate(data_dir: Path) -> None:
+def migrate(paths: ProjectPaths) -> None:
     """
     Legacy format: each line is a frame path string.
     New format: jsonl lines: {"frame_path": "...", "predictions": null}
     """
-    for legacy_path in data_dir.rglob("*.unlabeled"):
+    for legacy_path in paths.data_dir.rglob("*.unlabeled"):
         if not legacy_path.is_file():
             continue
 
@@ -39,5 +41,5 @@ def migrate(data_dir: Path) -> None:
         )
 
     # Remove legacy files
-    for legacy_path in data_dir.rglob("*.unlabeled"):
+    for legacy_path in paths.data_dir.rglob("*.unlabeled"):
         os.remove(legacy_path)
