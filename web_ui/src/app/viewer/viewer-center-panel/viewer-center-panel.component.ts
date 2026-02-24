@@ -45,6 +45,10 @@ import _ from 'lodash';
 })
 export class ViewerCenterPanelComponent implements OnChanges {
   sessionKey = input<string | null>(null);
+
+  // Size (px) of each video tile in the grid
+  tileSizePx = input<number>(250);
+
   _loadedSessionKey = signal<string | null>(null);
   private csvParser = inject(CsvParserService);
   private projectInfoService = inject(ProjectInfoService);
