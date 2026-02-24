@@ -103,7 +103,11 @@ class CreateModelDialogComponent {
       ],
       losses: this.fb.array(
         this.checkboxOptions.map(() => true),
-        atLeastOneTrueValidator(),
+        atLeastOneTrueValidator(() =>
+          isUnsupervised(
+            this.generalForm?.controls['modelType']?.value as ModelType,
+          ),
+        ),
       ),
     }),
     data: this.fb.group({
@@ -178,6 +182,13 @@ class CreateModelDialogComponent {
     { initialValue: this.generalForm.controls['useTrueMultiviewModel'].value },
   );
 
+  private useModelTypeAsSignal = toSignal(
+    this.generalForm.controls['modelType'].valueChanges.pipe(
+      takeUntilDestroyed(),
+    ),
+    { initialValue: this.generalForm.controls['modelType'].value },
+  );
+
   // expose to the template
   protected modelTypeOptions = computed((): ModelType[] => {
     return this.useTrueMultiviewModelAsSignal()
@@ -195,6 +206,12 @@ class CreateModelDialogComponent {
       // On change, update the form controls validity.
       this.generalForm.controls['backbone'].updateValueAndValidity();
       this.generalForm.controls['modelType'].updateValueAndValidity();
+    });
+    effect(() => {
+      // Read the signal to track the dependency.
+      this.useModelTypeAsSignal();
+      // On change, update the form controls validity.
+      this.generalForm.controls['losses'].updateValueAndValidity();
     });
   }
 
