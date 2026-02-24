@@ -46,6 +46,7 @@ def add_to_unlabeled_sidecar_files(views: list[AddToUnlabeledFileView]):
             entries = [
                 LabelingQueueEntry(**json.loads(line))
                 for line in unlabeled_sidecar_file.read_text().splitlines()
+                if line.strip()
             ]
 
         existing_frame_paths = [e.frame_path for e in entries]
