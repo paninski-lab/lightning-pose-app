@@ -8,12 +8,18 @@
     } @else {
       <div
         class="flex flex-wrap gap-4 justify-start items-start content-start p-4"
+        [class.h-full]="widgetModels().length === 1"
       >
         <!-- `track videosrc` makes the widget component get
      destroyed and recreated if videoSrc changes. Reactively
      changing videoSrc of an existing video does not work unfortunately. -->
         @for (w of widgetModels(); track w.videoSrc) {
-          <div class="panel !border-none">
+          <div class="panel !border-none"
+            [class.flex-1]="widgetModels().length === 1"
+            [class.h-full]="widgetModels().length === 1"
+            [class.flex]="widgetModels().length === 1"
+            [class.flex-col]="widgetModels().length === 1"
+          >
             <div class="px-2 py-1 text-sm flex justify-between">
               <h3>{{ w.id }}</h3>
               <span
@@ -22,7 +28,9 @@
                 >close</span
               >
             </div>
-            <app-zoomable-content class="!h-[250px] !w-[250px]">
+            <app-zoomable-content
+              [ngClass]="widgetModels().length === 1 ? 'flex-1 w-full' : '!h-[250px] !w-[250px]'"
+            >
               <app-video-tile #content [src]="w.videoSrc" class="relative">
                 <app-keypoint-container
                   class="absolute top-0 left-0 h-full w-full"

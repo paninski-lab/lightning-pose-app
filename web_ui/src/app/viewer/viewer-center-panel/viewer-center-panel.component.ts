@@ -26,6 +26,7 @@ import { FineVideoService } from '../../utils/fine-video.service';
 import * as dfd from 'danfojs';
 import { PredictionFile } from '../../prediction-file';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NgClass } from '@angular/common';
 import { ZoomableContentComponent } from '../../components/zoomable-content.component';
 import { firstValueFrom, skipWhile } from 'rxjs';
 import { ExtractedFramePredictionList } from '../../extract-frames-request';
@@ -34,6 +35,7 @@ import _ from 'lodash';
 @Component({
   selector: 'app-viewer-center-panel',
   imports: [
+    NgClass,
     VideoPlayerControlsComponent,
     VideoTileComponent,
     KeypointContainerComponent,
