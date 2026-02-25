@@ -27,10 +27,7 @@ import {
       (pointerup)="onPointerUp($event)"
       (pointercancel)="onPointerUp($event)"
     >
-      <div
-        class="absolute transform-gpu transition-transform duration-0 origin-top-left"
-        [style.transform]="getTransform()"
-      >
+      <div class="absolute origin-top-left" [style.transform]="getTransform()">
         <ng-content></ng-content>
       </div>
     </div>
@@ -134,7 +131,7 @@ export class ZoomableContentComponent
   }
 
   getTransform(): string {
-    return `translate(${this.translateX}px, ${this.translateY}px) scale(${this.scale})`;
+    return `translate3d(${this.translateX}px, ${this.translateY}px, 0px) scale(${this.scale})`;
   }
 
   /**

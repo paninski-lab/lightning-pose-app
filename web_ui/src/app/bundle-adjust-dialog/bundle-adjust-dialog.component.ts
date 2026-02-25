@@ -51,7 +51,7 @@ export class BundleAdjustDialogComponent {
   protected readonly mvf = mvf;
   labelFile = input.required<MVLabelFile | null>();
   frame = input.required<MVFrame | null>();
-  numLabeledFrames = input.required<number>();
+  numLabeledFramesGetter = input.required<() => number>();
 
   private runSubscription?: Subscription;
   private saveSubscription?: Subscription;

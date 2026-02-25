@@ -52,7 +52,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
 
   labelFile = input<MVLabelFile | null>(null);
   frame = input<MVFrame | null>(null);
-  numLabeledFrames = input.required<number>();
+  numLabeledFramesGetter = input.required<() => number>();
 
   primaryZoomableElement =
     viewChild<ZoomableContentComponent>('primaryZoomable');
