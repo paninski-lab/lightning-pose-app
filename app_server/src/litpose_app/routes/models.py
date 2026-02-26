@@ -151,7 +151,7 @@ def list_models(
 
 
 def read_models_l1_from_base(
-    relative_base: Path, iter_base: Path
+    model_dir: Path, iter_base: Path
 ) -> list[ModelListResponseEntry]:
     if not iter_base.exists():
         return []
@@ -179,7 +179,7 @@ def read_models_l1_from_base(
 
         return ModelListResponseEntry(
             model_name=child_path.name,
-            model_relative_path=str(child_path.relative_to(relative_base)),
+            model_relative_path=str(child_path.relative_to(model_dir)),
             config=config,
             status=status,
         )
@@ -196,8 +196,13 @@ def delete_model(
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> None:
     project: Project = project_info_getter(request.projectKey)
-    resolved = _resolve_model_path(project, request.modelRelativePath)
-    shutil.rmtree(resolved)
+    model_dir = project.paths.model_dir / request.modelRelativePath
+
+    assert os.path.normpath(model_dir).startswith(
+        os.path.normpath(project.paths.model_dir)
+    )
+
+    shutil.rmtree(model_dir)
 
 
 @router.post("/app/v0/rpc/renameModel")
@@ -206,17 +211,9 @@ def rename_model(
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> None:
     project: Project = project_info_getter(request.projectKey)
-    resolved = _resolve_model_path(project, request.modelRelativePath)
-    shutil.move(resolved, resolved.parent / request.newModelName)
+    model_dir = project.paths.model_dir / request.modelRelativePath
 
-
-def _resolve_model_path(project: Project, model_relative_path: str) -> Path:
-    """Resolve a model relative path to a full path, checking it stays within model_dir."""
-    model_dir = project.paths.model_dir
-    resolved = (model_dir / model_relative_path).resolve()
-    if not os.path.normpath(resolved).startswith(os.path.normpath(model_dir)):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid model path.",
-        )
-    return resolved
+    assert os.path.normpath(model_dir).startswith(
+        os.path.normpath(project.paths.model_dir)
+    )
+    shutil.move(model_dir, project.paths.model_dir / request.newModelName)

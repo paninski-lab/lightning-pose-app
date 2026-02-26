@@ -366,27 +366,6 @@ export class SessionService {
     );
   }
 
-  /**
-   * Fetch a companion metric CSV for a prediction file.
-   * Derives the URL by replacing '.csv' with `_${suffix}.csv`.
-   * Returns null if the file does not exist (404).
-   */
-  async getMetricFile(pfile: PredictionFile, suffix: string): Promise<string | null> {
-    const modelDir = this.projectInfoService.projectInfo?.model_dir as string;
-    const metricPath = pfile.path.replace(/\.csv$/, `_${suffix}.csv`);
-    const src = '/app/v0/files/' + modelDir + '/' + metricPath;
-    return await firstValueFrom(
-      this.httpClient.get(src, { responseType: 'text' }).pipe(
-        catchError((error) => {
-          if (error.status === 404) {
-            return [null];
-          }
-          throw error;
-        }),
-      ),
-    );
-  }
-
   async ffprobe(file: string): Promise<FFProbeInfo> {
     const response = (await this.rpc.call('ffprobe', {
       projectKey: this.getProjectKeyOrThrow(),
