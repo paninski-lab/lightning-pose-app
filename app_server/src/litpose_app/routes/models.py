@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 import shutil
-from datetime import datetime
 from typing import Literal
 from pathlib import Path
 import os
@@ -60,7 +59,6 @@ class ModelListResponseEntry(BaseModel):
     model_name: str
     model_relative_path: str
     config: dict | None
-    created_at: str  # ISO format
     status: TrainStatus | None = None
 
 
@@ -179,14 +177,10 @@ def read_models_l1_from_base(
             except Exception:
                 logger.exception("Failed to read train_status.json for %s", child_path)
 
-        stat = child_path.stat()
-        created_at = datetime.fromtimestamp(stat.st_ctime).isoformat()
-
         return ModelListResponseEntry(
             model_name=child_path.name,
             model_relative_path=str(child_path.relative_to(model_dir)),
             config=config,
-            created_at=created_at,
             status=status,
         )
 

@@ -174,7 +174,7 @@ export class SessionService {
     const response = (await this.rpc.call('rglob', {
       projectKey: this.getProjectKeyOrThrow(),
       baseDir: projectInfo.data_dir,
-      pattern: '**/*.mp4',
+      pattern: 'videos*/**/*.mp4',
       noDirs: true,
     })) as RGlobResponse;
 
