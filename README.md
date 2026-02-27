@@ -17,12 +17,18 @@ Our full documentation, including installation guides, API references, and advan
 
 ## 📝 Release Notes
 
+### [2.0.7.0] — 2026-02-26
+
+* Added slider for video tile size in viewer
+* Improved speed of loading label files and sessions lists by @hummuscience in https://github.com/paninski-lab/lightning-pose-app/pull/55
+* Improved robustness of model creation date by @hummuscience in https://github.com/paninski-lab/lightning-pose-app/pull/55
+* Fixed bug with saving empty labeling queue in https://github.com/paninski-lab/lightning-pose-app/pull/58
+
 ### [2.0.5.4] — 2026-02-17
 
 **Added:**
 
 * Ability to resize left pane in Viewer, Labeler
-* Selected model in the URL within the models module
 
 **Bugs Fixed:**
 
