@@ -25,40 +25,18 @@
         <h3 class="bg-base-200 px-2 text-md">
           {{ fv.viewName }}
         </h3>
-        <app-zoomable-content
+        <app-image-label-widget
           #primaryZoomable
-          class="h-full w-full"
-          [maxScale]="100"
-        >
-          <div #content class="relative">
-            @for (imSrc of temporalImgPaths(fv.imgPath); track $index) {
-              <!-- img has max-w-none to override a bad default value of 100% -->
-              <img
-                [src]="imSrc"
-                class="max-w-none"
-                [style.filter]="imgCssFilterString()"
-                [alt]="imSrc"
-                [class.hidden]="
-                  $index !==
-                  (!isShowingTemporalContext() ? 2 : temporalContextIndex())
-                "
-              />
-            }
-            @if (!isShowingTemporalContext()) {
-              <app-keypoint-container
-                [enableEditing]="!disableInteractions()"
-                [keypointModels]="getCachedKeypointViewModels(fv.keypoints)"
-                [(selectedKeypoint)]="selectedKeypoint"
-                [useCrossHairs]="true"
-                [editMode]="labelerDefaultsToEditMode"
-                (keypointUpdated)="
-                  handleKeypointUpdated($event.kp, $event.position, fv)
-                "
-                class="absolute top-0 left-0 h-full w-full"
-              ></app-keypoint-container>
-            }
-          </div>
-        </app-zoomable-content>
+          [fv]="fv"
+          [(selectedKeypoint)]="selectedKeypoint"
+          [isShowingTemporalContext]="isShowingTemporalContext()"
+          [temporalContextIndex]="temporalContextIndex()"
+          [imgCssFilterString]="imgCssFilterString()"
+          [disableInteractions]="disableInteractions()"
+          (keypointUpdated)="
+            handleKeypointUpdated($event.kp, $event.position, fv)
+          "
+        ></app-image-label-widget>
       </div>
     }
 
@@ -81,23 +59,12 @@
             <h3 class="bg-base-200 px-1 text-sm">
               {{ fv.viewName }}
             </h3>
-
-            <app-zoomable-content
-              class="!h-[112px] !w-[112px]"
-              [interactivityDisabled]="true"
-            >
-              <img
-                #content
-                [src]="imgPath(fv.imgPath)"
-                class="max-w-none"
-                height="320"
-                width="320"
-                alt="fv.imgPath"
-              />
-              <app-keypoint-container
-                [keypointModels]="getCachedKeypointViewModels(fv.keypoints)"
-              ></app-keypoint-container>
-            </app-zoomable-content>
+            <app-image-label-widget
+              class="!h-[120px] !w-[120px] block"
+              [fv]="fv"
+              [disableInteractions]="true"
+              [zoomableInteractivityDisabled]="true"
+            ></app-image-label-widget>
           </div>
         }
       }
