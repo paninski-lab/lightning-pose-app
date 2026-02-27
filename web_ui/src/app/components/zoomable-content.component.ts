@@ -2,7 +2,6 @@ import {
   AfterContentInit,
   AfterViewInit,
   ChangeDetectionStrategy,
-  ChangeDetectorRef,
   Component,
   contentChild,
   ElementRef,
@@ -14,6 +13,7 @@ import {
   Renderer2,
   ViewChild,
 } from '@angular/core';
+import { ViewportContextService } from './viewport-context.service';
 
 @Component({
   selector: 'app-zoomable-content',
@@ -54,7 +54,7 @@ import {
 export class ZoomableContentComponent
   implements AfterViewInit, OnDestroy, AfterContentInit
 {
-  private cdr = inject(ChangeDetectorRef);
+  private viewportCtx = inject(ViewportContextService);
   @Input() maxScale = 6; // Maximum zoom level
   @Input() zoomSpeed = 0.0015; // How fast to zoom per scroll tick
 
@@ -67,10 +67,6 @@ export class ZoomableContentComponent
   // Internal state for content dimensions
   contentWidth = 0;
   contentHeight = 0;
-
-  scale = 1;
-  translateX = 0;
-  translateY = 0;
 
   private isDragging = false;
   private startX = 0;
@@ -131,7 +127,7 @@ export class ZoomableContentComponent
   }
 
   getTransform(): string {
-    return `translate3d(${this.translateX}px, ${this.translateY}px, 0px) scale(${this.scale})`;
+    return this.viewportCtx.transform();
   }
 
   /**
@@ -188,15 +184,14 @@ export class ZoomableContentComponent
       return;
     }
 
-    this.scale = this.calculateMinScale();
+    const min = this.calculateMinScale();
+    this.viewportCtx.setScale(Math.min(this.maxScale, min));
 
     // Center the content horizontally. Align to top vertically.
-    this.translateX = (this.viewportWidth - this.contentWidth * this.scale) / 2;
-    this.translateY = 0;
-
-    // Ensure scale is not over max bound
-    this.scale = Math.min(this.maxScale, this.scale);
-    this.cdr.markForCheck();
+    const scale = this.viewportCtx.scale();
+    const tx = (this.viewportWidth - this.contentWidth * scale) / 2;
+    const ty = 0;
+    this.viewportCtx.setTranslate(tx, ty);
   }
 
   /**
@@ -214,8 +209,8 @@ export class ZoomableContentComponent
       event.preventDefault();
     }
     this.isDragging = true;
-    this.startX = event.clientX - this.translateX;
-    this.startY = event.clientY - this.translateY;
+    this.startX = event.clientX - this.viewportCtx.translateX();
+    this.startY = event.clientY - this.viewportCtx.translateY();
     this.renderer.addClass(this.viewportRef.nativeElement, 'cursor-grabbing');
     // Capture the pointer to ensure pointermove and pointerup events
     // continue to fire on this element even if the pointer leaves its bounds.
@@ -256,8 +251,9 @@ export class ZoomableContentComponent
     }
 
     // Calculate new translation based on pointer movement
-    this.translateX = event.clientX - this.startX;
-    this.translateY = event.clientY - this.startY;
+    const newX = event.clientX - this.startX;
+    const newY = event.clientY - this.startY;
+    this.viewportCtx.setTranslate(newX, newY);
 
     // Add boundary checks for panning
     this.applyPanningBounds();
@@ -296,7 +292,8 @@ export class ZoomableContentComponent
 
     // Calculate new scale based on scroll direction
     const delta = event.deltaY * -this.zoomSpeed; // Invert deltaY for natural zoom direction
-    const newScale = this.scale * (1 + delta);
+    const currScale = this.viewportCtx.scale();
+    const newScale = currScale * (1 + delta);
 
     // Clamp newScale to dynamic min and fixed max bounds
     const minScale = this.calculateMinScale();
@@ -306,20 +303,23 @@ export class ZoomableContentComponent
     );
 
     // Only proceed if scale actually changed
-    if (clampedNewScale === this.scale) {
+    if (clampedNewScale === currScale) {
       return;
     }
 
     // Find the point on the content (in its original, unscaled dimensions) that is under the mouse
-    const contentPointX = (mouseX - this.translateX) / this.scale;
-    const contentPointY = (mouseY - this.translateY) / this.scale;
+    const tx = this.viewportCtx.translateX();
+    const ty = this.viewportCtx.translateY();
+    const contentPointX = (mouseX - tx) / currScale;
+    const contentPointY = (mouseY - ty) / currScale;
 
     // Apply the new scale
-    this.scale = clampedNewScale;
+    this.viewportCtx.setScale(clampedNewScale);
 
     // Calculate the new translation needed to bring that same content point back under the mouse
-    this.translateX = mouseX - contentPointX * this.scale;
-    this.translateY = mouseY - contentPointY * this.scale;
+    const nextTx = mouseX - contentPointX * clampedNewScale;
+    const nextTy = mouseY - contentPointY * clampedNewScale;
+    this.viewportCtx.setTranslate(nextTx, nextTy);
 
     // Add boundary checks for panning after zoom
     this.applyPanningBounds();
@@ -329,8 +329,9 @@ export class ZoomableContentComponent
    * Applies boundary checks to prevent panning the content too far outside the viewport.
    */
   private applyPanningBounds(): void {
-    const scaledContentWidth = this.contentWidth * this.scale;
-    const scaledContentHeight = this.contentHeight * this.scale;
+    const scale = this.viewportCtx.scale();
+    const scaledContentWidth = this.contentWidth * scale;
+    const scaledContentHeight = this.contentHeight * scale;
 
     // Calculate min and max translation values for X axis
     const minBoundX = this.viewportWidth - scaledContentWidth;
@@ -340,28 +341,28 @@ export class ZoomableContentComponent
     const minBoundY = this.viewportHeight - scaledContentHeight;
     const maxBoundY = 0;
 
+    // Current values
+    let tx = this.viewportCtx.translateX();
+    let ty = this.viewportCtx.translateY();
+
     // Clamp translateX
     if (scaledContentWidth <= this.viewportWidth) {
       // If content is smaller than or equal to viewport width, center it
-      this.translateX = (this.viewportWidth - scaledContentWidth) / 2;
+      tx = (this.viewportWidth - scaledContentWidth) / 2;
     } else {
       // Otherwise, clamp to edges
-      this.translateX = Math.max(
-        minBoundX,
-        Math.min(maxBoundX, this.translateX),
-      );
+      tx = Math.max(minBoundX, Math.min(maxBoundX, tx));
     }
 
     // Clamp translateY
     if (scaledContentHeight <= this.viewportHeight) {
       // If content is smaller than or equal to viewport height, align to top.
-      this.translateY = 0;
+      ty = 0;
     } else {
       // Otherwise, clamp to edges
-      this.translateY = Math.max(
-        minBoundY,
-        Math.min(maxBoundY, this.translateY),
-      );
+      ty = Math.max(minBoundY, Math.min(maxBoundY, ty));
     }
+
+    this.viewportCtx.setTranslate(tx, ty);
   }
 }

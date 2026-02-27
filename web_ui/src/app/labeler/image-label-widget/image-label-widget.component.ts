@@ -16,6 +16,7 @@ import { CommonModule } from '@angular/common';
 import { LabelerViewOptionsService } from '../labeler-view-options.service';
 import { KeypointContainerComponent } from '../../components/keypoint-container/keypoint-container.component';
 import { ZoomableContentComponent } from '../../components/zoomable-content.component';
+import { ViewportContextDirective } from '../../components/viewport-context.directive';
 import { FrameView } from '../frame.model';
 import { LKeypoint, lkp } from '../types';
 import { Keypoint } from '../../keypoint';
@@ -25,7 +26,12 @@ import { Point } from '@angular/cdk/drag-drop';
 @Component({
   selector: 'app-image-label-widget',
   standalone: true,
-  imports: [CommonModule, KeypointContainerComponent, ZoomableContentComponent],
+  imports: [
+    CommonModule,
+    KeypointContainerComponent,
+    ZoomableContentComponent,
+    ViewportContextDirective,
+  ],
   templateUrl: './image-label-widget.component.html',
   styles: '',
   changeDetection: ChangeDetectionStrategy.OnPush,

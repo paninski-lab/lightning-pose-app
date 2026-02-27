@@ -23,18 +23,20 @@
               >
             </div>
 
-            <app-zoomable-content
-              [style.height.px]="tileSizePx()"
-              [style.width.px]="tileSizePx()"
-            >
-              <app-video-tile #content [src]="w.videoSrc" class="relative">
-                <app-keypoint-container
-                  class="absolute top-0 left-0 h-full w-full"
-                  [enableEditing]="false"
-                  [keypointModels]="w.keypoints()"
-                ></app-keypoint-container>
-              </app-video-tile>
-            </app-zoomable-content>
+            <div appViewportContext>
+              <app-zoomable-content
+                [style.height.px]="tileSizePx()"
+                [style.width.px]="tileSizePx()"
+              >
+                <app-video-tile #content [src]="w.videoSrc" class="relative">
+                  <app-keypoint-container
+                    class="absolute top-0 left-0 h-full w-full"
+                    [enableEditing]="false"
+                    [keypointModels]="w.keypoints()"
+                  ></app-keypoint-container>
+                </app-video-tile>
+              </app-zoomable-content>
+            </div>
           </div>
         }
       </div>
