@@ -10,31 +10,51 @@
 </style>
 <header>
   <nav class="navbar bg-base-200 shadow-lg">
-    <div class="navbar-start">
-      <a href="/"><span class="text-lg font-semibold">Lightning Pose</span></a>
+    <div class="navbar-start inline-flex items-center gap-3">
       @if (projectKey()) {
-        <span class="ml-3 text-base-content/70" aria-label="Current project"
-          >— {{ projectKey() }}</span
+        <a class="btn hover:bg-base-content/10" href="/">
+          <span class="material-icons">home</span>
+        </a>
+        <span class="text-base-content/70 text-lg select-none"> > </span>
+        <span aria-label="Current project" class="mx-2 text-nowrap">
+          {{ projectKey() }}</span
+        >
+      } @else {
+        <a href="/"
+          ><span class="text-lg font-semibold pl-2">Lightning Pose</span></a
         >
       }
     </div>
 
     <div class="navbar-center">
-      <ul class="menu menu-horizontal p-0">
-        @for (entry of navLinks(); track entry.text) {
+      <ul class="menu menu-horizontal p-0 flex items-stretch align-center">
+        @if (this.projectKey()) {
+          @for (entry of navLinks(); track entry.text) {
+            <li>
+              <a
+                [routerLink]="entry.link"
+                routerLinkActive="menu-active"
+                ariaCurrentWhenActive="page"
+                >{{ entry.text }}</a
+              >
+            </li>
+          }
           <li>
+            <!-- Settings button using routerLink to open the dialog -->
             <a
-              [routerLink]="entry.link"
-              routerLinkActive="menu-active"
-              ariaCurrentWhenActive="page"
-              >{{ entry.text }}</a
+              [routerLink]="[]"
+              [queryParams]="{ settingsOpen: 'true' }"
+              queryParamsHandling="merge"
             >
+              Settings
+              <span class="material-icons text-sm!">settings</span>
+            </a>
           </li>
         }
       </ul>
     </div>
 
-    <div class="navbar-end">
+    <div class="navbar-end flex gap-2">
       @if (!isCompatibleBrowser) {
         <div role="alert" class="alert alert-warning alert-soft">
           <span
@@ -43,17 +63,41 @@
           >
         </div>
       }
-
-      <!-- Settings button using routerLink to open the dialog -->
-      <a
-        class="btn btn-ghost"
-        tabindex="0"
-        [routerLink]="[]"
-        [queryParams]="{ settingsOpen: 'true' }"
-        queryParamsHandling="merge"
+      <div
+        class="tooltip tooltip-left group"
+        data-tip="We would love for to join the Discord and be a part of our community."
       >
-        <span class="material-icons">settings</span>
-      </a>
+        <a
+          class="btn"
+          [class.animate-pulse]="!localStorageService.hasSeenDiscordTooltip()"
+          [class.btn-soft]="!localStorageService.hasSeenDiscordTooltip()"
+          [class.btn-info]="!localStorageService.hasSeenDiscordTooltip()"
+          (mouseenter)="localStorageService.setHasSeenDiscordTooltip(true)"
+          tabindex="0"
+          href="https://discord.gg/GpvhpSVsUg"
+          target="_blank"
+          rel="noopener noreferrer"
+          ><span class="material-icons">question_answer</span
+          ><span
+            class="material-icons mb-1 text-xs! absolute top-0 right-0 invisible group-hover:visible"
+            >open_in_new</span
+          ></a
+        >
+      </div>
+    </div>
+    <div class="tooltip tooltip-left group" data-tip="Documentation">
+      <a
+        class="btn"
+        tabindex="0"
+        href="https://lightning-pose.readthedocs.io/en/latest/"
+        target="_blank"
+        rel="noopener noreferrer"
+        ><span class="material-icons mb-1">menu_book</span
+        ><span
+          class="material-icons mb-1 text-xs! absolute top-0 right-0 invisible group-hover:visible"
+          >open_in_new</span
+        ></a
+      >
     </div>
   </nav>
 </header>
