@@ -77,7 +77,10 @@ export class KeypointContainerComponent {
   private isMouseDownOnKeypoint = signal(false);
 
   getTransform(keypoint: Keypoint) {
-    return `translate3d(${keypoint.position().x}px, ${keypoint.position().y}px, 0px)`;
+    const cssPosition = this.pythonPointToCssPoint(keypoint.position());
+    const x = cssPosition.x;
+    const y = cssPosition.y;
+    return `translate3d(calc(${x}px - 50%), calc(${y}px - 50%), 0px)`;
   }
 
   /** Called when user clicks on a keypoint div */
@@ -184,7 +187,24 @@ export class KeypointContainerComponent {
     }
 
     if (position) {
-      this.keypointUpdated.emit({ kp: this.selectedKeypoint()!, position });
+      this.keypointUpdated.emit({
+        kp: this.selectedKeypoint()!,
+        position: this.cssPointToPythonPoint(position),
+      });
     }
+  }
+
+  private pythonPointToCssPoint(point: Point): Point {
+    return {
+      x: point.x + 0.5,
+      y: point.y + 0.5,
+    };
+  }
+
+  private cssPointToPythonPoint(point: Point): Point {
+    return {
+      x: point.x - 0.5,
+      y: point.y - 0.5,
+    };
   }
 }

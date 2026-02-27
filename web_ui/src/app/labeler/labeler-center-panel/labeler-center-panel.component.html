@@ -25,40 +25,15 @@
         <h3 class="bg-base-200 px-2 text-md">
           {{ fv.viewName }}
         </h3>
-        <app-zoomable-content
+        <app-image-label-widget
           #primaryZoomable
-          class="h-full w-full"
-          [maxScale]="100"
-        >
-          <div #content class="relative">
-            @for (imSrc of temporalImgPaths(fv.imgPath); track $index) {
-              <!-- img has max-w-none to override a bad default value of 100% -->
-              <img
-                [src]="imSrc"
-                class="max-w-none"
-                [style.filter]="imgCssFilterString()"
-                [alt]="imSrc"
-                [class.hidden]="
-                  $index !==
-                  (!isShowingTemporalContext() ? 2 : temporalContextIndex())
-                "
-              />
-            }
-            @if (!isShowingTemporalContext()) {
-              <app-keypoint-container
-                [enableEditing]="!disableInteractions()"
-                [keypointModels]="getCachedKeypointViewModels(fv.keypoints)"
-                [(selectedKeypoint)]="selectedKeypoint"
-                [useCrossHairs]="true"
-                [editMode]="labelerDefaultsToEditMode"
-                (keypointUpdated)="
-                  handleKeypointUpdated($event.kp, $event.position, fv)
-                "
-                class="absolute top-0 left-0 h-full w-full"
-              ></app-keypoint-container>
-            }
-          </div>
-        </app-zoomable-content>
+          [fv]="fv"
+          [(selectedKeypoint)]="selectedKeypoint"
+          [disableInteractions]="disableInteractions()"
+          (keypointUpdated)="
+            handleKeypointUpdated($event.kp, $event.position, fv)
+          "
+        ></app-image-label-widget>
       </div>
     }
 
@@ -81,23 +56,12 @@
             <h3 class="bg-base-200 px-1 text-sm">
               {{ fv.viewName }}
             </h3>
-
-            <app-zoomable-content
-              class="!h-[112px] !w-[112px]"
-              [interactivityDisabled]="true"
-            >
-              <img
-                #content
-                [src]="imgPath(fv.imgPath)"
-                class="max-w-none"
-                height="320"
-                width="320"
-                alt="fv.imgPath"
-              />
-              <app-keypoint-container
-                [keypointModels]="getCachedKeypointViewModels(fv.keypoints)"
-              ></app-keypoint-container>
-            </app-zoomable-content>
+            <app-image-label-widget
+              class="!h-[120px] !w-[120px] block"
+              [fv]="fv"
+              [disableInteractions]="true"
+              [zoomableInteractivityDisabled]="true"
+            ></app-image-label-widget>
           </div>
         }
       }
@@ -242,7 +206,7 @@
             #baDialog
             [labelFile]="labelFile()"
             [frame]="this.frame()"
-            [numLabeledFrames]="numLabeledFrames()"
+            [numLabeledFramesGetter]="numLabeledFramesGetter()"
           ></app-bundle-adjust-dialog>
         </div>
       </div>
@@ -264,10 +228,10 @@
           <div class="panel-content p-2!">
             <div>Temporal context</div>
             <div class="p-2">
-              @if (!isShowingTemporalContext()) {
+              @if (!viewOptions.isShowingTemporalContext()) {
                 <button
                   class="btn btn-primary btn-sm"
-                  (click)="handleShowTemporalContextClick()"
+                  (click)="viewOptions.handleShowTemporalContextClick()"
                 >
                   <span class="material-icons">play_arrow</span> Show
                 </button>
@@ -275,7 +239,7 @@
                 <div class="flex items-center gap-4">
                   <button
                     class="btn btn-error btn-sm"
-                    (click)="handleStopTemporalContextClick()"
+                    (click)="viewOptions.handleStopTemporalContextClick()"
                   >
                     <span class="material-icons">stop</span> Stop
                   </button>
@@ -283,7 +247,9 @@
                     @for (i of [0, 1, 2, 3, 4]; track i) {
                       <div
                         class="status"
-                        [class.status-success]="i === temporalContextIndex()"
+                        [class.status-success]="
+                          i === viewOptions.temporalContextIndex()
+                        "
                       ></div>
                     }
                   </div>
@@ -297,12 +263,12 @@
                 min="0.3"
                 max="1.7"
                 step=".05"
-                [(ngModel)]="imgBrightnessScalar"
+                [(ngModel)]="viewOptions.imgBrightnessScalar"
                 class="range range-xs"
               /><button
                 class="btn btn-ghost btn-xs tooltip"
                 data-tip="Reset"
-                (click)="imgBrightnessScalar.set(1)"
+                (click)="viewOptions.imgBrightnessScalar.set(1)"
               >
                 <span class="material-icons text-sm!">restart_alt</span>
               </button>
@@ -314,12 +280,12 @@
                 min="0.5"
                 max="1.5"
                 step=".05"
-                [(ngModel)]="imgContrastScalar"
+                [(ngModel)]="viewOptions.imgContrastScalar"
                 class="range range-xs"
               /><button
                 class="btn btn-ghost btn-xs tooltip"
                 data-tip="Reset"
-                (click)="imgContrastScalar.set(1)"
+                (click)="viewOptions.imgContrastScalar.set(1)"
               >
                 <span class="material-icons text-sm!">restart_alt</span>
               </button>

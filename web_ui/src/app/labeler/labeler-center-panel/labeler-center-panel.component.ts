@@ -13,12 +13,10 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { LabelerViewOptionsService } from '../labeler-view-options.service';
 import { FrameView, mvf, MVFrame } from '../frame.model';
 import { LKeypoint, lkp } from '../types';
 import { DecimalPipe } from '@angular/common';
-import { ZoomableContentComponent } from '../../components/zoomable-content.component';
-import { KeypointContainerComponent } from '../../components/keypoint-container/keypoint-container.component';
-import { Keypoint } from '../../keypoint';
 import { ProjectInfoService } from '../../project-info.service';
 import { HorizontalScrollDirective } from '../../components/horizontal-scroll.directive';
 import { Point } from '@angular/cdk/drag-drop';
@@ -30,18 +28,19 @@ import { BundleAdjustDialogComponent } from '../../bundle-adjust-dialog/bundle-a
 import { ToastService } from '../../toast.service';
 import { firstValueFrom, Subject } from 'rxjs';
 import { FormsModule } from '@angular/forms';
+import { ImageLabelWidgetComponent } from '../image-label-widget/image-label-widget.component';
 
 @Component({
   selector: 'app-labeler-center-panel',
   imports: [
     DecimalPipe,
-    ZoomableContentComponent,
-    KeypointContainerComponent,
     HorizontalScrollDirective,
     PathPipe,
     BundleAdjustDialogComponent,
     FormsModule,
+    ImageLabelWidgetComponent,
   ],
+  providers: [LabelerViewOptionsService],
   templateUrl: './labeler-center-panel.component.html',
   styleUrl: './labeler-center-panel.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -49,13 +48,14 @@ import { FormsModule } from '@angular/forms';
 export class LabelerCenterPanelComponent implements OnChanges {
   private projectInfoService = inject(ProjectInfoService);
   private toastService = inject(ToastService);
+  protected viewOptions = inject(LabelerViewOptionsService);
 
   labelFile = input<MVLabelFile | null>(null);
   frame = input<MVFrame | null>(null);
-  numLabeledFrames = input.required<number>();
+  numLabeledFramesGetter = input.required<() => number>();
 
   primaryZoomableElement =
-    viewChild<ZoomableContentComponent>('primaryZoomable');
+    viewChild<ImageLabelWidgetComponent>('primaryZoomable');
 
   saved = output<{
     labelFile: MVLabelFile;
@@ -63,7 +63,6 @@ export class LabelerCenterPanelComponent implements OnChanges {
     shouldAdvanceFrame: boolean;
     deletion?: boolean;
   }>();
-  private temporalContextAbortController: AbortController | undefined;
 
   constructor() {
     effect(() => {
@@ -72,8 +71,10 @@ export class LabelerCenterPanelComponent implements OnChanges {
       // Reset scale when view changes.
       // Use untracked() to avoid creating a dependency on primaryZoomableElement
       untracked(() => {
-        if (this.primaryZoomableElement()) {
-          this.primaryZoomableElement()!.fitContentToViewport();
+        if (this.primaryZoomableElement()?.zoomableContent()) {
+          this.primaryZoomableElement()!
+            .zoomableContent()!
+            .fitContentToViewport();
         }
       });
     });
@@ -88,8 +89,10 @@ export class LabelerCenterPanelComponent implements OnChanges {
 
     if (changes['frame']) {
       // Reset scale.
-      if (this.primaryZoomableElement()) {
-        this.primaryZoomableElement()!.fitContentToViewport();
+      if (this.primaryZoomableElement()?.zoomableContent()) {
+        this.primaryZoomableElement()!
+          .zoomableContent()!
+          .fitContentToViewport();
       }
     }
 
@@ -146,87 +149,6 @@ export class LabelerCenterPanelComponent implements OnChanges {
   }
   protected selectedKeypoint = signal<string | null>(null);
 
-  keypointViewModelCache = new WeakMap<LKeypoint[], Keypoint[]>();
-
-  getCachedKeypointViewModels(keypoints: LKeypoint[]): Keypoint[] {
-    if (!this.keypointViewModelCache.has(keypoints)) {
-      const target = keypoints
-        .map((k) => this.buildViewModel(k))
-        .filter(
-          (keypoint) =>
-            !isNaN(keypoint.position().x) && !isNaN(keypoint.position().y),
-        );
-      this.keypointViewModelCache.set(keypoints, target);
-    }
-    return this.keypointViewModelCache.get(keypoints)!;
-  }
-  private buildViewModel(lkeypoint: LKeypoint): Keypoint {
-    const val = {
-      id: lkeypoint.keypointName,
-      hoverText: lkeypoint.keypointName,
-      position: signal({ x: lkeypoint.x, y: lkeypoint.y }),
-      colorClass: computed(() => {
-        if (this.selectedKeypoint() == null) {
-          return 'bg-green-500/10';
-        }
-        if (lkeypoint.keypointName === this.selectedKeypoint()) {
-          return 'bg-green-500/20';
-        } else {
-          return 'bg-green-500/5';
-        }
-      }),
-    };
-    return val;
-  }
-
-  protected imgPath(kpImgPath: string): string {
-    return (
-      '/app/v0/files/' +
-      this.projectInfoService.projectInfo.data_dir +
-      '/' +
-      kpImgPath
-    );
-  }
-
-  protected temporalImgPaths(kpImgPath: string): string[] {
-    /* path is like a/b/c/fname000index.ext
-     * we want to return the paths where index is replaced with index-2, index -1, index, index+1 in an array.
-     * we want to learn the total number of digits in the index (it's zero padded) and maintain it constant.
-     * omit negative indices. */
-
-    // Match the pattern: capture everything before the index, the index digits, and the extension
-    const match = kpImgPath.match(/^(.+?)(\d+)(\.[^.]+)$/);
-
-    if (!match) {
-      return [];
-    }
-
-    const [, prefix, indexStr, extension] = match;
-    const currentIndex = parseInt(indexStr, 10);
-    const numDigits = indexStr.length;
-
-    const result: string[] = [];
-
-    // Generate paths for index-2, index-1, index, index+1
-    for (let offset = -2; offset <= 2; offset++) {
-      const newIndex = currentIndex + offset;
-
-      // Omit negative indices
-      if (newIndex < 0) {
-        continue;
-      }
-
-      // Pad the new index with zeros to maintain the same number of digits
-      const paddedIndex = newIndex.toString().padStart(numDigits, '0');
-
-      // Construct the new path
-      const newPath = `${prefix}${paddedIndex}${extension}`;
-      result.push(this.imgPath(newPath));
-    }
-
-    return result;
-  }
-
   handleViewClickFromFilmstrip(viewName: string) {
     this._selectedView.set(viewName);
     this.selectFirstKeypoint();
@@ -261,29 +183,11 @@ export class LabelerCenterPanelComponent implements OnChanges {
     frameView.keypoints = frameView.keypoints.map((item) =>
       item === keypoint ? { ...keypoint, ...newKp } : item,
     );
-    // Invalidate viewmodel cache.
-    this.keypointViewModelCache.delete(frameView.keypoints);
 
     if (lkp(keypoint).isNaN()) {
       this.selectNextUnlabeledKeypoint(keypointName);
     }
     this.cacheBuster.set(Math.random());
-  }
-
-  /** Default NaN Keypoints to edit mode. */
-  protected get labelerDefaultsToEditMode(): boolean {
-    // TODO: Getting `selectedKeypointInFrame` could be a getter or computed instead.
-
-    const frameView = this.selectedFrameView();
-    if (!frameView) return false;
-    const selectedKeypoint = this.selectedKeypoint();
-    if (!selectedKeypoint) return false;
-    const selectedKeypointInFrame = frameView.keypoints.find(
-      (kp) => kp.keypointName === selectedKeypoint,
-    );
-    if (!selectedKeypointInFrame) return false;
-
-    return lkp(selectedKeypointInFrame).isNaN();
   }
 
   /**
@@ -357,14 +261,6 @@ export class LabelerCenterPanelComponent implements OnChanges {
     'deleteConfirmationDialog',
   );
   protected deletionShouldContinue = new Subject<boolean>();
-  protected isShowingTemporalContext = signal<boolean>(false);
-  protected temporalContextIndex = signal<number | null>(null);
-
-  protected imgBrightnessScalar = signal<number>(1);
-  protected imgContrastScalar = signal<number>(1);
-  protected imgCssFilterString = computed(() => {
-    return `brightness(${this.imgBrightnessScalar()}) contrast(${this.imgContrastScalar()})`;
-  });
 
   protected async handleSaveClick(
     labelFile: MVLabelFile,
@@ -448,39 +344,5 @@ export class LabelerCenterPanelComponent implements OnChanges {
   ) {
     this.deleteConfirmationDialog()!.nativeElement.close();
     this.deletionShouldContinue.next(shouldContinue);
-  }
-
-  protected handleShowTemporalContextClick() {
-    this.temporalContextAbortController = new AbortController();
-
-    this.isShowingTemporalContext.set(true);
-    this.beginTemporalContextLoop(this.temporalContextAbortController.signal);
-  }
-  protected handleStopTemporalContextClick() {
-    this.temporalContextAbortController?.abort();
-    this.isShowingTemporalContext.set(false);
-  }
-  private beginTemporalContextLoop(abortSignal: AbortSignal) {
-    let direction = 1;
-    const loop = async () => {
-      while (!abortSignal.aborted) {
-        this.temporalContextIndex.update((index) => {
-          const currentIndex = index ?? -1;
-          let nextIndex = currentIndex + direction;
-
-          if (nextIndex > 4) {
-            direction = -1;
-            nextIndex = 3;
-          } else if (nextIndex <= 0) {
-            direction = 1;
-            nextIndex = 0;
-          }
-
-          return nextIndex;
-        });
-        await new Promise((resolve) => setTimeout(resolve, 300));
-      }
-    };
-    loop();
   }
 }
