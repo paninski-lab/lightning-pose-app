@@ -13,6 +13,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { LabelerViewOptionsService } from '../labeler-view-options.service';
 import { FrameView, mvf, MVFrame } from '../frame.model';
 import { LKeypoint, lkp } from '../types';
 import { DecimalPipe } from '@angular/common';
@@ -39,6 +40,7 @@ import { ImageLabelWidgetComponent } from '../image-label-widget/image-label-wid
     FormsModule,
     ImageLabelWidgetComponent,
   ],
+  providers: [LabelerViewOptionsService],
   templateUrl: './labeler-center-panel.component.html',
   styleUrl: './labeler-center-panel.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -46,6 +48,7 @@ import { ImageLabelWidgetComponent } from '../image-label-widget/image-label-wid
 export class LabelerCenterPanelComponent implements OnChanges {
   private projectInfoService = inject(ProjectInfoService);
   private toastService = inject(ToastService);
+  protected viewOptions = inject(LabelerViewOptionsService);
 
   labelFile = input<MVLabelFile | null>(null);
   frame = input<MVFrame | null>(null);
@@ -60,7 +63,6 @@ export class LabelerCenterPanelComponent implements OnChanges {
     shouldAdvanceFrame: boolean;
     deletion?: boolean;
   }>();
-  private temporalContextAbortController: AbortController | undefined;
 
   constructor() {
     effect(() => {
@@ -259,14 +261,6 @@ export class LabelerCenterPanelComponent implements OnChanges {
     'deleteConfirmationDialog',
   );
   protected deletionShouldContinue = new Subject<boolean>();
-  protected isShowingTemporalContext = signal<boolean>(false);
-  protected temporalContextIndex = signal<number | null>(null);
-
-  protected imgBrightnessScalar = signal<number>(1);
-  protected imgContrastScalar = signal<number>(1);
-  protected imgCssFilterString = computed(() => {
-    return `brightness(${this.imgBrightnessScalar()}) contrast(${this.imgContrastScalar()})`;
-  });
 
   protected async handleSaveClick(
     labelFile: MVLabelFile,
@@ -350,39 +344,5 @@ export class LabelerCenterPanelComponent implements OnChanges {
   ) {
     this.deleteConfirmationDialog()!.nativeElement.close();
     this.deletionShouldContinue.next(shouldContinue);
-  }
-
-  protected handleShowTemporalContextClick() {
-    this.temporalContextAbortController = new AbortController();
-
-    this.isShowingTemporalContext.set(true);
-    this.beginTemporalContextLoop(this.temporalContextAbortController.signal);
-  }
-  protected handleStopTemporalContextClick() {
-    this.temporalContextAbortController?.abort();
-    this.isShowingTemporalContext.set(false);
-  }
-  private beginTemporalContextLoop(abortSignal: AbortSignal) {
-    let direction = 1;
-    const loop = async () => {
-      while (!abortSignal.aborted) {
-        this.temporalContextIndex.update((index) => {
-          const currentIndex = index ?? -1;
-          let nextIndex = currentIndex + direction;
-
-          if (nextIndex > 4) {
-            direction = -1;
-            nextIndex = 3;
-          } else if (nextIndex <= 0) {
-            direction = 1;
-            nextIndex = 0;
-          }
-
-          return nextIndex;
-        });
-        await new Promise((resolve) => setTimeout(resolve, 300));
-      }
-    };
-    loop();
   }
 }

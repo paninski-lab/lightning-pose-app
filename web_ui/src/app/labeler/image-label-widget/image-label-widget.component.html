@@ -10,14 +10,17 @@
       <img
         [src]="imSrc"
         class="max-w-none"
-        [style.filter]="imgCssFilterString()"
+        [style.filter]="viewOptions.imgCssFilterString()"
         [alt]="imSrc"
         [class.hidden]="
-          $index !== (!isShowingTemporalContext() ? 2 : temporalContextIndex())
+          $index !==
+          (!viewOptions.isShowingTemporalContext()
+            ? 2
+            : viewOptions.temporalContextIndex())
         "
       />
     }
-    @if (!isShowingTemporalContext()) {
+    @if (!viewOptions.isShowingTemporalContext()) {
       <app-keypoint-container
         [enableEditing]="!disableInteractions()"
         [keypointModels]="getCachedKeypointViewModels(fv().keypoints)"
