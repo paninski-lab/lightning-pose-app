@@ -25,6 +25,7 @@ import { ProjectInfoService } from './project-info.service';
 import { LoadingService } from './loading.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs/operators';
+import { LocalStorageService } from './local-storage.service';
 
 @Component({
   selector: 'app-root',
@@ -41,10 +42,10 @@ import { filter } from 'rxjs/operators';
 export class AppComponent implements OnInit {
   protected loadingService = inject(LoadingService);
   protected projectInfoService = inject(ProjectInfoService);
-
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
+  protected localStorageService = inject(LocalStorageService);
 
   protected settingsDialog = viewChild.required<ElementRef>('settingsDialog');
 
