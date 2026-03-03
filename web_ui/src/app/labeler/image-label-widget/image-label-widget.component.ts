@@ -22,6 +22,7 @@ import { LKeypoint, lkp } from '../types';
 import { Keypoint } from '../../keypoint';
 import { ProjectInfoService } from '../../project-info.service';
 import { Point } from '@angular/cdk/drag-drop';
+import { hexToRgb, tailwindHexColors } from '../../infra/tailwindcolors';
 
 @Component({
   selector: 'app-image-label-widget',
@@ -84,15 +85,19 @@ export class ImageLabelWidgetComponent {
       id: lkeypoint.keypointName,
       hoverText: lkeypoint.keypointName,
       position: signal({ x: lkeypoint.x, y: lkeypoint.y }),
-      colorClass: computed(() => {
+      size: signal(20),
+      color: computed(() => {
+        let alpha: number | undefined;
         if (this.selectedKeypoint() == null) {
-          return 'bg-green-500/10';
+          alpha = 0.2;
         }
         if (lkeypoint.keypointName === this.selectedKeypoint()) {
-          return 'bg-green-500/20';
+          alpha = 0.35;
         } else {
-          return 'bg-green-500/5';
+          alpha = 0.15;
         }
+        //return `color-mix(in oklab, oklch(72.3% 0.219 149.579) ${alpha * 100}%, transparent)`;
+        return `rgba(${hexToRgb(tailwindHexColors['green']['500']).join(', ')}, ${alpha})`;
       }),
     };
     return val;

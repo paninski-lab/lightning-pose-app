@@ -122,17 +122,14 @@
         [style.transform]="getTransform(keypoint)"
         [style.transform-origin]="'0 0'"
         [style.display]="hideKeypointBecauseMoving ? 'none' : 'block'"
+        [style.background-color]="keypoint.color()"
         (click)="handleKeypointClick($event, keypoint)"
         (keydown.enter)="handleKeypointClick($event, keypoint)"
         (pointerdown)="handleKeypointPointerDown($event, keypoint)"
         tabindex="0"
-        class="
-      h-2 w-2
-      rounded-full
-      shadow-sm/30
-      {{ keypoint.colorClass() }}
-      absolute top-0 left-0
-      tooltip"
+        [style.height.px]="keypoint.size()"
+        [style.width.px]="keypoint.size()"
+        class="rounded-full shadow-sm/30 absolute top-0 left-0 tooltip"
       >
         @if (useCrossHairs()) {
           <svg

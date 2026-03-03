@@ -13,7 +13,7 @@ import { VideoTileComponent } from '../../components/video-player/video-tile/vid
 import { ViewSettings } from '../../view-settings.model';
 import { VideoPlayerState } from '../../components/video-player/video-player-state';
 import { KeypointContainerComponent } from '../../components/keypoint-container/keypoint-container.component';
-import { KeypointImpl } from '../../keypoint';
+import { ViewerKeypoint } from '../../keypoint';
 import { VideoWidget } from '../../video-widget';
 
 import { CsvParserService } from '../../csv-parser.service';
@@ -73,17 +73,18 @@ export class ViewerCenterPanelComponent implements OnChanges {
     keypointName: string,
     predictions: dfd.DataFrame,
     modelKey: string,
-  ): KeypointImpl {
+  ): ViewerKeypoint {
     return {
       id: keypointName + modelKey,
       name: keypointName,
       hoverText: keypointName,
-      colorClass: computed(() => {
+      color: computed((): string => {
         const mi = this.viewSettings.modelsShown().indexOf(modelKey);
-        if (mi == 0) return 'bg-red-400'; ///50';
-        if (mi == 1) return 'bg-green-400'; ///50';
-        return 'bg-sky-100'; ///50';
+        if (mi == 0) return 'rgb(248, 113, 113)'; //bg-red-400;
+        if (mi == 1) return 'rgb(34,197,94)'; // bg-green-400;
+        return 'rgb(224, 242, 254)'; // bg-sky-100;
       }),
+      size: signal(10),
       modelKey,
       position: computed(() => {
         const i = Math.min(
