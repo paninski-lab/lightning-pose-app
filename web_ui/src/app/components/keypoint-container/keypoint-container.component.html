@@ -54,7 +54,7 @@
     </svg>
   }
   @if (showCrosshair() && crosshairPosition()) {
-    @let gap = 4;
+    @let gap = colorService.getKeypointSize(selectedKeypoint()!) / 2;
     <svg class="big-crosshair" aria-hidden="true">
       <defs>
         <mask id="crosshair-hole">

@@ -23,6 +23,7 @@ import { Keypoint } from '../../keypoint';
 import { ProjectInfoService } from '../../project-info.service';
 import { Point } from '@angular/cdk/drag-drop';
 import { hexToRgb, tailwindHexColors } from '../../infra/tailwindcolors';
+import { ColorService } from '../../infra/color.service';
 
 @Component({
   selector: 'app-image-label-widget',
@@ -40,6 +41,7 @@ import { hexToRgb, tailwindHexColors } from '../../infra/tailwindcolors';
 export class ImageLabelWidgetComponent {
   private projectInfoService = inject(ProjectInfoService);
   protected viewOptions = inject(LabelerViewOptionsService);
+  private colorService = inject(ColorService);
 
   fv = input.required<FrameView>();
   selectedKeypoint = model<string | null>(null);
@@ -85,7 +87,9 @@ export class ImageLabelWidgetComponent {
       id: lkeypoint.keypointName,
       hoverText: lkeypoint.keypointName,
       position: signal({ x: lkeypoint.x, y: lkeypoint.y }),
-      size: signal(20),
+      size: computed(() =>
+        this.colorService.getKeypointSize(lkeypoint.keypointName),
+      ),
       color: computed(() => {
         let alpha: number | undefined;
         if (this.selectedKeypoint() == null) {
@@ -97,7 +101,7 @@ export class ImageLabelWidgetComponent {
           alpha = 0.15;
         }
         //return `color-mix(in oklab, oklch(72.3% 0.219 149.579) ${alpha * 100}%, transparent)`;
-        return `rgba(${hexToRgb(tailwindHexColors['green']['500']).join(', ')}, ${alpha})`;
+        return `rgba(${this.colorService.getKeypointColor(lkeypoint.keypointName).slice(0, 3).join(', ')}, ${alpha})`;
       }),
     };
     return val;

@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   ElementRef,
+  inject,
   input,
   model,
   output,
@@ -11,6 +12,7 @@ import {
 } from '@angular/core';
 import { Keypoint } from '../../keypoint';
 import { Point } from '@angular/cdk/drag-drop';
+import { ColorService } from '../../infra/color.service';
 
 /**
  * Keypoint display and interaction layer.
@@ -59,6 +61,8 @@ export class KeypointContainerComponent {
   selectedKeypoint = model<string | null>(null);
   newKpTemplate = input<null | Partial<Keypoint>>(null);
   editMode = input(false);
+
+  protected colorService = inject(ColorService);
 
   // Notifies parent of the user's intent to change keypoint position.
   keypointUpdated = output<{ kp: string; position: Point }>();

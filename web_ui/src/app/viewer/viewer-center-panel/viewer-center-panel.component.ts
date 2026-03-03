@@ -31,6 +31,7 @@ import { ViewportContextDirective } from '../../components/viewport-context.dire
 import { firstValueFrom, skipWhile } from 'rxjs';
 import { ExtractedFramePredictionList } from '../../extract-frames-request';
 import _ from 'lodash';
+import { ColorService } from '../../infra/color.service';
 
 @Component({
   selector: 'app-viewer-center-panel',
@@ -57,6 +58,7 @@ export class ViewerCenterPanelComponent implements OnChanges {
   private loadingService = inject(LoadingService);
   private fineVideoService = inject(FineVideoService);
   private loadSessionAbortController?: AbortController = undefined;
+  private colorService = inject(ColorService);
 
   get currentFrame() {
     return this.videoPlayerState.currentFrameSignal;
@@ -84,7 +86,7 @@ export class ViewerCenterPanelComponent implements OnChanges {
         if (mi == 1) return 'rgb(34,197,94)'; // bg-green-400;
         return 'rgb(224, 242, 254)'; // bg-sky-100;
       }),
-      size: signal(10),
+      size: computed(() => this.colorService.getKeypointSize(keypointName)),
       modelKey,
       position: computed(() => {
         const i = Math.min(

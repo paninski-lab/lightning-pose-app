@@ -1,10 +1,31 @@
-import { Injectable, Signal, signal } from '@angular/core';
+import { Injectable } from '@angular/core';
+import { SignalState, signalState } from '@ngrx/signals';
+import { hexToRgb, tailwindHexColors } from './tailwindcolors';
 
 @Injectable({
   providedIn: 'root',
 })
 export class ColorService {
-  readonly keypointColorMap = signalState({
-    topLeft: 'rgba(0, 0, 255, 0.5)',
+  defaultColor = hexToRgb(tailwindHexColors['red']['700']);
+  defaultSize = 20;
+
+  private keypointColorMap: SignalState<Record<string, number[]>> = signalState(
+    {
+      topLeft: [0, 0, 255, 0.5],
+    },
+  );
+
+  private keypointSizeMap: SignalState<Record<string, number>> = signalState({
+    topLeft: 10,
   });
+
+  getKeypointColor(keypointName: string): number[] {
+    // @ts-expect-error TS7053
+    return this.keypointColorMap[keypointName]?.() ?? this.defaultColor;
+  }
+
+  getKeypointSize(keypointName: string): number {
+    // @ts-expect-error TS7053
+    return this.keypointSizeMap[keypointName]?.() ?? this.defaultSize;
+  }
 }
