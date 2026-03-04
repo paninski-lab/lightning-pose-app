@@ -113,6 +113,8 @@ export class KeypointContainerComponent {
   }
 
   private mouseClientPosition = signal<Point | null>(null);
+  // Pixels away from the center of the keypoint, at time of pointerdown on keypoint.
+  private mouseDownOffset = signal<Point>({ x: 0, y: 0 });
 
   protected crosshairPosition = computed((): Point | null => {
     if (!this.mouseClientPosition()) return null;
@@ -143,7 +145,10 @@ export class KeypointContainerComponent {
     const unscaledX = clientXRelativeToContainer / scaleX;
     const unscaledY = clientYRelativeToContainer / scaleY;
 
-    return { x: unscaledX, y: unscaledY };
+    return {
+      x: unscaledX - this.mouseDownOffset()!.x,
+      y: unscaledY - this.mouseDownOffset()!.y,
+    };
   });
 
   protected showCrosshair = computed(() => {
@@ -163,6 +168,11 @@ export class KeypointContainerComponent {
     ) {
       this.selectedKeypoint.set(keypoint.id);
       this.isMouseDownOnKeypoint.set(true);
+      const borderWidth = 0.5;
+      this.mouseDownOffset.set({
+        x: event.offsetX - keypoint.size() / 2 + borderWidth,
+        y: event.offsetY - keypoint.size() / 2 + borderWidth,
+      });
       event.stopPropagation();
     }
 
@@ -183,6 +193,7 @@ export class KeypointContainerComponent {
       : null;
 
     this.isMouseDownOnKeypoint.set(false);
+    this.mouseDownOffset.set({ x: 0, y: 0 });
     if (this.keypointIsDragging()) {
       this.keypointIsDragging.set(false);
       (this.containerDiv().nativeElement as HTMLElement).releasePointerCapture(
