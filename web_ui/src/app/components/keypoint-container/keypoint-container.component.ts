@@ -50,13 +50,13 @@ import { LabelerViewOptionsService } from '../../labeler/labeler-view-options.se
   //providers: [{ provide: DragDrop, useClass: CustomDragDrop }],
 })
 export class KeypointContainerComponent {
-  /** fixme: Right now this enables handlePointerMove handler only. */
   enableEditing = input<boolean>(false);
-
   keypointModels = input.required<Keypoint[]>();
 
-  /** false renders keypoints as dots, true renders them as crosshairs */
+  /** false renders keypoints as dots, true renders them as crosshairs on top of them */
   useCrossHairs = input(false);
+  /** Enables on-keypoint-hover tooltips */
+  enableKeypointHoverTooltips = input(false);
 
   /** the selected keypoint */
   selectedKeypoint = model<string | null>(null);

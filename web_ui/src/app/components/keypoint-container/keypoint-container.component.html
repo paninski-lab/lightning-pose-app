@@ -162,7 +162,8 @@
         tabindex="0"
         [style.height.px]="keypoint.size()"
         [style.width.px]="keypoint.size()"
-        class="rounded-full shadow-sm/30 absolute top-0 left-0 tooltip"
+        class="rounded-full shadow-sm/30 absolute top-0 left-0"
+        [class.tooltip]="enableKeypointHoverTooltips()"
         [attr.data-tip]="keypoint.hoverText"
       >
         @if (!(showCrosshair() && crosshairPosition())) {
