@@ -166,8 +166,9 @@ export class KeypointContainerComponent {
 
   handleKeypointPointerDown(event: PointerEvent, keypoint: Keypoint | null) {
     if (
+      this.enableEditing() &&
       keypoint &&
-      !this.selectedKeypointIsMoving() /** in creatin mode, mouse down should not select keypoint */
+      !this.selectedKeypointIsMoving() /** in creation mode, mouse down should not select keypoint */
     ) {
       this.selectedKeypoint.set(keypoint.id);
       this.isMouseDownOnKeypoint.set(true);

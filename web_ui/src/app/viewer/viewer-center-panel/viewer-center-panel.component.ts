@@ -77,7 +77,7 @@ export class ViewerCenterPanelComponent implements OnChanges {
     modelKey: string,
   ): ViewerKeypoint {
     return {
-      id: keypointName + modelKey,
+      id: `${keypointName}-${modelKey}`,
       name: keypointName,
       hoverText: keypointName,
       color: computed((): string => {
