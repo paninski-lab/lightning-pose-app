@@ -9,7 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { ViewerSessionsPanelComponent } from '../viewer-left-panel/viewer-sessions-panel.component';
-import { ViewSettings } from '../../view-settings.model';
+import { EnabledViewsKeypointsService } from '../../enabled-views-keypoints.service';
 import { VideoPlayerState } from '../../components/video-player/video-player-state';
 import { ViewerCenterPanelComponent } from '../viewer-center-panel/viewer-center-panel.component';
 import { ProjectInfoService } from '../../project-info.service';
@@ -28,6 +28,8 @@ import _ from 'lodash';
 import { SplitAreaComponent, SplitComponent } from 'angular-split';
 import { FormsModule } from '@angular/forms';
 
+import { ViewerViewOptionsService } from '../viewer-view-options.service';
+
 @Component({
   selector: 'app-viewer',
   imports: [
@@ -42,10 +44,15 @@ import { FormsModule } from '@angular/forms';
   templateUrl: './viewer-page.component.html',
   styleUrl: './viewer-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [VideoPlayerState, ViewSettings],
+  providers: [
+    VideoPlayerState,
+    EnabledViewsKeypointsService,
+    ViewerViewOptionsService,
+  ],
 })
 export class ViewerPageComponent implements OnInit {
-  viewSettings = inject(ViewSettings);
+  enabledViewsKeypoints = inject(EnabledViewsKeypointsService);
+  viewOptions = inject(ViewerViewOptionsService);
   projectInfoService = inject(ProjectInfoService);
   sessionService = inject(SessionService);
   loadingService = inject(LoadingService);
@@ -57,9 +64,6 @@ export class ViewerPageComponent implements OnInit {
   protected videoPlayerState = inject(VideoPlayerState);
   private rpc = inject(RpcService);
   private toastService = inject(ToastService);
-
-  // Video tile sizing (viewer center panel)
-  protected videoTileSizePx = signal<number>(250);
 
   /**
    * Set by the router when there is a session key in the path.
@@ -120,11 +124,13 @@ export class ViewerPageComponent implements OnInit {
       .asObservable()
       .pipe(takeUntilDestroyed())
       .subscribe(() => {
-        this.viewSettings.setViewsShown(this.viewSelectionModel.selected);
+        this.enabledViewsKeypoints.setViewsShown(
+          this.viewSelectionModel.selected,
+        );
       });
 
     // Propagate changes from viewSettings store to our selection model.
-    this.viewSettings.viewsShown$
+    this.enabledViewsKeypoints.viewsShown$
       .pipe(takeUntilDestroyed())
       .subscribe((viewsShown) => {
         this.viewSelectionModel.setSelection(...viewsShown);
@@ -134,11 +140,11 @@ export class ViewerPageComponent implements OnInit {
       .asObservable()
       .pipe(takeUntilDestroyed())
       .subscribe(() => {
-        this.viewSettings.setKeypointsShown(
+        this.enabledViewsKeypoints.setKeypointsShown(
           this.keypointSelectionModel.selected,
         );
       });
-    this.viewSettings.keypointsShown$
+    this.enabledViewsKeypoints.keypointsShown$
       .pipe(takeUntilDestroyed())
       .subscribe((keypointsShown) => {
         this.keypointSelectionModel.setSelection(...keypointsShown);
@@ -167,7 +173,7 @@ export class ViewerPageComponent implements OnInit {
   protected onModelDropdownItemClick(index: number, event: Event) {
     const selectEl = event.target as HTMLSelectElement;
     const modelKey = selectEl.value;
-    const modelsShown = [...this.viewSettings.modelsShown()];
+    const modelsShown = [...this.enabledViewsKeypoints.modelsShown()];
     if (modelKey === this.noneOption) {
       // Remove the model.
       modelsShown.splice(index, 1);
@@ -175,7 +181,7 @@ export class ViewerPageComponent implements OnInit {
       modelsShown[index] = modelKey;
     }
 
-    this.viewSettings.setModelsShown(modelsShown);
+    this.enabledViewsKeypoints.setModelsShown(modelsShown);
   }
 
   protected handleSelectedSessionChange(session: Session | null) {
@@ -216,17 +222,17 @@ export class ViewerPageComponent implements OnInit {
     this.partialModelsErrorsDialog()?.nativeElement.showModal();
   }
   protected handleExtractFramesClick() {
-    if (this.viewSettings.modelsShown().length > 1) {
+    if (this.enabledViewsKeypoints.modelsShown().length > 1) {
       this.showPartialModelsError();
       return;
     }
     if (
       !_.isEqual(
-        this.viewSettings.viewsShown(),
+        this.enabledViewsKeypoints.viewsShown(),
         this.projectInfoService.allViews(),
       ) ||
       !_.isEqual(
-        this.viewSettings.keypointsShown(),
+        this.enabledViewsKeypoints.keypointsShown(),
         this.projectInfoService.allKeypoints(),
       )
     ) {
@@ -270,10 +276,10 @@ export class ViewerPageComponent implements OnInit {
       manualFrameOptions: {
         frame_index_list: [this.videoPlayerState.currentFrameSignal()],
         predictions:
-          this.viewSettings.modelsShown().length > 0
+          this.enabledViewsKeypoints.modelsShown().length > 0
             ? this.viewerCenterPanel()!.getPredictionsForFrameExtraction(
                 // Uses the first model for simplicity.
-                this.viewSettings.modelsShown()[0],
+                this.enabledViewsKeypoints.modelsShown()[0],
               )
             : undefined,
       },

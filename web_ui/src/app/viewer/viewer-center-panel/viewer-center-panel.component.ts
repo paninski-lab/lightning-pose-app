@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { VideoPlayerControlsComponent } from '../../components/video-player/video-player-controls/video-player-controls.component';
 import { VideoTileComponent } from '../../components/video-player/video-tile/video-tile.component';
-import { ViewSettings } from '../../view-settings.model';
+import { EnabledViewsKeypointsService } from '../../enabled-views-keypoints.service';
 import { VideoPlayerState } from '../../components/video-player/video-player-state';
 import { KeypointContainerComponent } from '../../components/keypoint-container/keypoint-container.component';
 import { ViewerKeypoint } from '../../keypoint';
@@ -33,6 +33,8 @@ import { ExtractedFramePredictionList } from '../../extract-frames-request';
 import _ from 'lodash';
 import { ColorService } from '../../infra/color.service';
 
+import { ViewerViewOptionsService } from '../viewer-view-options.service';
+
 @Component({
   selector: 'app-viewer-center-panel',
   imports: [
@@ -49,9 +51,6 @@ import { ColorService } from '../../infra/color.service';
 export class ViewerCenterPanelComponent implements OnChanges {
   sessionKey = input<string | null>(null);
 
-  // Size (px) of each video tile in the grid
-  tileSizePx = input<number>(250);
-
   _loadedSessionKey = signal<string | null>(null);
   private csvParser = inject(CsvParserService);
   private projectInfoService = inject(ProjectInfoService);
@@ -64,8 +63,9 @@ export class ViewerCenterPanelComponent implements OnChanges {
     return this.videoPlayerState.currentFrameSignal;
   }
 
-  private viewSettings = inject(ViewSettings);
+  private enabledViewsKeypoints = inject(EnabledViewsKeypointsService);
   videoPlayerState = inject(VideoPlayerState);
+  protected viewOptions = inject(ViewerViewOptionsService);
 
   protected widgetModels = signal([] as VideoWidget[]);
   // cached prediction files for this session.
@@ -81,7 +81,7 @@ export class ViewerCenterPanelComponent implements OnChanges {
       name: keypointName,
       hoverText: keypointName,
       color: computed((): string => {
-        const mi = this.viewSettings.modelsShown().indexOf(modelKey);
+        const mi = this.enabledViewsKeypoints.modelsShown().indexOf(modelKey);
         if (mi == 0) return 'rgb(248, 113, 113)'; //bg-red-400;
         if (mi == 1) return 'rgb(34,197,94)'; // bg-green-400;
         return 'rgb(224, 242, 254)'; // bg-sky-100;
@@ -133,7 +133,7 @@ export class ViewerCenterPanelComponent implements OnChanges {
     abortSignal: AbortSignal,
   ) {
     if (sessionKey == null) {
-      this.viewSettings.setModelOptions([]);
+      this.enabledViewsKeypoints.setModelOptions([]);
       this.predictionFiles = new Map();
       this.videoPlayerState.reset();
       this.videoPlayerState.duration.set(0);
@@ -201,7 +201,7 @@ export class ViewerCenterPanelComponent implements OnChanges {
       if (abortSignal.aborted) {
         return;
       }
-      this.viewSettings.setModelOptions(availableModels);
+      this.enabledViewsKeypoints.setModelOptions(availableModels);
       this.predictionFiles = predictionFileCache;
       if (sessionChanged) {
         this.videoPlayerState.reset();
@@ -217,7 +217,7 @@ export class ViewerCenterPanelComponent implements OnChanges {
   }
 
   private pureComputeNecessaryPredictionFiles(sessionKey: string) {
-    const viewSettings = this.viewSettings;
+    const viewSettings = this.enabledViewsKeypoints;
     if (!sessionKey) return [];
 
     const predictionFiles =
@@ -234,7 +234,7 @@ export class ViewerCenterPanelComponent implements OnChanges {
     session: Session,
     predictionFileCache: Map<PredictionFile, dfd.DataFrame>,
   ): VideoWidget[] {
-    const viewSettings = this.viewSettings;
+    const viewSettings = this.enabledViewsKeypoints;
     return viewSettings
       .viewsShown()
       .map((view): VideoWidget | null => {
@@ -251,13 +251,15 @@ export class ViewerCenterPanelComponent implements OnChanges {
           videoSrc: this.fineVideoService.fineVideoPath(sessionView.videoPath),
           keypoints: signal(
             pfiles.flatMap((pf) => {
-              return this.viewSettings.keypointsShown().map((keypoint) => {
-                return this.buildKeypoint(
-                  keypoint,
-                  predictionFileCache.get(pf) as dfd.DataFrame,
-                  pf.modelKey,
-                );
-              });
+              return this.enabledViewsKeypoints
+                .keypointsShown()
+                .map((keypoint) => {
+                  return this.buildKeypoint(
+                    keypoint,
+                    predictionFileCache.get(pf) as dfd.DataFrame,
+                    pf.modelKey,
+                  );
+                });
             }),
           ),
         };
@@ -296,30 +298,34 @@ export class ViewerCenterPanelComponent implements OnChanges {
   }
 
   onWidgetCloseClick(w: VideoWidget) {
-    const nextViewsShown = this.viewSettings
+    const nextViewsShown = this.enabledViewsKeypoints
       .viewsShown()
       .filter((v) => v != w.id);
-    this.viewSettings.setViewsShown(nextViewsShown);
+    this.enabledViewsKeypoints.setViewsShown(nextViewsShown);
   }
 
   constructor() {
-    this.viewSettings.viewsShown$.pipe(takeUntilDestroyed()).subscribe(() => {
-      if (this._loadedSessionKey() == null) return;
-      // Reload session.
-      this.loadSessionAbort(this._loadedSessionKey() as string);
-    });
-    this.viewSettings.keypointsShown$
+    this.enabledViewsKeypoints.viewsShown$
       .pipe(takeUntilDestroyed())
       .subscribe(() => {
         if (this._loadedSessionKey() == null) return;
         // Reload session.
         this.loadSessionAbort(this._loadedSessionKey() as string);
       });
-    this.viewSettings.modelsShown$.pipe(takeUntilDestroyed()).subscribe(() => {
-      if (this._loadedSessionKey() == null) return;
-      // Reload session.
-      this.loadSessionAbort(this._loadedSessionKey() as string);
-    });
+    this.enabledViewsKeypoints.keypointsShown$
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => {
+        if (this._loadedSessionKey() == null) return;
+        // Reload session.
+        this.loadSessionAbort(this._loadedSessionKey() as string);
+      });
+    this.enabledViewsKeypoints.modelsShown$
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => {
+        if (this._loadedSessionKey() == null) return;
+        // Reload session.
+        this.loadSessionAbort(this._loadedSessionKey() as string);
+      });
   }
 
   getPredictionsForFrameExtraction(
