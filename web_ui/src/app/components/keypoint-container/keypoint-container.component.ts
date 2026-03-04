@@ -13,6 +13,7 @@ import {
 import { Keypoint } from '../../keypoint';
 import { Point } from '@angular/cdk/drag-drop';
 import { ColorService } from '../../infra/color.service';
+import { LabelerViewOptionsService } from '../../labeler/labeler-view-options.service';
 
 /**
  * Keypoint display and interaction layer.
@@ -63,6 +64,7 @@ export class KeypointContainerComponent {
   editMode = input(false);
 
   protected colorService = inject(ColorService);
+  labelerViewOptions = input<LabelerViewOptionsService>();
 
   // Notifies parent of the user's intent to change keypoint position.
   keypointUpdated = output<{ kp: string; position: Point }>();
@@ -81,7 +83,7 @@ export class KeypointContainerComponent {
   private isMouseDownOnKeypoint = signal(false);
 
   getTransform(keypoint: Keypoint) {
-    const cssPosition = this.pythonPointToCssPoint(keypoint.position());
+    const cssPosition = keypoint.position();
     const x = cssPosition.x;
     const y = cssPosition.y;
     return `translate3d(calc(${x}px - 50%), calc(${y}px - 50%), 0px)`;
@@ -160,6 +162,7 @@ export class KeypointContainerComponent {
   });
 
   private keypointIsDragging = signal(false);
+  protected selectedKeypointBorderWidth = 0.5;
 
   handleKeypointPointerDown(event: PointerEvent, keypoint: Keypoint | null) {
     if (
@@ -168,10 +171,15 @@ export class KeypointContainerComponent {
     ) {
       this.selectedKeypoint.set(keypoint.id);
       this.isMouseDownOnKeypoint.set(true);
-      const borderWidth = 0.5;
       this.mouseDownOffset.set({
-        x: event.offsetX - keypoint.size() / 2 + borderWidth,
-        y: event.offsetY - keypoint.size() / 2 + borderWidth,
+        x:
+          event.offsetX -
+          keypoint.size() / 2 +
+          this.selectedKeypointBorderWidth,
+        y:
+          event.offsetY -
+          keypoint.size() / 2 +
+          this.selectedKeypointBorderWidth,
       });
       event.stopPropagation();
     }
@@ -204,22 +212,8 @@ export class KeypointContainerComponent {
     if (position) {
       this.keypointUpdated.emit({
         kp: this.selectedKeypoint()!,
-        position: this.cssPointToPythonPoint(position),
+        position,
       });
     }
-  }
-
-  private pythonPointToCssPoint(point: Point): Point {
-    return {
-      x: point.x + 0.5,
-      y: point.y + 0.5,
-    };
-  }
-
-  private cssPointToPythonPoint(point: Point): Point {
-    return {
-      x: point.x - 0.5,
-      y: point.y - 0.5,
-    };
   }
 }

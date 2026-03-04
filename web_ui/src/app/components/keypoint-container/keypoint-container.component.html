@@ -2,8 +2,9 @@
    to allow dragging the keypoint slightly past the edge to allow moving its center to (0,0) or other corners/edges
 <div #dragBoundary class="absolute -inset-1"></div>-->
 <style>
-  .selected {
-    border: 0.5px solid yellow;
+  .selected-keypoint-border {
+    --selected-keypoint-border-width: 1px;
+    border: var(--selected-keypoint-border-width) solid yellow;
   }
 
   /* Big crosshair (SVG overlay) */
@@ -56,8 +57,7 @@
   (pointerdown)="handleKeypointPointerDown($event, null)"
 >
   <!-- Pixel grid overlay -->
-  @let enablePixelGrid = false;
-  @if (enablePixelGrid) {
+  @if (labelerViewOptions() && labelerViewOptions()!.enablePixelGrid()) {
     <svg class="absolute inset-0 w-full h-full pointer-events-none opacity-10">
       <defs>
         <pattern
@@ -148,7 +148,10 @@
       keypointIsSelected && selectedKeypointIsMoving();
     @if (keypoint.position() !== null) {
       <div
-        [class.selected]="keypointIsSelected"
+        [class.selected-keypoint-border]="keypointIsSelected"
+        [style.--selected-keypoint-border-width]="
+          selectedKeypointBorderWidth + 'px'
+        "
         [style.transform]="getTransform(keypoint)"
         [style.transform-origin]="'0 0'"
         [style.display]="hideKeypointBecauseMoving ? 'none' : 'block'"

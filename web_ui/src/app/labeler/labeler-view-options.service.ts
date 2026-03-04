@@ -2,15 +2,16 @@ import { Injectable, signal, computed, OnDestroy } from '@angular/core';
 
 @Injectable()
 export class LabelerViewOptionsService implements OnDestroy {
-  isShowingTemporalContext = signal<boolean>(false);
+  isShowingTemporalContext = signal(false);
   temporalContextIndex = signal<number | null>(null);
 
-  imgBrightnessScalar = signal<number>(1);
-  imgContrastScalar = signal<number>(1);
-  keypointOpacity = signal<number>(0.15);
+  imgBrightnessScalar = signal(1);
+  imgContrastScalar = signal(1);
+  keypointOpacity = signal(0.15);
   imgCssFilterString = computed(() => {
     return `brightness(${this.imgBrightnessScalar()}) contrast(${this.imgContrastScalar()})`;
   });
+  enablePixelGrid = signal(false);
 
   private temporalContextAbortController: AbortController | undefined;
 
