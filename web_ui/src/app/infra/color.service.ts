@@ -6,8 +6,8 @@ import { hexToRgb, tailwindHexColors } from './tailwindcolors';
   providedIn: 'root',
 })
 export class ColorService {
-  defaultColor = hexToRgb(tailwindHexColors['red']['700']);
-  defaultSize = 20;
+  defaultColor = hexToRgb(tailwindHexColors['green']['500']);
+  defaultSize = 10;
 
   private keypointColorMap: SignalState<Record<string, number[]>> = signalState(
     {

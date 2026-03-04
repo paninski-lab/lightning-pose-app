@@ -233,7 +233,7 @@
                   class="btn btn-primary btn-sm"
                   (click)="viewOptions.handleShowTemporalContextClick()"
                 >
-                  <span class="material-icons">play_arrow</span> Show
+                  <span class="material-icons">animation</span> Show
                 </button>
               } @else {
                 <div class="flex items-center gap-4">
@@ -262,7 +262,7 @@
                 type="range"
                 min="0.3"
                 max="1.7"
-                step=".05"
+                step=".02"
                 [(ngModel)]="viewOptions.imgBrightnessScalar"
                 class="range range-xs"
               /><button
@@ -279,13 +279,30 @@
                 type="range"
                 min="0.5"
                 max="1.5"
-                step=".05"
+                step=".02"
                 [(ngModel)]="viewOptions.imgContrastScalar"
                 class="range range-xs"
               /><button
                 class="btn btn-ghost btn-xs tooltip"
                 data-tip="Reset"
                 (click)="viewOptions.imgContrastScalar.set(1)"
+              >
+                <span class="material-icons text-sm!">restart_alt</span>
+              </button>
+            </div>
+            <div>Keypoint opacity</div>
+            <div class="pl-2 flex items-center">
+              <input
+                type="range"
+                min="0"
+                max="0.6"
+                step=".005"
+                [(ngModel)]="viewOptions.keypointOpacity"
+                class="range range-xs"
+              /><button
+                class="btn btn-ghost btn-xs tooltip"
+                data-tip="Reset"
+                (click)="viewOptions.keypointOpacity.set(0.15)"
               >
                 <span class="material-icons text-sm!">restart_alt</span>
               </button>

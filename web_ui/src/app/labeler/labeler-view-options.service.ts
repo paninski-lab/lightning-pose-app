@@ -7,6 +7,7 @@ export class LabelerViewOptionsService implements OnDestroy {
 
   imgBrightnessScalar = signal<number>(1);
   imgContrastScalar = signal<number>(1);
+  keypointOpacity = signal<number>(0.15);
   imgCssFilterString = computed(() => {
     return `brightness(${this.imgBrightnessScalar()}) contrast(${this.imgContrastScalar()})`;
   });

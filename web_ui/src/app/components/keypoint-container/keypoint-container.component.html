@@ -22,7 +22,29 @@
     stroke: rgba(128, 128, 128, 0.6);
     stroke-width: 0.8;
   }
+  svg text {
+    fill: var(--color-base-content);
+    filter: url(#halo);
+  }
 </style>
+<!-- Text halo filter -->
+<svg width="0" height="0" style="position: absolute">
+  <filter id="halo">
+    <feMorphology
+      operator="dilate"
+      radius="1"
+      in="SourceAlpha"
+      result="expanded"
+    />
+    <feFlood flood-color="black" result="color" />
+    <feComposite in="color" in2="expanded" operator="in" />
+    <feMerge>
+      <feMergeNode />
+      <feMergeNode in="SourceGraphic" />
+    </feMerge>
+  </filter>
+</svg>
+
 <div
   #containerDiv
   class="w-full h-full relative overflow-hidden"
@@ -108,6 +130,15 @@
         stroke-width=".1"
         stroke-opacity="0.8"
       />
+      <!-- hello text -->
+      <text
+        [attr.x]="crosshairPosition()!.x + gap / 1.25"
+        [attr.y]="crosshairPosition()!.y + gap / 1.25 + 2.5"
+        font-size="8px"
+        dominant-baseline="hanging"
+      >
+        {{ selectedKeypoint() }}
+      </text>
     </svg>
   }
 
@@ -117,7 +148,6 @@
       keypointIsSelected && selectedKeypointIsMoving();
     @if (keypoint.position() !== null) {
       <div
-        [attr.data-tip]="keypoint.hoverText"
         [class.selected]="keypointIsSelected"
         [style.transform]="getTransform(keypoint)"
         [style.transform-origin]="'0 0'"
@@ -129,8 +159,17 @@
         tabindex="0"
         [style.height.px]="keypoint.size()"
         [style.width.px]="keypoint.size()"
-        class="rounded-full shadow-sm/30 absolute top-0 left-0 tooltip"
+        class="rounded-full shadow-sm/30 absolute top-0 left-0"
       >
+        @if (!(showCrosshair() && crosshairPosition())) {
+          <span
+            class="text-[8px] text-nowrap pointer-events-none absolute select-none"
+            [style.top.px]="keypoint.size() / 1.15"
+            [style.left.px]="keypoint.size() / 1.15"
+            style="filter: url(#halo)"
+            >{{ keypoint.id }}</span
+          >
+        }
         @if (useCrossHairs()) {
           <svg
             class="absolute inset-0 w-full h-full pointer-events-none"

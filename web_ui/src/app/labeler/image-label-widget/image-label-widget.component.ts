@@ -1,15 +1,12 @@
 import {
+  ChangeDetectionStrategy,
   Component,
-  OnInit,
-  OnDestroy,
+  computed,
+  inject,
   input,
+  model,
   output,
   signal,
-  computed,
-  effect,
-  ChangeDetectionStrategy,
-  inject,
-  model,
   viewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -22,7 +19,6 @@ import { LKeypoint, lkp } from '../types';
 import { Keypoint } from '../../keypoint';
 import { ProjectInfoService } from '../../project-info.service';
 import { Point } from '@angular/cdk/drag-drop';
-import { hexToRgb, tailwindHexColors } from '../../infra/tailwindcolors';
 import { ColorService } from '../../infra/color.service';
 
 @Component({
@@ -91,14 +87,13 @@ export class ImageLabelWidgetComponent {
         this.colorService.getKeypointSize(lkeypoint.keypointName),
       ),
       color: computed(() => {
-        let alpha: number | undefined;
-        if (this.selectedKeypoint() == null) {
-          alpha = 0.2;
-        }
-        if (lkeypoint.keypointName === this.selectedKeypoint()) {
-          alpha = 0.35;
-        } else {
-          alpha = 0.15;
+        let alpha = this.viewOptions.keypointOpacity();
+        if (this.selectedKeypoint() != null) {
+          if (lkeypoint.keypointName === this.selectedKeypoint()) {
+            alpha = Math.min(1, alpha + 0.15);
+          } else {
+            alpha = Math.max(0, alpha - 0.05);
+          }
         }
         //return `color-mix(in oklab, oklch(72.3% 0.219 149.579) ${alpha * 100}%, transparent)`;
         return `rgba(${this.colorService.getKeypointColor(lkeypoint.keypointName).slice(0, 3).join(', ')}, ${alpha})`;
