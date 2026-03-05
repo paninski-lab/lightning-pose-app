@@ -15,6 +15,7 @@ import { Point } from '@angular/cdk/drag-drop';
 import { ColorService } from '../../infra/color.service';
 import { LabelerViewOptionsService } from '../../labeler/labeler-view-options.service';
 import { ViewerViewOptionsService } from '../../viewer/viewer-view-options.service';
+import { ViewportContextService } from '../viewport-context.service';
 
 /**
  * Keypoint display and interaction layer.
@@ -65,6 +66,8 @@ export class KeypointContainerComponent {
   editMode = input(false);
 
   protected colorService = inject(ColorService);
+  private viewportCtx = inject(ViewportContextService);
+
   labelerViewOptions = input<LabelerViewOptionsService>();
   viewerViewOptions = input<ViewerViewOptionsService>();
 
@@ -140,6 +143,8 @@ export class KeypointContainerComponent {
 
     // Calculate the scale factors.
     // If unscaledWidth/Height is 0, set scale to 1 to avoid division by zero.
+    // Note: Use DOM to calculate scale factor instead of using viewportCtx.scale()
+    // because during rapid scrolling, updating this computed lags behind the signal scale.
     const scaleX =
       unscaledWidth === 0 ? 1 : containerRect.width / unscaledWidth;
     const scaleY =

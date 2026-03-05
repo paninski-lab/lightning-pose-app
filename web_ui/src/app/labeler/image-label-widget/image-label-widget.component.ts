@@ -83,9 +83,7 @@ export class ImageLabelWidgetComponent {
       id: lkeypoint.keypointName,
       hoverText: lkeypoint.keypointName,
       position: signal({ x: lkeypoint.x, y: lkeypoint.y }),
-      size: computed(() =>
-        this.colorService.getKeypointSize(lkeypoint.keypointName),
-      ),
+      size: computed(() => this.viewOptions.keypointSize()),
       color: computed(() => {
         let alpha = this.viewOptions.keypointOpacity();
         if (this.selectedKeypoint() != null) {

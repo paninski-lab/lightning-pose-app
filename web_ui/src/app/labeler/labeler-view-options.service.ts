@@ -1,4 +1,5 @@
-import { Injectable, signal, computed, OnDestroy } from '@angular/core';
+import { Injectable, signal, computed, OnDestroy, inject } from '@angular/core';
+import { ColorService } from '../infra/color.service';
 
 @Injectable()
 export class LabelerViewOptionsService implements OnDestroy {
@@ -13,6 +14,16 @@ export class LabelerViewOptionsService implements OnDestroy {
     return `brightness(${this.imgBrightnessScalar()}) contrast(${this.imgContrastScalar()})`;
   });
   enablePixelGrid = signal(false);
+  private colorService = inject(ColorService);
+
+  constructor() {
+    // sets the default
+    this.resetKeypointSize();
+  }
+
+  resetKeypointSize() {
+    this.keypointSize.set(this.colorService.defaultSize);
+  }
 
   private temporalContextAbortController: AbortController | undefined;
 

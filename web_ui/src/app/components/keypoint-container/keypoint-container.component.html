@@ -150,10 +150,7 @@
       viewerViewOptions()?.keypointOpacity?.() ??
       labelerViewOptions()?.keypointOpacity?.() ??
       1;
-    @let size =
-      viewerViewOptions()?.keypointSize?.() ??
-      labelerViewOptions()?.keypointSize?.() ??
-      keypoint.size();
+    @let size = keypoint.size();
     @if (keypoint.position() !== null) {
       <div
         [class.selected-keypoint-border]="keypointIsSelected"
