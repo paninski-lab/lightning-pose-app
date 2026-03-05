@@ -14,6 +14,7 @@ import { Keypoint } from '../../keypoint';
 import { Point } from '@angular/cdk/drag-drop';
 import { ColorService } from '../../infra/color.service';
 import { LabelerViewOptionsService } from '../../labeler/labeler-view-options.service';
+import { ViewerViewOptionsService } from '../../viewer/viewer-view-options.service';
 
 /**
  * Keypoint display and interaction layer.
@@ -65,6 +66,7 @@ export class KeypointContainerComponent {
 
   protected colorService = inject(ColorService);
   labelerViewOptions = input<LabelerViewOptionsService>();
+  viewerViewOptions = input<ViewerViewOptionsService>();
 
   // Notifies parent of the user's intent to change keypoint position.
   keypointUpdated = output<{ kp: string; position: Point }>();

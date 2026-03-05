@@ -146,6 +146,14 @@
     @let keypointIsSelected = keypoint.id === selectedKeypoint();
     @let hideKeypointBecauseMoving =
       keypointIsSelected && selectedKeypointIsMoving();
+    @let opacity =
+      viewerViewOptions()?.keypointOpacity?.() ??
+      labelerViewOptions()?.keypointOpacity?.() ??
+      1;
+    @let size =
+      viewerViewOptions()?.keypointSize?.() ??
+      labelerViewOptions()?.keypointSize?.() ??
+      keypoint.size();
     @if (keypoint.position() !== null) {
       <div
         [class.selected-keypoint-border]="keypointIsSelected"
@@ -156,12 +164,13 @@
         [style.transform-origin]="'0 0'"
         [style.display]="hideKeypointBecauseMoving ? 'none' : 'block'"
         [style.background-color]="keypoint.color()"
+        [style.opacity]="opacity"
         (click)="handleKeypointClick($event, keypoint)"
         (keydown.enter)="handleKeypointClick($event, keypoint)"
         (pointerdown)="handleKeypointPointerDown($event, keypoint)"
         tabindex="0"
-        [style.height.px]="keypoint.size()"
-        [style.width.px]="keypoint.size()"
+        [style.height.px]="size"
+        [style.width.px]="size"
         class="rounded-full shadow-sm/30 absolute top-0 left-0"
         [class.tooltip]="enableKeypointHoverTooltips()"
         [attr.data-tip]="keypoint.hoverText"
@@ -169,8 +178,8 @@
         @if (!(showCrosshair() && crosshairPosition())) {
           <span
             class="text-[8px] text-nowrap pointer-events-none absolute select-none"
-            [style.top.px]="keypoint.size() / 1.15"
-            [style.left.px]="keypoint.size() / 1.15"
+            [style.top.px]="size / 1.15"
+            [style.left.px]="size / 1.15"
             style="filter: url(#halo)"
             >{{ keypoint.id }}</span
           >
