@@ -4,7 +4,7 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { compareStringArraysOrdered } from './utils/comparators';
 
 @Injectable()
-export class ViewSettings {
+export class EnabledViewsKeypointsService {
   _viewsShown = new BehaviorSubject<string[]>([]);
   viewsShown$ = this._viewsShown
     .asObservable()

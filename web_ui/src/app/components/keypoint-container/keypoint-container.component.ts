@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   ElementRef,
+  inject,
   input,
   model,
   output,
@@ -11,6 +12,9 @@ import {
 } from '@angular/core';
 import { Keypoint } from '../../keypoint';
 import { Point } from '@angular/cdk/drag-drop';
+import { ColorService } from '../../infra/color.service';
+import { LabelerViewOptionsService } from '../../labeler/labeler-view-options.service';
+import { ViewerViewOptionsService } from '../../viewer/viewer-view-options.service';
 
 /**
  * Keypoint display and interaction layer.
@@ -47,18 +51,22 @@ import { Point } from '@angular/cdk/drag-drop';
   //providers: [{ provide: DragDrop, useClass: CustomDragDrop }],
 })
 export class KeypointContainerComponent {
-  /** fixme: Right now this enables handlePointerMove handler only. */
   enableEditing = input<boolean>(false);
-
   keypointModels = input.required<Keypoint[]>();
 
-  /** false renders keypoints as dots, true renders them as crosshairs */
+  /** false renders keypoints as dots, true renders them as crosshairs on top of them */
   useCrossHairs = input(false);
+  /** Enables on-keypoint-hover tooltips */
+  enableKeypointHoverTooltips = input(false);
 
   /** the selected keypoint */
   selectedKeypoint = model<string | null>(null);
   newKpTemplate = input<null | Partial<Keypoint>>(null);
   editMode = input(false);
+
+  protected colorService = inject(ColorService);
+  labelerViewOptions = input<LabelerViewOptionsService>();
+  viewerViewOptions = input<ViewerViewOptionsService>();
 
   // Notifies parent of the user's intent to change keypoint position.
   keypointUpdated = output<{ kp: string; position: Point }>();
@@ -77,7 +85,10 @@ export class KeypointContainerComponent {
   private isMouseDownOnKeypoint = signal(false);
 
   getTransform(keypoint: Keypoint) {
-    return `translate3d(${keypoint.position().x}px, ${keypoint.position().y}px, 0px)`;
+    const cssPosition = keypoint.position();
+    const x = cssPosition.x;
+    const y = cssPosition.y;
+    return `translate3d(calc(${x}px - 50%), calc(${y}px - 50%), 0px)`;
   }
 
   /** Called when user clicks on a keypoint div */
@@ -106,6 +117,8 @@ export class KeypointContainerComponent {
   }
 
   private mouseClientPosition = signal<Point | null>(null);
+  // Pixels away from the center of the keypoint, at time of pointerdown on keypoint.
+  private mouseDownOffset = signal<Point>({ x: 0, y: 0 });
 
   protected crosshairPosition = computed((): Point | null => {
     if (!this.mouseClientPosition()) return null;
@@ -136,7 +149,10 @@ export class KeypointContainerComponent {
     const unscaledX = clientXRelativeToContainer / scaleX;
     const unscaledY = clientYRelativeToContainer / scaleY;
 
-    return { x: unscaledX, y: unscaledY };
+    return {
+      x: unscaledX - this.mouseDownOffset()!.x,
+      y: unscaledY - this.mouseDownOffset()!.y,
+    };
   });
 
   protected showCrosshair = computed(() => {
@@ -148,14 +164,26 @@ export class KeypointContainerComponent {
   });
 
   private keypointIsDragging = signal(false);
+  protected selectedKeypointBorderWidth = 0.5;
 
   handleKeypointPointerDown(event: PointerEvent, keypoint: Keypoint | null) {
     if (
+      this.enableEditing() &&
       keypoint &&
-      !this.selectedKeypointIsMoving() /** in creatin mode, mouse down should not select keypoint */
+      !this.selectedKeypointIsMoving() /** in creation mode, mouse down should not select keypoint */
     ) {
       this.selectedKeypoint.set(keypoint.id);
       this.isMouseDownOnKeypoint.set(true);
+      this.mouseDownOffset.set({
+        x:
+          event.offsetX -
+          keypoint.size() / 2 +
+          this.selectedKeypointBorderWidth,
+        y:
+          event.offsetY -
+          keypoint.size() / 2 +
+          this.selectedKeypointBorderWidth,
+      });
       event.stopPropagation();
     }
 
@@ -176,6 +204,7 @@ export class KeypointContainerComponent {
       : null;
 
     this.isMouseDownOnKeypoint.set(false);
+    this.mouseDownOffset.set({ x: 0, y: 0 });
     if (this.keypointIsDragging()) {
       this.keypointIsDragging.set(false);
       (this.containerDiv().nativeElement as HTMLElement).releasePointerCapture(
@@ -184,7 +213,10 @@ export class KeypointContainerComponent {
     }
 
     if (position) {
-      this.keypointUpdated.emit({ kp: this.selectedKeypoint()!, position });
+      this.keypointUpdated.emit({
+        kp: this.selectedKeypoint()!,
+        position,
+      });
     }
   }
 }

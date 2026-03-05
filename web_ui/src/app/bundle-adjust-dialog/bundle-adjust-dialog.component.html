@@ -27,11 +27,12 @@
       <tr>
         <td>Points labeled across all views for this session</td>
         <td class="flex gap-6 items-center">
-          {{ numLabeledFrames() }}
-          <div  class="alert alert-warning alert-outline">
-          @if (numLabeledFrames() < 10) {
-            Warning: more labeled points might lead to better results
-          }</div>
+          {{ numLabeledFramesGetter() }}
+          <div class="alert alert-warning alert-outline">
+            @if (numLabeledFramesGetter()() < 10) {
+              Warning: more labeled points might lead to better results
+            }
+          </div>
         </td>
       </tr>
 
@@ -47,12 +48,12 @@
             @if (optimizeExtrinsicsOnly()) {
               Extrinsic camera parameters: position and rotation
             } @else {
-              Intrinsic and Extrinsic: position, rotation, focal length, non-linear distortions
+              Intrinsic and Extrinsic: position, rotation, focal length,
+              non-linear distortions
             }
           </button>
         </td>
       </tr>
-
     </table>
 
     <div class="modal-action">
@@ -91,13 +92,13 @@
             <tr>
               <th>Old reprojection error</th>
               @for (err of baResponse()!.oldReprojectionError; track $index) {
-                <td>{{ err | number:'1.2-2' }}</td>
+                <td>{{ err | number: "1.2-2" }}</td>
               }
             </tr>
             <tr>
               <th>New reprojection error</th>
               @for (err of baResponse()!.newReprojectionError; track $index) {
-                <td>{{ err | number:'1.2-2' }}</td>
+                <td>{{ err | number: "1.2-2" }}</td>
               }
             </tr>
           </tbody>

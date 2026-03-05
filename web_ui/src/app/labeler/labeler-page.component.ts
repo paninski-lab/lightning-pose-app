@@ -246,6 +246,8 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     }, this.notificationDisplayTimeMs);
   }
 
+  protected getNumLabeledFramesGetter = () => this.getNumLabeledFrames();
+
   protected getNumLabeledFrames() {
     // count number of frames where all are labeled.
     return this.labelFileDataLabeledSlice()

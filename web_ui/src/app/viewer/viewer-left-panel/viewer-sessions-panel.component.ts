@@ -9,7 +9,7 @@ import {
 import { SessionService } from '../../session.service';
 import { MatListModule } from '@angular/material/list';
 import { ScrollingModule } from '@angular/cdk/scrolling';
-import { ViewSettings } from '../../view-settings.model';
+import { EnabledViewsKeypointsService } from '../../enabled-views-keypoints.service';
 import { ProjectInfoService } from '../../project-info.service';
 import { PathPipe } from '../../utils/pipes';
 import { Session } from '../../session.model';
@@ -24,7 +24,9 @@ import { Session } from '../../session.model';
 export class ViewerSessionsPanelComponent implements OnInit {
   protected sessionService = inject(SessionService);
   private projectInfoService = inject(ProjectInfoService);
-  private viewSettings = inject(ViewSettings, { optional: true });
+  private viewSettings = inject(EnabledViewsKeypointsService, {
+    optional: true,
+  });
 
   showModelAvailableMarkers = input.required<boolean>();
   selectedSessionKey = input<string | null>();
