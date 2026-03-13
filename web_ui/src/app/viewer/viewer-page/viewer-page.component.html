@@ -178,7 +178,8 @@
                   <button
                     class="btn btn-ghost btn-xs tooltip"
                     data-tip="Reset"
-                    (click)="viewOptions.videoTileSizePx.set(250)"
+                    [disabled]="viewOptions.isVideoTileSizeDefault()"
+                    (click)="viewOptions.resetVideoTileSize()"
                   >
                     <span class="material-icons text-sm!">restart_alt</span>
                   </button>
@@ -202,7 +203,8 @@
                   <button
                     class="btn btn-ghost btn-xs tooltip"
                     data-tip="Reset"
-                    (click)="viewOptions.keypointOpacity.set(1.0)"
+                    [disabled]="viewOptions.isOpacityDefault()"
+                    (click)="viewOptions.resetOpacity()"
                   >
                     <span class="material-icons text-sm!">restart_alt</span>
                   </button>
@@ -226,7 +228,8 @@
                   <button
                     class="btn btn-ghost btn-xs tooltip"
                     data-tip="Reset"
-                    (click)="viewOptions.keypointSize.set(5)"
+                    [disabled]="viewOptions.isSizeDefault()"
+                    (click)="viewOptions.resetKeypointSize()"
                   >
                     <span class="material-icons text-sm!">restart_alt</span>
                   </button>
