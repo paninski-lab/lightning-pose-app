@@ -16,6 +16,7 @@ import { ColorService } from '../../infra/color.service';
 import { LabelerViewOptionsService } from '../../labeler/labeler-view-options.service';
 import { ViewerViewOptionsService } from '../../viewer/viewer-view-options.service';
 import { ViewportContextService } from '../viewport-context.service';
+import { NgClass } from '@angular/common';
 
 /**
  * Keypoint display and interaction layer.
@@ -49,6 +50,7 @@ import { ViewportContextService } from '../viewport-context.service';
   templateUrl: './keypoint-container.component.html',
   styleUrl: './keypoint-container.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [NgClass],
   //providers: [{ provide: DragDrop, useClass: CustomDragDrop }],
 })
 export class KeypointContainerComponent {
@@ -68,8 +70,49 @@ export class KeypointContainerComponent {
   protected colorService = inject(ColorService);
   private viewportCtx = inject(ViewportContextService);
 
+  // one of them must be provided
   labelerViewOptions = input<LabelerViewOptionsService>();
   viewerViewOptions = input<ViewerViewOptionsService>();
+
+  keypointSize = computed(() => {
+    try {
+      return (this.labelerViewOptions()?.keypointSize() ??
+        this.viewerViewOptions()?.keypointSize())!;
+    } catch (e) {
+      // catch when label or view not set then keypoint size is undefined
+      alert('labelerViewOptions and viewerViewOptions both unset');
+      throw e;
+    }
+  });
+
+  /** for hiding other keypoints while editing */
+  calculatedKeypointOpacity(keypointId: string) {
+    if (this.selectedKeypointIsMoving() && this.crosshairPosition()) {
+      return this.selectedKeypoint() !== keypointId
+        ? this.reducedKeypointOpacity()
+        : this.keypointOpacity();
+    }
+    return this.keypointOpacity();
+  }
+  reducedKeypointOpacity = computed(() => {
+    return 0;
+  });
+  keypointOpacity = computed(() => {
+    if (this.labelerViewOptions()) {
+      return this.labelerViewOptions()!.keypointOpacity();
+    } else if (this.viewerViewOptions()) {
+      return this.viewerViewOptions()!.keypointOpacity();
+    } else {
+      throw new Error('labelerViewOptions and viewerViewOptions both unset');
+    }
+  });
+
+  enableKeypointLabels = computed(() => {
+    return (
+      Boolean(this.labelerViewOptions()) ||
+      this.viewerViewOptions()!.enableKeypointLabels()
+    );
+  });
 
   // Notifies parent of the user's intent to change keypoint position.
   keypointUpdated = output<{ kp: string; position: Point }>();
@@ -182,11 +225,11 @@ export class KeypointContainerComponent {
       this.mouseDownOffset.set({
         x:
           event.offsetX -
-          keypoint.size() / 2 +
+          this.keypointSize() / 2 +
           this.selectedKeypointBorderWidth,
         y:
           event.offsetY -
-          keypoint.size() / 2 +
+          this.keypointSize() / 2 +
           this.selectedKeypointBorderWidth,
       });
       event.stopPropagation();

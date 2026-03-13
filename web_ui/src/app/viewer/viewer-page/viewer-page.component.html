@@ -234,6 +234,17 @@
                 <div class="pl-2 opacity-60 text-xs">
                   {{ viewOptions.keypointSize() }}px
                 </div>
+                <div class="flex items-center gap-2 pt-2">
+                  <span class="material-icons text-sm!">label</span>
+                  Keypoint labels
+                </div>
+                <div class="pl-2 flex items-center">
+                  <input
+                    type="checkbox"
+                    [(ngModel)]="viewOptions.enableKeypointLabels"
+                    class="toggle toggle-sm"
+                  />
+                </div>
               </div>
             </div>
           </div>

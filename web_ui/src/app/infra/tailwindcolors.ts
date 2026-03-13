@@ -1,3 +1,9 @@
+/**
+ * Converts a hexadecimal color code to an RGB array.
+ *
+ * @param hex - The hexadecimal color code as a string, starting with "#" (optional) followed by 6 hexadecimal digits.
+ * @return An array containing three numbers representing the red, green, and blue values, respectively.
+ */
 export function hexToRgb(hex: string) {
   // parse the hex as hexadecimal number
   // https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb

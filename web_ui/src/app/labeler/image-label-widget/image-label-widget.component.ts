@@ -83,19 +83,7 @@ export class ImageLabelWidgetComponent {
       id: lkeypoint.keypointName,
       hoverText: lkeypoint.keypointName,
       position: signal({ x: lkeypoint.x, y: lkeypoint.y }),
-      size: computed(() => this.viewOptions.keypointSize()),
-      color: computed(() => {
-        let alpha = this.viewOptions.keypointOpacity();
-        if (this.selectedKeypoint() != null) {
-          if (lkeypoint.keypointName === this.selectedKeypoint()) {
-            alpha = Math.min(1, alpha + 0.15);
-          } else {
-            alpha = Math.max(0, alpha - 0.05);
-          }
-        }
-        //return `color-mix(in oklab, oklch(72.3% 0.219 149.579) ${alpha * 100}%, transparent)`;
-        return `rgba(${this.colorService.getKeypointColor(lkeypoint.keypointName).slice(0, 3).join(', ')}, ${alpha})`;
-      }),
+      color: computed(() => this.colorService.defaultColor),
     };
     return val;
   }

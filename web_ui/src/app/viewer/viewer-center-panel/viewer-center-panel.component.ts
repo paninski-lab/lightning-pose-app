@@ -80,13 +80,12 @@ export class ViewerCenterPanelComponent implements OnChanges {
       id: `${keypointName}-${modelKey}`,
       name: keypointName,
       hoverText: keypointName,
-      color: computed((): string => {
+      color: computed((): [number, number, number] => {
         const mi = this.enabledViewsKeypoints.modelsShown().indexOf(modelKey);
-        if (mi == 0) return 'rgb(248, 113, 113)'; //bg-red-400;
-        if (mi == 1) return 'rgb(34,197,94)'; // bg-green-400;
-        return 'rgb(224, 242, 254)'; // bg-sky-100;
+        if (mi == 0) return [248, 113, 113]; //bg-red-400;
+        if (mi == 1) return [34, 197, 94]; // bg-green-400;
+        return [224, 242, 254]; // bg-sky-100;
       }),
-      size: computed(() => this.colorService.getKeypointSize(keypointName)),
       modelKey,
       position: computed(() => {
         const i = Math.min(

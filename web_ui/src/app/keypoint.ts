@@ -8,8 +8,7 @@ export interface Keypoint {
   id: string; // must be unique per widget
   hoverText: string;
   position: Signal<Point>;
-  color: Signal<string>;
-  size: Signal<number>;
+  color: Signal<number[]>;
 }
 
 export interface ViewerKeypoint extends Keypoint {

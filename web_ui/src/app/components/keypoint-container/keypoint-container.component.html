@@ -2,8 +2,13 @@
    to allow dragging the keypoint slightly past the edge to allow moving its center to (0,0) or other corners/edges
 <div #dragBoundary class="absolute -inset-1"></div>-->
 <style>
-  .selected-keypoint-border {
+  :host {
     --selected-keypoint-border-width: 1px;
+    --crosshair-stroke-color: rgba(128, 128, 128, 0.6);
+    --inner-crosshair-stroke-color: rgba(220, 220, 220, 1);
+  }
+
+  .selected-keypoint-border {
     border: var(--selected-keypoint-border-width) solid yellow;
   }
 
@@ -20,7 +25,7 @@
   }
   .big-crosshair g line,
   .big-crosshair-center-circle {
-    stroke: rgba(128, 128, 128, 0.6);
+    stroke: var(--crosshair-stroke-color);
     stroke-width: 0.8;
   }
   svg text {
@@ -76,7 +81,7 @@
     </svg>
   }
   @if (showCrosshair() && crosshairPosition()) {
-    @let gap = colorService.getKeypointSize(selectedKeypoint()!) / 2;
+    @let gap = keypointSize() / 2;
     <svg class="big-crosshair" aria-hidden="true">
       <defs>
         <mask id="crosshair-hole">
@@ -146,11 +151,6 @@
     @let keypointIsSelected = keypoint.id === selectedKeypoint();
     @let hideKeypointBecauseMoving =
       keypointIsSelected && selectedKeypointIsMoving();
-    @let opacity =
-      viewerViewOptions()?.keypointOpacity?.() ??
-      labelerViewOptions()?.keypointOpacity?.() ??
-      1;
-    @let size = keypoint.size();
     @if (keypoint.position() !== null) {
       <div
         [class.selected-keypoint-border]="keypointIsSelected"
@@ -160,23 +160,33 @@
         [style.transform]="getTransform(keypoint)"
         [style.transform-origin]="'0 0'"
         [style.display]="hideKeypointBecauseMoving ? 'none' : 'block'"
-        [style.background-color]="keypoint.color()"
-        [style.opacity]="opacity"
+        [style.background-color]="
+          'rgba(' +
+          keypoint.color().join(',') +
+          ',' +
+          calculatedKeypointOpacity(keypoint.id) +
+          ')'
+        "
         (click)="handleKeypointClick($event, keypoint)"
         (keydown.enter)="handleKeypointClick($event, keypoint)"
         (pointerdown)="handleKeypointPointerDown($event, keypoint)"
         tabindex="0"
-        [style.height.px]="size"
-        [style.width.px]="size"
-        class="rounded-full shadow-sm/30 absolute top-0 left-0"
+        [style.height.px]="keypointSize()"
+        [style.width.px]="keypointSize()"
+        class="rounded-full absolute top-0 left-0"
+        [ngClass]="{
+          'shadow-sm/30': labelerViewOptions() ? false : true,
+        }"
         [class.tooltip]="enableKeypointHoverTooltips()"
         [attr.data-tip]="keypoint.hoverText"
       >
-        @if (!(showCrosshair() && crosshairPosition())) {
+        @if (
+          enableKeypointLabels() && !(showCrosshair() && crosshairPosition())
+        ) {
           <span
             class="text-[8px] text-nowrap pointer-events-none absolute select-none"
-            [style.top.px]="size / 1.15"
-            [style.left.px]="size / 1.15"
+            [style.top.px]="keypointSize() / 1.15"
+            [style.left.px]="keypointSize() / 1.15"
             style="filter: url(#halo)"
             >{{ keypoint.id }}</span
           >
@@ -192,7 +202,7 @@
               y1="1"
               x2="2"
               y2="1"
-              stroke="white"
+              [attr.stroke]="'var(--inner-crosshair-stroke-color)'"
               stroke-width=".1"
               stroke-opacity="0.8"
             />
@@ -202,7 +212,7 @@
               y1="0"
               x2="1"
               y2="2"
-              stroke="white"
+              [attr.stroke]="'var(--inner-crosshair-stroke-color)'"
               stroke-width=".1"
               stroke-opacity="0.8"
             />

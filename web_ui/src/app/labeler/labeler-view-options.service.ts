@@ -1,32 +1,82 @@
-import { Injectable, signal, computed, OnDestroy, inject } from '@angular/core';
+import {
+  Injectable,
+  signal,
+  computed,
+  OnDestroy,
+  inject,
+  effect,
+} from '@angular/core';
 import { ColorService } from '../infra/color.service';
+
+const DEFAULT_BRIGHTNESS = 1;
+const DEFAULT_CONTRAST = 1;
 
 @Injectable()
 export class LabelerViewOptionsService implements OnDestroy {
+  private colorService = inject(ColorService);
   isShowingTemporalContext = signal(false);
   temporalContextIndex = signal<number | null>(null);
 
-  imgBrightnessScalar = signal(1);
-  imgContrastScalar = signal(1);
-  keypointOpacity = signal(0.15);
-  keypointSize = signal(5);
+  imgBrightnessScalar = signal(DEFAULT_BRIGHTNESS);
+  imgContrastScalar = signal(DEFAULT_CONTRAST);
+  keypointOpacity = signal(
+    Number(localStorage.getItem('labeler-view-options.opacity')) ||
+      this.colorService.defaultOpacity,
+  );
+  keypointSize = signal(
+    Number(localStorage.getItem('labeler-view-options.size')) ||
+      this.colorService.defaultSize,
+  );
+  isBrightnessDefault = computed(
+    () => this.imgBrightnessScalar() === DEFAULT_BRIGHTNESS,
+  );
+  isContrastDefault = computed(
+    () => this.imgContrastScalar() === DEFAULT_CONTRAST,
+  );
+  isOpacityDefault = computed(
+    () => this.keypointOpacity() === this.colorService.defaultOpacity,
+  );
+  isSizeDefault = computed(
+    () => this.keypointSize() === this.colorService.defaultSize,
+  );
+
   imgCssFilterString = computed(() => {
     return `brightness(${this.imgBrightnessScalar()}) contrast(${this.imgContrastScalar()})`;
   });
   enablePixelGrid = signal(false);
-  private colorService = inject(ColorService);
 
   constructor() {
-    // sets the default
-    this.resetKeypointSize();
+    effect(() =>
+      localStorage.setItem(
+        'labeler-view-options.opacity',
+        String(this.keypointOpacity()),
+      ),
+    );
+    effect(() =>
+      localStorage.setItem(
+        'labeler-view-options.size',
+        String(this.keypointSize()),
+      ),
+    );
   }
 
   resetKeypointSize() {
     this.keypointSize.set(this.colorService.defaultSize);
   }
 
-  private temporalContextAbortController: AbortController | undefined;
+  resetBrightness() {
+    this.imgBrightnessScalar.set(DEFAULT_BRIGHTNESS);
+  }
 
+  resetContrast() {
+    this.imgContrastScalar.set(DEFAULT_CONTRAST);
+  }
+
+  resetOpacity() {
+    this.keypointOpacity.set(this.colorService.defaultOpacity);
+  }
+
+  private temporalContextAbortController: AbortController | undefined;
   handleShowTemporalContextClick() {
     this.temporalContextAbortController = new AbortController();
 
