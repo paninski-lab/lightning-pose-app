@@ -1,35 +1,41 @@
-# Context
+You are an expert in TypeScript, Angular, and scalable web application development. You write functional, maintainable, and performant code following Angular and TypeScript best practices.
+## TypeScript Best Practices
+- Use strict type checking
+- Prefer type inference when the type is obvious
 
-## 1. Core Tech Stack & Strictness
-* **Framework:** Use **Angular v21.1.3**. Always prioritize the latest stable APIs.
-* **TypeScript:** Adhere to `strict: true`. **Handle `null` and `undefined` explicitly** in all logic. Follow `strictTemplates` and `strictInjectionParameters`.
-* **Styling:** Use **Tailwind CSS v4.1.7** with **DaisyUI v5.1.12**. 
-    * Prioritize DaisyUI component classes (e.g., `btn`, `card`) over long utility strings.
-* **Architecture:** Components are **Standalone by default** (Angular v19+). Do not include `standalone: true` in decorators. **Do not suggest or create `NgModule` files.**
-
-## 2. Mandatory Reactivity Patterns
-* **Primary State:** Use **Angular Signals** (`signal`, `computed`, `effect`) for all UI state and derived data.
-* **Event Streams:** Use **RxJS** (`BehaviorSubject`, `Observable`) **only** for complex asynchronous coordination (e.g., video timing/sync) and HTTP data flows.
-* **Bridge Strategy:** Convert RxJS streams to Signals using `toSignal()` for template consumption.
-* **Template Syntax:** Use modern `@if`, `@for`, and `@switch` control flow exclusively. **Do not use `*ngIf` or `*ngFor`.**
-* **Component I/O:** Use signal-based `input()`, `model()` for two-way binding, and `output()` functions.
-* **Dependency Injection:** Use the `inject()` function at the class level. **Strictly avoid constructor injection.**
-
-## 3. Directory & API Standards
-* **Core Logic:** Keep global logic (RPC, Config) in the root `/app` directory. 
-* **Shared UI:** Place reusable building blocks (e.g., `zoomable-content`, `keypoint-container`) in `/app/components`.
-* **Feature Domains:** Group by feature: `/app/labeler`, `/app/viewer`, `/app/models-page`, `/app/project-home-page`.
-* **Data Fetching:** * Use **`RpcService`** (wrapping `HttpClient`) for JSON-RPC.
-    * Use native **`fetch`** only for specialized requests (e.g., log retrieval).
-    * Centralize shared API logic in **`SessionService`**.
-
-## 4. State & Service Locality
-* **Global Context:** Use `ProjectInfoService` and `SessionService` for app-wide state.
-* **Local Context:** Provide feature-specific services (e.g., `LabelerViewOptionsService`) at the **Component level** (via `providers: [...]` in the decorator) rather than `providedIn: 'root'`. This ensures state is reset when the component is destroyed.
-
-## 5. Testing & Documentation
-* **Unit Testing:** Implement meaningful tests in `.spec.ts` files. Include deep logic assertions and mock all HTTP/RPC dependencies using Jasmine. **No skeleton tests.**
-* **Documentation:** Use **JSDoc** for all utility functions and public service methods. Use descriptive `camelCase` naming.
+## Angular Best Practices
+- Always use standalone components over NgModules
+- Must NOT set `standalone: true` inside Angular decorators. It's the default in Angular v20+.
+- Use signals for state management
+- Do NOT use the `@HostBinding` and `@HostListener` decorators. Put host bindings inside the `host` object of the `@Component` or `@Directive` decorator instead
+### Components
+- Keep components small and focused on a single responsibility
+- Use `input()` and `output()` functions instead of decorators
+- Use `computed()` for derived state
+- Set `changeDetection: ChangeDetectionStrategy.OnPush` in `@Component` decorator
+- Prefer inline templates for small components
+- Prefer Reactive forms instead of Template-driven ones
+- Do NOT use `ngClass`, use `class` bindings instead
+- Do NOT use `ngStyle`, use `style` bindings instead
+- When using external templates/styles, use paths relative to the component TS file.
+## State Management
+- Use signals for local component state
+- Use `computed()` for derived state
+- Keep state transformations pure and predictable
+- Use Services for signal state that is re-used across components. Provided at component level.
+- Use signal for simple state, and ngrx signalState for complex state.
+- Do not use ngrx store
+- Use rxjs BehaviorSubject for synchronous event-driven sync logic (effect is asynchronous).
+## Templates
+- Keep templates simple and avoid complex logic
+- Use native control flow (`@if`, `@for`, `@switch`) instead of `*ngIf`, `*ngFor`, `*ngSwitch`
+- Do not assume globals like (`new Date()`) are available in templates.
+## Services
+- Design services around a single responsibility
+- Use the `providedIn: 'root'` option for singleton services
+- Use the `inject()` function instead of constructor injection
+## Styling
+- Prioritize using DaisyUI component classes
 
 ## 6. Gold Standard Reference Files
 * **Component Pattern:** `src/app/labeler/image-label-widget/image-label-widget.component.ts` (Signals, `inject`, modern flow).
