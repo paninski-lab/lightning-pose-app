@@ -103,8 +103,9 @@ export class KeypointContainerComponent {
 
   enableKeypointLabels = computed(() => {
     return (
-      Boolean(this.labelerViewOptions()) ||
-      this.viewerViewOptions()!.enableKeypointLabels()
+      this.labelerViewOptions()?.enableKeypointLabels() ??
+      this.viewerViewOptions()?.enableKeypointLabels() ??
+      true
     );
   });
 

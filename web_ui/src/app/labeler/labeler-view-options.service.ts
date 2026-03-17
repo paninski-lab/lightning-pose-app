@@ -39,6 +39,7 @@ export class LabelerViewOptionsService implements OnDestroy {
   isSizeDefault = computed(
     () => this.keypointSize() === this.colorService.defaultSize,
   );
+  enableKeypointLabels = signal(true);
 
   imgCssFilterString = computed(() => {
     return `brightness(${this.imgBrightnessScalar()}) contrast(${this.imgContrastScalar()})`;
