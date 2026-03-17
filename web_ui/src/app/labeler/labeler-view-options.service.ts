@@ -12,7 +12,7 @@ import { debounceTime, merge } from 'rxjs';
 
 const DEFAULT_BRIGHTNESS = 1;
 const DEFAULT_CONTRAST = 1;
-const UMAMI_DEBOUNCE_TIME_MS = 30000;
+const UMAMI_DEBOUNCE_TIME_MS = 10000;
 
 @Injectable()
 export class LabelerViewOptionsService {
@@ -78,8 +78,6 @@ export class LabelerViewOptionsService {
       )
       .subscribe(() => {
         window.umami?.track('labeler_view_options_change', {
-          isShowingTemporalContext: this.isShowingTemporalContext(),
-          temporalContextIndex: this.temporalContextIndex(),
           imgBrightnessScalar: this.imgBrightnessScalar(),
           imgContrastScalar: this.imgContrastScalar(),
           keypointOpacity: this.keypointOpacity(),

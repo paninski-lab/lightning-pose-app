@@ -5,7 +5,7 @@ import { debounceTime, merge } from 'rxjs';
 
 const DEFAULT_VIDEO_TILE_SIZE = 250;
 const DEFAULT_OPACITY = 1.0;
-const UMAMI_DEBOUNCE_TIME_MS = 30000;
+const UMAMI_DEBOUNCE_TIME_MS = 10000;
 
 @Injectable()
 export class ViewerViewOptionsService {
