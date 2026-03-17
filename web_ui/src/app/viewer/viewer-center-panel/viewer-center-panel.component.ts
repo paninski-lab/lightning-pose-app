@@ -27,7 +27,6 @@ import * as dfd from 'danfojs';
 import { PredictionFile } from '../../prediction-file';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ZoomableContentComponent } from '../../components/zoomable-content.component';
-import { ViewportContextDirective } from '../../components/viewport-context.directive';
 import { firstValueFrom, skipWhile } from 'rxjs';
 import { ExtractedFramePredictionList } from '../../extract-frames-request';
 import _ from 'lodash';
@@ -42,7 +41,6 @@ import { ViewerViewOptionsService } from '../viewer-view-options.service';
     VideoTileComponent,
     KeypointContainerComponent,
     ZoomableContentComponent,
-    ViewportContextDirective,
   ],
   templateUrl: './viewer-center-panel.component.html',
   styleUrl: './viewer-center-panel.component.css',

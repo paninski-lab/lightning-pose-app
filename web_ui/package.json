@@ -30,7 +30,6 @@
     "prettier": "^3.5.3",
     "rxjs": "~7.8.0",
     "tailwindcss": "^4.1.7",
-    "three": "^0.183.2",
     "tslib": "^2.3.0",
     "yaml": "^2.6.0",
     "zone.js": "~0.15.0"
@@ -45,7 +44,6 @@
     "@types/lodash": "^4.17.20",
     "@types/ndarray": "^1.0.14",
     "@types/papaparse": "^5.3.16",
-    "@types/three": "^0.183.1",
     "angular-eslint": "19.6.0",
     "daisyui": "^5.1.12",
     "eslint": "^9.39.2",

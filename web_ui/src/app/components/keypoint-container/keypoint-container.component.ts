@@ -3,7 +3,6 @@ import {
   Component,
   computed,
   ElementRef,
-  inject,
   input,
   model,
   output,
@@ -12,10 +11,8 @@ import {
 } from '@angular/core';
 import { Keypoint } from '../../keypoint';
 import { Point } from '@angular/cdk/drag-drop';
-import { ColorService } from '../../infra/color.service';
 import { LabelerViewOptionsService } from '../../labeler/labeler-view-options.service';
 import { ViewerViewOptionsService } from '../../viewer/viewer-view-options.service';
-import { ViewportContextService } from '../viewport-context.service';
 import { NgClass } from '@angular/common';
 
 /**
@@ -66,9 +63,6 @@ export class KeypointContainerComponent {
   selectedKeypoint = model<string | null>(null);
   newKpTemplate = input<null | Partial<Keypoint>>(null);
   editMode = input(false);
-
-  protected colorService = inject(ColorService);
-  private viewportCtx = inject(ViewportContextService);
 
   // one of them must be provided
   labelerViewOptions = input<LabelerViewOptionsService>();

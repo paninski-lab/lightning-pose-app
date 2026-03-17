@@ -18,6 +18,7 @@ import { ViewportContextService } from './viewport-context.service';
 @Component({
   selector: 'app-zoomable-content',
   imports: [],
+  providers: [ViewportContextService],
   template: `
     <div
       #viewport
