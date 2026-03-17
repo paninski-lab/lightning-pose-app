@@ -8,10 +8,10 @@ export interface Keypoint {
   id: string; // must be unique per widget
   hoverText: string;
   position: Signal<Point>;
-  colorClass: Signal<string>;
+  color: Signal<number[]>;
 }
 
-export interface KeypointImpl extends Keypoint {
+export interface ViewerKeypoint extends Keypoint {
   name: string;
   modelKey: string;
 }

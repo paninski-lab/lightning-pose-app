@@ -24,14 +24,17 @@
             </div>
 
             <app-zoomable-content
-              [style.height.px]="tileSizePx()"
-              [style.width.px]="tileSizePx()"
+              class="block"
+              [style.height.px]="viewOptions.videoTileSizePx()"
+              [style.width.px]="viewOptions.videoTileSizePx()"
             >
               <app-video-tile #content [src]="w.videoSrc" class="relative">
                 <app-keypoint-container
                   class="absolute top-0 left-0 h-full w-full"
                   [enableEditing]="false"
                   [keypointModels]="w.keypoints()"
+                  [enableKeypointHoverTooltips]="true"
+                  [viewerViewOptions]="viewOptions"
                 ></app-keypoint-container>
               </app-video-tile>
             </app-zoomable-content>

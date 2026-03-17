@@ -138,7 +138,7 @@
         class="grow z-30"
         [labelFile]="loadedLabelFile()"
         [frame]="selectedFrame()"
-        [numLabeledFrames]="getNumLabeledFrames()"
+        [numLabeledFramesGetter]="getNumLabeledFramesGetter"
         (saved)="handleSaved($event)"
         (newLabelFile)="extractFramesDialogOpen.set(true)"
       ></app-labeler-center-panel>

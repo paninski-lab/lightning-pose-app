@@ -33,7 +33,6 @@
         <app-viewer-center-panel
           class="grow z-30"
           [sessionKey]="_sessionKey()"
-          [tileSizePx]="videoTileSizePx()"
         ></app-viewer-center-panel>
 
         <!-- Right pane -->
@@ -112,9 +111,9 @@
             <div class="panel-content max-h-60 overflow-y-visible">
               <ul>
                 @let modelSelectors =
-                  viewSettings.modelsShown().length < 2
-                    ? viewSettings.modelsShown().concat([noneOption])
-                    : viewSettings.modelsShown();
+                  enabledViewsKeypoints.modelsShown().length < 2
+                    ? enabledViewsKeypoints.modelsShown().concat([noneOption])
+                    : enabledViewsKeypoints.modelsShown();
                 <!-- it's important to track index, not model.
              if we put model here, something weird happens when you clear all models and then set a model. -->
                 @for (model of modelSelectors; track $index) {
@@ -122,13 +121,17 @@
                   <li class="p-1 w-full">
                     <select
                       class="select select-sm w-full flex-grow"
-                      [disabled]="viewSettings.modelOptions().length === 0"
+                      [disabled]="
+                        enabledViewsKeypoints.modelOptions().length === 0
+                      "
                       [class.border-red-300]="modelIndex === 0"
                       [class.border-green-300]="modelIndex === 1"
                       (change)="onModelDropdownItemClick(modelIndex, $event)"
                     >
                       @let options =
-                        [noneOption].concat(viewSettings.modelOptions());
+                        [noneOption].concat(
+                          enabledViewsKeypoints.modelOptions()
+                        );
                       @for (dropdownItem of options; track dropdownItem) {
                         <option [selected]="dropdownItem === model">
                           {{ dropdownItem }}
@@ -169,19 +172,81 @@
                     min="200"
                     max="900"
                     step="10"
-                    [(ngModel)]="videoTileSizePx"
+                    [(ngModel)]="viewOptions.videoTileSizePx"
                     class="range range-xs"
                   />
                   <button
                     class="btn btn-ghost btn-xs tooltip"
                     data-tip="Reset"
-                    (click)="videoTileSizePx.set(250)"
+                    [disabled]="viewOptions.isVideoTileSizeDefault()"
+                    (click)="viewOptions.resetVideoTileSize()"
                   >
                     <span class="material-icons text-sm!">restart_alt</span>
                   </button>
                 </div>
                 <div class="pl-2 opacity-60 text-xs">
-                  {{ videoTileSizePx() }}px
+                  {{ viewOptions.videoTileSizePx() }}px
+                </div>
+                <div class="flex items-center gap-2 pt-2">
+                  <span class="material-icons text-sm!">opacity</span>
+                  Keypoint opacity
+                </div>
+                <div class="pl-2 flex items-center">
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    [(ngModel)]="viewOptions.keypointOpacity"
+                    class="range range-xs"
+                  />
+                  <button
+                    class="btn btn-ghost btn-xs tooltip"
+                    data-tip="Reset"
+                    [disabled]="viewOptions.isOpacityDefault()"
+                    (click)="viewOptions.resetOpacity()"
+                  >
+                    <span class="material-icons text-sm!">restart_alt</span>
+                  </button>
+                </div>
+                <div class="pl-2 opacity-60 text-xs">
+                  {{ viewOptions.keypointOpacity() }}
+                </div>
+                <div class="flex items-center gap-2 pt-2">
+                  <span class="material-icons text-sm!">ads_click</span>
+                  Keypoint size
+                </div>
+                <div class="pl-2 flex items-center">
+                  <input
+                    type="range"
+                    min="1"
+                    max="25"
+                    step="1"
+                    [(ngModel)]="viewOptions.keypointSize"
+                    class="range range-xs"
+                  />
+                  <button
+                    class="btn btn-ghost btn-xs tooltip"
+                    data-tip="Reset"
+                    [disabled]="viewOptions.isSizeDefault()"
+                    (click)="viewOptions.resetKeypointSize()"
+                  >
+                    <span class="material-icons text-sm!">restart_alt</span>
+                  </button>
+                </div>
+                <div class="pl-2 opacity-60 text-xs">
+                  {{ viewOptions.keypointSize() }}px
+                </div>
+                <div class="flex items-center gap-2 pt-2">
+                  <span class="material-icons text-sm!">label</span>
+                  Keypoint labels
+                </div>
+                <div class="pl-2 flex items-center">
+                  <input
+                    type="checkbox"
+                    [(ngModel)]="viewOptions.enableKeypointLabels"
+                    class="toggle toggle-sm"
+                  />
                 </div>
               </div>
             </div>
