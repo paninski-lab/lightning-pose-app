@@ -17,12 +17,10 @@ import { NgClass } from '@angular/common';
 
 @Component({
   selector: 'app-keypoint-container',
-  //imports: [DragDropModule],
   templateUrl: './keypoint-container.component.html',
   styleUrl: './keypoint-container.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgClass],
-  //providers: [{ provide: DragDrop, useClass: CustomDragDrop }],
 })
 export class KeypointContainerComponent {
   enableEditing = input<boolean>(false);
