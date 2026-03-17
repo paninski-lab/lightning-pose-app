@@ -2,18 +2,22 @@ import {
   Injectable,
   signal,
   computed,
-  OnDestroy,
   inject,
   effect,
+  DestroyRef,
 } from '@angular/core';
+import { toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ColorService } from '../infra/color.service';
+import { debounceTime, merge } from 'rxjs';
 
 const DEFAULT_BRIGHTNESS = 1;
 const DEFAULT_CONTRAST = 1;
+const UMAMI_DEBOUNCE_TIME_MS = 30000;
 
 @Injectable()
-export class LabelerViewOptionsService implements OnDestroy {
+export class LabelerViewOptionsService {
   private colorService = inject(ColorService);
+  private destroyRef = inject(DestroyRef);
   isShowingTemporalContext = signal(false);
   temporalContextIndex = signal<number | null>(null);
 
@@ -59,6 +63,35 @@ export class LabelerViewOptionsService implements OnDestroy {
         String(this.keypointSize()),
       ),
     );
+
+    merge(
+      toObservable(this.imgBrightnessScalar),
+      toObservable(this.imgContrastScalar),
+      toObservable(this.keypointOpacity),
+      toObservable(this.keypointSize),
+      toObservable(this.enableKeypointLabels),
+      toObservable(this.enablePixelGrid),
+    )
+      .pipe(
+        debounceTime(UMAMI_DEBOUNCE_TIME_MS),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => {
+        window.umami?.track('labeler_view_options_change', {
+          isShowingTemporalContext: this.isShowingTemporalContext(),
+          temporalContextIndex: this.temporalContextIndex(),
+          imgBrightnessScalar: this.imgBrightnessScalar(),
+          imgContrastScalar: this.imgContrastScalar(),
+          keypointOpacity: this.keypointOpacity(),
+          keypointSize: this.keypointSize(),
+          enableKeypointLabels: this.enableKeypointLabels(),
+          enablePixelGrid: this.enablePixelGrid(),
+        });
+      });
+
+    this.destroyRef.onDestroy(() => {
+      this.temporalContextAbortController?.abort();
+    });
   }
 
   resetKeypointSize() {
@@ -112,9 +145,5 @@ export class LabelerViewOptionsService implements OnDestroy {
       }
     };
     loop();
-  }
-
-  ngOnDestroy() {
-    this.temporalContextAbortController?.abort();
   }
 }

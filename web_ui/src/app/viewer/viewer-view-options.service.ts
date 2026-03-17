@@ -1,8 +1,11 @@
 import { inject, Injectable, signal, computed, effect } from '@angular/core';
+import { toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ColorService } from '../infra/color.service';
+import { debounceTime, merge } from 'rxjs';
 
 const DEFAULT_VIDEO_TILE_SIZE = 250;
 const DEFAULT_OPACITY = 1.0;
+const UMAMI_DEBOUNCE_TIME_MS = 30000;
 
 @Injectable()
 export class ViewerViewOptionsService {
@@ -49,6 +52,22 @@ export class ViewerViewOptionsService {
         String(this.keypointSize()),
       ),
     );
+
+    merge(
+      toObservable(this.videoTileSizePx),
+      toObservable(this.keypointOpacity),
+      toObservable(this.keypointSize),
+      toObservable(this.enableKeypointLabels),
+    )
+      .pipe(debounceTime(UMAMI_DEBOUNCE_TIME_MS), takeUntilDestroyed())
+      .subscribe(() => {
+        window.umami?.track('viewer_view_options_change', {
+          videoTileSizePx: this.videoTileSizePx(),
+          keypointOpacity: this.keypointOpacity(),
+          keypointSize: this.keypointSize(),
+          enableKeypointLabels: this.enableKeypointLabels(),
+        });
+      });
   }
 
   resetVideoTileSize() {
