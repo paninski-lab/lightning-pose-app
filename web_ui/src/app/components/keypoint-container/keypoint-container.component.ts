@@ -15,32 +15,6 @@ import { LabelerViewOptionsService } from '../../labeler/labeler-view-options.se
 import { ViewerViewOptionsService } from '../../viewer/viewer-view-options.service';
 import { NgClass } from '@angular/common';
 
-/**
- * Keypoint display and interaction layer.
- *
- * For now display and interaction are combined into a single component which means
- * that when you scale the host div (zoom),it includes tooltips, crosshair. Instead
- * we might want to have some interaction elements like the crosshairs, tooltips,
- * and help text be outside of the zoomable(image and shown keypoints).
- *
- * Interaction details:
- * (viewer + labeler):
- *   - on keypoint hover, display tooltip of keypoint name
- *
- * (labeler):
- *   Supports "keypoint move mode" where a keypoint disappears and cursor
- *   turns into a crosshair until the user specifies the new position.
- *
- *   Interaction modes for moving keypoints: view and creation.
- *   1. View: dragging a keypoint moves it
- *   2. Creation: keypoint is in move mode until mousedown
- *
- *   Completing the above workflows emits `keypointUpdate` event.
- *
- *   // showCrosshair = selectedKeypointIsMoving = editMode || isDragging
- *
- *
- */
 @Component({
   selector: 'app-keypoint-container',
   //imports: [DragDropModule],
