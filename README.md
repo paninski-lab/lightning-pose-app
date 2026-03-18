@@ -17,6 +17,15 @@ Our full documentation, including installation guides, API references, and advan
 
 ## 📝 Release Notes
 
+### [2.0.7.1] — 2026-03-17
+
+* Refined labeler UX Fixed dragging off-center behavior, fixed subpixel rendering, and added keypoint text labels (
+  #61)
+* Added keypoint opacity and size controls to the labeler (#61)
+* Added tooltips for data and model directories on project hover
+* Added likelihood threshold control in viewer
+* Improved display of calibration file information
+
 ### [2.0.7.0] — 2026-02-26
 
 * Added slider for video tile size in viewer
