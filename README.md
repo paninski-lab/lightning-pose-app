@@ -19,12 +19,13 @@ Our full documentation, including installation guides, API references, and advan
 
 ### [2.0.7.1] — 2026-03-17
 
-* Refined labeler UX Fixed dragging off-center behavior, fixed subpixel rendering, and added keypoint text labels (
-  #61)
-* Added keypoint opacity and size controls to the labeler (#61)
-* Added tooltips for data and model directories on project hover
-* Added likelihood threshold control in viewer
-* Improved display of calibration file information
+* Refined labeler UX Fixed dragging off-center behavior, fixed subpixel rendering, and added keypoint text
+  labels (https://github.com/paninski-lab/lightning-pose-app/pull/61)
+* Added keypoint opacity and size controls to the labeler (https://github.com/paninski-lab/lightning-pose-app/pull/61)
+* Added tooltips for data and model directories on project
+  hover (https://github.com/paninski-lab/lightning-pose-app/pull/62)
+* Added likelihood threshold control in viewer (https://github.com/paninski-lab/lightning-pose-app/pull/62)
+* Improved display of calibration file information (https://github.com/paninski-lab/lightning-pose-app/pull/62)
 
 ### [2.0.7.0] — 2026-02-26
 
