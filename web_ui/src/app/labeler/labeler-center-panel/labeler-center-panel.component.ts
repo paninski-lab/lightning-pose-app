@@ -113,10 +113,15 @@ export class LabelerCenterPanelComponent implements OnChanges {
     );
   }
 
+  protected sessionKey = computed(() => {
+    const frame = this.frame();
+    if (!frame) return null;
+    return mvf(frame).autolabelSessionKey;
+  });
+
   private checkIfHasCameraCalibrationFiles() {
     const abortSignal = this.abortController.signal;
-    if (!this.frame()) return;
-    const sessionKey = mvf(this.frame()!).autolabelSessionKey;
+    const sessionKey = this.sessionKey();
     if (!sessionKey) return;
     this.sessionService.getCalibrationStatus(sessionKey).then((status) => {
       if (abortSignal.aborted) return;

@@ -136,38 +136,71 @@
             <p>
               With accurate parameters, you need only label two views per
               keypoint: the other views can be auto-labeled by triangulating and
-              reprojecting. The tool also supports bundle adjustment to refine
-              the camera parameters after labeling several frames.
+              reprojecting.
             </p>
             <h3>How to provide camera parameters to Lightning Pose</h3>
             <p>
               Camera calibration is typically performed using Anipose before
               every session. Camera parameters are recommended to be
               session-specific to allow for changes in camera position from
-              session to session, however a single project-wide calibration file
-              is also supported.
+              session to session. A project-wide calibration file can be used as
+              a fallback.
             </p>
             <p>
-              Session specific calibration files should be at
-              <code>{{ "calibrations/{sessionKey}.toml" | path }}</code
-              >. where <code>sessionKey</code> is the video filename without the
-              viewname.<br />
-              For example, the calibration file for session with files like
+              For the session of the current labeled frame, the following
+              calibration file paths are expected:
             </p>
 
+            <table class="table w-full">
+              <thead>
+                <tr>
+                  <th>Scope</th>
+                  <th>Calibration Path</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Session-level</td>
+                  <td>
+                    <code>{{
+                      "calibrations/" +
+                        (sessionKey() ?? "{sessionKey}") +
+                        ".toml" | path
+                    }}</code>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Project-level fallback</td>
+                  <td>
+                    <code>{{ "calibration.toml" }}</code>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <p>For more information, see:</p>
             <ul>
               <li>
-                <code>{{ "videos/session1_view1.mp4" | path }}</code> would be
-                <code>{{ "calibrations/session1.toml" | path }}</code>
+                <a
+                  href="https://lightning-pose.readthedocs.io/en/latest/source/directory_structure_reference/multiview_structure.html#project-level-camera-calibration-file-6"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="link link-primary"
+                >
+                  Calibration directory structure
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://lightning-pose.readthedocs.io/en/latest/source/directory_structure_reference/camera_calibration_file_format.html#camera-calibration-file-format"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="link link-primary"
+                >
+                  Calibration file format
+                </a>
               </li>
             </ul>
-            <p>
-              The optional project calibration file should be at
-              <code>calibration.toml</code>. It will be used if session-specific
-              calibration is not found. When bundle adjustment is performed, it
-              will not modify the project calibration.toml; it will instead
-              output a session-specific calibration file.
-            </p>
 
             <div class="modal-action">
               <form method="dialog">
@@ -183,7 +216,7 @@
               @case ("session") {
                 <span class="text-success flex items-center gap-1">
                   <span class="material-icons text-sm">check_circle</span>
-                  Session calibration found
+                  Session-level calibration found
                 </span>
               }
               @case ("project") {
@@ -195,7 +228,7 @@
               @default {
                 <span class="text-error flex items-center gap-1">
                   <span class="material-icons text-sm">error</span>
-                  No calibration found
+                  No calibration found.
                   <button
                     class="link link-error ml-1"
                     onclick="multiview_info.showModal()"
