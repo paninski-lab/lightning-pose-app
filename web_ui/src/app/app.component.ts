@@ -26,6 +26,7 @@ import { LoadingService } from './loading.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs/operators';
 import { LocalStorageService } from './local-storage.service';
+import { ToastService } from './toast.service';
 
 @Component({
   selector: 'app-root',
@@ -46,6 +47,7 @@ export class AppComponent implements OnInit {
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
   protected localStorageService = inject(LocalStorageService);
+  private toastService = inject(ToastService);
 
   protected settingsDialog = viewChild.required<ElementRef>('settingsDialog');
 
@@ -55,6 +57,14 @@ export class AppComponent implements OnInit {
 
   projectKey = computed(
     () => this.projectInfoService.projectContext()?.key ?? null,
+  );
+  projectDataDir = computed(
+    () =>
+      this.projectInfoService.projectContext()?.projectInfo?.data_dir ?? null,
+  );
+  projectModelDir = computed(
+    () =>
+      this.projectInfoService.projectContext()?.projectInfo?.model_dir ?? null,
   );
   navLinks = computed(() => {
     const key = this.projectKey();
@@ -161,5 +171,16 @@ export class AppComponent implements OnInit {
 
   handleSettingsDialogDoneCreation(createdProjectKey: string) {
     this.router.navigate(['/project', createdProjectKey]);
+  }
+
+  protected copyToClipboard(text: string | null) {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      this.toastService.showToast({
+        content: `Copied to clipboard: ${text}`,
+        variant: 'success',
+        durationMs: 2000,
+      });
+    });
   }
 }

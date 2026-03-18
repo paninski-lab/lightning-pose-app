@@ -16,9 +16,42 @@
           <span class="material-icons">home</span>
         </a>
         <span class="text-base-content/70 text-lg select-none"> > </span>
-        <span aria-label="Current project" class="mx-2 text-nowrap">
-          {{ projectKey() }}</span
-        >
+        <div class="dropdown dropdown-hover dropdown-bottom">
+          <span
+            tabindex="0"
+            role="button"
+            aria-label="Current project"
+            class="mx-2 text-nowrap flex items-center gap-1"
+          >
+            {{ projectKey() }}
+            <span class="material-icons text-sm!">info</span>
+          </span>
+          <div
+            tabindex="0"
+            class="dropdown-content z-[9999] menu p-2 shadow bg-base-300 rounded-box w-max text-sm"
+          >
+            <div class="whitespace-nowrap px-1 rounded flex gap-1 items-center">
+              <span>Data dir:</span>
+              <span
+                class="font-mono cursor-pointer hover:bg-base-content/10 px-1 py-0.5 rounded flex items-center gap-1"
+                (click)="copyToClipboard(projectDataDir())"
+              >
+                <span class="material-icons text-sm">content_copy</span>
+                {{ projectDataDir() ?? "N/A" }}
+              </span>
+            </div>
+            <div class="whitespace-nowrap px-1 rounded flex gap-1 items-center">
+              <span>Model dir:</span>
+              <span
+                class="font-mono cursor-pointer hover:bg-base-content/10 px-1 py-0.5 rounded flex items-center gap-1"
+                (click)="copyToClipboard(projectModelDir())"
+              >
+                <span class="material-icons text-sm">content_copy</span>
+                {{ projectModelDir() ?? "N/A" }}
+              </span>
+            </div>
+          </div>
+        </div>
       } @else {
         <a href="/"
           ><span class="text-lg font-semibold pl-2">Lightning Pose</span></a
