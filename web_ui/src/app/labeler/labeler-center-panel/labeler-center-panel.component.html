@@ -160,11 +160,6 @@
                 <code>{{ "videos/session1_view1.mp4" | path }}</code> would be
                 <code>{{ "calibrations/session1.toml" | path }}</code>
               </li>
-              <li>
-                <code>{{ "videos/session1_view1_123.mp4" | path }}</code> would
-                be
-                <code>{{ "calibrations/session1_123.toml" | path }}</code>
-              </li>
             </ul>
             <p>
               The optional project calibration file should be at
@@ -183,6 +178,34 @@
           </div>
         </dialog>
         <div class="panel-content overflow-y-auto p-2!">
+          <div class="mb-2 px-1 text-xs text-base-content/70">
+            @switch (calibrationStatus()) {
+              @case ("session") {
+                <span class="text-success flex items-center gap-1">
+                  <span class="material-icons text-sm">check_circle</span>
+                  Session calibration found
+                </span>
+              }
+              @case ("project") {
+                <span class="text-info flex items-center gap-1">
+                  <span class="material-icons text-sm">info</span>
+                  Project calibration found
+                </span>
+              }
+              @default {
+                <span class="text-error flex items-center gap-1">
+                  <span class="material-icons text-sm">error</span>
+                  No calibration found
+                  <button
+                    class="link link-error ml-1"
+                    onclick="multiview_info.showModal()"
+                  >
+                    Learn more
+                  </button>
+                </span>
+              }
+            }
+          </div>
           <button
             class="btn btn-sm bg-sky-700 w-full mb-2"
             [class.btn-disabled]="
