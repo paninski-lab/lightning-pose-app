@@ -101,7 +101,9 @@ export class KeypointContainerComponent {
     const cssPosition = keypoint.position();
     const x = cssPosition.x;
     const y = cssPosition.y;
-    return `translate3d(calc(${x}px - 50%), calc(${y}px - 50%), 0px)`;
+    const isVisible = !keypoint.isVisible || keypoint.isVisible();
+    const scale = isVisible ? 1 : 0;
+    return `translate3d(calc(${x}px - 50%), calc(${y}px - 50%), 0px) scale(${scale})`;
   }
 
   /** Called when user clicks on a keypoint div */

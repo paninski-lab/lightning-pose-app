@@ -9,6 +9,7 @@ export interface Keypoint {
   hoverText: string;
   position: Signal<Point>;
   color: Signal<number[]>;
+  isVisible?: Signal<boolean>;
 }
 
 export interface ViewerKeypoint extends Keypoint {

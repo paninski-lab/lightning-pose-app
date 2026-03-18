@@ -141,6 +141,36 @@
                   </li>
                 }
               </ul>
+              <div class="p-2 pt-4">
+                <div
+                  class="flex items-center gap-2 text-sm tooltip tooltip-top"
+                  data-tip="Low-likelihood predictions are hidden"
+                >
+                  <span class="material-icons text-sm!">visibility</span>
+                  Likelihood threshold
+                </div>
+                <div class="pl-2 flex items-center">
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    [(ngModel)]="viewOptions.likelihoodThreshold"
+                    class="range range-xs"
+                  />
+                  <button
+                    class="btn btn-ghost btn-xs tooltip"
+                    data-tip="Reset"
+                    [disabled]="viewOptions.isLikelihoodThresholdDefault()"
+                    (click)="viewOptions.resetLikelihoodThreshold()"
+                  >
+                    <span class="material-icons text-sm!">restart_alt</span>
+                  </button>
+                </div>
+                <div class="pl-2 opacity-60 text-xs">
+                  {{ (viewOptions.likelihoodThreshold() * 100).toFixed(0) }}%
+                </div>
+              </div>
             </div>
           </div>
 
