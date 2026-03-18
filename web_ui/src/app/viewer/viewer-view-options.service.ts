@@ -5,6 +5,7 @@ import { debounceTime, merge } from 'rxjs';
 
 const DEFAULT_VIDEO_TILE_SIZE = 250;
 const DEFAULT_OPACITY = 1.0;
+const DEFAULT_LIKELIHOOD_THRESHOLD = 0.9;
 const UMAMI_DEBOUNCE_TIME_MS = 10000;
 
 @Injectable()
@@ -23,6 +24,7 @@ export class ViewerViewOptionsService {
     Number(localStorage.getItem('viewer-view-options.size')) ||
       this.colorService.defaultSize,
   );
+  likelihoodThreshold = signal<number>(DEFAULT_LIKELIHOOD_THRESHOLD);
   enableKeypointLabels = signal(false);
 
   isVideoTileSizeDefault = computed(
@@ -31,6 +33,9 @@ export class ViewerViewOptionsService {
   isOpacityDefault = computed(() => this.keypointOpacity() === DEFAULT_OPACITY);
   isSizeDefault = computed(
     () => this.keypointSize() === this.colorService.defaultSize,
+  );
+  isLikelihoodThresholdDefault = computed(
+    () => this.likelihoodThreshold() === DEFAULT_LIKELIHOOD_THRESHOLD,
   );
 
   constructor() {
@@ -57,6 +62,7 @@ export class ViewerViewOptionsService {
       toObservable(this.videoTileSizePx),
       toObservable(this.keypointOpacity),
       toObservable(this.keypointSize),
+      toObservable(this.likelihoodThreshold),
       toObservable(this.enableKeypointLabels),
     )
       .pipe(debounceTime(UMAMI_DEBOUNCE_TIME_MS), takeUntilDestroyed())
@@ -65,6 +71,7 @@ export class ViewerViewOptionsService {
           videoTileSizePx: this.videoTileSizePx(),
           keypointOpacity: this.keypointOpacity(),
           keypointSize: this.keypointSize(),
+          likelihoodThreshold: this.likelihoodThreshold(),
           enableKeypointLabels: this.enableKeypointLabels(),
         });
       });
@@ -80,5 +87,9 @@ export class ViewerViewOptionsService {
 
   resetKeypointSize() {
     this.keypointSize.set(this.colorService.defaultSize);
+  }
+
+  resetLikelihoodThreshold() {
+    this.likelihoodThreshold.set(DEFAULT_LIKELIHOOD_THRESHOLD);
   }
 }

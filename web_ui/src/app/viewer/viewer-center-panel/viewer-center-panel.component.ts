@@ -100,6 +100,21 @@ export class ViewerCenterPanelComponent implements OnChanges {
         ) as number;
         return { x, y };
       }),
+      isVisible: computed(() => {
+        const i = Math.min(
+          Math.max(this.currentFrame(), 0),
+          predictions.index.length - 1,
+        );
+        const likelihoodKey = new Pair(keypointName, 'likelihood').toMapKey();
+        if (predictions.columns.includes(likelihoodKey)) {
+          const likelihood = predictions.at(
+            i.toString(),
+            likelihoodKey,
+          ) as number;
+          return likelihood >= this.viewOptions.likelihoodThreshold();
+        }
+        return true;
+      }),
     };
   }
 

@@ -176,6 +176,7 @@
         [style.--selected-keypoint-border-width]="
           selectedKeypointBorderWidth + 'px'
         "
+        [style.will-change]="'transform'"
         [style.transform]="getTransform(keypoint)"
         [style.transform-origin]="'0 0'"
         [style.display]="hideKeypointBecauseMoving ? 'none' : 'block'"
