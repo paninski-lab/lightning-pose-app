@@ -83,7 +83,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
     if (changes['frame']) {
       this.abortController.abort();
       this.abortController = new AbortController();
-      this.hasCameraCalibrationFiles.set(false);
+      this.calibrationStatus.set('none');
       this.checkIfHasCameraCalibrationFiles();
     }
 
@@ -118,12 +118,10 @@ export class LabelerCenterPanelComponent implements OnChanges {
     if (!this.frame()) return;
     const sessionKey = mvf(this.frame()!).autolabelSessionKey;
     if (!sessionKey) return;
-    this.sessionService
-      .hasCameraCalibrationFiles(sessionKey)
-      .then((hasFiles) => {
-        if (abortSignal.aborted) return;
-        this.hasCameraCalibrationFiles.set(hasFiles);
-      });
+    this.sessionService.getCalibrationStatus(sessionKey).then((status) => {
+      if (abortSignal.aborted) return;
+      this.calibrationStatus.set(status);
+    });
   }
 
   // selectedView is always nonnull. Defaults to first view in frame.
@@ -239,7 +237,10 @@ export class LabelerCenterPanelComponent implements OnChanges {
   private abortController = new AbortController();
   protected isSaving = signal(false);
   private isMVAutoLabeling = signal(false);
-  protected hasCameraCalibrationFiles = signal(false);
+  protected calibrationStatus = signal<'session' | 'project' | 'none'>('none');
+  protected hasCameraCalibrationFiles = computed(
+    () => this.calibrationStatus() !== 'none',
+  );
   protected disableInteractions = computed(() => {
     this.cacheBuster();
 

@@ -539,7 +539,9 @@ export class SessionService {
     }) as Promise<GetMVAutoLabelsResponse>;
   }
 
-  async hasCameraCalibrationFiles(sessionKey: string): Promise<boolean> {
+  async getCalibrationStatus(
+    sessionKey: string,
+  ): Promise<'session' | 'project' | 'none'> {
     const projectInfo = this.projectInfoService.projectInfo;
 
     // Search for session-level calibration file.
@@ -550,7 +552,7 @@ export class SessionService {
       noDirs: true,
     })) as RGlobResponse;
     if (response.entries.length > 0) {
-      return true;
+      return 'session';
     }
 
     // Search for project-level calibration file.
@@ -561,10 +563,15 @@ export class SessionService {
       noDirs: true,
     })) as RGlobResponse;
     if (response.entries.length > 0) {
-      return true;
+      return 'project';
     }
 
-    return false;
+    return 'none';
+  }
+
+  async hasCameraCalibrationFiles(sessionKey: string): Promise<boolean> {
+    const status = await this.getCalibrationStatus(sessionKey);
+    return status !== 'none';
   }
 
   async createTrainingTask(
