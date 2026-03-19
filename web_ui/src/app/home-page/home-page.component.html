@@ -46,6 +46,56 @@
                     >Model dir: {{ p.model_dir }}</span
                   >
                 }
+                @if (p.stats) {
+                  @if (p.stats.error) {
+                    <div
+                      class="mt-2 text-xs text-error border-t border-base-200 pt-2"
+                    >
+                      <strong>Error:</strong> {{ p.stats.error }}
+                    </div>
+                  } @else {
+                    <div
+                      class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-base-content/60 border-t border-base-200 pt-2"
+                    >
+                      <span
+                        ><strong>Sessions:</strong>
+                        {{ p.stats.session_count }}</span
+                      >
+                      <span
+                        ><strong>Label Files:</strong>
+                        {{ p.stats.label_file_count }}</span
+                      >
+                      <span
+                        ><strong>Models:</strong>
+                        {{ p.stats.model_count }}</span
+                      >
+                      <span
+                        ><strong>Views:</strong>
+                        {{ p.stats.view_names.join(", ") }}</span
+                      >
+                      <span
+                        ><strong>Keypoints:</strong>
+                        {{ p.stats.keypoint_names.length }}</span
+                      >
+                    </div>
+                    @if (p.stats.label_files_stats.length > 0) {
+                      <div class="mt-1 text-xs text-base-content/50">
+                        <strong>Labeling Progress:</strong>
+                        <ul class="ml-2 list-disc">
+                          @for (
+                            ls of p.stats.label_files_stats;
+                            track ls.name
+                          ) {
+                            <li>
+                              {{ ls.name }}: {{ ls.labeled_frames }} /
+                              {{ ls.total_frames }} frames labeled
+                            </li>
+                          }
+                        </ul>
+                      </div>
+                    }
+                  }
+                }
               </div>
             </a>
           </li>
