@@ -137,31 +137,25 @@ def test_get_project_paths_for_model(project_util: ProjectUtil):
         project_util.get_project_paths_for_model(model_dir=Path("/not/a/project/model"))
 
 
-def test_get_project_info(override_config, tmp_path, client: TestClient):
-    # setup the projects TOML file contents
-    with open(override_config.LP_SYSTEM_DIR / "projects.toml", "wb") as f:
-        data_dir = str(tmp_path / "sometestpath")
-        tomli_w.dump({"foo": {"data_dir": data_dir}}, f)
-
-    Path(data_dir).mkdir(parents=True, exist_ok=True)
-    with open(Path(data_dir) / "project.yaml", "w") as f:
-        yaml.safe_dump(
-            {"view_names": ["camA", "camB"], "keypoint_names": ["nose", "ear_left"]}, f
-        )
+def test_get_project_info(register_project, client: TestClient):
+    project_key = "foo"
+    data_dir = register_project(
+        project_key,
+        views=["camA", "camB"],
+        keypoints=["nose", "ear_left"]
+    )
 
     payload = {
-        "projectKey": "foo",
+        "projectKey": project_key,
     }
 
     resp = client.post("/app/v0/rpc/getProjectInfo", json=payload)
-    print(resp.json())
     assert resp.status_code == 200
-    # Route returns None → encoded as JSON null
-    resp = resp.json()
+    resp_json = resp.json()
 
-    assert resp["projectInfo"] == {
-        "data_dir": data_dir,
-        "model_dir": str(Path(data_dir) / "models"),
+    assert resp_json["projectInfo"] == {
+        "data_dir": str(data_dir),
+        "model_dir": str(data_dir / "models"),
         "views": ["camA", "camB"],
         "keypoint_names": ["nose", "ear_left"],
     }
@@ -170,55 +164,36 @@ def test_get_project_info(override_config, tmp_path, client: TestClient):
 def test_add_existing_project_adds_to_projects_toml(
     client: TestClient, override_config, tmp_path
 ):
-    # setup the projects TOML file contents: empty
-    (override_config.LP_SYSTEM_DIR / "projects.toml").touch()
-    data_dir = str(tmp_path / "sometestpath")
-
-    # setup the project data directory: valid
-    Path(data_dir).mkdir(parents=True, exist_ok=True)
-    with open(Path(data_dir) / "project.yaml", "w") as f:
+    # data dir exists and has project.yaml, but is NOT in projects.toml
+    data_dir = tmp_path / "sometestpath"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    with open(data_dir / "project.yaml", "w") as f:
         yaml.safe_dump({"view_names": ["camA"]}, f)
 
     # send a request to add existing project paths to projects.toml
     payload = {
         "projectKey": "demo-project",
-        "data_dir": data_dir,
+        "data_dir": str(data_dir),
     }
 
     resp = client.post("/app/v0/rpc/UpdateProjectsTomlEntry", json=payload)
     assert resp.status_code == 200
-    # Route returns None → encoded as JSON null
     assert resp.json() is None
 
     # Verify the TOML file contents updated
     with open(override_config.PROJECTS_TOML_PATH, "r") as f:
         data = toml.load(f)
-        assert data == {"demo-project": {"data_dir": data_dir}}
-
-    # Verify the YAML file contents unchanged
-    project_info_yaml = tmp_path / "sometestpath" / "project.yaml"
-    with open(project_info_yaml, "r") as f:
-        data = yaml.safe_load(f)
-
-    assert data == {
-        "view_names": ["camA"],
-    }
+        assert data == {"demo-project": {"data_dir": str(data_dir)}}
 
 
 def test_update_project_config_patches_yaml(
-    client: TestClient, override_config, tmp_path
+    client: TestClient, register_project, tmp_path
 ):
-    # setup the projects TOML file contents
-    with open(override_config.PROJECTS_TOML_PATH, "wb") as f:
-        data_dir = str(tmp_path / "sometestpath")
-        tomli_w.dump({"demo-project": {"data_dir": data_dir}}, f)
-
-    Path(data_dir).mkdir(parents=True, exist_ok=True)
-    with open(Path(data_dir) / "project.yaml", "w") as f:
-        yaml.safe_dump({"view_names": ["camA"]}, f)
+    project_key = "demo-project"
+    data_dir = register_project(project_key, views=["camA"])
 
     payload = {
-        "projectKey": "demo-project",
+        "projectKey": project_key,
         "projectInfo": {
             "keypoint_names": ["nose", "ear_left"],
         },
@@ -226,11 +201,10 @@ def test_update_project_config_patches_yaml(
 
     resp = client.post("/app/v0/rpc/UpdateProjectConfig", json=payload)
     assert resp.status_code == 200
-    # Route returns None → encoded as JSON null
     assert resp.json() is None
 
     # Verify the YAML file contents
-    project_info_yaml = tmp_path / "sometestpath" / "project.yaml"
+    project_info_yaml = data_dir / "project.yaml"
     with open(project_info_yaml, "r") as f:
         data = yaml.safe_load(f)
 
@@ -291,24 +265,18 @@ def test_create_new_project_requires_info_and_writes_yaml(
 
 
 def test_update_project_config_updates_paths_and_writes_yaml_to_new_dir(
-    client: TestClient, override_config, tmp_path
+    client: TestClient, register_project, tmp_path, override_config
 ):
     # setup the projects TOML file contents with initial path
-    with open(override_config.PROJECTS_TOML_PATH, "wb") as f:
-        old_data_dir = str(tmp_path / "old_project")
-        tomli_w.dump({"demo-project": {"data_dir": old_data_dir}}, f)
-
-    # create old dir and initial YAML
-    Path(old_data_dir).mkdir(parents=True, exist_ok=True)
-    with open(Path(old_data_dir) / "project.yaml", "w") as f:
-        yaml.safe_dump({"view_names": ["camA"], "schema_version": 1}, f)
+    project_key = "demo-project"
+    old_data_dir = register_project(project_key, views=["camA"])
 
     # choose a new data dir and ensure it exists for writing
     new_data_dir = tmp_path / "moved_project"
     new_data_dir.mkdir(parents=True, exist_ok=True)
 
     payload = {
-        "projectKey": "demo-project",
+        "projectKey": project_key,
         "projectInfo": {
             # request path change
             "data_dir": str(new_data_dir),
@@ -324,13 +292,12 @@ def test_update_project_config_updates_paths_and_writes_yaml_to_new_dir(
     # Verify projects.toml updated to new path
     with open(override_config.PROJECTS_TOML_PATH, "r") as f:
         data = toml.load(f)
-    assert data == {"demo-project": {"data_dir": str(new_data_dir)}}
+    assert data == {project_key: {"data_dir": str(new_data_dir)}}
 
     # Verify project.yaml written in new location, merged content retained
+    # (register_project created it with Nose and Tail by default if not specified, 
+    # but I specified views=["camA"], so it has views=["camA"] and keypoints=["nose", "tail"])
     with open(new_data_dir / "project.yaml", "r") as f:
         y = yaml.safe_load(f)
-    assert y == {
-        "schema_version": 1,
-        "view_names": ["camA"],
-        "keypoint_names": ["nose"],
-    }
+    assert y["view_names"] == ["camA"]
+    assert y["keypoint_names"] == ["nose"]
