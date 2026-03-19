@@ -7,6 +7,7 @@ See FastAPI Dependency Injection docs: https://fastapi.tiangolo.com/tutorial/dep
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Callable
 
 import yaml
@@ -64,12 +65,26 @@ def project_info_getter(
             raise ProjectNotInProjectsToml(project_key)
 
         try:
+            data_dir = Path(project_path.data_dir)
+            if not data_dir.exists():
+                raise ApplicationError(
+                    f"Data directory {data_dir} does not exist."
+                )
+            if not data_dir.is_dir():
+                raise ApplicationError(
+                    f"Data directory {data_dir} is not a directory."
+                )
+
             project_yaml_path = project_util.get_project_yaml_path(
                 project_path.data_dir
             )
             # Load YAML data into a Python dictionary
             with open(project_yaml_path, "r") as f:
                 yaml_data = yaml.safe_load(f)
+        except PermissionError:
+            raise ApplicationError(
+                f"Permission denied when accessing project files in {project_path.data_dir}."
+            )
         except FileNotFoundError:
             raise ApplicationError(
                 f"Could not find a project.yaml file in data directory."
