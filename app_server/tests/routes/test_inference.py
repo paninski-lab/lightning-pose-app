@@ -10,20 +10,6 @@ from litpose_app.datatypes import ProjectConfig, ProjectPaths, Project
 from litpose_app import deps
 
 
-def _override_project(app, data_dir: Path):
-    """Override project_info_getter to return a dummy Project pointing to data_dir."""
-
-    def getter():
-        def _get(project_key: str) -> Project:
-            return Project(
-                project_key=project_key,
-                paths=ProjectPaths(data_dir=data_dir),
-                config=ProjectConfig(),
-            )
-
-        return _get
-
-    app.dependency_overrides[deps.project_info_getter] = getter
 
 
 def _collect_sse_data_lines_infer(response, max_lines: int = 5) -> list[dict]:
@@ -51,35 +37,28 @@ def _collect_sse_data_lines_infer(response, max_lines: int = 5) -> list[dict]:
 
 
 def test_infer_model_404_when_model_missing(
-    client: TestClient, tmp_path, override_config
+    client: TestClient, register_project
 ):
-    data_dir = tmp_path / "proj" / "data"
-    data_dir.mkdir(parents=True, exist_ok=True)
-    # minimal project.yaml so other routes don't complain if accessed
-    (data_dir / "project.yaml").write_text("schema_version: 1\n")
-
-    _override_project(client.app, data_dir)
+    project_key = "demo"
+    register_project(project_key)
 
     # Model directory does not exist yet
     with client.stream(
-        "GET", "/app/v0/sse/InferModel?projectKey=demo&modelRelativePath=my_model"
+        "GET", f"/app/v0/sse/InferModel?projectKey={project_key}&modelRelativePath=my_model"
     ) as resp:
         assert resp.status_code == 404
 
 
 def test_infer_model_sse_active_and_idempotent(
-    client: TestClient, tmp_path, override_config
+    client: TestClient, register_project
 ):
-    data_dir = tmp_path / "proj" / "data"
+    project_key = "demo"
+    data_dir = register_project(project_key)
     model_dir = data_dir / "models" / "m1"
     model_dir.mkdir(parents=True, exist_ok=True)
-    # minimal project.yaml
-    (data_dir / "project.yaml").write_text("schema_version: 1\n")
-
-    _override_project(client.app, data_dir)
 
     qs = (
-        "/app/v0/sse/InferModel?projectKey=demo&modelRelativePath=m1"
+        f"/app/v0/sse/InferModel?projectKey={project_key}&modelRelativePath=m1"
         "&videoRelativePaths=videos/camA.mp4&videoRelativePaths=videos/camB.mp4"
     )
 
@@ -104,17 +83,15 @@ def test_infer_model_sse_active_and_idempotent(
 
 
 def test_infer_model_rejects_invalid_video_path_traversal(
-    client: TestClient, tmp_path, override_config
+    client: TestClient, register_project
 ):
-    data_dir = tmp_path / "proj" / "data"
+    project_key = "demo"
+    data_dir = register_project(project_key)
     model_dir = data_dir / "models" / "m2"
     model_dir.mkdir(parents=True, exist_ok=True)
-    (data_dir / "project.yaml").write_text("schema_version: 1\n")
-
-    _override_project(client.app, data_dir)
 
     qs = (
-        "/app/v0/sse/InferModel?projectKey=demo&modelRelativePath=m2"
+        f"/app/v0/sse/InferModel?projectKey={project_key}&modelRelativePath=m2"
         "&videoRelativePaths=../escape.mp4"
     )
 
