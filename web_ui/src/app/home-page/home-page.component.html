@@ -36,66 +36,128 @@
               [routerLink]="['/project', p.project_key]"
               [attr.aria-label]="'Open project ' + p.project_key"
             >
-              <div class="flex flex-col">
-                <span class="font-medium">{{ p.project_key }}</span>
-                <span class="text-sm text-base-content/70 break-all"
-                  >Data dir: {{ p.data_dir }}</span
-                >
-                @if (p.model_dir) {
-                  <span class="text-sm text-base-content/70 break-all"
-                    >Model dir: {{ p.model_dir }}</span
-                  >
-                }
+              <div class="flex flex-col gap-3 py-1">
+                <span class="text-xl font-bold">{{ p.project_key }}</span>
+
                 @if (p.stats) {
                   @if (p.stats.error) {
-                    <div
-                      class="mt-2 text-xs text-error border-t border-base-200 pt-2"
-                    >
-                      <strong>Error:</strong> {{ p.stats.error }}
+                    <div class="text-sm text-error mt-1 italic">
+                      Error: {{ p.stats.error }}
                     </div>
                   } @else {
-                    <div
-                      class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-base-content/60 border-t border-base-200 pt-2"
-                    >
-                      <span
-                        ><strong>Sessions:</strong>
-                        {{ p.stats.session_count }}</span
-                      >
-                      <span
-                        ><strong>Label Files:</strong>
-                        {{ p.stats.label_file_count }}</span
-                      >
-                      <span
-                        ><strong>Models:</strong>
-                        {{ p.stats.model_count }}</span
-                      >
-                      <span
-                        ><strong>Views:</strong>
-                        {{ p.stats.view_names.join(", ") }}</span
-                      >
-                      <span
-                        ><strong>Keypoints:</strong>
-                        {{ p.stats.keypoint_names.length }}</span
-                      >
-                    </div>
-                    @if (p.stats.label_files_stats.length > 0) {
-                      <div class="mt-1 text-xs text-base-content/50">
-                        <strong>Labeling Progress:</strong>
-                        <ul class="ml-2 list-disc">
-                          @for (
-                            ls of p.stats.label_files_stats;
-                            track ls.name
-                          ) {
-                            <li>
-                              {{ ls.name }}: {{ ls.labeled_frames }} /
-                              {{ ls.total_frames }} frames labeled
-                            </li>
+                    <div class="flex flex-col gap-3">
+                      <!-- Views -->
+                      <div>
+                        <div class="text-xs font-bold uppercase opacity-50">
+                          Views
+                        </div>
+                        <div class="flex flex-wrap gap-1 mt-1">
+                          @for (view of p.stats.view_names; track view) {
+                            <div class="badge badge-ghost text-xs">
+                              {{ view }}
+                            </div>
                           }
-                        </ul>
+                        </div>
                       </div>
-                    }
+
+                      <!-- Keypoints -->
+                      <div>
+                        <div class="text-xs font-bold uppercase opacity-50">
+                          Keypoints
+                        </div>
+                        <div class="flex flex-wrap gap-1 mt-1">
+                          @for (kp of p.stats.keypoint_names; track kp) {
+                            <div class="badge badge-ghost text-xs">
+                              {{ kp }}
+                            </div>
+                          }
+                        </div>
+                      </div>
+
+                      <!-- Counts -->
+                      <div
+                        class="stats stats-horizontal shadow-sm bg-base-200 border border-base-300 w-fit"
+                      >
+                        <div class="stat px-4 py-2">
+                          <div class="stat-title text-xs uppercase font-bold">
+                            Sessions
+                          </div>
+                          <div class="stat-value text-xl">
+                            {{ p.stats.session_count }}
+                          </div>
+                        </div>
+                        @if (
+                          p.stats.labeled_frames_count !== null &&
+                          p.stats.labeled_frames_count !== undefined
+                        ) {
+                          <div class="stat px-4 py-2 border-l border-base-300">
+                            <div class="stat-title text-xs uppercase font-bold">
+                              Labels
+                            </div>
+                            <div class="stat-value text-xl">
+                              {{ p.stats.labeled_frames_count }}
+                            </div>
+                          </div>
+                        }
+                        <div class="stat px-4 py-2 border-l border-base-300">
+                          <div class="stat-title text-xs uppercase font-bold">
+                            Models
+                          </div>
+                          <div class="stat-value text-xl">
+                            {{ p.stats.model_count }}
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Labeling Progress -->
+                      @if (p.stats.label_files_stats.length > 0) {
+                        <div>
+                          <div
+                            class="text-xs font-bold uppercase opacity-50 mb-1"
+                          >
+                            Labeling Progress
+                          </div>
+                          <ul class="text-sm list-disc list-inside space-y-0.5">
+                            @for (
+                              ls of p.stats.label_files_stats;
+                              track ls.name
+                            ) {
+                              <li>
+                                {{ ls.name }}: {{ ls.labeled_frames }} /
+                                {{ ls.total_frames }}
+                              </li>
+                            }
+                          </ul>
+                        </div>
+                      }
+                    </div>
                   }
                 }
+
+                <!-- Paths -->
+                <div
+                  class="flex flex-col gap-0.5 text-sm mt-1 border-t border-base-200 pt-2"
+                >
+                  <div>
+                    <div class="text-xs font-bold uppercase opacity-50">
+                      Data Dir
+                    </div>
+                    <span class="break-all">
+                      <code class="opacity-100">{{ p.data_dir }}</code>
+                    </span>
+                  </div>
+
+                  @if (p.model_dir) {
+                    <div class="mt-2">
+                      <div class="text-xs font-bold uppercase opacity-50">
+                        Model Dir
+                      </div>
+                      <span class="break-all">
+                        <code class="opacity-100">{{ p.model_dir }}</code>
+                      </span>
+                    </div>
+                  }
+                </div>
               </div>
             </a>
           </li>

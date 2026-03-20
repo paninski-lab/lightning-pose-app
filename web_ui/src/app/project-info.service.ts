@@ -232,6 +232,7 @@ export interface ProjectStats {
   session_count: number;
   label_file_count: number;
   label_files_stats: LabelFileStats[];
+  labeled_frames_count?: number | null;
   keypoint_names: string[];
   view_names: string[];
   model_count: number;
