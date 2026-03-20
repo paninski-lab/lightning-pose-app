@@ -18,6 +18,7 @@ from litpose_app.deps import (
 from litpose_app.routes.rglob import _rglob
 from litpose_app.routes.labeler.find_label_files import _check_label_file_headers
 from litpose_app.routes.models import read_models_l1_from_base
+from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
 
 logger = logging.getLogger(__name__)
 
@@ -93,22 +94,24 @@ def _get_label_file_stats(csv_path: Path) -> LabelFileStats | None:
     try:
         # We need the full data to count labeled vs unlabeled
         df = pd.read_csv(csv_path, header=[0, 1, 2])
-        # Labeled frames are those where all (scorer, bodypart, x|y) are present.
-        # Actually, if any x,y for any bodypart is present, it's considered partially labeled.
-        # But for simplicity, let's say it's labeled if it has any non-NaN value in the keypoint columns.
-        total_frames = len(df)
-        if total_frames == 0:
-            return LabelFileStats(
-                name=csv_path.name, total_frames=0, labeled_frames=0
-            )
+        df = fix_empty_first_row(df)
+        labeled_frames = len(df)
 
-        # Drop the first 3 rows if they were not treated as header correctly (already handled by header=[0,1,2])
-        # Count rows that have at least one non-NaN value in the coordinate columns
-        labeled_mask = df.notna().any(axis=1)
-        labeled_frames = int(labeled_mask.sum())
+        # Count frames in the unlabeled sidecar
+        unlabeled_sidecar = csv_path.with_suffix(".unlabeled.jsonl")
+        unlabeled_frames = 0
+        if unlabeled_sidecar.exists():
+            try:
+                with open(unlabeled_sidecar, "r") as f:
+                    # Count non-empty lines
+                    unlabeled_frames = sum(1 for line in f if line.strip())
+            except Exception as e:
+                logger.warning(f"Error reading sidecar {unlabeled_sidecar}: {e}")
 
         return LabelFileStats(
-            name=csv_path.name, total_frames=total_frames, labeled_frames=labeled_frames
+            name=csv_path.name,
+            total_frames=labeled_frames + unlabeled_frames,
+            labeled_frames=labeled_frames,
         )
     except Exception as e:
         logger.warning(f"Error getting stats for {csv_path}: {e}")
