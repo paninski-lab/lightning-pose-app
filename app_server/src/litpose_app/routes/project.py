@@ -44,6 +44,7 @@ class ProjectStats(BaseModel):
     session_count: int
     label_file_count: int
     label_files_stats: list[LabelFileStats]
+    labeled_frames_count: int | None = None
     keypoint_names: list[str]
     view_names: list[str]
     model_count: int
@@ -212,6 +213,14 @@ def _fetch_all_stats(project_key, project_util, project_info_getter) -> ProjectS
                     labeled_frames=max(existing.labeled_frames, s.labeled_frames),
                 )
 
+        # Find main label file stats (CollectedData_*.csv or CollectedData.csv)
+        main_label_frames = None
+        # Try exact matches first
+        for target in ["CollectedData_*.csv", "CollectedData.csv"]:
+            if target in grouped_stats:
+                main_label_frames = grouped_stats[target].labeled_frames
+                break
+
         # 3. Models
         model_count = 0
         if model_dir and model_dir.exists():
@@ -223,6 +232,7 @@ def _fetch_all_stats(project_key, project_util, project_info_getter) -> ProjectS
             session_count=len(session_keys),
             label_file_count=len(grouped_stats),
             label_files_stats=list(grouped_stats.values()),
+            labeled_frames_count=main_label_frames,
             keypoint_names=keypoints,
             view_names=views,
             model_count=model_count,
