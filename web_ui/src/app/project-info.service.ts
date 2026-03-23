@@ -180,6 +180,15 @@ export class ProjectInfoService {
       body.model_dir = payload.model_dir;
     }
     await this.rpc.call('CreateNewProject', body);
+    await this.fetchProjects();
+  }
+
+  async deleteProject(projectKey: string, removeFiles: boolean) {
+    await this.rpc.call('deleteProject', {
+      projectKey,
+      removeFiles,
+    });
+    await this.fetchProjects();
   }
 
   // Backward-compat shim used by existing UI code: delegates to UpdateProjectConfig

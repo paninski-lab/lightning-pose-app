@@ -1,11 +1,12 @@
 import logging
+import os
 import shutil
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import yaml
 import pandas as pd
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ValidationError
 
 from litpose_app.datatypes import ProjectPaths
@@ -89,6 +90,11 @@ class CreateNewProjectRequest(BaseModel):
     model_dir: Path | None = None
     # Additional configuration to write into project.yaml (now required)
     projectInfo: ProjectInfo
+
+
+class DeleteProjectRequest(BaseModel):
+    projectKey: str
+    removeFiles: bool = False
 
 
 def _get_label_file_stats(csv_path: Path) -> LabelFileStats | None:
@@ -500,3 +506,28 @@ def create_new_project(
     project_util.update_project_paths(project_key=request.projectKey, projectpaths=pp)
 
     return None
+
+
+@router.post("/app/v0/rpc/deleteProject")
+def delete_project(
+    request: DeleteProjectRequest,
+    project_util: ProjectUtil = Depends(deps.project_util),
+) -> None:
+    # 1. Get project paths before unregistering if we need to remove files
+    if request.removeFiles:
+        paths = project_util.get_all_project_paths().get(request.projectKey)
+        if paths:
+            # We use shutil.rmtree for physical deletion.
+            if paths.data_dir and os.path.exists(paths.data_dir):
+                shutil.rmtree(paths.data_dir)
+            if paths.model_dir and os.path.exists(paths.model_dir):
+                shutil.rmtree(paths.model_dir)
+
+    # 2. Unregister project from projects.toml
+    try:
+        project_util.update_project_paths(request.projectKey, None)
+    except KeyError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Project '{request.projectKey}' not found.",
+        )
