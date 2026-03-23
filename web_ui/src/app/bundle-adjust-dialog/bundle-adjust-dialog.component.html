@@ -27,7 +27,7 @@
       <tr>
         <td>Points labeled across all views for this session</td>
         <td class="flex gap-6 items-center">
-          {{ numLabeledFramesGetter() }}
+          {{ numLabeledFramesGetter()() }}
           <div class="alert alert-warning alert-outline">
             @if (numLabeledFramesGetter()() < 10) {
               Warning: more labeled points might lead to better results
