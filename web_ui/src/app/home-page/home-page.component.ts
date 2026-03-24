@@ -28,9 +28,3 @@ export class HomePageComponent implements OnInit {
     }
   }
 }
-
-function deriveProjectName(p: ListProjectItem): string {
-  // Prefer the last folder name of data_dir as a human-friendly name
-  const parts = p.data_dir.split('/').filter(Boolean);
-  return parts.length > 0 ? parts[parts.length - 1] : p.data_dir;
-}
