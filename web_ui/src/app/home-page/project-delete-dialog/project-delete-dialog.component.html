@@ -5,90 +5,39 @@
 >
   <div class="modal-box prose max-w-2xl">
     <h3 class="text-error">
-      Delete Project: <code class="text-base-content">{{ projectKey() }}</code>
+      Remove Project: <code class="text-base-content">{{ projectKey() }}</code>
     </h3>
 
-    <div class="alert alert-warning shadow-sm mb-4">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        class="stroke-current shrink-0 h-6 w-6"
-        fill="none"
-        viewBox="0 0 24 24"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-        />
-      </svg>
-      <div>
-        <h4 class="font-bold m-0">Warning!</h4>
-        <div class="text-xs">
-          This operation will remove the project from the dashboard. Depending
-          on your choice below, it may also permanently delete all project
-          files.
-        </div>
-      </div>
+    <div>
+      This will remove the project from the registered list of projects, but
+      will not delete any files.
     </div>
 
     <div class="space-y-4 my-6">
       <div class="form-control">
-        <label class="label cursor-pointer justify-start gap-3">
-          <input
-            type="checkbox"
-            class="checkbox checkbox-error"
-            [(ngModel)]="removeFiles"
-          />
-          <span class="label-text font-semibold text-error">
-            Also delete all project files from disk
-          </span>
+        <label class="cursor-pointer flex justify-start gap-3">
+          <input type="checkbox" class="checkbox" [(ngModel)]="removeFiles" />
+          <span>Also delete all project files from disk </span>
         </label>
-        @if (removeFiles()) {
-          <div class="ml-9 text-xs opacity-70">
-            Permanently removes:<br />
-            Data: <code>{{ dataDir() }}</code
-            ><br />
-            @if (modelDir()) {
-              Models: <code>{{ modelDir() }}</code>
-            }
-          </div>
-        } @else {
-          <div class="ml-9 text-xs opacity-70">
-            Files will remain on disk at:<br />
-            Data: <code>{{ dataDir() }}</code>
-          </div>
-        }
-      </div>
-
-      <hr class="opacity-10" />
-
-      <div class="form-control">
-        <label class="label cursor-pointer justify-start gap-3">
-          <input
-            id="deleteConfirmation"
-            name="deleteConfirmation"
-            type="checkbox"
-            class="checkbox"
-            [(ngModel)]="deleteConfirmation"
-          />
-          <span class="label-text">
-            I understand that this action is permanent and I want to delete
-            project <code>{{ projectKey() }}</code
-            >.
-          </span>
-        </label>
+        <div class="ml-9 text-xs opacity-70">
+          Permanently removes:<br />
+          Data: <code>{{ dataDir() }}</code
+          ><br />
+          @if (modelDir()) {
+            Models: <code>{{ modelDir() }}</code>
+          }
+        </div>
       </div>
     </div>
 
     <div class="modal-action">
       <button class="btn btn-ghost" (click)="closeDialog()">Cancel</button>
-      <button
-        class="btn btn-error"
-        (click)="handleDelete()"
-        [disabled]="!deleteConfirmation()"
-      >
-        Delete Permanently
+      <button class="btn btn-error" (click)="handleDelete()">
+        @if (removeFiles()) {
+          Delete permanently
+        } @else {
+          Remove
+        }
       </button>
     </div>
   </div>
