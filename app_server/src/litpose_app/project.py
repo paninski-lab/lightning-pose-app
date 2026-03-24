@@ -13,6 +13,8 @@ class ProjectUtil:
 
     def _read_projects_toml(self) -> dict:
         """Read the projects.toml file and return its contents."""
+        if not self.config.PROJECTS_TOML_PATH.exists():
+            return {}
         with open(self.config.PROJECTS_TOML_PATH, "rb") as f:
             return tomli.load(f)
 

@@ -1,0 +1,44 @@
+<dialog
+  #dlg
+  class="modal modal-open"
+  (cancel)="$event.preventDefault(); closeDialog()"
+>
+  <div class="modal-box prose max-w-2xl">
+    <h3 class="text-error">
+      Remove Project: <code class="text-base-content">{{ projectKey() }}</code>
+    </h3>
+
+    <div>
+      This will remove the project from the registered list of projects, but
+      will not delete any files.
+    </div>
+
+    <div class="space-y-4 my-6">
+      <div class="form-control">
+        <label class="cursor-pointer flex justify-start gap-3">
+          <input type="checkbox" class="checkbox" [(ngModel)]="removeFiles" />
+          <span>Also delete all project files from disk </span>
+        </label>
+        <div class="ml-9 text-xs opacity-70">
+          Permanently removes:<br />
+          Data: <code>{{ dataDir() }}</code
+          ><br />
+          @if (modelDir()) {
+            Models: <code>{{ modelDir() }}</code>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-action">
+      <button class="btn btn-ghost" (click)="closeDialog()">Cancel</button>
+      <button class="btn btn-error" (click)="handleDelete()">
+        @if (removeFiles()) {
+          Delete permanently
+        } @else {
+          Remove
+        }
+      </button>
+    </div>
+  </div>
+</dialog>

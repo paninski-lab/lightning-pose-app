@@ -11,12 +11,7 @@ from pydantic import BaseModel
 
 # Consider `pydantic_settings.BaseSettings` for potential future needs.
 class Config(BaseModel):
-    PROJECT_INFO_TOML_PATH: Path = Path("~/.lightning_pose/project.toml").expanduser()
-
     ## Video transcoding settings
-
-    # Directory where finely transcoded videos are stored
-    FINE_VIDEO_DIR: Path = Path("~/.lightning_pose/finevideos").expanduser()
 
     # Name of the directory in data_dir where extract frames will output to
     LABELED_DATA_DIRNAME: str = "labeled-data"

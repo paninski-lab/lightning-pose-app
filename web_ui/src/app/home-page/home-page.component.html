@@ -25,32 +25,165 @@
         class="btn btn-primary mb-4"
         >New Project</a
       >
-      <ul
-        role="list"
-        class="divide-y divide-base-200 rounded-md border border-base-300 bg-base-100"
-      >
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
         @for (p of projectInfo.projects(); track p.data_dir) {
-          <li role="listitem" class="p-0">
+          <div
+            class="card bg-base-200 border border-base-300 shadow-sm hover:shadow-md hover:bg-base-300 transition-all cursor-pointer group relative"
+          >
+            <!-- Delete button revealed on hover -->
+            <button
+              class="btn btn-circle btn-error btn-sm absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              (click)="$event.stopPropagation(); projectToDelete.set(p)"
+              aria-label="Delete project"
+            >
+              <span class="material-icons">delete</span>
+            </button>
+
             <a
-              class="block p-3 hover:bg-base-200 focus:bg-base-200 focus:outline-none"
+              class="card-body p-6 gap-4 focus:outline-none focus:ring-2 focus:ring-primary rounded-xl"
               [routerLink]="['/project', p.project_key]"
               [attr.aria-label]="'Open project ' + p.project_key"
             >
-              <div class="flex flex-col">
-                <span class="font-medium">{{ p.project_key }}</span>
-                <span class="text-sm text-base-content/70 break-all"
-                  >Data dir: {{ p.data_dir }}</span
-                >
+              <h2 class="card-title text-2xl font-bold mb-1">
+                {{ p.project_key }}
+              </h2>
+
+              @if (p.stats) {
+                @if (p.stats.error) {
+                  <div class="text-sm text-error italic">
+                    Error: {{ p.stats.error }}
+                  </div>
+                } @else {
+                  <div class="flex flex-col gap-4">
+                    <!-- Views -->
+                    <div>
+                      <div class="text-xs font-bold uppercase opacity-50">
+                        Views
+                      </div>
+                      <div class="flex flex-wrap gap-1 mt-1">
+                        @for (view of p.stats.view_names; track view) {
+                          <div
+                            class="badge badge-ghost bg-base-100 group-hover:bg-base-200 transition-colors text-xs"
+                          >
+                            {{ view }}
+                          </div>
+                        }
+                      </div>
+                    </div>
+
+                    <!-- Keypoints -->
+                    <div>
+                      <div class="text-xs font-bold uppercase opacity-50">
+                        Keypoints
+                      </div>
+                      <div class="flex flex-wrap gap-1 mt-1">
+                        @for (kp of p.stats.keypoint_names; track kp) {
+                          <div
+                            class="badge badge-ghost bg-base-100 group-hover:bg-base-200 transition-colors text-xs"
+                          >
+                            {{ kp }}
+                          </div>
+                        }
+                      </div>
+                    </div>
+
+                    <!-- Counts -->
+                    <div
+                      class="stats stats-horizontal shadow-sm bg-base-100 group-hover:bg-base-200 transition-colors border border-base-300 w-fit"
+                    >
+                      <div class="stat px-4 py-2">
+                        <div class="stat-title text-xs uppercase font-bold">
+                          Sessions
+                        </div>
+                        <div class="stat-value text-xl">
+                          {{ p.stats.session_count }}
+                        </div>
+                      </div>
+                      @if (
+                        p.stats.labeled_frames_count !== null &&
+                        p.stats.labeled_frames_count !== undefined
+                      ) {
+                        <div class="stat px-4 py-2 border-l border-base-300">
+                          <div class="stat-title text-xs uppercase font-bold">
+                            Labels
+                          </div>
+                          <div class="stat-value text-xl">
+                            {{ p.stats.labeled_frames_count }}
+                          </div>
+                        </div>
+                      }
+                      <div class="stat px-4 py-2 border-l border-base-300">
+                        <div class="stat-title text-xs uppercase font-bold">
+                          Models
+                        </div>
+                        <div class="stat-value text-xl">
+                          {{ p.stats.model_count }}
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Labeling Progress -->
+                    @if (p.stats.label_files_stats.length > 0) {
+                      <div>
+                        <div
+                          class="text-xs font-bold uppercase opacity-50 mb-1"
+                        >
+                          Labeling Progress
+                        </div>
+                        <ul class="text-sm list-disc list-inside space-y-0.5">
+                          @for (
+                            ls of p.stats.label_files_stats;
+                            track ls.name
+                          ) {
+                            <li>
+                              {{ ls.name }}: {{ ls.labeled_frames }} /
+                              {{ ls.total_frames }}
+                            </li>
+                          }
+                        </ul>
+                      </div>
+                    }
+                  </div>
+                }
+              }
+
+              <!-- Paths -->
+              <div
+                class="flex flex-col gap-3 text-sm mt-2 border-t border-base-200 pt-4"
+              >
+                <div>
+                  <div class="text-xs font-bold uppercase opacity-50">
+                    Data Dir
+                  </div>
+                  <span class="break-all">
+                    <code class="opacity-100">{{ p.data_dir }}</code>
+                  </span>
+                </div>
+
                 @if (p.model_dir) {
-                  <span class="text-sm text-base-content/70 break-all"
-                    >Model dir: {{ p.model_dir }}</span
-                  >
+                  <div>
+                    <div class="text-xs font-bold uppercase opacity-50">
+                      Model Dir
+                    </div>
+                    <span class="break-all">
+                      <code class="opacity-100">{{ p.model_dir }}</code>
+                    </span>
+                  </div>
                 }
               </div>
             </a>
-          </li>
+          </div>
         }
-      </ul>
+      </div>
     }
   </section>
 </div>
+
+@if (projectToDelete(); as p) {
+  <app-project-delete-dialog
+    [projectKey]="p.project_key"
+    [dataDir]="p.data_dir"
+    [modelDir]="p.model_dir ?? undefined"
+    (done)="projectToDelete.set(null)"
+  />
+}
