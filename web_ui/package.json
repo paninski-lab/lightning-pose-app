@@ -49,6 +49,7 @@
     "@storybook/addon-docs": "^10.3.3",
     "@storybook/addon-onboarding": "^10.3.3",
     "@storybook/angular": "^10.3.3",
+    "@storybook/test": "^8.6.18",
     "@tailwindcss/typography": "^0.5.16",
     "@types/jasmine": "~5.1.0",
     "@types/lodash": "^4.17.20",

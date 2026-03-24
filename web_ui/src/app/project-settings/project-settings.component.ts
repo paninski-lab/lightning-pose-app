@@ -18,10 +18,17 @@ import {
 } from '@angular/forms';
 import { ProjectInfo } from '../project-info';
 import { JsonPipe, NgTemplateOutlet } from '@angular/common';
+import { ValidatedPathInputComponent } from '../shared/validated-path-input/validated-path-input.component';
 
 @Component({
   selector: 'app-project-settings',
-  imports: [ReactiveFormsModule, JsonPipe, NgTemplateOutlet],
+  standalone: true,
+  imports: [
+    ReactiveFormsModule,
+    JsonPipe,
+    NgTemplateOutlet,
+    ValidatedPathInputComponent,
+  ],
   templateUrl: './project-settings.component.html',
   styleUrl: './project-settings.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
