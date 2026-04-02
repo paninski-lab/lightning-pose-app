@@ -55,24 +55,18 @@ class ProjectNotInProjectsToml(ApplicationError):
         super().__init__(f"Project {project_key} not found in projects.toml file")
 
 
-def _ensure_project_yaml(
-    project_yaml_path: Path, config: Config
-) -> dict | None:
+# TODO Create a migration for this instead.
+# TODO Run migrations on project when adding it from the app. Not in the deps.project_info_getter.
+def _ensure_project_yaml(base_dir: Path) -> dict | None:
     """
-    Tries to create project.yaml from other YAML files in the repo.
-    Returns the created yaml_data or None if no suitable template was found.
+    Tries to create project.yaml from other YAML files in the base_dir.
+    Returns the created yaml_data or None if no suitable
     """
-    # Try to create project.yaml from other YAML files in the repo
-    # We use /home/ksikka/work/lp as repo root by default
-    repo_root = Path(getattr(config, "REPO_ROOT", "/home/ksikka/work/lp"))
-    # In some test environments, we might want to override REPO_ROOT via env var
-    if "REPO_ROOT" in os.environ:
-        repo_root = Path(os.environ["REPO_ROOT"])
-    yaml_files = repo_root.rglob("*.yaml")
+    yaml_files = base_dir.rglob("**/*.yaml")
     yaml_data = None
+    project_yaml_file_path = base_dir / "project.yaml"
+
     for yf in yaml_files:
-        if "node_modules" in str(yf):
-            continue
         try:
             with open(yf, "r") as f:
                 candidate_data = yaml.safe_load(f)
@@ -91,13 +85,18 @@ def _ensure_project_yaml(
                         "keypoint_names": data_part["keypoint_names"],
                     }
                     # Create the project.yaml file
-                    with open(project_yaml_path, "w") as f:
+                    with open(project_yaml_file_path, "w") as f:
                         yaml.dump(yaml_data, f)
                     logger.info(
-                        f"Created {project_yaml_path} using template from {yf}"
+                        f"Created {project_yaml_file_path} using template from {yf}"
                     )
                     break
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                "Exception during project.yaml autocreation:\n%s\n%s",
+                project_yaml_file_path,
+                e,
+            )
             continue
     return yaml_data
 
@@ -116,13 +115,9 @@ def project_info_getter(
         try:
             data_dir = Path(project_path.data_dir)
             if not data_dir.exists():
-                raise ApplicationError(
-                    f"Data directory {data_dir} does not exist."
-                )
+                raise ApplicationError(f"Data directory {data_dir} does not exist.")
             if not data_dir.is_dir():
-                raise ApplicationError(
-                    f"Data directory {data_dir} is not a directory."
-                )
+                raise ApplicationError(f"Data directory {data_dir} is not a directory.")
 
             project_yaml_path = project_util.get_project_yaml_path(
                 project_path.data_dir
@@ -135,10 +130,7 @@ def project_info_getter(
                 f"Permission denied when accessing project files in {project_path.data_dir}."
             )
         except FileNotFoundError:
-            project_yaml_path = project_util.get_project_yaml_path(
-                project_path.data_dir
-            )
-            yaml_data = _ensure_project_yaml(project_yaml_path, config)
+            yaml_data = _ensure_project_yaml(data_dir)
             if yaml_data is None:
                 raise ApplicationError(
                     f"Could not find a project.yaml file in data directory."
