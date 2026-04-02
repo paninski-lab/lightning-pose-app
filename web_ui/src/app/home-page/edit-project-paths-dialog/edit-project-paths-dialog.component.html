@@ -1,0 +1,61 @@
+<dialog
+  #dlg
+  class="modal modal-open"
+  (cancel)="$event.preventDefault(); closeDialog()"
+>
+  <div class="modal-box prose max-w-2xl">
+    <h3>
+      Edit Paths: <code class="text-base-content">{{ projectKey() }}</code>
+    </h3>
+
+    <form [formGroup]="form" class="space-y-4 my-6 not-prose">
+      <div class="form-control">
+        <label class="label" for="data_dir">
+          <span class="label-text font-semibold">Data Directory</span>
+        </label>
+        <input
+          id="data_dir"
+          type="text"
+          class="input input-bordered w-full font-mono text-sm"
+          formControlName="data_dir"
+          placeholder="/path/to/data"
+        />
+        @if (form.controls.data_dir.invalid && form.controls.data_dir.touched) {
+          <div class="label">
+            <span class="label-text-alt text-error"
+              >Data directory is required</span
+            >
+          </div>
+        }
+      </div>
+
+      <div class="form-control">
+        <label class="label" for="model_dir">
+          <span class="label-text font-semibold">Model Directory</span>
+          <span class="label-text-alt opacity-60">optional</span>
+        </label>
+        <input
+          id="model_dir"
+          type="text"
+          class="input input-bordered w-full font-mono text-sm"
+          formControlName="model_dir"
+          placeholder="/path/to/models"
+        />
+      </div>
+    </form>
+
+    <div class="modal-action">
+      <button class="btn btn-ghost" (click)="closeDialog()">Cancel</button>
+      <button
+        class="btn btn-primary"
+        (click)="handleSave()"
+        [disabled]="form.invalid || saving()"
+      >
+        @if (saving()) {
+          <span class="loading loading-spinner loading-sm"></span>
+        }
+        Save
+      </button>
+    </div>
+  </div>
+</dialog>
