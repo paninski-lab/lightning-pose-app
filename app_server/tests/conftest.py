@@ -10,7 +10,7 @@ from litpose_app.rootconfig import RootConfig
 
 
 @pytest.fixture()
-def client(override_config) -> t.Iterator[TestClient]:
+def client() -> t.Iterator[TestClient]:
     """Synchronous TestClient bound to the real FastAPI app."""
     from litpose_app.main import app as _app
 
@@ -35,7 +35,6 @@ def override_config(tmp_path) -> t.Iterator[RootConfig]:
     try:
         yield config
     finally:
-        _app.dependency_overrides.pop(deps.config, None)
         _app.dependency_overrides.pop(deps.root_config, None)
 
 

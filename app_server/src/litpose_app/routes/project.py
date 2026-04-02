@@ -207,7 +207,9 @@ def _fetch_all_stats(project_key, project_util, project_info_getter) -> ProjectS
                     break
             if name not in grouped_stats:
                 grouped_stats[name] = LabelFileStats(
-                    name=name, total_frames=s.total_frames, labeled_frames=s.labeled_frames
+                    name=name,
+                    total_frames=s.total_frames,
+                    labeled_frames=s.labeled_frames,
                 )
             else:
                 # If they are different, we might want to warn or just take the max/min.
@@ -362,7 +364,35 @@ def update_project_config(
     """
     existing_project = project_info_getter(request.projectKey)
 
-    # Update project paths if changed and get the target data/model dirs
+    # 1. Validate: If changing both paths and metadata, ensure target project.yaml exists
+    # to avoid partial failure (updating projects.toml but failing to update project.yaml).
+    requested_data_dir = request.projectInfo.data_dir
+    requested_model_dir = request.projectInfo.model_dir
+    path_changed = (
+        requested_data_dir is not None
+        and requested_data_dir != existing_project.paths.data_dir
+    ) or (
+        requested_model_dir is not None
+        and requested_model_dir != existing_project.paths.model_dir
+    )
+
+    metadata_to_update = request.projectInfo.model_dump(
+        mode="json", exclude_none=True, exclude={"data_dir", "model_dir"}
+    )
+    metadata_changed = len(metadata_to_update) > 0
+
+    if path_changed and metadata_changed:
+        target_data_dir = requested_data_dir or existing_project.paths.data_dir
+        project_yaml_path = project_util.get_project_yaml_path(target_data_dir)
+        if not project_yaml_path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Project configuration file not found at {project_yaml_path}. "
+                "Cannot update metadata while changing project paths if the target "
+                "config file does not exist.",
+            )
+
+    # 2. Update project paths if changed and get the target data/model dirs
     target_data_dir, target_model_dir = _update_paths_if_changed(
         project_key=request.projectKey,
         existing_paths=existing_project.paths,

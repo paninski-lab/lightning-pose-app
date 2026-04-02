@@ -140,9 +140,7 @@ def test_get_project_paths_for_model(project_util: ProjectUtil):
 def test_get_project_info(register_project, client: TestClient):
     project_key = "foo"
     data_dir = register_project(
-        project_key,
-        views=["camA", "camB"],
-        keypoints=["nose", "ear_left"]
+        project_key, views=["camA", "camB"], keypoints=["nose", "ear_left"]
     )
 
     payload = {
@@ -264,16 +262,52 @@ def test_create_new_project_requires_info_and_writes_yaml(
     assert data == {"new-project": {"data_dir": str(data_dir)}}
 
 
-def test_update_project_config_updates_paths_and_writes_yaml_to_new_dir(
+def test_update_project_config_errors_if_missing_yaml_on_path_change(
     client: TestClient, register_project, tmp_path, override_config
 ):
     # setup the projects TOML file contents with initial path
     project_key = "demo-project"
-    old_data_dir = register_project(project_key, views=["camA"])
+    old_data_dir = register_project(project_key, views=["camA"], keypoints=["paw"])
+
+    # choose a new data dir and ensure it exists (but no project.yaml)
+    new_data_dir = tmp_path / "moved_project"
+    new_data_dir.mkdir(parents=True, exist_ok=True)
+
+    payload = {
+        "projectKey": project_key,
+        "projectInfo": {
+            # request path change
+            "data_dir": str(new_data_dir),
+            # update metadata too
+            "keypoint_names": ["nose"],
+        },
+    }
+
+    resp = client.post("/app/v0/rpc/UpdateProjectConfig", json=payload)
+    assert resp.status_code == 404
+    assert "Project configuration file not found" in resp.json()["detail"]
+
+    # Verify projects.toml NOT updated to new path due to early error
+    with open(override_config.PROJECTS_TOML_PATH, "r") as f:
+        data = toml.load(f)
+    assert data == {project_key: {"data_dir": str(old_data_dir)}}
+
+
+def test_update_project_config_updates_paths_and_metadata_when_yaml_exists(
+    client: TestClient, register_project, tmp_path, override_config
+):
+    # setup the projects TOML file contents with initial path
+    project_key = "demo-project"
+    old_data_dir = register_project(project_key, views=["camA"], keypoints=["paw"])
 
     # choose a new data dir and ensure it exists for writing
     new_data_dir = tmp_path / "moved_project"
     new_data_dir.mkdir(parents=True, exist_ok=True)
+
+    # Pre-create project.yaml at new location (simulating it was moved there)
+    new_project_yaml = new_data_dir / "project.yaml"
+    with open(new_project_yaml, "w") as f:
+        yaml.safe_dump({"view_names": ["camA"], "keypoint_names": ["paw"]}, f)
 
     payload = {
         "projectKey": project_key,
@@ -294,10 +328,7 @@ def test_update_project_config_updates_paths_and_writes_yaml_to_new_dir(
         data = toml.load(f)
     assert data == {project_key: {"data_dir": str(new_data_dir)}}
 
-    # Verify project.yaml written in new location, merged content retained
-    # (register_project created it with Nose and Tail by default if not specified, 
-    # but I specified views=["camA"], so it has views=["camA"] and keypoints=["nose", "tail"])
-    with open(new_data_dir / "project.yaml", "r") as f:
-        y = yaml.safe_load(f)
-    assert y["view_names"] == ["camA"]
-    assert y["keypoint_names"] == ["nose"]
+    # Verify new project.yaml updated
+    with open(new_project_yaml, "r") as f:
+        updated_data = yaml.safe_load(f)
+    assert updated_data["keypoint_names"] == ["nose"]

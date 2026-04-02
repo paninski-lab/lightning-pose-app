@@ -13,8 +13,6 @@ from litpose_app.datatypes import ProjectConfig, ProjectPaths, Project
 from litpose_app import deps
 
 
-
-
 def _collect_sse_data_lines(
     response, stop_on_terminal: bool = True, max_lines: int = 200
 ) -> list[dict]:
@@ -43,7 +41,9 @@ def _collect_sse_data_lines(
     return out
 
 
-def test_upload_video_success_and_status(client: TestClient, register_project, override_config):
+def test_upload_video_success_and_status(
+    client: TestClient, register_project, override_config
+):
     project_key = "demo"
     register_project(project_key)
 
