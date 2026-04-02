@@ -1,0 +1,52 @@
+<dialog
+  #dlg
+  class="modal modal-open"
+  (cancel)="$event.preventDefault(); closeDialog()"
+>
+  <div class="modal-box prose max-w-2xl">
+    <h3>
+      Edit Project Paths: <code class="text-base-content">{{ projectKey() }}</code>
+    </h3>
+
+    <div class="space-y-4 my-6">
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text font-bold">Data Directory</span>
+        </label>
+        <input
+          type="text"
+          class="input input-bordered w-full"
+          [(ngModel)]="dataDir"
+        />
+        <div class="label">
+          <span class="label-text-alt opacity-70">Absolute path to the project data directory.</span>
+        </div>
+      </div>
+
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text font-bold">Model Directory</span>
+        </label>
+        <input
+          type="text"
+          class="input input-bordered w-full"
+          [(ngModel)]="modelDir"
+        />
+        <div class="label">
+          <span class="label-text-alt opacity-70">Absolute path to the project model directory (optional).</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-action">
+      <button class="btn btn-ghost" (click)="closeDialog()">Cancel</button>
+      <button
+        class="btn btn-primary"
+        (click)="handleSave()"
+        [disabled]="!dataDir()"
+      >
+        Save Changes
+      </button>
+    </div>
+  </div>
+</dialog>
