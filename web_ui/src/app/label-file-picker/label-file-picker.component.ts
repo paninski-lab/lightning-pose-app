@@ -8,6 +8,7 @@ import {
   input,
   model,
   OnInit,
+  booleanAttribute,
 } from '@angular/core';
 import {
   ControlValueAccessor,
@@ -24,6 +25,9 @@ import { SessionService } from '../session.service';
 
 @Component({
   selector: 'app-label-file-picker',
+  host: {
+    class: 'not-prose',
+  },
   imports: [
     FormsModule,
     DropdownComponent,
@@ -46,6 +50,7 @@ export class LabelFilePickerComponent implements OnInit, ControlValueAccessor {
   labelFileKey = model<string | null>(null);
   sessionService = inject(SessionService);
   selectSizeClass = input<string>('select-sm');
+  fullWidth = input(false, { transform: booleanAttribute });
 
   // ControlValueAccessor callbacks
   onChange: (value: string | null) => void = () => {};

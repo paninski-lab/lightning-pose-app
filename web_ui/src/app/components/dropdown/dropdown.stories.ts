@@ -116,3 +116,31 @@ export const RightEdge: Story = {
     `,
   }),
 };
+
+export const FullWidth: Story = {
+  render: (args) => ({
+    props: args,
+    template: `
+      <div class="p-10 border border-dashed border-base-300 w-[600px] mx-auto">
+        <div class="mb-4 text-sm text-base-content/70 text-center">
+          Parent container (600px width)
+        </div>
+        <app-dropdown class="w-full" [fullWidth]="true">
+          <app-dropdown-trigger>
+            <button appDropdownTrigger class="btn btn-primary w-full flex justify-between">
+              <span>Full Width Trigger</span>
+              <span class="material-icons">expand_more</span>
+            </button>
+          </app-dropdown-trigger>
+          <app-dropdown-content>
+            <ul class="menu w-full">
+              <li><a><span class="material-icons text-sm">info</span> Item 1</a></li>
+              <li><a><span class="material-icons text-sm">settings</span> Item 2</a></li>
+              <li><a><span class="material-icons text-sm">help</span> Item 3</a></li>
+            </ul>
+          </app-dropdown-content>
+        </app-dropdown>
+      </div>
+    `,
+  }),
+};

@@ -8,6 +8,7 @@ import {
   Renderer2,
   input,
   signal,
+  booleanAttribute,
 } from '@angular/core';
 
 import { Directive } from '@angular/core';
@@ -36,26 +37,41 @@ export class DropdownContentComponent {}
 @Component({
   selector: 'app-dropdown',
   standalone: true,
+  host: {
+    '[class.w-full]': 'fullWidth()',
+  },
   template: `
     <div
       class="dropdown dropdown-no-focus"
       [class.dropdown-open]="isOpen()"
       [class.dropdown-end]="alignEnd()"
+      [class.w-full]="fullWidth()"
     >
       <ng-content select="app-dropdown-trigger"></ng-content>
       <div
         class="dropdown-content z-[50] bg-base-200 rounded-box shadow border border-base-300 overflow-hidden"
+        [class.w-full]="fullWidth()"
       >
         <ng-content select="app-dropdown-content"></ng-content>
       </div>
     </div>
   `,
-  styles: [],
+  styles: [
+    `
+      :host {
+        display: inline-block;
+      }
+      :host(.w-full) {
+        display: block;
+      }
+    `,
+  ],
 })
 export class DropdownComponent {
   private renderer = inject(Renderer2);
   isOpen = signal(false);
-  alignEnd = input(false);
+  alignEnd = input(false, { transform: booleanAttribute });
+  fullWidth = input(false, { transform: booleanAttribute });
   trigger = contentChild(DropdownTriggerDirective, { read: ElementRef });
 
   constructor() {
