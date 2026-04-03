@@ -30,10 +30,8 @@ export class ProjectInfoService {
   // Resolver handshake API
   // ---------------------
 
-  private globalLoadedSubject = new BehaviorSubject<GlobalContext>({
-    uploadDir: '',
-  });
-  public globalLoaded$: Observable<GlobalContext> =
+  private globalLoadedSubject = new BehaviorSubject<GlobalContext | null>(null);
+  public globalLoaded$: Observable<GlobalContext | null> =
     this.globalLoadedSubject.asObservable();
 
   private projectLoadedSubject = new BehaviorSubject<ProjectContext | null>(
@@ -53,16 +51,17 @@ export class ProjectInfoService {
     globalContext: GlobalContext;
     projectContext: ProjectContext | null;
   }> {
-    const globalContext$ = this.rpc.callObservable('GetRootConfig').pipe(
+    const globalContext$ = this.rpc.callObservable('GetGlobalContext').pipe(
       first(),
       map((response: unknown) => {
-        const body = response as Partial<GlobalContext>;
-        if (!body || typeof body.uploadDir !== 'string') {
-          throw new Error('Invalid GetRootConfig response');
-        }
-        const data: GlobalContext = { uploadDir: body.uploadDir };
-        this.globalLoadedSubject.next(data);
-        return data;
+        const globalContext = response as GlobalContext;
+
+        this.globalLoadedSubject.next(globalContext);
+        window.umami?.identify({
+          versions: globalContext.versions,
+          isEditable: globalContext.isEditable,
+        });
+        return globalContext;
       }),
     );
 
@@ -220,11 +219,12 @@ export class ProjectInfoService {
     this._allModels.next(models);
   }
 }
-
 export interface GlobalContext {
   uploadDir: string;
+  homeDir: string;
+  versions: Record<string, string | null>;
+  isEditable: Record<string, boolean>;
 }
-
 export interface ProjectContext {
   key: string;
   projectInfo: ProjectInfo | null;
