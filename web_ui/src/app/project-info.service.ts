@@ -1,4 +1,4 @@
-import { inject, Injectable, signal, WritableSignal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { ProjectInfo } from './project-info';
 import { RpcService } from './rpc.service';
 import {
@@ -9,7 +9,6 @@ import {
   forkJoin,
   map,
   Observable,
-  Subject,
   timer,
 } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';

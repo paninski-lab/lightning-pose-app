@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { ViewerSessionsPanelComponent } from '../viewer-left-panel/viewer-sessions-panel.component';
 import { EnabledViewsKeypointsService } from '../../enabled-views-keypoints.service';
-import { VideoPlayerState } from '../../components/video-player/video-player-state';
+import { VideoPlayerState } from '../../video-player/video-player-state';
 import { ViewerCenterPanelComponent } from '../viewer-center-panel/viewer-center-panel.component';
 import { ProjectInfoService } from '../../project-info.service';
 import { SelectionModel } from '@angular/cdk/collections';

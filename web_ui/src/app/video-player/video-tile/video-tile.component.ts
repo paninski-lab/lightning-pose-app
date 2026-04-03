@@ -13,7 +13,7 @@ import {
   ViewChild,
 } from '@angular/core';
 import { VideoPlayerState } from '../video-player-state';
-import { VideoMetadata } from '../../../video-metadata';
+import { VideoMetadata } from '../../video-metadata';
 import { BehaviorSubject, combineLatest } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
@@ -61,7 +61,7 @@ export class VideoTileComponent implements OnDestroy, OnInit {
     return '';
   });
 
-  // the main state, injected from parent so it can be easily shared across video players
+  // the main state, injected from parent so it can be easily components across video players
   videoPlayerState: VideoPlayerState = inject(VideoPlayerState);
 
   @Output() contentEnd = new EventEmitter<void>();

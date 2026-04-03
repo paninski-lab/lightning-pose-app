@@ -18,7 +18,7 @@ import {
 } from '@angular/forms';
 import { ProjectInfo } from '../project-info';
 import { JsonPipe, NgTemplateOutlet } from '@angular/common';
-import { ValidatedPathInputComponent } from '../shared/validated-path-input/validated-path-input.component';
+import { ValidatedPathInputComponent } from '../components/validated-path-input/validated-path-input.component';
 
 @Component({
   selector: 'app-project-settings',

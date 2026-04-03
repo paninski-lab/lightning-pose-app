@@ -6,7 +6,6 @@ import {
   effect,
   inject,
   input,
-  OnInit,
   output,
   signal,
 } from '@angular/core';

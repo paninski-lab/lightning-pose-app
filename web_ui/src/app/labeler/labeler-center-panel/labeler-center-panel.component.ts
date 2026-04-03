@@ -18,7 +18,7 @@ import { FrameView, mvf, MVFrame } from '../frame.model';
 import { LKeypoint, lkp } from '../types';
 import { DecimalPipe } from '@angular/common';
 import { ProjectInfoService } from '../../project-info.service';
-import { HorizontalScrollDirective } from '../../components/horizontal-scroll.directive';
+import { HorizontalScrollDirective } from '../../infra/horizontal-scroll.directive';
 import { Point } from '@angular/cdk/drag-drop';
 import { SessionService } from '../../session.service';
 import { MVLabelFile } from '../../label-file.model';

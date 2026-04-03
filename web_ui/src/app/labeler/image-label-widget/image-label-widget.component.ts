@@ -11,8 +11,8 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LabelerViewOptionsService } from '../labeler-view-options.service';
-import { KeypointContainerComponent } from '../../components/keypoint-container/keypoint-container.component';
-import { ZoomableContentComponent } from '../../components/zoomable-content.component';
+import { KeypointContainerComponent } from '../../keypoint-container/keypoint-container.component';
+import { ZoomableContentComponent } from '../../zoomable-content.component';
 import { FrameView } from '../frame.model';
 import { LKeypoint, lkp } from '../types';
 import { Keypoint } from '../../keypoint';
