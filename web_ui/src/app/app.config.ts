@@ -1,7 +1,6 @@
 import {
   ApplicationConfig,
   ErrorHandler,
-  isDevMode,
   provideBrowserGlobalErrorListeners,
   provideZonelessChangeDetection,
 } from '@angular/core';
@@ -24,6 +23,9 @@ hljs.registerLanguage('bash', bash);
 hljs.registerLanguage('json', json);
 hljs.registerLanguage('toml', toml);
 
+// debug use only
+const enableStorybookRecord = false;
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZonelessChangeDetection(),
@@ -33,7 +35,9 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideHttpClient(
       // Only include the recorder if we are in development mode
-      withInterceptors(isDevMode() ? [storybookRecorderInterceptor] : []),
+      withInterceptors(
+        enableStorybookRecord ? [storybookRecorderInterceptor] : [],
+      ),
     ),
   ],
 };

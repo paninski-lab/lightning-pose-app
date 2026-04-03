@@ -12,5 +12,10 @@ export class GlobalErrorHandler implements ErrorHandler {
     this.errorDialogService.openDialog(error);
 
     console.error(error);
+
+    window.umami?.track('error', {
+      message: error?.message || error?.toString() || 'Unknown error',
+      stack: error?.stack || 'No stack trace available',
+    });
   }
 }
