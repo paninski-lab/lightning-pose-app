@@ -119,25 +119,23 @@
                 @for (model of modelSelectors; track $index) {
                   @let modelIndex = $index;
                   <li class="p-1 w-full">
-                    <select
-                      class="select select-sm w-full flex-grow"
+                    <app-select
+                      size="sm"
+                      class="w-full flex-grow"
                       [disabled]="
                         enabledViewsKeypoints.modelOptions().length === 0
                       "
                       [class.border-red-300]="modelIndex === 0"
                       [class.border-green-300]="modelIndex === 1"
-                      (change)="onModelDropdownItemClick(modelIndex, $event)"
+                      [ngModel]="model"
+                      (ngModelChange)="onModelSelected(modelIndex, $event)"
+                      [options]="
+                        [noneOption]
+                          .concat(enabledViewsKeypoints.modelOptions())
+                          .map(toSelectOption.bind(this))
+                      "
                     >
-                      @let options =
-                        [noneOption].concat(
-                          enabledViewsKeypoints.modelOptions()
-                        );
-                      @for (dropdownItem of options; track dropdownItem) {
-                        <option [selected]="dropdownItem === model">
-                          {{ dropdownItem }}
-                        </option>
-                      }
-                    </select>
+                    </app-select>
                   </li>
                 }
               </ul>

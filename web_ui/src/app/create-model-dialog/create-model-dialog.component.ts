@@ -41,6 +41,8 @@ import {
 import { ModelTypeLabelPipe } from '../utils/pipes';
 import { DaisyFormControlDirective } from '../utils/daisy-form-control.directive';
 import { LabelFilePickerComponent } from '../label-file-picker/label-file-picker.component';
+import { DropdownContentComponent } from '../components/dropdown/dropdown.component';
+import { SelectComponent } from '../components/dropdown/select.component';
 import { ToastService } from '../toast.service';
 
 @Component({
@@ -54,6 +56,8 @@ import { ToastService } from '../toast.service';
     DaisyFormControlDirective,
     NgTemplateOutlet,
     LabelFilePickerComponent,
+    DropdownContentComponent,
+    SelectComponent,
   ],
   templateUrl: './create-model-dialog.component.html',
   styleUrl: './create-model-dialog.component.css',
@@ -71,6 +75,7 @@ class CreateModelDialogComponent {
   private toastService = inject(ToastService);
   private fb = inject(NonNullableFormBuilder);
   private cdr = inject(ChangeDetectorRef);
+  private modelTypeLabelPipe = new ModelTypeLabelPipe();
   private previewAbortController: AbortController = new AbortController();
   checkboxOptions = ['temporal', 'pca_singleview'];
   checkboxOptionLabels = ['Temporal', 'Pose PCA'];
@@ -197,6 +202,22 @@ class CreateModelDialogComponent {
   protected backboneOptions = computed((): string[] => {
     return this.useTrueMultiviewModelAsSignal() ? validMvBackbones : backbones;
   });
+  protected modelTypeSelectOptions = computed(() =>
+    this.modelTypeOptions().map((type) => ({
+      label: this.modelTypeLabelPipe.transform(type),
+      value: type,
+    })),
+  );
+  protected backboneSelectOptions = computed(() =>
+    this.backboneOptions().map((backbone) => ({
+      label: backbone,
+      value: backbone,
+    })),
+  );
+  protected videosDirOptions = [
+    { label: 'videos', value: 'videos' },
+    { label: 'videos_labeled', value: 'videos_labeled' },
+  ];
 
   constructor() {
     effect(() => {

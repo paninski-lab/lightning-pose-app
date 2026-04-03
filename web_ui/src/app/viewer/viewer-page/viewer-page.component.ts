@@ -29,6 +29,7 @@ import { SplitAreaComponent, SplitComponent } from 'angular-split';
 import { FormsModule } from '@angular/forms';
 
 import { ViewerViewOptionsService } from '../viewer-view-options.service';
+import { SelectComponent } from '../../components/dropdown/select.component';
 
 @Component({
   selector: 'app-viewer',
@@ -40,6 +41,7 @@ import { ViewerViewOptionsService } from '../viewer-view-options.service';
     SplitComponent,
     SplitAreaComponent,
     FormsModule,
+    SelectComponent,
   ],
   templateUrl: './viewer-page.component.html',
   styleUrl: './viewer-page.component.css',
@@ -170,9 +172,13 @@ export class ViewerPageComponent implements OnInit {
   }
 
   protected noneOption = '- None -';
-  protected onModelDropdownItemClick(index: number, event: Event) {
-    const selectEl = event.target as HTMLSelectElement;
-    const modelKey = selectEl.value;
+  protected toSelectOption(item: string) {
+    return {
+      label: item,
+      value: item,
+    };
+  }
+  protected onModelSelected(index: number, modelKey: string) {
     const modelsShown = [...this.enabledViewsKeypoints.modelsShown()];
     if (modelKey === this.noneOption) {
       // Remove the model.
