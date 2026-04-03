@@ -48,6 +48,31 @@
                 {{ p.project_key }}
               </h2>
 
+              <!-- Paths -->
+              <div
+                class="flex flex-col gap-3 text-sm mt-2 border-b border-base-200 pb-4"
+              >
+                <div>
+                  <div class="text-xs font-bold uppercase opacity-50">
+                    Data Dir
+                  </div>
+                  <span class="break-all">
+                    <code class="opacity-100">{{ p.data_dir }}</code>
+                  </span>
+                </div>
+
+                @if (p.model_dir) {
+                  <div>
+                    <div class="text-xs font-bold uppercase opacity-50">
+                      Model Dir
+                    </div>
+                    <span class="break-all">
+                      <code class="opacity-100">{{ p.model_dir }}</code>
+                    </span>
+                  </div>
+                }
+              </div>
+
               @if (p.stats) {
                 @if (p.stats.error) {
                   <div class="text-sm text-error italic">
@@ -146,31 +171,6 @@
                   </div>
                 }
               }
-
-              <!-- Paths -->
-              <div
-                class="flex flex-col gap-3 text-sm mt-2 border-t border-base-200 pt-4"
-              >
-                <div>
-                  <div class="text-xs font-bold uppercase opacity-50">
-                    Data Dir
-                  </div>
-                  <span class="break-all">
-                    <code class="opacity-100">{{ p.data_dir }}</code>
-                  </span>
-                </div>
-
-                @if (p.model_dir) {
-                  <div>
-                    <div class="text-xs font-bold uppercase opacity-50">
-                      Model Dir
-                    </div>
-                    <span class="break-all">
-                      <code class="opacity-100">{{ p.model_dir }}</code>
-                    </span>
-                  </div>
-                }
-              </div>
             </a>
           </div>
         }

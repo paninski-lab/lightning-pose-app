@@ -26,7 +26,8 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 
   /* Step 2: Background Glow using the primary color */
   /* We mix primary with transparent to create a soft 30% glow */
-  box-shadow: 0 0 15px color-mix(in oklch, var(--color-primary), transparent 70%);
+  box-shadow: 0 0 15px
+    color-mix(in oklch, var(--color-primary), transparent 70%);
 
   /* Step 3: Background and Border */
   background-color: var(--color-base-100);
@@ -35,10 +36,11 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   transition: all 0.3s ease;
 }
 
-
 /** Custom accordion. I don't like daisy's styles */
 /* Container styling */
-.app-accordion-toggle { display: none; }
+.app-accordion-toggle {
+  display: none;
+}
 
 /* Header layout */
 .app-accordion-title {
@@ -46,7 +48,9 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 }
 
 /* State Indicator */
-.app-accordion-icon::before { content: '+'; }
+.app-accordion-icon::before {
+  content: "+";
+}
 
 /* Collapse Logic */
 .app-accordion-content {
@@ -56,8 +60,10 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 }
 
 /* Expand Logic */
-.app-accordion-toggle:checked + .app-accordion-title .app-accordion-icon::before {
-  content: '-';
+.app-accordion-toggle:checked
+  + .app-accordion-title
+  .app-accordion-icon::before {
+  content: "-";
 }
 
 .app-accordion-toggle:checked ~ .app-accordion-content {
@@ -66,4 +72,16 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 
 body {
   --as-gutter-background-color: var(--color-base-200) !important;
+}
+
+/* Disable opening via focus/focus-within */
+.dropdown.dropdown-no-focus:not(.dropdown-open) .dropdown-content {
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Ensure only our manual class works */
+.dropdown.dropdown-no-focus.dropdown-open .dropdown-content {
+  visibility: visible !important;
+  opacity: 1 !important;
 }
