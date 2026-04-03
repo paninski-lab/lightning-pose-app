@@ -20,6 +20,12 @@ import {
   RouterOutlet,
 } from '@angular/router';
 import { ProjectSettingsComponent } from './project-settings/project-settings.component';
+import {
+  DropdownComponent,
+  DropdownTriggerDirective,
+  DropdownTriggerComponent,
+  DropdownContentComponent,
+} from './components/dropdown/dropdown.component';
 
 import { ProjectInfoService } from './project-info.service';
 import { LoadingService } from './loading.service';
@@ -35,6 +41,10 @@ import { ToastService } from './toast.service';
     RouterLink,
     RouterLinkActive,
     ProjectSettingsComponent,
+    DropdownComponent,
+    DropdownTriggerDirective,
+    DropdownTriggerComponent,
+    DropdownContentComponent,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',

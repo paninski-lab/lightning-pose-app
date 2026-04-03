@@ -22,13 +22,14 @@ export class DropdownTriggerDirective {}
   selector: 'app-dropdown-trigger',
   standalone: true,
   template: `<ng-content></ng-content>`,
+  styles: [':host { display: contents; }'],
 })
 export class DropdownTriggerComponent {}
-
 @Component({
   selector: 'app-dropdown-content',
   standalone: true,
   template: `<ng-content></ng-content>`,
+  styles: [':host { display: contents; }'],
 })
 export class DropdownContentComponent {}
 
@@ -43,7 +44,7 @@ export class DropdownContentComponent {}
     >
       <ng-content select="app-dropdown-trigger"></ng-content>
       <div
-        class="dropdown-content z-[50] bg-base-200 rounded-box shadow border border-base-300"
+        class="dropdown-content z-[50] bg-base-200 rounded-box shadow border border-base-300 overflow-hidden"
       >
         <ng-content select="app-dropdown-content"></ng-content>
       </div>

@@ -14,11 +14,23 @@ import {
   FormsModule,
   NG_VALUE_ACCESSOR,
 } from '@angular/forms';
+import {
+  DropdownComponent,
+  DropdownTriggerDirective,
+  DropdownTriggerComponent,
+  DropdownContentComponent,
+} from '../components/dropdown/dropdown.component';
 import { SessionService } from '../session.service';
 
 @Component({
   selector: 'app-label-file-picker',
-  imports: [FormsModule],
+  imports: [
+    FormsModule,
+    DropdownComponent,
+    DropdownTriggerDirective,
+    DropdownTriggerComponent,
+    DropdownContentComponent,
+  ],
   templateUrl: './label-file-picker.component.html',
   styleUrl: './label-file-picker.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

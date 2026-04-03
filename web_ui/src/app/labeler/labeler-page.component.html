@@ -15,10 +15,10 @@
             <h1 class="mb-2">Label file</h1>
             <div class="flex join">
               <app-label-file-picker
-                class="grow"
+                class="grow join-item"
                 [labelFileKey]="labelFileKey() ?? null"
                 (labelFileKeyChange)="handleSelectLabelFile($event)"
-                [selectSizeClass]="'select-sm join-item'"
+                [selectSizeClass]="'select-sm'"
               ></app-label-file-picker>
               @if (!this.labelFileKey()) {
                 <button
