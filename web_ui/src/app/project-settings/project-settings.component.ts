@@ -3,6 +3,7 @@ import {
   ChangeDetectorRef,
   Component,
   computed,
+  DestroyRef,
   inject,
   input,
   OnInit,
@@ -18,9 +19,11 @@ import {
 } from '@angular/forms';
 import { ProjectInfo } from '../project-info';
 import { JsonPipe, NgTemplateOutlet } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-project-settings',
+  standalone: true,
   imports: [ReactiveFormsModule, JsonPipe, NgTemplateOutlet],
   templateUrl: './project-settings.component.html',
   styleUrl: './project-settings.component.css',
@@ -41,6 +44,7 @@ export class ProjectSettingsComponent implements OnInit {
   private projectInfoService = inject(ProjectInfoService);
   private fb = inject(FormBuilder);
   private cdr = inject(ChangeDetectorRef); // Keep cdr for markAllAsTouched
+  private destroyRef = inject(DestroyRef);
 
   // Protected instance fields for nested form groups
   protected directoriesForm!: FormGroup;
@@ -102,12 +106,31 @@ export class ProjectSettingsComponent implements OnInit {
   ngOnInit() {
     // Conditionally apply Validators.required to projectKey if in setup mode
     const projectKeyControl = this.directoriesForm.get('projectKey');
+    const defaultDataDir =
+      this.projectInfoService.globalContext()?.homeDir + '/LPProjects';
     if (this.setupMode()) {
+      const dataDirControl = this.directoriesForm.get('dataDir');
+      dataDirControl?.setValue(defaultDataDir);
+
       projectKeyControl?.setValidators(Validators.required);
     } else {
       projectKeyControl?.clearValidators();
     }
     projectKeyControl?.updateValueAndValidity();
+
+    if (this.setupMode()) {
+      projectKeyControl?.valueChanges
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe((projectKey) => {
+          const dataDirControl = this.directoriesForm.get('dataDir');
+          if (!dataDirControl?.dirty) {
+            const sanitizedKey = projectKey.replace(/ /g, '_');
+            dataDirControl?.setValue(`${defaultDataDir}/${sanitizedKey}`, {
+              emitEvent: true,
+            });
+          }
+        });
+    }
 
     // Init the form with existing project settings from server.
     if (!this.setupMode()) {

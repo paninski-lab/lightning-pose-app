@@ -96,51 +96,17 @@
                 <div class="flex gap-4 items-start">
                   <div class="grow">
                     <p class="m-0!">Select the model type</p>
-                    <select
-                      class="select"
-                      spellcheck="false"
+                    <app-select
                       formControlName="modelType"
-                    >
-                      @if (
-                        modelTypeOptions().indexOf(
-                          generalForm.controls["modelType"].value
-                        ) === -1
-                      ) {
-                        <option
-                          [ngValue]="generalForm.controls['modelType'].value"
-                        >
-                          --- Select a model type ---
-                        </option>
-                      }
-                      @for (type of modelTypeOptions(); track type) {
-                        <option [value]="type">
-                          {{ type | modelType }}
-                        </option>
-                      }
-                    </select>
+                      [options]="modelTypeSelectOptions()"
+                    ></app-select>
                   </div>
                   <div class="grow">
                     <p class="m-0!">Select the backbone architecture.</p>
-                    <select
-                      class="select"
-                      spellcheck="false"
+                    <app-select
                       formControlName="backbone"
-                    >
-                      @if (
-                        backboneOptions().indexOf(
-                          generalForm.controls["backbone"].value
-                        ) === -1
-                      ) {
-                        <option
-                          [ngValue]="generalForm.controls['backbone'].value"
-                        >
-                          --- Select a backbone ---
-                        </option>
-                      }
-                      @for (backbone of backboneOptions(); track backbone) {
-                        <option [value]="backbone">{{ backbone }}</option>
-                      }
-                    </select>
+                      [options]="backboneSelectOptions()"
+                    ></app-select>
                   </div>
                 </div>
                 <p>
@@ -184,7 +150,9 @@
                   Select the label file for supervised training
                 </p>
 
-                <app-label-file-picker formControlName="labelFile"></app-label-file-picker>
+                <app-label-file-picker
+                  formControlName="labelFile"
+                ></app-label-file-picker>
               </fieldset>
               <fieldset class="fieldset my-2" formGroupName="trainValSplit">
                 <h3 class="text-md mt-0!">Train / val split</h3>
@@ -228,13 +196,10 @@
                   <p class="m-0!">
                     Select the directory containing videos to train on.
                   </p>
-                  <select
-                    class="select"
-                    spellcheck="false"
+                  <app-select
                     formControlName="videosDir"
-                  >
-                    <option value="videos">videos</option>
-                  </select>
+                    [options]="videosDirOptions"
+                  ></app-select>
                 </fieldset>
               }
             </form>

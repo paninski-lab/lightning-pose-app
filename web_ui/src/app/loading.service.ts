@@ -1,6 +1,5 @@
-import { Injectable, signal } from '@angular/core';
-import { Router, ResolveEnd, ResolveStart } from '@angular/router';
-import { inject } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
+import { ResolveEnd, ResolveStart, Router } from '@angular/router';
 
 @Injectable({
   providedIn: 'root',

@@ -6,16 +6,15 @@ import {
   model,
   OnDestroy,
   OnInit,
-  output,
   signal,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { ModelTypeLabelPipe, PathPipe } from '../utils/pipes';
 import { SessionService } from '../session.service';
 import {
+  mc_util,
   ModelListResponse,
   ModelListResponseEntry,
-  mc_util,
 } from '../modelconf';
 import { CdkListboxModule } from '@angular/cdk/listbox';
 import { ToastService } from '../toast.service';

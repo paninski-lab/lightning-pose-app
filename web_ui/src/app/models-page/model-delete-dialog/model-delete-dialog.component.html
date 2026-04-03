@@ -1,12 +1,12 @@
-<dialog
-  #dlg
-  class="modal modal-open"
-  (cancel)="$event.preventDefault(); closeDialog()"
->
-  <div class="modal-box prose">
-    <h3 class="text-error">
-      Delete Model: <code class="text-base-content">{{ modelRelativePath() }}</code>
-    </h3>
+<app-alert-dialog (close)="closeDialog()">
+  <app-alert-header>
+    <span class="text-error">
+      Delete Model:
+      <code class="text-base-content">{{ modelRelativePath() }}</code>
+    </span>
+  </app-alert-header>
+
+  <div class="prose">
     <p>
       This will permanently delete the model's directory containing its
       configuration, weights, and prediction outputs.
@@ -19,17 +19,21 @@
         class="checkbox"
         [(ngModel)]="deleteConfirmation"
       />
-      <label for="deleteConfirmation" class="cursor-pointer">I want to permanently delete <code>{{ modelRelativePath() }}</code></label>
-    </div>
-    <div class="modal-action">
-      <button class="btn btn-error" (click)="closeDialog()">Cancel</button>
-      <button
-        class="btn btn-primary"
-        (click)="handleDelete()"
-        [disabled]="!deleteConfirmation()"
+      <label for="deleteConfirmation" class="cursor-pointer"
+        >I want to permanently delete
+        <code>{{ modelRelativePath() }}</code></label
       >
-        Delete Permanently
-      </button>
     </div>
   </div>
-</dialog>
+
+  <app-alert-footer>
+    <button class="btn btn-error" (click)="closeDialog()">Cancel</button>
+    <button
+      class="btn btn-primary"
+      (click)="handleDelete()"
+      [disabled]="!deleteConfirmation()"
+    >
+      Delete Permanently
+    </button>
+  </app-alert-footer>
+</app-alert-dialog>

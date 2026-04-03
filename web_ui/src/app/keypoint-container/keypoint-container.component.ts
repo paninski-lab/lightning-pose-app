@@ -9,10 +9,10 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { Keypoint } from '../../keypoint';
+import { Keypoint } from '../keypoint';
 import { Point } from '@angular/cdk/drag-drop';
-import { LabelerViewOptionsService } from '../../labeler/labeler-view-options.service';
-import { ViewerViewOptionsService } from '../../viewer/viewer-view-options.service';
+import { LabelerViewOptionsService } from '../labeler/labeler-view-options.service';
+import { ViewerViewOptionsService } from '../viewer/viewer-view-options.service';
 import { NgClass } from '@angular/common';
 
 @Component({

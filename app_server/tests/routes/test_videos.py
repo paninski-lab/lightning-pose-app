@@ -13,22 +13,6 @@ from litpose_app.datatypes import ProjectConfig, ProjectPaths, Project
 from litpose_app import deps
 
 
-def _override_project(app, data_dir: Path):
-    """Override project_info_getter to return a dummy Project pointing to data_dir."""
-
-    def getter():
-        def _get(project_key: str) -> Project:
-            return Project(
-                project_key=project_key,
-                paths=ProjectPaths(data_dir=data_dir),
-                config=ProjectConfig(),
-            )
-
-        return _get
-
-    app.dependency_overrides[deps.project_info_getter] = getter
-
-
 def _collect_sse_data_lines(
     response, stop_on_terminal: bool = True, max_lines: int = 200
 ) -> list[dict]:
@@ -57,14 +41,11 @@ def _collect_sse_data_lines(
     return out
 
 
-def test_upload_video_success_and_status(client: TestClient, override_config, tmp_path):
-
-    data_dir = tmp_path / "proj" / "data"
-    data_dir.mkdir(parents=True, exist_ok=True)
-    # Create a minimal project.yaml so other routes would be happy if needed
-    (data_dir / "project.yaml").write_text("schema_version: 1\n")
-
-    _override_project(client.app, data_dir)
+def test_upload_video_success_and_status(
+    client: TestClient, register_project, override_config
+):
+    project_key = "demo"
+    register_project(project_key)
 
     # Upload
     filename = "session_camA.mp4"
@@ -72,7 +53,7 @@ def test_upload_video_success_and_status(client: TestClient, override_config, tm
     resp = client.post(
         "/app/v0/rpc/UploadVideo",
         data={
-            "projectKey": "demo",
+            "projectKey": project_key,
             "filename": filename,
             "should_overwrite": "false",
         },
@@ -92,15 +73,13 @@ def test_upload_video_success_and_status(client: TestClient, override_config, tm
     assert (uploads / filename).exists()
 
 
-def test_upload_conflict_and_overwrite(client: TestClient, override_config, tmp_path):
-
-    data_dir = tmp_path / "proj" / "data"
-    data_dir.mkdir(parents=True, exist_ok=True)
-    _override_project(client.app, data_dir)
+def test_upload_conflict_and_overwrite(client: TestClient, register_project):
+    project_key = "demo"
+    register_project(project_key)
 
     filename = "mysess_camA.mp4"
     payload = {
-        "projectKey": "demo",
+        "projectKey": project_key,
         "filename": filename,
         "should_overwrite": "false",
     }
@@ -119,13 +98,12 @@ def test_upload_conflict_and_overwrite(client: TestClient, override_config, tmp_
 
 
 def test_transcode_sse_output_exists_returns_done(
-    client: TestClient, tmp_path, override_config
+    client: TestClient, register_project, override_config
 ):
     from litpose_app.routes import videos as videos_mod
 
-    data_dir = tmp_path / "proj" / "data"
-    data_dir.mkdir(parents=True, exist_ok=True)
-    _override_project(client.app, data_dir)
+    project_key = "demo"
+    data_dir = register_project(project_key)
 
     filename = "sess_camB.mp4"
 
@@ -135,7 +113,7 @@ def test_transcode_sse_output_exists_returns_done(
     (uploads / filename).write_bytes(b"dummy")
     out_dir = videos_mod.videos_dir_for_project(
         Project(
-            project_key="demo",
+            project_key=project_key,
             paths=ProjectPaths(data_dir=data_dir),
             config=ProjectConfig(),
         )
@@ -144,7 +122,7 @@ def test_transcode_sse_output_exists_returns_done(
 
     with client.stream(
         "GET",
-        f"/app/v0/sse/TranscodeVideo?projectKey=demo&filename={filename}",
+        f"/app/v0/sse/TranscodeVideo?projectKey={project_key}&filename={filename}",
     ) as resp:
         assert resp.status_code == 200
         payloads = _collect_sse_data_lines(resp)
@@ -154,13 +132,12 @@ def test_transcode_sse_output_exists_returns_done(
 
 
 def test_transcode_sse_success_flow(
-    client: TestClient, override_config, tmp_path, monkeypatch
+    client: TestClient, override_config, register_project, monkeypatch
 ):
     from litpose_app.routes import videos as videos_mod
 
-    data_dir = tmp_path / "proj" / "data"
-    data_dir.mkdir(parents=True, exist_ok=True)
-    _override_project(client.app, data_dir)
+    project_key = "demo"
+    data_dir = register_project(project_key)
 
     filename = "run_camA.mp4"
     # Create an uploaded file manually and mark upload DONE (avoid multipart dep)
@@ -214,7 +191,7 @@ def test_transcode_sse_success_flow(
 
     with client.stream(
         "GET",
-        f"/app/v0/sse/TranscodeVideo?projectKey=demo&filename={filename}",
+        f"/app/v0/sse/TranscodeVideo?projectKey={project_key}&filename={filename}",
     ) as resp:
         assert resp.status_code == 200
         payloads = _collect_sse_data_lines(resp)
@@ -229,13 +206,12 @@ def test_transcode_sse_success_flow(
 
 
 def test_transcode_sse_failure_flow(
-    client: TestClient, override_config, tmp_path, monkeypatch
+    client: TestClient, override_config, register_project, monkeypatch
 ):
     from litpose_app.routes import videos as videos_mod
 
-    data_dir = tmp_path / "proj" / "data"
-    data_dir.mkdir(parents=True, exist_ok=True)
-    _override_project(client.app, data_dir)
+    project_key = "demo"
+    data_dir = register_project(project_key)
 
     filename = "bad_camA.mp4"
     # Create an uploaded file manually and mark upload DONE (avoid multipart dep)
@@ -270,7 +246,7 @@ def test_transcode_sse_failure_flow(
 
     with client.stream(
         "GET",
-        f"/app/v0/sse/TranscodeVideo?projectKey=demo&filename={filename}",
+        f"/app/v0/sse/TranscodeVideo?projectKey={project_key}&filename={filename}",
     ) as resp:
         assert resp.status_code == 200
         payloads = _collect_sse_data_lines(resp)

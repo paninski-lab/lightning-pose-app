@@ -1,0 +1,38 @@
+<app-alert-dialog (close)="closeDialog()">
+  <app-alert-header>
+    <span class="text-error">
+      Remove Project: <code class="text-base-content">{{ projectKey() }}</code>
+    </span>
+  </app-alert-header>
+  <p class="prose">
+    Removes the project from the registered list of projects, but will not
+    delete any files, unless you also check the following
+  </p>
+
+  <div class="my-6">
+    <div class="form-control">
+      <label class="cursor-pointer flex justify-start gap-3">
+        <input type="checkbox" class="checkbox" [(ngModel)]="removeFiles" />
+        <span>Permanently delete files</span>
+      </label>
+      <div class="ml-9 text-sm opacity-70">
+        Data: <code>{{ dataDir() }}</code
+        ><br />
+        @if (modelDir()) {
+          Models: <code>{{ modelDir() }}</code>
+        }
+      </div>
+    </div>
+  </div>
+
+  <app-alert-footer>
+    <button class="btn btn-ghost" (click)="closeDialog()">Cancel</button>
+    <button class="btn btn-error" (click)="handleDelete()">
+      @if (removeFiles()) {
+        Delete permanently
+      } @else {
+        Remove
+      }
+    </button>
+  </app-alert-footer>
+</app-alert-dialog>

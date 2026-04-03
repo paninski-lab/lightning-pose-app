@@ -1,0 +1,50 @@
+<div class="fieldset">
+  @if (label()) {
+    <h3 class="text-md">{{ label() }}</h3>
+  }
+  @if (description()) {
+    <p class="m-0! text-sm opacity-70">{{ description() }}</p>
+  }
+  <div
+    class="input w-full flex items-center gap-2"
+    [class.input-error]="
+      value() && !isValid() && !isValidating() && isValidated()
+    "
+  >
+    <span class="material-icons !text-sm opacity-50">folder</span>
+    <input
+      type="text"
+      class="grow"
+      [placeholder]="placeholder()"
+      [ngModel]="value()"
+      (ngModelChange)="handleInput($event)"
+      (blur)="onTouched()"
+      [disabled]="controlIsDisabled()"
+      spellcheck="false"
+    />
+    @if (isValidating()) {
+      <span class="loading loading-spinner loading-xs text-info"></span>
+    } @else if (value() && isValidated()) {
+      @if (isValid()) {
+        <div
+          class="flex items-center gap-1 text-success animate-in fade-in duration-300"
+        >
+          <input
+            type="checkbox"
+            class="checkbox checkbox-success checkbox-xs"
+            [checked]="true"
+            disabled
+          />
+          <span class="text-xs font-semibold">Valid</span>
+        </div>
+      } @else {
+        <div
+          class="flex items-center gap-1 text-error animate-in fade-in duration-300"
+        >
+          <span class="material-icons !text-sm">error_outline</span>
+          <span class="text-xs font-semibold">Invalid</span>
+        </div>
+      }
+    }
+  </div>
+</div>

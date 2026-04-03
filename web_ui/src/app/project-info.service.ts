@@ -1,4 +1,4 @@
-import { inject, Injectable, signal, WritableSignal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { ProjectInfo } from './project-info';
 import { RpcService } from './rpc.service';
 import {
@@ -9,7 +9,6 @@ import {
   forkJoin,
   map,
   Observable,
-  Subject,
   timer,
 } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -31,10 +30,8 @@ export class ProjectInfoService {
   // Resolver handshake API
   // ---------------------
 
-  private globalLoadedSubject = new BehaviorSubject<GlobalContext>({
-    uploadDir: '',
-  });
-  public globalLoaded$: Observable<GlobalContext> =
+  private globalLoadedSubject = new BehaviorSubject<GlobalContext | null>(null);
+  public globalLoaded$: Observable<GlobalContext | null> =
     this.globalLoadedSubject.asObservable();
 
   private projectLoadedSubject = new BehaviorSubject<ProjectContext | null>(
@@ -54,20 +51,19 @@ export class ProjectInfoService {
     globalContext: GlobalContext;
     projectContext: ProjectContext | null;
   }> {
-    const globalContext$ = this.rpc
-      .callObservable('GetRootConfig')
-      .pipe(
-        first(),
-        map((response: unknown) => {
-          const body = response as Partial<GlobalContext>;
-          if (!body || typeof body.uploadDir !== 'string') {
-            throw new Error('Invalid GetRootConfig response');
-          }
-          const data: GlobalContext = { uploadDir: body.uploadDir };
-          this.globalLoadedSubject.next(data);
-          return data;
-        }),
-      );
+    const globalContext$ = this.rpc.callObservable('GetGlobalContext').pipe(
+      first(),
+      map((response: unknown) => {
+        const globalContext = response as GlobalContext;
+
+        this.globalLoadedSubject.next(globalContext);
+        window.umami?.identify({
+          versions: globalContext.versions,
+          isEditable: globalContext.isEditable,
+        });
+        return globalContext;
+      }),
+    );
 
     const projectContext$ = !projectKey
       ? timer(100).pipe(
@@ -129,6 +125,7 @@ export class ProjectInfoService {
         project_key: p.project_key,
         data_dir: String(p.data_dir),
         model_dir: p.model_dir == null ? null : String(p.model_dir),
+        stats: p.stats,
       }));
       this.projects.set(items);
     } catch (err) {
@@ -181,6 +178,15 @@ export class ProjectInfoService {
       body.model_dir = payload.model_dir;
     }
     await this.rpc.call('CreateNewProject', body);
+    await this.fetchProjects();
+  }
+
+  async deleteProject(projectKey: string, removeFiles: boolean) {
+    await this.rpc.call('deleteProject', {
+      projectKey,
+      removeFiles,
+    });
+    await this.fetchProjects();
   }
 
   // Backward-compat shim used by existing UI code: delegates to UpdateProjectConfig
@@ -213,20 +219,39 @@ export class ProjectInfoService {
     this._allModels.next(models);
   }
 }
-
 export interface GlobalContext {
   uploadDir: string;
+  homeDir: string;
+  versions: Record<string, string | null>;
+  isEditable: Record<string, boolean>;
 }
-
 export interface ProjectContext {
   key: string;
   projectInfo: ProjectInfo | null;
+}
+
+export interface LabelFileStats {
+  name: string;
+  total_frames: number;
+  labeled_frames: number;
+}
+
+export interface ProjectStats {
+  session_count: number;
+  label_file_count: number;
+  label_files_stats: LabelFileStats[];
+  labeled_frames_count?: number | null;
+  keypoint_names: string[];
+  view_names: string[];
+  model_count: number;
+  error?: string;
 }
 
 export interface ListProjectItem {
   project_key: string;
   data_dir: string;
   model_dir: string | null;
+  stats?: ProjectStats;
 }
 
 export interface ListProjectInfoResponse {

@@ -13,16 +13,17 @@
         <div>
           <div class="p-4">
             <h1 class="mb-2">Label file</h1>
-            <div class="flex join">
+            <div class="flex gap-1">
               <app-label-file-picker
                 class="grow"
+                [fullWidth]="true"
                 [labelFileKey]="labelFileKey() ?? null"
                 (labelFileKeyChange)="handleSelectLabelFile($event)"
-                [selectSizeClass]="'select-sm join-item'"
+                size="sm"
               ></app-label-file-picker>
               @if (!this.labelFileKey()) {
                 <button
-                  class="btn btn-sm btn-primary join-item"
+                  class="btn btn-sm btn-primary"
                   (click)="extractFramesDialogOpen.set(true)"
                 >
                   +

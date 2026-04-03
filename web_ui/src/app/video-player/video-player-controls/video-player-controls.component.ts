@@ -16,7 +16,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class VideoPlayerControlsComponent {
-  // the main state, injected from parent so it can be easily shared across video players
+  // the main state, injected from parent so it can be easily components across video players
   videoPlayerState: VideoPlayerState = inject(VideoPlayerState);
 
   private sliderEventSubject = new BehaviorSubject<number>(0);

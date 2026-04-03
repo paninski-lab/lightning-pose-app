@@ -1,24 +1,17 @@
-import pytest
-import tomli_w
 from pathlib import Path
 
-from litpose_app.project import ProjectUtil
+import pytest
+import tomli_w
+
 from litpose_app.datatypes import ProjectPaths
+from litpose_app.project import ProjectUtil
 from litpose_app.rootconfig import RootConfig
 
 
 @pytest.fixture
-def mock_config(tmp_path: Path) -> RootConfig:
-    """Pytest fixture to create a mock config with a temporary projects.toml."""
-    config = RootConfig(LP_SYSTEM_DIR=tmp_path / ".lightning-pose")
-
-    return config
-
-
-@pytest.fixture
-def project_util(mock_config: RootConfig) -> ProjectUtil:
+def project_util(override_config: RootConfig) -> ProjectUtil:
     """Pytest fixture to create a ProjectUtil instance."""
-    return ProjectUtil(config=mock_config)
+    return ProjectUtil(config=override_config)
 
 
 def test_project_model():

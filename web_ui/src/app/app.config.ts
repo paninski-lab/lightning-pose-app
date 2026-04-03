@@ -5,10 +5,11 @@ import {
   provideZonelessChangeDetection,
 } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { storybookRecorderInterceptor } from './storybook-recorder.interceptor';
 
 import { routes } from './app.routes';
 import { GlobalErrorHandler } from './global-error-handler.service';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 
 // Import and configure Highlight.js
 import hljs from 'highlight.js/lib/core';
@@ -22,6 +23,9 @@ hljs.registerLanguage('bash', bash);
 hljs.registerLanguage('json', json);
 hljs.registerLanguage('toml', toml);
 
+// debug use only
+const enableStorybookRecord = false;
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZonelessChangeDetection(),
@@ -29,6 +33,11 @@ export const appConfig: ApplicationConfig = {
     // Trying this out. It will popup any error into a dialog.
     { provide: ErrorHandler, useClass: GlobalErrorHandler },
     provideBrowserGlobalErrorListeners(),
-    provideHttpClient(),
+    provideHttpClient(
+      // Only include the recorder if we are in development mode
+      withInterceptors(
+        enableStorybookRecord ? [storybookRecorderInterceptor] : [],
+      ),
+    ),
   ],
 };

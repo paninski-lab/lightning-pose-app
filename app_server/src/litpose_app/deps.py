@@ -7,6 +7,8 @@ See FastAPI Dependency Injection docs: https://fastapi.tiangolo.com/tutorial/dep
 from __future__ import annotations
 
 import logging
+import os
+from pathlib import Path
 from typing import Callable
 
 import yaml
@@ -53,8 +55,55 @@ class ProjectNotInProjectsToml(ApplicationError):
         super().__init__(f"Project {project_key} not found in projects.toml file")
 
 
+# TODO Create a migration for this instead.
+# TODO Run migrations on project when adding it from the app. Not in the deps.project_info_getter.
+def _ensure_project_yaml(base_dir: Path) -> dict | None:
+    """
+    Tries to create project.yaml from other YAML files in the base_dir.
+    Returns the created yaml_data or None if no suitable
+    """
+    yaml_files = base_dir.rglob("**/*.yaml")
+    yaml_data = None
+    project_yaml_file_path = base_dir / "project.yaml"
+
+    for yf in yaml_files:
+        try:
+            with open(yf, "r") as f:
+                candidate_data = yaml.safe_load(f)
+            if candidate_data and "data" in candidate_data:
+                data_part = candidate_data["data"]
+                if (
+                    isinstance(data_part, dict)
+                    and "view_names" in data_part
+                    and "keypoint_names" in data_part
+                    and data_part["view_names"] is not None
+                    and data_part["keypoint_names"] is not None
+                ):
+                    # Found a suitable template
+                    yaml_data = {
+                        "view_names": data_part["view_names"],
+                        "keypoint_names": data_part["keypoint_names"],
+                    }
+                    # Create the project.yaml file
+                    with open(project_yaml_file_path, "w") as f:
+                        yaml.dump(yaml_data, f)
+                    logger.info(
+                        f"Created {project_yaml_file_path} using template from {yf}"
+                    )
+                    break
+        except Exception as e:
+            logger.warning(
+                "Exception during project.yaml autocreation:\n%s\n%s",
+                project_yaml_file_path,
+                e,
+            )
+            continue
+    return yaml_data
+
+
 def project_info_getter(
     project_util: ProjectUtil = Depends(project_util),
+    config: Config = Depends(config),
 ) -> ProjectInfoGetter:
     def get_project_info(project_key: str) -> Project:
         project_paths = project_util.get_all_project_paths()
@@ -64,16 +113,28 @@ def project_info_getter(
             raise ProjectNotInProjectsToml(project_key)
 
         try:
+            data_dir = Path(project_path.data_dir)
+            if not data_dir.exists():
+                raise ApplicationError(f"Data directory {data_dir} does not exist.")
+            if not data_dir.is_dir():
+                raise ApplicationError(f"Data directory {data_dir} is not a directory.")
+
             project_yaml_path = project_util.get_project_yaml_path(
                 project_path.data_dir
             )
             # Load YAML data into a Python dictionary
             with open(project_yaml_path, "r") as f:
                 yaml_data = yaml.safe_load(f)
-        except FileNotFoundError:
+        except PermissionError:
             raise ApplicationError(
-                f"Could not find a project.yaml file in data directory."
+                f"Permission denied when accessing project files in {project_path.data_dir}."
             )
+        except FileNotFoundError:
+            yaml_data = _ensure_project_yaml(data_dir)
+            if yaml_data is None:
+                raise ApplicationError(
+                    f"Could not find a project.yaml file in data directory."
+                )
         except yaml.YAMLError as e:
             raise ApplicationError(
                 f"Could not decode project.yaml file in data directory. Invalid syntax: {e}"

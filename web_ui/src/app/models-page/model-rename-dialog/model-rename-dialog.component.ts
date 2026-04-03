@@ -7,18 +7,27 @@ import {
   input,
   OnInit,
   output,
-  signal,
   viewChild,
 } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { SessionService } from '../../session.service';
 import { ToastService } from '../../toast.service';
 import { fileNameValidator } from '../../utils/validators';
-import { A11yModule, CdkTrapFocus } from '@angular/cdk/a11y';
+import {
+  AlertDialogComponent,
+  AlertFooterComponent,
+  AlertHeaderComponent,
+} from '../../components/alert-dialog/alert-dialog.component';
 
 @Component({
   selector: 'app-model-rename-dialog',
-  imports: [FormsModule, ReactiveFormsModule, A11yModule],
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    AlertDialogComponent,
+    AlertHeaderComponent,
+    AlertFooterComponent,
+  ],
   templateUrl: './model-rename-dialog.component.html',
   styleUrl: './model-rename-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -27,7 +36,6 @@ export class ModelRenameDialogComponent implements OnInit, AfterViewInit {
   modelRelativePath = input.required<string>();
   done = output<boolean>();
 
-  dlg = viewChild.required<HTMLDialogElement>('dlg');
   modelNameInput = viewChild<ElementRef<HTMLInputElement>>('modelNameInput');
   protected newModelName = new FormControl('', fileNameValidator);
   private sessionService = inject(SessionService);
@@ -45,13 +53,7 @@ export class ModelRenameDialogComponent implements OnInit, AfterViewInit {
   }
 
   protected closeDialog() {
-    try {
-      if (this.dlg().open) {
-        this.dlg().close();
-      }
-    } finally {
-      this.done.emit(false);
-    }
+    this.done.emit(false);
   }
 
   protected async handleRename() {

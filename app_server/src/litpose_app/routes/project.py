@@ -1,9 +1,12 @@
 import logging
+import os
 import shutil
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import yaml
-from fastapi import APIRouter, Depends
+import pandas as pd
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ValidationError
 
 from litpose_app.datatypes import ProjectPaths
@@ -13,6 +16,10 @@ from litpose_app.deps import (
     ProjectInfoGetter,
     ApplicationError,
 )
+from litpose_app.routes.rglob import _rglob
+from litpose_app.routes.labeler.find_label_files import _check_label_file_headers
+from litpose_app.routes.models import read_models_l1_from_base
+from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +35,28 @@ class ProjectInfo(BaseModel):
     keypoint_names: list[str] | None = None
 
 
+class LabelFileStats(BaseModel):
+    name: str
+    total_frames: int
+    labeled_frames: int
+
+
+class ProjectStats(BaseModel):
+    session_count: int
+    label_file_count: int
+    label_files_stats: list[LabelFileStats]
+    labeled_frames_count: int | None = None
+    keypoint_names: list[str]
+    view_names: list[str]
+    model_count: int
+    error: str | None = None
+
+
 class ListProjectItem(BaseModel):
     project_key: str
     data_dir: Path
     model_dir: Path | None = None
+    stats: ProjectStats | None = None
 
 
 class ListProjectInfoResponse(BaseModel):
@@ -67,33 +92,225 @@ class CreateNewProjectRequest(BaseModel):
     projectInfo: ProjectInfo
 
 
+class DeleteProjectRequest(BaseModel):
+    projectKey: str
+    removeFiles: bool = False
+
+
+def _get_label_file_stats(csv_path: Path) -> LabelFileStats | None:
+    try:
+        # We need the full data to count labeled vs unlabeled
+        df = pd.read_csv(csv_path, header=[0, 1, 2])
+        df = fix_empty_first_row(df)
+        labeled_frames = len(df)
+
+        # Count frames in the unlabeled sidecar
+        unlabeled_sidecar = csv_path.with_suffix(".unlabeled.jsonl")
+        unlabeled_frames = 0
+        if unlabeled_sidecar.exists():
+            try:
+                with open(unlabeled_sidecar, "r") as f:
+                    # Count non-empty lines
+                    unlabeled_frames = sum(1 for line in f if line.strip())
+            except Exception as e:
+                logger.warning(f"Error reading sidecar {unlabeled_sidecar}: {e}")
+
+        return LabelFileStats(
+            name=csv_path.name,
+            total_frames=labeled_frames + unlabeled_frames,
+            labeled_frames=labeled_frames,
+        )
+    except Exception as e:
+        logger.warning(f"Error getting stats for {csv_path}: {e}")
+        return None
+
+
+def _fetch_all_stats(project_key, project_util, project_info_getter) -> ProjectStats:
+    try:
+        project = project_info_getter(project_key)
+    except ApplicationError as e:
+        return ProjectStats(
+            session_count=0,
+            label_file_count=0,
+            label_files_stats=[],
+            keypoint_names=[],
+            view_names=[],
+            model_count=0,
+            error=str(e),
+        )
+    except Exception as e:
+        return ProjectStats(
+            session_count=0,
+            label_file_count=0,
+            label_files_stats=[],
+            keypoint_names=[],
+            view_names=[],
+            model_count=0,
+            error=f"Unexpected error loading project: {e}",
+        )
+
+    data_dir = project.paths.data_dir
+    model_dir = project.paths.model_dir
+    views = project.config.view_names
+    keypoints = project.config.keypoint_names
+
+    try:
+        # 1. Sessions
+        mp4_entries = _rglob(str(data_dir), pattern="videos*/**/*.mp4", no_dirs=True)
+        mp4_paths = [str(e["path"]) for e in mp4_entries]
+        # Simple grouping logic: replace view name with *
+        session_keys = set()
+        for p in mp4_paths:
+            filename = Path(p).name
+            view_found = False
+            for v in views:
+                if v in filename:
+                    session_keys.add(filename.replace(v, "*"))
+                    view_found = True
+                    break
+            if not view_found:
+                session_keys.add(filename)
+
+        # 2. Label files
+        csv_entries = _rglob(str(data_dir), pattern="*.csv", no_dirs=True)
+        candidate_csv_paths = [Path(e["path"]) for e in csv_entries]
+        # Filter out models
+        if model_dir and model_dir.is_relative_to(data_dir):
+            candidate_csv_paths = [
+                p
+                for p in candidate_csv_paths
+                if not (data_dir / p).is_relative_to(model_dir)
+            ]
+
+        valid_label_files = []
+        for p in candidate_csv_paths:
+            if _check_label_file_headers(p, data_dir):
+                valid_label_files.append(data_dir / p)
+
+        label_files_stats_raw = []
+        with ThreadPoolExecutor() as executor:
+            futures = [
+                executor.submit(_get_label_file_stats, p) for p in valid_label_files
+            ]
+            for f in as_completed(futures):
+                res = f.result()
+                if res:
+                    label_files_stats_raw.append(res)
+
+        # Group label files by name (stripping view names)
+        grouped_stats: dict[str, LabelFileStats] = {}
+        for s in label_files_stats_raw:
+            name = s.name
+            for v in views:
+                if v in name:
+                    name = name.replace(v, "*")
+                    break
+            if name not in grouped_stats:
+                grouped_stats[name] = LabelFileStats(
+                    name=name,
+                    total_frames=s.total_frames,
+                    labeled_frames=s.labeled_frames,
+                )
+            else:
+                # If they are different, we might want to warn or just take the max/min.
+                # Usually they should be the same.
+                existing = grouped_stats[name]
+                grouped_stats[name] = LabelFileStats(
+                    name=name,
+                    total_frames=max(existing.total_frames, s.total_frames),
+                    labeled_frames=max(existing.labeled_frames, s.labeled_frames),
+                )
+
+        # Find main label file stats (CollectedData_*.csv or CollectedData.csv)
+        main_label_frames = None
+        # Try exact matches first
+        for target in ["CollectedData_*.csv", "CollectedData.csv"]:
+            if target in grouped_stats:
+                main_label_frames = grouped_stats[target].labeled_frames
+                break
+
+        # 3. Models
+        model_count = 0
+        if model_dir and model_dir.exists():
+            models = read_models_l1_from_base(model_dir, model_dir)
+            # Filter only those with config (actual models)
+            model_count = len([m for m in models if m.config is not None])
+
+        return ProjectStats(
+            session_count=len(session_keys),
+            label_file_count=len(grouped_stats),
+            label_files_stats=list(grouped_stats.values()),
+            labeled_frames_count=main_label_frames,
+            keypoint_names=keypoints,
+            view_names=views,
+            model_count=model_count,
+        )
+    except Exception as e:
+        logger.exception("Error fetching stats for project %s", project_key)
+        return ProjectStats(
+            session_count=0,
+            label_file_count=0,
+            label_files_stats=[],
+            keypoint_names=keypoints,
+            view_names=views,
+            model_count=0,
+            error=f"Error fetching stats: {e}",
+        )
+
+
 @router.post("/app/v0/rpc/listProjects")
 def list_projects(
     project_util: ProjectUtil = Depends(deps.project_util),
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> ListProjectInfoResponse:
     """Lists all projects known to the server (from projects.toml).
 
     Returns a list of project entries with their data and model directories.
     No request payload is required.
     """
-    projects: list[ListProjectItem] = []
+    projects_list: list[ListProjectItem] = []
     try:
         all_paths = project_util.get_all_project_paths()
-        for _key, paths in all_paths.items():
-            # paths is a ProjectPaths instance
-            projects.append(
-                ListProjectItem(
-                    project_key=_key,
-                    data_dir=paths.data_dir,
-                    model_dir=paths.model_dir,
-                )
-            )
+
+        # Fetch stats in parallel for all projects
+        with ThreadPoolExecutor() as executor:
+            future_to_key = {
+                executor.submit(
+                    _fetch_all_stats, key, project_util, project_info_getter
+                ): key
+                for key in all_paths.keys()
+            }
+
+            for future in as_completed(future_to_key):
+                key = future_to_key[future]
+                paths = all_paths[key]
+                try:
+                    stats = future.result()
+                    projects_list.append(
+                        ListProjectItem(
+                            project_key=key,
+                            data_dir=paths.data_dir,
+                            model_dir=paths.model_dir,
+                            stats=stats,
+                        )
+                    )
+                except Exception as e:
+                    logger.exception("Failed to fetch stats for project %s: %s", key, e)
+                    projects_list.append(
+                        ListProjectItem(
+                            project_key=key,
+                            data_dir=paths.data_dir,
+                            model_dir=paths.model_dir,
+                            stats=None,
+                        )
+                    )
     except Exception as e:
         logger.exception("Failed to list projects: %s", e)
-        # Return empty list on failure; frontend can display an empty state
         return ListProjectInfoResponse(projects=[])
 
-    return ListProjectInfoResponse(projects=projects)
+    # Sort projects by key for stable UI
+    projects_list.sort(key=lambda x: x.project_key)
+    return ListProjectInfoResponse(projects=projects_list)
 
 
 @router.post("/app/v0/rpc/getProjectInfo")
@@ -147,7 +364,35 @@ def update_project_config(
     """
     existing_project = project_info_getter(request.projectKey)
 
-    # Update project paths if changed and get the target data/model dirs
+    # 1. Validate: If changing both paths and metadata, ensure target project.yaml exists
+    # to avoid partial failure (updating projects.toml but failing to update project.yaml).
+    requested_data_dir = request.projectInfo.data_dir
+    requested_model_dir = request.projectInfo.model_dir
+    path_changed = (
+        requested_data_dir is not None
+        and requested_data_dir != existing_project.paths.data_dir
+    ) or (
+        requested_model_dir is not None
+        and requested_model_dir != existing_project.paths.model_dir
+    )
+
+    metadata_to_update = request.projectInfo.model_dump(
+        mode="json", exclude_none=True, exclude={"data_dir", "model_dir"}
+    )
+    metadata_changed = len(metadata_to_update) > 0
+
+    if path_changed and metadata_changed:
+        target_data_dir = requested_data_dir or existing_project.paths.data_dir
+        project_yaml_path = project_util.get_project_yaml_path(target_data_dir)
+        if not project_yaml_path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Project configuration file not found at {project_yaml_path}. "
+                "Cannot update metadata while changing project paths if the target "
+                "config file does not exist.",
+            )
+
+    # 2. Update project paths if changed and get the target data/model dirs
     target_data_dir, target_model_dir = _update_paths_if_changed(
         project_key=request.projectKey,
         existing_paths=existing_project.paths,
@@ -291,3 +536,28 @@ def create_new_project(
     project_util.update_project_paths(project_key=request.projectKey, projectpaths=pp)
 
     return None
+
+
+@router.post("/app/v0/rpc/deleteProject")
+def delete_project(
+    request: DeleteProjectRequest,
+    project_util: ProjectUtil = Depends(deps.project_util),
+) -> None:
+    # 1. Get project paths before unregistering if we need to remove files
+    if request.removeFiles:
+        paths = project_util.get_all_project_paths().get(request.projectKey)
+        if paths:
+            # We use shutil.rmtree for physical deletion.
+            if paths.data_dir and os.path.exists(paths.data_dir):
+                shutil.rmtree(paths.data_dir)
+            if paths.model_dir and os.path.exists(paths.model_dir):
+                shutil.rmtree(paths.model_dir)
+
+    # 2. Unregister project from projects.toml
+    try:
+        project_util.update_project_paths(request.projectKey, None)
+    except KeyError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Project '{request.projectKey}' not found.",
+        )

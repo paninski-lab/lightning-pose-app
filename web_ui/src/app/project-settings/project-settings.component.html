@@ -73,15 +73,8 @@
           <fieldset class="fieldset">
             <h3 class="text-md">Data directory</h3>
             <p class="m-0!">
-              The root of the data directory. Contains all data used to train
-              models, and the <code>project.yaml</code> metadata file. The
-              directory will be created if it doesn't exist.
+              The directory will be created if it doesn't exist.
             </p>
-            <p class="m-0!">
-              A good convention is
-              <code>/ HOME_DIR / LPProjects / PROJECT_NAME</code>
-            </p>
-
             <div class="input w-full">
               <span class="material-icons !text-sm opacity-50">folder</span>
               <input
@@ -102,7 +95,6 @@
 
           <fieldset class="fieldset">
             <h3 class="text-md">Model directory</h3>
-            <p class="m-0!">The directory containing the project's models.</p>
 
             <div class="flex gap-2">
               <input
@@ -110,11 +102,7 @@
                 class="checkbox"
                 formControlName="useDefaultModelDir"
               />
-              <span class="m-0!">
-                Use the default model directory:<br />
-                <div class="inline-block w-4"></div>
-                <code>/ DATA_DIR&nbsp;/&nbsp;models&nbsp;/</code>
-              </span>
+              <span class="m-0!"> Use the default model directory </span>
             </div>
 
             <div class="input w-full">

@@ -8,12 +8,12 @@ describe('ModelRenameDialogComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ModelRenameDialogComponent]
-    })
-    .compileComponents();
+      imports: [ModelRenameDialogComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(ModelRenameDialogComponent);
     component = fixture.componentInstance;
+    fixture.componentRef.setInput('modelRelativePath', 'test-path');
     fixture.detectChanges();
   });
 

@@ -8,11 +8,11 @@ import {
   signal,
   SimpleChanges,
 } from '@angular/core';
-import { VideoPlayerControlsComponent } from '../../components/video-player/video-player-controls/video-player-controls.component';
-import { VideoTileComponent } from '../../components/video-player/video-tile/video-tile.component';
+import { VideoPlayerControlsComponent } from '../../video-player/video-player-controls/video-player-controls.component';
+import { VideoTileComponent } from '../../video-player/video-tile/video-tile.component';
 import { EnabledViewsKeypointsService } from '../../enabled-views-keypoints.service';
-import { VideoPlayerState } from '../../components/video-player/video-player-state';
-import { KeypointContainerComponent } from '../../components/keypoint-container/keypoint-container.component';
+import { VideoPlayerState } from '../../video-player/video-player-state';
+import { KeypointContainerComponent } from '../../keypoint-container/keypoint-container.component';
 import { ViewerKeypoint } from '../../keypoint';
 import { VideoWidget } from '../../video-widget';
 
@@ -26,7 +26,7 @@ import { FineVideoService } from '../../utils/fine-video.service';
 import * as dfd from 'danfojs';
 import { PredictionFile } from '../../prediction-file';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ZoomableContentComponent } from '../../components/zoomable-content.component';
+import { ZoomableContentComponent } from '../../zoomable-content.component';
 import { firstValueFrom, skipWhile } from 'rxjs';
 import { ExtractedFramePredictionList } from '../../extract-frames-request';
 import _ from 'lodash';
