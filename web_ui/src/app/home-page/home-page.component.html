@@ -30,14 +30,48 @@
           <div
             class="card bg-base-200 border border-base-300 shadow-sm hover:shadow-md hover:bg-base-300 transition-all cursor-pointer group relative"
           >
-            <!-- Delete button revealed on hover -->
-            <button
-              class="btn btn-circle btn-error btn-sm absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-              (click)="$event.stopPropagation(); projectToDelete.set(p)"
-              aria-label="Delete project"
+            <!-- Dropdown menu -->
+            <app-dropdown
+              #dropdown
+              class="absolute top-4 right-4 z-10"
+              (click)="$event.stopPropagation()"
             >
-              <span class="material-icons">delete</span>
-            </button>
+              <app-dropdown-trigger>
+                <button
+                  appDropdownTrigger
+                  class="btn btn-ghost btn-circle btn-sm"
+                  aria-label="Project options"
+                >
+                  <span class="material-icons">more_vert</span>
+                </button>
+              </app-dropdown-trigger>
+              <app-dropdown-content>
+                <ul class="menu p-2">
+                  <li>
+                    <a
+                      (click)="
+                        alert('Edit paths is not yet implemented');
+                        dropdown.close()
+                      "
+                    >
+                      <span class="material-icons text-sm">edit</span>
+                      Edit paths
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      class="text-error"
+                      (click)="projectToDelete.set(p); dropdown.close()"
+                    >
+                      <span class="material-icons text-sm text-error"
+                        >delete</span
+                      >
+                      Delete
+                    </a>
+                  </li>
+                </ul>
+              </app-dropdown-content>
+            </app-dropdown>
 
             <a
               class="card-body p-6 gap-4 focus:outline-none focus:ring-2 focus:ring-primary rounded-xl"

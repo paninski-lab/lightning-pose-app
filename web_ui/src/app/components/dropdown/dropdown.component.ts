@@ -18,6 +18,20 @@ import { Directive } from '@angular/core';
 export class DropdownTriggerDirective {}
 
 @Component({
+  selector: 'app-dropdown-trigger',
+  standalone: true,
+  template: `<ng-content></ng-content>`,
+})
+export class DropdownTriggerComponent {}
+
+@Component({
+  selector: 'app-dropdown-content',
+  standalone: true,
+  template: `<ng-content></ng-content>`,
+})
+export class DropdownContentComponent {}
+
+@Component({
   selector: 'app-dropdown',
   standalone: true,
   template: `

@@ -5,6 +5,8 @@ import { signal } from '@angular/core';
 import {
   DropdownComponent,
   DropdownTriggerDirective,
+  DropdownTriggerComponent,
+  DropdownContentComponent,
 } from './dropdown.component';
 
 const meta: Meta<DropdownComponent> = {
@@ -13,7 +15,13 @@ const meta: Meta<DropdownComponent> = {
   tags: ['autodocs'],
   decorators: [
     moduleMetadata({
-      imports: [DropdownComponent, CommonModule, DropdownTriggerDirective],
+      imports: [
+        DropdownComponent,
+        CommonModule,
+        DropdownTriggerDirective,
+        DropdownTriggerComponent,
+        DropdownContentComponent,
+      ],
     }),
   ],
 };
@@ -27,12 +35,16 @@ export const Default: Story = {
     template: `
       <div class="p-20 flex justify-center">
         <app-dropdown>
-          <button trigger class="btn btn-primary">Click me!</button>
-          <ul content class="menu bg-base-100 rounded-box w-56 shadow border border-base-300">
-            <li><a>Item 1</a></li>
-            <li><a>Item 2</a></li>
-            <li><a>Item 3</a></li>
-          </ul>
+          <app-dropdown-trigger>
+            <button appDropdownTrigger class="btn btn-primary">Click me!</button>
+          </app-dropdown-trigger>
+          <app-dropdown-content>
+            <ul class="menu bg-base-100 rounded-box w-56 shadow border border-base-300">
+              <li><a>Item 1</a></li>
+              <li><a>Item 2</a></li>
+              <li><a>Item 3</a></li>
+            </ul>
+          </app-dropdown-content>
         </app-dropdown>
       </div>
     `,

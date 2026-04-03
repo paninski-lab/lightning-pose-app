@@ -8,11 +8,24 @@ import {
 import { RouterLink } from '@angular/router';
 import { ProjectInfoService, ListProjectItem } from '../project-info.service';
 import { ProjectDeleteDialogComponent } from './project-delete-dialog/project-delete-dialog.component';
+import {
+  DropdownComponent,
+  DropdownTriggerDirective,
+  DropdownTriggerComponent,
+  DropdownContentComponent,
+} from '../components/dropdown/dropdown.component';
 
 @Component({
   selector: 'app-home-page',
   standalone: true,
-  imports: [RouterLink, ProjectDeleteDialogComponent],
+  imports: [
+    RouterLink,
+    ProjectDeleteDialogComponent,
+    DropdownComponent,
+    DropdownTriggerDirective,
+    DropdownTriggerComponent,
+    DropdownContentComponent,
+  ],
   templateUrl: './home-page.component.html',
   styleUrl: './home-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -20,6 +33,10 @@ import { ProjectDeleteDialogComponent } from './project-delete-dialog/project-de
 export class HomePageComponent implements OnInit {
   protected projectInfo = inject(ProjectInfoService);
   protected projectToDelete = signal<ListProjectItem | null>(null);
+
+  protected alert(message: string) {
+    alert(message);
+  }
 
   ngOnInit() {
     // Fetch only once per app load (idempotent if already set)
