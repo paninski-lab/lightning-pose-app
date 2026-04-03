@@ -7,7 +7,7 @@ import { CommonModule } from '@angular/common';
 import { userEvent, within, expect, fn } from 'storybook/test';
 
 const meta: Meta<ValidatedPathInputComponent> = {
-  title: 'Shared/ValidatedPathInput',
+  title: 'Components/ValidatedPathInput',
   component: ValidatedPathInputComponent,
   tags: ['autodocs'],
   decorators: [
