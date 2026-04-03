@@ -7,6 +7,6 @@
     "moduleResolution": "bundler"
   },
   "exclude": ["../src/test.ts", "../src/**/*.spec.ts"],
-  "include": ["../src/**/*.stories.*", "./preview.ts"],
+  "include": ["../src/**/*.stories.*", "./preview.ts", "../src/**/*.d.ts"],
   "files": ["./typings.d.ts"]
 }
