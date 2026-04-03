@@ -47,6 +47,7 @@ export class ValidatedPathInputComponent implements ControlValueAccessor {
   protected value = signal<string>('');
   protected isValid = signal<boolean>(false);
   protected isValidating = signal<boolean>(false);
+  protected isValidated = signal<boolean>(false);
 
   private pathUpdate$ = new Subject<string>();
 
@@ -60,6 +61,7 @@ export class ValidatedPathInputComponent implements ControlValueAccessor {
       )
       .subscribe((isValid) => {
         this.isValid.set(isValid);
+        this.isValidated.set(true);
         this.isValidating.set(false);
       });
   }
@@ -81,7 +83,7 @@ export class ValidatedPathInputComponent implements ControlValueAccessor {
   writeValue(value: string): void {
     const val = value || '';
     this.value.set(val);
-    this.pathUpdate$.next(val);
+    this.isValidated.set(false);
   }
 
   registerOnChange(fn: any): void {
@@ -102,6 +104,7 @@ export class ValidatedPathInputComponent implements ControlValueAccessor {
   protected handleInput(newValue: string) {
     if (this.controlIsDisabled()) return;
     this.value.set(newValue);
+    this.isValidated.set(false);
     this.pathUpdate$.next(newValue);
     this.onChange(newValue);
   }
