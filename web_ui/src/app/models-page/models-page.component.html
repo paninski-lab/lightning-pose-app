@@ -18,28 +18,30 @@
         >
           New model
         </button>
-        <div class="dropdown">
-          <button
-            class="btn btn-accent"
-            [class.btn-disabled]="selectedModel() === null"
-            tabindex="0"
-          >
-            Actions
-          </button>
-          <ul
-            class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52"
-            tabindex="0"
-          >
-            <li>
-              <button
-                (click)="openInferenceDialog()"
-                [disabled]="!selectedModel()"
-              >
-                Run inference
-              </button>
-            </li>
-          </ul>
-        </div>
+        <app-dropdown #dropdown>
+          <app-dropdown-trigger>
+            <button
+              appDropdownTrigger
+              class="btn btn-accent"
+              [class.btn-disabled]="selectedModel() === null"
+              tabindex="0"
+            >
+              Actions
+            </button>
+          </app-dropdown-trigger>
+          <app-dropdown-content>
+            <ul class="menu p-2 w-52" tabindex="0">
+              <li>
+                <button
+                  (click)="openInferenceDialog(); dropdown.close()"
+                  [disabled]="!selectedModel()"
+                >
+                  Run inference
+                </button>
+              </li>
+            </ul>
+          </app-dropdown-content>
+        </app-dropdown>
       </div>
 
       <div class="overflow-auto max-h-5/6">

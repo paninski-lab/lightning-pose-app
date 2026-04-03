@@ -11,6 +11,12 @@ import { ModelListResponseEntry } from '../modelconf';
 import { ModelDetailComponent } from './model-detail/model-detail.component';
 import { ModelInferenceDialogComponent } from '../model-inference-dialog/model-inference-dialog.component';
 import { SplitAreaComponent, SplitComponent } from 'angular-split';
+import {
+  DropdownComponent,
+  DropdownContentComponent,
+  DropdownTriggerComponent,
+  DropdownTriggerDirective,
+} from '../components/dropdown/dropdown.component';
 
 @Component({
   selector: 'app-models-page',
@@ -21,6 +27,10 @@ import { SplitAreaComponent, SplitComponent } from 'angular-split';
     ModelInferenceDialogComponent,
     SplitComponent,
     SplitAreaComponent,
+    DropdownComponent,
+    DropdownTriggerComponent,
+    DropdownContentComponent,
+    DropdownTriggerDirective,
   ],
   templateUrl: './models-page.component.html',
   styleUrl: './models-page.component.css',

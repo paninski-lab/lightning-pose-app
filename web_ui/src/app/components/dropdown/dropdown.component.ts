@@ -43,7 +43,7 @@ export class DropdownContentComponent {}
     >
       <ng-content select="app-dropdown-trigger"></ng-content>
       <div
-        class="dropdown-content z-[1] bg-base-200 rounded-box shadow border border-base-300"
+        class="dropdown-content z-[50] bg-base-200 rounded-box shadow border border-base-300"
       >
         <ng-content select="app-dropdown-content"></ng-content>
       </div>
