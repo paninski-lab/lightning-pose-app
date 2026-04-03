@@ -1,8 +1,8 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  output,
   HostListener,
+  output,
 } from '@angular/core';
 
 @Component({

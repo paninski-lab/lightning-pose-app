@@ -1,4 +1,10 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  EventEmitter,
+  Input,
+  Output,
+} from '@angular/core';
 
 import { ParsedItem } from '../video-import.types';
 
@@ -8,7 +14,7 @@ import { ParsedItem } from '../video-import.types';
   imports: [],
   templateUrl: './video-file-table.component.html',
   styleUrl: './video-file-table.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class VideoFileTableComponent {
   @Input({ required: true }) items: ParsedItem[] = [];

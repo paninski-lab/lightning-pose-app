@@ -8,12 +8,12 @@ describe('ModelDetailComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ModelDetailComponent]
-    })
-    .compileComponents();
+      imports: [ModelDetailComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(ModelDetailComponent);
     component = fixture.componentInstance;
+    fixture.componentRef.setInput('selectedModel', null);
     fixture.detectChanges();
   });
 

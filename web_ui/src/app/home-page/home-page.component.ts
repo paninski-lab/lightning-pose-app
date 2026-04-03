@@ -6,13 +6,13 @@ import {
   signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ProjectInfoService, ListProjectItem } from '../project-info.service';
+import { ListProjectItem, ProjectInfoService } from '../project-info.service';
 import { ProjectDeleteDialogComponent } from './project-delete-dialog/project-delete-dialog.component';
 import {
   DropdownComponent,
-  DropdownTriggerDirective,
-  DropdownTriggerComponent,
   DropdownContentComponent,
+  DropdownTriggerComponent,
+  DropdownTriggerDirective,
 } from '../components/dropdown/dropdown.component';
 
 @Component({

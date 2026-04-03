@@ -8,9 +8,8 @@ describe('VideoFileTableComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [VideoFileTableComponent]
-    })
-    .compileComponents();
+      imports: [VideoFileTableComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(VideoFileTableComponent);
     component = fixture.componentInstance;

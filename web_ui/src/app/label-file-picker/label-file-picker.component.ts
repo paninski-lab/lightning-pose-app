@@ -1,4 +1,5 @@
 import {
+  booleanAttribute,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -7,13 +8,12 @@ import {
   input,
   model,
   OnInit,
-  booleanAttribute,
 } from '@angular/core';
 import {
   ControlValueAccessor,
   FormsModule,
-  ReactiveFormsModule,
   NG_VALUE_ACCESSOR,
+  ReactiveFormsModule,
 } from '@angular/forms';
 import { SessionService } from '../session.service';
 import { SelectComponent } from '../components/dropdown/select.component';

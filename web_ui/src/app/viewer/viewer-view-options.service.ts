@@ -1,5 +1,5 @@
-import { inject, Injectable, signal, computed, effect } from '@angular/core';
-import { toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { computed, effect, inject, Injectable, signal } from '@angular/core';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { ColorService } from '../infra/color.service';
 import { debounceTime, merge } from 'rxjs';
 

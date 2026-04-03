@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { HttpEvent, HttpEventType } from '@angular/common/http';
 import { SessionService, VideoTaskStatus } from '../session.service';
 import { ParsedItem, TranscodeState, UploadState } from './video-import.types';
@@ -26,12 +26,14 @@ export class VideoImportStore {
     return this.selectedFiles().map((f) => this.toItem(f));
   });
 
-  readonly allValid = computed(() =>
-    this.items().length > 0 && this.items().every((i) => i.valid),
+  readonly allValid = computed(
+    () => this.items().length > 0 && this.items().every((i) => i.valid),
   );
 
-  readonly allTranscoded = computed(() =>
-    this.items().length > 0 && this.items().every((i) => i.transcode?.status === 'done'),
+  readonly allTranscoded = computed(
+    () =>
+      this.items().length > 0 &&
+      this.items().every((i) => i.transcode?.status === 'done'),
   );
 
   // Public API ---------------------------------------------------------------
@@ -40,7 +42,9 @@ export class VideoImportStore {
     const next = [...this.selectedFiles()];
     const len = (files as FileList).length ?? (files as File[]).length;
     for (let i = 0; i < len; i++) {
-      const f = (files as any).item ? (files as FileList).item(i)! : (files as File[])[i];
+      const f = (files as any).item
+        ? (files as FileList).item(i)!
+        : (files as File[])[i];
       next.push(f);
     }
     this.selectedFiles.set(next);
@@ -78,7 +82,11 @@ export class VideoImportStore {
       try {
         const exists = await this.sessionService.existsInUploads(it.name);
         if (exists) {
-          this.setUploadState(it.name, { status: 'done', progress: 100, error: null });
+          this.setUploadState(it.name, {
+            status: 'done',
+            progress: 100,
+            error: null,
+          });
           this.startTranscode(it.name);
           return runNext(index + 1);
         }
@@ -87,32 +95,41 @@ export class VideoImportStore {
       }
 
       // Begin upload
-      this.setUploadState(it.name, { status: 'uploading', progress: 0, error: null });
-      this.sessionService
-        .uploadVideo(it.file, it.name, false)
-        .subscribe({
-          next: (event: HttpEvent<unknown>) => {
-            if (event.type === HttpEventType.UploadProgress) {
-              const total = event.total && event.total > 0 ? event.total : undefined;
-              const loaded = event.loaded ?? 0;
-              const pct = total ? Math.min(100, Math.round((loaded / total) * 100)) : undefined;
-              this.setUploadState(it.name, {
-                status: 'uploading',
-                progress: pct ?? this.uploadStates()[it.name]?.progress ?? 0,
-                error: null,
-              });
-            } else if (event.type === HttpEventType.Response) {
-              this.setUploadState(it.name, { status: 'done', progress: 100, error: null });
-              this.startTranscode(it.name);
-              runNext(index + 1);
-            }
-          },
-          error: (err) => {
-            const msg = err?.error?.detail || err?.message || 'Upload failed';
-            this.setUploadState(it.name, { status: 'error', error: msg });
+      this.setUploadState(it.name, {
+        status: 'uploading',
+        progress: 0,
+        error: null,
+      });
+      this.sessionService.uploadVideo(it.file, it.name, false).subscribe({
+        next: (event: HttpEvent<unknown>) => {
+          if (event.type === HttpEventType.UploadProgress) {
+            const total =
+              event.total && event.total > 0 ? event.total : undefined;
+            const loaded = event.loaded ?? 0;
+            const pct = total
+              ? Math.min(100, Math.round((loaded / total) * 100))
+              : undefined;
+            this.setUploadState(it.name, {
+              status: 'uploading',
+              progress: pct ?? this.uploadStates()[it.name]?.progress ?? 0,
+              error: null,
+            });
+          } else if (event.type === HttpEventType.Response) {
+            this.setUploadState(it.name, {
+              status: 'done',
+              progress: 100,
+              error: null,
+            });
+            this.startTranscode(it.name);
             runNext(index + 1);
-          },
-        });
+          }
+        },
+        error: (err) => {
+          const msg = err?.error?.detail || err?.message || 'Upload failed';
+          this.setUploadState(it.name, { status: 'error', error: msg });
+          runNext(index + 1);
+        },
+      });
     };
 
     runNext(0);
@@ -120,22 +137,38 @@ export class VideoImportStore {
 
   startTranscode(filename: string): void {
     // Start watching transcoding via SSE
-    this.setTranscodeState(filename, { status: 'transcoding', progress: 0, error: null });
+    this.setTranscodeState(filename, {
+      status: 'transcoding',
+      progress: 0,
+      error: null,
+    });
     this.sessionService.transcodeVideoSse(filename, false).subscribe({
       next: (e: VideoTaskStatus) => {
         const total = e.totalFrames ?? 0;
         const done = e.framesDone ?? 0;
         const progress = total > 0 ? Math.round((done / total) * 100) : 0;
         if (e.transcodeStatus === 'ERROR') {
-          this.setTranscodeState(filename, { status: 'error', error: e.error ?? 'Transcode error' });
+          this.setTranscodeState(filename, {
+            status: 'error',
+            error: e.error ?? 'Transcode error',
+          });
         } else if (e.transcodeStatus === 'DONE') {
-          this.setTranscodeState(filename, { status: 'done', progress: 100, error: null });
+          this.setTranscodeState(filename, {
+            status: 'done',
+            progress: 100,
+            error: null,
+          });
         } else {
-          this.setTranscodeState(filename, { status: 'transcoding', progress, error: null });
+          this.setTranscodeState(filename, {
+            status: 'transcoding',
+            progress,
+            error: null,
+          });
         }
       },
       error: (err) => {
-        const msg = err?.error?.detail || err?.message || 'Transcode stream error';
+        const msg =
+          err?.error?.detail || err?.message || 'Transcode stream error';
         this.setTranscodeState(filename, { status: 'error', error: msg });
       },
     });

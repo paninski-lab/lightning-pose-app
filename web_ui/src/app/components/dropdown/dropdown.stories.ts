@@ -4,9 +4,9 @@ import { CommonModule } from '@angular/common';
 import { signal } from '@angular/core';
 import {
   DropdownComponent,
-  DropdownTriggerDirective,
-  DropdownTriggerComponent,
   DropdownContentComponent,
+  DropdownTriggerComponent,
+  DropdownTriggerDirective,
 } from './dropdown.component';
 
 const meta: Meta<DropdownComponent> = {

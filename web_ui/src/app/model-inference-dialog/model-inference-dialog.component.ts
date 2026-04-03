@@ -3,12 +3,12 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
-  OnDestroy,
-  ViewChild,
   inject,
   input,
+  OnDestroy,
   output,
   signal,
+  ViewChild,
 } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
@@ -95,7 +95,11 @@ export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
     if (this.inferenceRunning()) return;
     const modelRel = this.modelRelativePath();
     if (!modelRel) {
-      this.inference.set({ status: 'error', progress: 0, error: 'No model selected' });
+      this.inference.set({
+        status: 'error',
+        progress: 0,
+        error: 'No model selected',
+      });
       return;
     }
     const videos = this.items()
@@ -105,53 +109,51 @@ export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
 
     this.inferenceRunning.set(true);
     this.inference.set({ status: 'running', progress: 0 });
-    const sub = this.sessionService
-      .inferModelSse(modelRel, videos)
-      .subscribe({
-        next: (st) => {
-          const total = st.total ?? 0;
-          const completed = st.completed ?? 0;
-          const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-          // Map backend status to UI status keys
-          const backend = st.status ?? 'ACTIVE';
-          let uiStatus: InferenceUiState['status'];
-          switch (backend) {
-            case 'PENDING':
-            case 'ACTIVE':
-              uiStatus = 'running';
-              break;
-            case 'DONE':
-              uiStatus = 'done';
-              break;
-            case 'ERROR':
-              uiStatus = 'error';
-              break;
-            default:
-              uiStatus = 'running';
-          }
-          this.inference.set({
-            status: uiStatus,
-            progress,
-            message: st.message ?? undefined,
-            taskId: st.taskId,
-          });
-        },
-        error: (err) => {
-          this.inferenceRunning.set(false);
-          this.inference.set({
-            status: 'error',
-            progress: 0,
-            error: err?.message ?? 'Inference stream error',
-          });
-        },
-        complete: () => {
-          this.inferenceRunning.set(false);
-          const cur = this.inference();
-          if (cur.status !== 'error') {
-            this.inference.set({ ...cur, status: 'done', progress: 100 });
-          }
-        },
-      });
+    const sub = this.sessionService.inferModelSse(modelRel, videos).subscribe({
+      next: (st) => {
+        const total = st.total ?? 0;
+        const completed = st.completed ?? 0;
+        const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+        // Map backend status to UI status keys
+        const backend = st.status ?? 'ACTIVE';
+        let uiStatus: InferenceUiState['status'];
+        switch (backend) {
+          case 'PENDING':
+          case 'ACTIVE':
+            uiStatus = 'running';
+            break;
+          case 'DONE':
+            uiStatus = 'done';
+            break;
+          case 'ERROR':
+            uiStatus = 'error';
+            break;
+          default:
+            uiStatus = 'running';
+        }
+        this.inference.set({
+          status: uiStatus,
+          progress,
+          message: st.message ?? undefined,
+          taskId: st.taskId,
+        });
+      },
+      error: (err) => {
+        this.inferenceRunning.set(false);
+        this.inference.set({
+          status: 'error',
+          progress: 0,
+          error: err?.message ?? 'Inference stream error',
+        });
+      },
+      complete: () => {
+        this.inferenceRunning.set(false);
+        const cur = this.inference();
+        if (cur.status !== 'error') {
+          this.inference.set({ ...cur, status: 'done', progress: 100 });
+        }
+      },
+    });
     this.subs.push(sub);
   }
 }

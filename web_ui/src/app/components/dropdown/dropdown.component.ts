@@ -1,17 +1,16 @@
 import {
+  booleanAttribute,
   Component,
   contentChild,
+  Directive,
   effect,
   ElementRef,
   inject,
-  Renderer2,
   input,
+  Renderer2,
   signal,
-  booleanAttribute,
   viewChild,
 } from '@angular/core';
-
-import { Directive } from '@angular/core';
 
 @Directive({
   selector: '[appDropdownTrigger]',

@@ -2,8 +2,8 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { moduleMetadata } from '@storybook/angular';
 import {
   AlertDialogComponent,
-  AlertHeaderComponent,
   AlertFooterComponent,
+  AlertHeaderComponent,
 } from './alert-dialog.component';
 import { fn } from 'storybook/test';
 

@@ -1,6 +1,9 @@
 // src/app/highlight.directive.ts
 import { Directive, ElementRef, input, OnChanges } from '@angular/core';
 import hljs from 'highlight.js/lib/core';
+import yaml from 'highlight.js/lib/languages/yaml';
+
+hljs.registerLanguage('yaml', yaml);
 
 @Directive({
   selector: '[appHighlight]',

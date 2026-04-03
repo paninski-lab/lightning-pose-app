@@ -5,7 +5,6 @@ import {
   input,
   output,
   signal,
-  viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SessionService } from '../../session.service';

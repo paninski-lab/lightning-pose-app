@@ -22,9 +22,9 @@ import {
 import { ProjectSettingsComponent } from './project-settings/project-settings.component';
 import {
   DropdownComponent,
-  DropdownTriggerDirective,
-  DropdownTriggerComponent,
   DropdownContentComponent,
+  DropdownTriggerComponent,
+  DropdownTriggerDirective,
 } from './components/dropdown/dropdown.component';
 
 import { ProjectInfoService } from './project-info.service';

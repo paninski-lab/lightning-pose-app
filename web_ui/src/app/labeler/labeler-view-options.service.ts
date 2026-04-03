@@ -1,12 +1,12 @@
 import {
+  computed,
+  DestroyRef,
+  effect,
+  inject,
   Injectable,
   signal,
-  computed,
-  inject,
-  effect,
-  DestroyRef,
 } from '@angular/core';
-import { toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { ColorService } from '../infra/color.service';
 import { debounceTime, merge } from 'rxjs';
 

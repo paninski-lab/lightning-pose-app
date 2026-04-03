@@ -1,9 +1,9 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import {
   BehaviorSubject,
-  Observable,
   catchError,
   firstValueFrom,
+  Observable,
   of,
 } from 'rxjs';
 import { Session } from './session.model';

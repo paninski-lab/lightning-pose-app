@@ -5,7 +5,7 @@ export const storybookRecorderInterceptor: HttpInterceptorFn = (req, next) => {
   const startTime = Date.now();
 
   return next(req).pipe(
-    tap(event => {
+    tap((event) => {
       if (event instanceof HttpResponse) {
         const duration = Date.now() - startTime;
         console.log(`
@@ -19,6 +19,6 @@ export const MockResponse = {
 };
         `);
       }
-    })
+    }),
   );
 };

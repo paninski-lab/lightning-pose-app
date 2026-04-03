@@ -2,14 +2,14 @@ import {
   AfterViewInit,
   ChangeDetectionStrategy,
   Component,
-  ElementRef,
-  OnDestroy,
-  ViewChild,
-  inject,
-  output,
-  effect,
-  signal,
   computed,
+  effect,
+  ElementRef,
+  inject,
+  OnDestroy,
+  output,
+  signal,
+  ViewChild,
 } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';

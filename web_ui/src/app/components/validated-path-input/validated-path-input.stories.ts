@@ -4,7 +4,7 @@ import { ValidatedPathInputComponent } from './validated-path-input.component';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
-import { userEvent, within, expect, fn } from 'storybook/test';
+import { expect, fn, userEvent, within } from 'storybook/test';
 
 const meta: Meta<ValidatedPathInputComponent> = {
   title: 'Components/ValidatedPathInput',

@@ -13,6 +13,7 @@ describe('ProjectSettingsComponent', () => {
 
     fixture = TestBed.createComponent(ProjectSettingsComponent);
     component = fixture.componentInstance;
+    fixture.componentRef.setInput('setupMode', true);
     fixture.detectChanges();
   });
 

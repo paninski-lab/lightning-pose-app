@@ -1,5 +1,3 @@
-import { s } from '@angular/cdk/scrolling-module.d-3Rw5UxLk';
-
 export interface EFRSessionView {
   viewName: string;
   videoPath: string;

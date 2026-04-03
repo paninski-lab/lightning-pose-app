@@ -8,12 +8,12 @@ describe('ModelDeleteDialogComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ModelDeleteDialogComponent]
-    })
-    .compileComponents();
+      imports: [ModelDeleteDialogComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(ModelDeleteDialogComponent);
     component = fixture.componentInstance;
+    fixture.componentRef.setInput('modelRelativePath', 'test-path');
     fixture.detectChanges();
   });
 

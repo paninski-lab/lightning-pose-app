@@ -42,6 +42,7 @@ describe('GlobalErrorHandler', () => {
       identify: jasmine.createSpy('identify'),
     };
 
+    const consoleSpy = spyOn(console, 'error');
     service.handleError(error);
 
     expect(window.umami.track).toHaveBeenCalledWith('error', {
@@ -54,6 +55,7 @@ describe('GlobalErrorHandler', () => {
     const error = new Error('Test error');
     delete window.umami;
 
+    const consoleSpy = spyOn(console, 'error');
     expect(() => service.handleError(error)).not.toThrow();
   });
 });

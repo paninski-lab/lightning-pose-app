@@ -10,11 +10,11 @@ import {
   signal,
 } from '@angular/core';
 import {
+  FormGroup,
   FormsModule,
   NonNullableFormBuilder,
   ReactiveFormsModule,
   Validators,
-  FormGroup,
 } from '@angular/forms';
 import {
   backbones,
@@ -41,7 +41,6 @@ import {
 import { ModelTypeLabelPipe } from '../utils/pipes';
 import { DaisyFormControlDirective } from '../utils/daisy-form-control.directive';
 import { LabelFilePickerComponent } from '../label-file-picker/label-file-picker.component';
-import { DropdownContentComponent } from '../components/dropdown/dropdown.component';
 import { SelectComponent } from '../components/dropdown/select.component';
 import { ToastService } from '../toast.service';
 
@@ -50,13 +49,11 @@ import { ToastService } from '../toast.service';
   imports: [
     FormsModule,
     ReactiveFormsModule,
-    ModelTypeLabelPipe,
     JsonPipe,
     HighlightDirective,
     DaisyFormControlDirective,
     NgTemplateOutlet,
     LabelFilePickerComponent,
-    DropdownContentComponent,
     SelectComponent,
   ],
   templateUrl: './create-model-dialog.component.html',

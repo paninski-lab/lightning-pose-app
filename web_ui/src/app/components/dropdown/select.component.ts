@@ -1,10 +1,10 @@
 import {
-  Component,
-  input,
-  forwardRef,
-  signal,
-  computed,
   booleanAttribute,
+  Component,
+  computed,
+  forwardRef,
+  input,
+  signal,
 } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -14,6 +14,7 @@ import {
   DropdownTriggerComponent,
   DropdownTriggerDirective,
 } from './dropdown.component';
+
 @Component({
   selector: 'app-select',
   standalone: true,

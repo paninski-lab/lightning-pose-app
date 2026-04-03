@@ -8,9 +8,8 @@ describe('ModelInferenceDialogComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ModelInferenceDialogComponent]
-    })
-    .compileComponents();
+      imports: [ModelInferenceDialogComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(ModelInferenceDialogComponent);
     component = fixture.componentInstance;
