@@ -10,11 +10,20 @@ import {
 import { FormsModule } from '@angular/forms';
 import { ProjectInfoService } from '../../project-info.service';
 import { ToastService } from '../../toast.service';
+import {
+  AlertDialogComponent,
+  AlertFooterComponent,
+  AlertHeaderComponent,
+} from '../../components/alert-dialog/alert-dialog.component';
 
 @Component({
   selector: 'app-project-delete-dialog',
-  standalone: true,
-  imports: [FormsModule],
+  imports: [
+    FormsModule,
+    AlertDialogComponent,
+    AlertHeaderComponent,
+    AlertFooterComponent,
+  ],
   templateUrl: './project-delete-dialog.component.html',
   styleUrl: './project-delete-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -25,20 +34,13 @@ export class ProjectDeleteDialogComponent {
   modelDir = input<string>();
   done = output<boolean>();
 
-  dlg = viewChild.required<HTMLDialogElement>('dlg');
   protected removeFiles = signal(false);
   protected deleteConfirmation = signal(false);
   private projectInfoService = inject(ProjectInfoService);
   private toastService = inject(ToastService);
 
   protected closeDialog() {
-    try {
-      if (this.dlg().open) {
-        this.dlg().close();
-      }
-    } finally {
-      this.done.emit(false);
-    }
+    this.done.emit(false);
   }
 
   protected async handleDelete() {
