@@ -1,7 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ModelsPageComponent } from './models-page.component';
-import { Router } from '@angular/router';
-import { of } from 'rxjs';
+import { provideRouter } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 describe('ModelsPageComponent', () => {
   let component: ModelsPageComponent;
@@ -11,12 +12,9 @@ describe('ModelsPageComponent', () => {
     await TestBed.configureTestingModule({
       imports: [ModelsPageComponent],
       providers: [
-        {
-          provide: Router,
-          useValue: {
-            navigate: jasmine.createSpy('navigate'),
-          },
-        },
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
       ],
     }).compileComponents();
 
