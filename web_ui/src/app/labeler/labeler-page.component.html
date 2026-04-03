@@ -19,7 +19,7 @@
                 [fullWidth]="true"
                 [labelFileKey]="labelFileKey() ?? null"
                 (labelFileKeyChange)="handleSelectLabelFile($event)"
-                [selectSizeClass]="'select-sm'"
+                size="sm"
               ></app-label-file-picker>
               @if (!this.labelFileKey()) {
                 <button

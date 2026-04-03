@@ -1,41 +1,9 @@
-<app-dropdown
-  #dropdown
+<app-select
+  [(ngModel)]="labelFileKey"
+  (ngModelChange)="handleSelectLabelFile($event)"
+  [options]="options()"
+  [size]="size()"
   [fullWidth]="fullWidth()"
-  [class.opacity-50]="disabled()"
->
-  <app-dropdown-trigger>
-    <button
-      appDropdownTrigger
-      type="button"
-      class="select flex justify-between items-center {{ selectSizeClass() }}"
-      [class.w-full]="fullWidth()"
-      [disabled]="disabled()"
-      [class.app-empty-select]="labelFileKey() === null"
-    >
-      <span>{{ labelFileKey() ?? "None" }}</span>
-    </button>
-  </app-dropdown-trigger>
-  <app-dropdown-content [class.w-full]="fullWidth()" class="w-72">
-    <ul
-      class="menu p-2 w-full max-h-60 overflow-y-auto flex-nowrap"
-      [class.menu-sm]="selectSizeClass() === 'select-sm'"
-      tabindex="0"
-    >
-      @let nullOption = { key: null, views: [] };
-      @for (
-        labelFile of $any([nullOption]).concat(sessionService.allLabelFiles());
-        track labelFile.key
-      ) {
-        <li>
-          <a
-            [class.active]="labelFile.key === labelFileKey()"
-            (click)="handleSelectLabelFile(labelFile.key); dropdown.close()"
-            class="whitespace-nowrap"
-          >
-            {{ labelFile.key ?? "None" }}
-          </a>
-        </li>
-      }
-    </ul>
-  </app-dropdown-content>
-</app-dropdown>
+  [disabled]="disabled()"
+  placeholder="None"
+></app-select>

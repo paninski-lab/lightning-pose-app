@@ -1,10 +1,9 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  effect,
+  computed,
   forwardRef,
   inject,
-  Input,
   input,
   model,
   OnInit,
@@ -13,28 +12,19 @@ import {
 import {
   ControlValueAccessor,
   FormsModule,
+  ReactiveFormsModule,
   NG_VALUE_ACCESSOR,
 } from '@angular/forms';
-import {
-  DropdownComponent,
-  DropdownTriggerDirective,
-  DropdownTriggerComponent,
-  DropdownContentComponent,
-} from '../components/dropdown/dropdown.component';
 import { SessionService } from '../session.service';
+import { SelectComponent } from '../components/dropdown/select.component';
 
 @Component({
   selector: 'app-label-file-picker',
   host: {
     class: 'not-prose',
   },
-  imports: [
-    FormsModule,
-    DropdownComponent,
-    DropdownTriggerDirective,
-    DropdownTriggerComponent,
-    DropdownContentComponent,
-  ],
+  standalone: true,
+  imports: [FormsModule, ReactiveFormsModule, SelectComponent],
   templateUrl: './label-file-picker.component.html',
   styleUrl: './label-file-picker.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -49,8 +39,17 @@ import { SessionService } from '../session.service';
 export class LabelFilePickerComponent implements OnInit, ControlValueAccessor {
   labelFileKey = model<string | null>(null);
   sessionService = inject(SessionService);
-  selectSizeClass = input<string>('select-sm');
+  size = input<'sm' | 'md' | 'lg'>('sm');
   fullWidth = input(false, { transform: booleanAttribute });
+
+  options = computed(() => {
+    const labelFiles = this.sessionService.allLabelFiles();
+    const options = labelFiles.map((f) => ({
+      label: f.key ?? 'None',
+      value: f.key,
+    }));
+    return [{ label: 'None', value: null }, ...options];
+  });
 
   // ControlValueAccessor callbacks
   onChange: (value: string | null) => void = () => {};
