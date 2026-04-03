@@ -33,6 +33,7 @@
             <!-- Dropdown menu -->
             <app-dropdown
               #dropdown
+              [alignEnd]="true"
               class="absolute top-4 right-4 z-10"
               (click)="$event.stopPropagation()"
             >
@@ -46,7 +47,7 @@
                 </button>
               </app-dropdown-trigger>
               <app-dropdown-content>
-                <ul class="menu p-2">
+                <ul class="menu p-2 w-36">
                   <li>
                     <a
                       (click)="

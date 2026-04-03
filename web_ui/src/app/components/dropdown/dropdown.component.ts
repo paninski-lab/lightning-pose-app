@@ -6,6 +6,7 @@ import {
   HostListener,
   inject,
   Renderer2,
+  input,
   signal,
 } from '@angular/core';
 
@@ -35,7 +36,11 @@ export class DropdownContentComponent {}
   selector: 'app-dropdown',
   standalone: true,
   template: `
-    <div class="dropdown dropdown-no-focus" [class.dropdown-open]="isOpen()">
+    <div
+      class="dropdown dropdown-no-focus"
+      [class.dropdown-open]="isOpen()"
+      [class.dropdown-end]="alignEnd()"
+    >
       <ng-content select="app-dropdown-trigger"></ng-content>
       <div
         class="dropdown-content z-[1] bg-base-200 rounded-box shadow border border-base-300"
@@ -49,6 +54,7 @@ export class DropdownContentComponent {}
 export class DropdownComponent {
   private renderer = inject(Renderer2);
   isOpen = signal(false);
+  alignEnd = input(false);
   trigger = contentChild(DropdownTriggerDirective, { read: ElementRef });
 
   constructor() {

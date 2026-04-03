@@ -39,10 +39,10 @@ export const Default: Story = {
             <button appDropdownTrigger class="btn btn-primary">Click me!</button>
           </app-dropdown-trigger>
           <app-dropdown-content>
-            <ul class="menu bg-base-100 rounded-box w-56 shadow border border-base-300">
-              <li><a>Item 1</a></li>
-              <li><a>Item 2</a></li>
-              <li><a>Item 3</a></li>
+            <ul class="menu w-52">
+              <li><a><span class="material-icons text-sm">info</span> Item 1</a></li>
+              <li><a><span class="material-icons text-sm">settings</span> Item 2</a></li>
+              <li><a><span class="material-icons text-sm">help</span> Item 3</a></li>
             </ul>
           </app-dropdown-content>
         </app-dropdown>
@@ -76,7 +76,7 @@ export const VerticalDots: Story = {
               </button>
             </app-dropdown-trigger>
             <app-dropdown-content>
-              <ul class="menu">
+              <ul class="menu w-40">
                 <li><a (click)="onSelect('Edit', dropdown)"><span class="material-icons text-sm">edit</span> Edit</a></li>
                 <li><a (click)="onSelect('Delete', dropdown)"><span class="material-icons text-sm">delete</span> Delete</a></li>
                 <li><a class="text-error" (click)="onSelect('Block', dropdown)"><span class="material-icons text-sm">block</span> Block</a></li>
@@ -93,4 +93,26 @@ export const VerticalDots: Story = {
       `,
     };
   },
+};
+
+export const RightEdge: Story = {
+  render: (args) => ({
+    props: args,
+    template: `
+      <div class="flex justify-end p-4 border border-dashed border-base-300">
+        <app-dropdown [alignEnd]="true">
+          <app-dropdown-trigger>
+            <button appDropdownTrigger class="btn btn-primary">Edge Case</button>
+          </app-dropdown-trigger>
+          <app-dropdown-content>
+            <ul class="menu w-64">
+              <li><a><span class="material-icons text-sm">info</span> This should not overflow</a></li>
+              <li><a><span class="material-icons text-sm">settings</span> Item 2</a></li>
+              <li><a><span class="material-icons text-sm">help</span> Item 3</a></li>
+            </ul>
+          </app-dropdown-content>
+        </app-dropdown>
+      </div>
+    `,
+  }),
 };
