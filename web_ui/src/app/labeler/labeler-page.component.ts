@@ -1,4 +1,10 @@
 import {
+  DropdownComponent,
+  DropdownContentComponent,
+  DropdownTriggerComponent,
+  DropdownTriggerDirective,
+} from '../components/dropdown/dropdown.component';
+import {
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -40,6 +46,10 @@ interface LoadError {
     ExtractFramesDialogComponent,
     SplitComponent,
     SplitAreaComponent,
+    DropdownComponent,
+    DropdownTriggerComponent,
+    DropdownContentComponent,
+    DropdownTriggerDirective,
   ],
   templateUrl: './labeler-page.component.html',
   styleUrl: './labeler-page.component.css',
@@ -47,7 +57,7 @@ interface LoadError {
 })
 export class LabelerPageComponent implements OnInit, OnChanges {
   protected isIniting = signal(true);
-  private projectInfoService = inject(ProjectInfoService);
+  protected projectInfoService = inject(ProjectInfoService);
   protected sessionService = inject(SessionService);
   private labelFileFetcher = inject(LabelFileFetcherService);
   private router = inject(Router);

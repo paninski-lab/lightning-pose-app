@@ -14,7 +14,7 @@ import { CopyDirective } from '../../utils/copy.directive';
         }}</span>
       }
       <div
-        class="bg-base-content/5 hover:bg-base-content/10 px-2 py-1 rounded font-mono text-sm flex items-center gap-2 cursor-pointer transition-colors border border-transparent hover:border-base-content/10"
+        class="bg-base-content/5 hover:bg-base-content/10 px-2 py-1 rounded font-mono text-xs flex items-center gap-2 cursor-pointer transition-colors border border-transparent hover:border-base-content/10"
         [appCopy]="path"
         #copy="appCopy"
         [attr.aria-label]="'Copy ' + (label || 'path')"
@@ -22,7 +22,7 @@ import { CopyDirective } from '../../utils/copy.directive';
       >
         <span class="truncate select-all max-w-xs md:max-w-md">{{ path }}</span>
         <span
-          class="material-icons text-[16px] transition-opacity shrink-0"
+          class="material-icons text-sm! transition-opacity shrink-0"
           [class.text-success]="copy.isCopied()"
           [class.opacity-40]="!copy.isCopied()"
           [class.group-hover/path:opacity-100]="!copy.isCopied()"
