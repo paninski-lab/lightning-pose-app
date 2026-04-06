@@ -12,7 +12,28 @@
       <th>
 
       </th> -->
-      <th>Model Relative Path</th>
+      <th class="flex items-center gap-2">
+        Model Relative Path
+        @if (projectInfoService.projectContext(); as ctx) {
+          <app-dropdown class="dropdown-hover dropdown-bottom">
+            <app-dropdown-trigger>
+              <span
+                appDropdownTrigger
+                class="material-icons text-xs! opacity-70"
+                >info</span
+              >
+            </app-dropdown-trigger>
+            <app-dropdown-content class="z-50 shadow-xl">
+              <div
+                class="p-2 bg-base-200 border border-base-content/10 rounded text-xs font-normal"
+              >
+                Showing directories in <br />
+                <app-path-display [path]="ctx.projectInfo?.model_dir!" />
+              </div>
+            </app-dropdown-content>
+          </app-dropdown>
+        }
+      </th>
       <th></th>
       <th>Model Type</th>
       <th>Date Created</th>
