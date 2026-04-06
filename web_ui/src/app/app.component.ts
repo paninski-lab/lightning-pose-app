@@ -33,6 +33,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs/operators';
 import { LocalStorageService } from './local-storage.service';
 import { ToastService } from './toast.service';
+import { PathDisplayComponent } from './components/path-display/path-display.component';
 
 @Component({
   selector: 'app-root',
@@ -45,6 +46,7 @@ import { ToastService } from './toast.service';
     DropdownTriggerDirective,
     DropdownTriggerComponent,
     DropdownContentComponent,
+    PathDisplayComponent,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
