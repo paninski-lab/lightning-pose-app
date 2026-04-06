@@ -1,8 +1,9 @@
 <div class="flex justify-center w-screen">
   <section class="max-w-5xl p-4" aria-labelledby="projects-heading">
     <h1 id="projects-heading" class="text-2xl font-semibold mb-4">Projects</h1>
-    <p class="text-sm opacity-70 mb-4">
-      Showing projects in <code>~/.lightning-pose/projects.toml</code>
+    <p class="text-sm opacity-70 mb-4 flex items-center gap-1">
+      Showing projects in
+      <app-path-display path="~/.lightning-pose/projects.toml" />
     </p>
     @if (projectInfo.projects() === undefined) {
       <div class="flex items-center gap-3" aria-live="polite" aria-busy="true">

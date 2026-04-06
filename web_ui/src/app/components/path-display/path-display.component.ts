@@ -18,11 +18,9 @@ import { CopyDirective } from '../../utils/copy.directive';
         [appCopy]="path"
         #copy="appCopy"
         [attr.aria-label]="'Copy ' + (label || 'path')"
+        [title]="path"
       >
-        <span
-          class="overflow-x-auto whitespace-nowrap scrollbar-hide select-all max-w-xs md:max-w-md"
-          >{{ path }}</span
-        >
+        <span class="truncate select-all max-w-xs md:max-w-md">{{ path }}</span>
         <span
           class="material-icons text-[16px] transition-opacity shrink-0"
           [class.text-success]="copy.isCopied()"
@@ -38,13 +36,6 @@ import { CopyDirective } from '../../utils/copy.directive';
     `
       :host {
         display: inline-block;
-      }
-      .scrollbar-hide {
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-      }
-      .scrollbar-hide::-webkit-scrollbar {
-        display: none;
       }
     `,
   ],
