@@ -289,6 +289,31 @@
                   {{ viewOptions.keypointSize() }}px
                 </div>
                 <div class="flex items-center gap-2 pt-2">
+                  <span class="material-icons text-sm!">format_size</span>
+                  Keypoint label size
+                </div>
+                <div class="pl-2 flex items-center">
+                  <input
+                    type="range"
+                    min="1"
+                    max="8"
+                    step="1"
+                    [(ngModel)]="viewOptions.keypointLabelFontSize"
+                    class="range range-xs"
+                  />
+                  <button
+                    class="btn btn-ghost btn-xs tooltip"
+                    data-tip="Reset"
+                    [disabled]="viewOptions.isLabelFontSizeDefault()"
+                    (click)="viewOptions.resetLabelFontSize()"
+                  >
+                    <span class="material-icons text-sm!">restart_alt</span>
+                  </button>
+                </div>
+                <div class="pl-2 opacity-60 text-xs">
+                  {{ viewOptions.keypointLabelFontSize() }}px
+                </div>
+                <div class="flex items-center gap-2 pt-2">
                   <span class="material-icons text-sm!">label</span>
                   Keypoint labels
                 </div>

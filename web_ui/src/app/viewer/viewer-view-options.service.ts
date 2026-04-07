@@ -24,6 +24,9 @@ export class ViewerViewOptionsService {
     Number(localStorage.getItem('viewer-view-options.size')) ||
       this.colorService.defaultSize,
   );
+  keypointLabelFontSize = signal<number>(
+    Number(localStorage.getItem('viewer-view-options.labelFontSize')) || 8,
+  );
   likelihoodThreshold = signal<number>(DEFAULT_LIKELIHOOD_THRESHOLD);
   enableKeypointLabels = signal(false);
 
@@ -34,6 +37,7 @@ export class ViewerViewOptionsService {
   isSizeDefault = computed(
     () => this.keypointSize() === this.colorService.defaultSize,
   );
+  isLabelFontSizeDefault = computed(() => this.keypointLabelFontSize() === 8);
   isLikelihoodThresholdDefault = computed(
     () => this.likelihoodThreshold() === DEFAULT_LIKELIHOOD_THRESHOLD,
   );
@@ -57,11 +61,18 @@ export class ViewerViewOptionsService {
         String(this.keypointSize()),
       ),
     );
+    effect(() =>
+      localStorage.setItem(
+        'viewer-view-options.labelFontSize',
+        String(this.keypointLabelFontSize()),
+      ),
+    );
 
     merge(
       toObservable(this.videoTileSizePx),
       toObservable(this.keypointOpacity),
       toObservable(this.keypointSize),
+      toObservable(this.keypointLabelFontSize),
       toObservable(this.likelihoodThreshold),
       toObservable(this.enableKeypointLabels),
     )
@@ -71,6 +82,7 @@ export class ViewerViewOptionsService {
           videoTileSizePx: this.videoTileSizePx(),
           keypointOpacity: this.keypointOpacity(),
           keypointSize: this.keypointSize(),
+          keypointLabelFontSize: this.keypointLabelFontSize(),
           likelihoodThreshold: this.likelihoodThreshold(),
           enableKeypointLabels: this.enableKeypointLabels(),
         });
@@ -87,6 +99,10 @@ export class ViewerViewOptionsService {
 
   resetKeypointSize() {
     this.keypointSize.set(this.colorService.defaultSize);
+  }
+
+  resetLabelFontSize() {
+    this.keypointLabelFontSize.set(8);
   }
 
   resetLikelihoodThreshold() {

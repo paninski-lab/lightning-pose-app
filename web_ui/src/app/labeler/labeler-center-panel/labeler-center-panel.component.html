@@ -392,6 +392,24 @@
                 <span class="material-icons text-sm!">restart_alt</span>
               </button>
             </div>
+            <div>Keypoint label size</div>
+            <div class="pl-2 flex items-center">
+              <input
+                type="range"
+                min="1"
+                max="10"
+                step="1"
+                [(ngModel)]="viewOptions.keypointLabelFontSize"
+                class="range range-xs"
+              /><button
+                class="btn btn-ghost btn-xs tooltip"
+                data-tip="Reset"
+                [disabled]="viewOptions.isLabelFontSizeDefault()"
+                (click)="viewOptions.resetLabelFontSize()"
+              >
+                <span class="material-icons text-sm!">restart_alt</span>
+              </button>
+            </div>
             <div>Pixel grid overlay</div>
             <div class="pl-2 flex items-center">
               <input
