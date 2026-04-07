@@ -17,6 +17,15 @@ Our full documentation, including installation guides, API references, and advan
 
 ## 📝 Release Notes
 
+### [2.0.8.0] — 2026-04-07
+
+* Redesigned Home page with a responsive project grid and rich project statistics (https://github.com/paninski-lab/lightning-pose-app/pull/65)
+* Added project deletion: unregister vs. full delete (https://github.com/paninski-lab/lightning-pose-app/pull/65)
+* Updated dropdown component: darker background, Popover API, fixed Actions button in models (https://github.com/paninski-lab/lightning-pose-app/pull/65)
+* Added informational tooltips about file paths used in app: projects, labels, sessions (https://github.com/paninski-lab/lightning-pose-app/pull/73)
+* Refined single-view labeler experience by hiding 'unknown' view (https://github.com/paninski-lab/lightning-pose-app/pull/73)
+* Restored keypoint name tooltips in labeler and added keypoint label font size slider (https://github.com/paninski-lab/lightning-pose-app/pull/74)
+
 ### [2.0.7.1] — 2026-03-17
 
 * Refined labeler UX Fixed dragging off-center behavior, fixed subpixel rendering, and added keypoint text
