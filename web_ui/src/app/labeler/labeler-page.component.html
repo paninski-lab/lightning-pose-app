@@ -12,7 +12,26 @@
       <div class="bg-base-200 h-full flex flex-col justify-between shadow-lg">
         <div>
           <div class="p-4">
-            <h1 class="mb-2">Label file</h1>
+            <h1 class="mb-2 flex items-center gap-2">
+              Label file
+              @if (this.projectInfoService.projectContext(); as ctx) {
+                <app-dropdown class="dropdown-hover dropdown-right">
+                  <app-dropdown-trigger>
+                    <span
+                      appDropdownTrigger
+                      class="material-icons text-xs! opacity-70"
+                      >info</span
+                    >
+                  </app-dropdown-trigger>
+                  <app-dropdown-content class="z-50">
+                    <div class="p-2 text-sm w-max">
+                      Searches <code class="text-xs">*.csv</code> then filters
+                      for label files
+                    </div>
+                  </app-dropdown-content>
+                </app-dropdown>
+              }
+            </h1>
             <div class="flex gap-1">
               <app-label-file-picker
                 class="grow"

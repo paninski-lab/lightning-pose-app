@@ -1,7 +1,10 @@
 <div class="flex justify-center w-screen">
   <section class="max-w-5xl p-4" aria-labelledby="projects-heading">
     <h1 id="projects-heading" class="text-2xl font-semibold mb-4">Projects</h1>
-
+    <p class="text-sm opacity-70 mb-4 flex items-center gap-1">
+      Showing projects in
+      <app-path-display path="~/.lightning-pose/projects.toml" />
+    </p>
     @if (projectInfo.projects() === undefined) {
       <div class="flex items-center gap-3" aria-live="polite" aria-busy="true">
         <span
@@ -107,7 +110,11 @@
                     <!-- Views -->
                     <div>
                       <div class="text-xs font-bold uppercase opacity-50">
-                        Views
+                        @if (p.stats.view_names.length === 0) {
+                          Single view project
+                        } @else {
+                          Views
+                        }
                       </div>
                       <div class="flex flex-wrap gap-1 mt-1">
                         @for (view of p.stats.view_names; track view) {
@@ -179,14 +186,20 @@
                         >
                           Labeling Progress
                         </div>
-                        <ul class="text-sm list-disc list-inside space-y-0.5">
+                        <ul class="text-sm space-y-1">
                           @for (
                             ls of p.stats.label_files_stats;
                             track ls.name
                           ) {
-                            <li>
-                              {{ ls.name }}: {{ ls.labeled_frames }} /
-                              {{ ls.total_frames }}
+                            <li class="flex items-center gap-2">
+                              <span class="material-icons text-xs! opacity-40"
+                                >description</span
+                              >
+                              <div class="flex-1">
+                                <code class="text-xs">{{ ls.name }}</code
+                                >: {{ ls.labeled_frames }} /
+                                {{ ls.total_frames }}
+                              </div>
                             </li>
                           }
                         </ul>

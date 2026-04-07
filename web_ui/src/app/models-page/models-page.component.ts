@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  inject,
   signal,
   viewChild,
 } from '@angular/core';
@@ -17,6 +18,7 @@ import {
   DropdownTriggerComponent,
   DropdownTriggerDirective,
 } from '../components/dropdown/dropdown.component';
+import { ProjectInfoService } from '../project-info.service';
 
 @Component({
   selector: 'app-models-page',
@@ -37,6 +39,7 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ModelsPageComponent {
+  protected projectInfo = inject(ProjectInfoService);
   protected isCreateModelDialogOpen = signal(false);
   protected isInferenceDialogOpen = signal(false);
 

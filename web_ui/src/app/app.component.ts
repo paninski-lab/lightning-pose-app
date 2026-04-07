@@ -33,6 +33,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs/operators';
 import { LocalStorageService } from './local-storage.service';
 import { ToastService } from './toast.service';
+import { PathDisplayComponent } from './components/path-display/path-display.component';
 
 @Component({
   selector: 'app-root',
@@ -45,6 +46,7 @@ import { ToastService } from './toast.service';
     DropdownTriggerDirective,
     DropdownTriggerComponent,
     DropdownContentComponent,
+    PathDisplayComponent,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
@@ -181,16 +183,5 @@ export class AppComponent implements OnInit {
 
   handleSettingsDialogDoneCreation(createdProjectKey: string) {
     this.router.navigate(['/project', createdProjectKey]);
-  }
-
-  protected copyToClipboard(text: string | null) {
-    if (!text) return;
-    navigator.clipboard.writeText(text).then(() => {
-      this.toastService.showToast({
-        content: `Copied to clipboard: ${text}`,
-        variant: 'success',
-        durationMs: 2000,
-      });
-    });
   }
 }

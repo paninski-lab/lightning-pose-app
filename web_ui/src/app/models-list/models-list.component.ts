@@ -21,6 +21,14 @@ import { ToastService } from '../toast.service';
 import { ModelDeleteDialogComponent } from '../models-page/model-delete-dialog/model-delete-dialog.component';
 import { ModelRenameDialogComponent } from '../models-page/model-rename-dialog/model-rename-dialog.component';
 import { ActivatedRoute, Router } from '@angular/router';
+import {
+  DropdownComponent,
+  DropdownContentComponent,
+  DropdownTriggerComponent,
+  DropdownTriggerDirective,
+} from '../components/dropdown/dropdown.component';
+import { ProjectInfoService } from '../project-info.service';
+import { PathDisplayComponent } from '../components/path-display/path-display.component';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -32,6 +40,11 @@ import { Subscription } from 'rxjs';
     PathPipe,
     ModelDeleteDialogComponent,
     ModelRenameDialogComponent,
+    DropdownComponent,
+    DropdownTriggerComponent,
+    DropdownContentComponent,
+    DropdownTriggerDirective,
+    PathDisplayComponent,
   ],
   templateUrl: './models-list.component.html',
   styleUrl: './models-list.component.css',
@@ -41,6 +54,7 @@ export class ModelsListComponent implements OnInit, OnDestroy {
   models = signal<ModelListResponse>({ models: [] });
 
   private sessionService = inject(SessionService);
+  protected projectInfoService = inject(ProjectInfoService);
   private toast = inject(ToastService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);

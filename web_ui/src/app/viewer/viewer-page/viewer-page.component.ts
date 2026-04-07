@@ -8,6 +8,12 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import {
+  DropdownComponent,
+  DropdownContentComponent,
+  DropdownTriggerComponent,
+  DropdownTriggerDirective,
+} from '../../components/dropdown/dropdown.component';
 import { ViewerSessionsPanelComponent } from '../viewer-left-panel/viewer-sessions-panel.component';
 import { EnabledViewsKeypointsService } from '../../enabled-views-keypoints.service';
 import { VideoPlayerState } from '../../video-player/video-player-state';
@@ -42,6 +48,10 @@ import { SelectComponent } from '../../components/dropdown/select.component';
     SplitAreaComponent,
     FormsModule,
     SelectComponent,
+    DropdownComponent,
+    DropdownTriggerComponent,
+    DropdownContentComponent,
+    DropdownTriggerDirective,
   ],
   templateUrl: './viewer-page.component.html',
   styleUrl: './viewer-page.component.css',

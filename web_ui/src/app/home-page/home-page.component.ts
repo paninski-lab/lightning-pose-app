@@ -14,6 +14,7 @@ import {
   DropdownTriggerComponent,
   DropdownTriggerDirective,
 } from '../components/dropdown/dropdown.component';
+import { PathDisplayComponent } from '../components/path-display/path-display.component';
 
 @Component({
   selector: 'app-home-page',
@@ -25,6 +26,7 @@ import {
     DropdownTriggerDirective,
     DropdownTriggerComponent,
     DropdownContentComponent,
+    PathDisplayComponent,
   ],
   templateUrl: './home-page.component.html',
   styleUrl: './home-page.component.css',
