@@ -19,7 +19,6 @@ import {
   DropdownTriggerDirective,
 } from '../components/dropdown/dropdown.component';
 import { ProjectInfoService } from '../project-info.service';
-import { PathDisplayComponent } from '../components/path-display/path-display.component';
 
 @Component({
   selector: 'app-models-page',
@@ -34,7 +33,6 @@ import { PathDisplayComponent } from '../components/path-display/path-display.co
     DropdownTriggerComponent,
     DropdownContentComponent,
     DropdownTriggerDirective,
-    PathDisplayComponent,
   ],
   templateUrl: './models-page.component.html',
   styleUrl: './models-page.component.css',

@@ -49,6 +49,12 @@ export class LabelerCenterPanelComponent implements OnChanges {
   private projectInfoService = inject(ProjectInfoService);
   private toastService = inject(ToastService);
   protected viewOptions = inject(LabelerViewOptionsService);
+  protected isMultiview = computed(() => {
+    return (
+      (this.projectInfoService.projectContext()?.projectInfo?.views?.length ??
+        0) > 0
+    );
+  });
 
   labelFile = input<MVLabelFile | null>(null);
   frame = input<MVFrame | null>(null);

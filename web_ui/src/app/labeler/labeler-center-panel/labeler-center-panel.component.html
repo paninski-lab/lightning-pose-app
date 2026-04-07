@@ -22,9 +22,11 @@
     } @else {
       @let fv = selectedFrameView()!;
       <div>
-        <h3 class="bg-base-200 px-2 text-md">
-          {{ fv.viewName }}
-        </h3>
+        @if (isMultiview()) {
+          <h3 class="bg-base-200 px-2 text-md">
+            {{ fv.viewName }}
+          </h3>
+        }
         <app-image-label-widget
           #primaryZoomable
           [fv]="fv"
@@ -40,32 +42,34 @@
     <!-- Filmstrip of all views (Small Height, Horizontal Overflow) -->
     <!-- overflow-x-auto enables horizontal scrolling -->
     <!-- whitespace-nowrap ensures content stays on a single line to trigger overflow -->
-    <div
-      class="p-4 rounded-lg overflow-x-auto whitespace-nowrap"
-      appHorizontalScroll
-    >
-      @if (frame(); as frame2) {
-        @let views2 = frame2.views;
-        @for (fv of views2; track fv.viewName) {
-          <div
-            class="!inline-block m-1 rounded-sm overflow-hidden border-primary hover:border"
-            [class.border]="selectedView() === fv.viewName"
-            [class.cursor-pointer]="selectedView() !== fv.viewName"
-            (click)="handleViewClickFromFilmstrip(fv.viewName)"
-          >
-            <h3 class="bg-base-200 px-1 text-sm">
-              {{ fv.viewName }}
-            </h3>
-            <app-image-label-widget
-              class="!h-[120px] !w-[120px] block"
-              [fv]="fv"
-              [disableInteractions]="true"
-              [zoomableInteractivityDisabled]="true"
-            ></app-image-label-widget>
-          </div>
+    @if (isMultiview()) {
+      <div
+        class="p-4 rounded-lg overflow-x-auto whitespace-nowrap"
+        appHorizontalScroll
+      >
+        @if (frame(); as frame2) {
+          @let views2 = frame2.views;
+          @for (fv of views2; track fv.viewName) {
+            <div
+              class="!inline-block m-1 rounded-sm overflow-hidden border-primary hover:border"
+              [class.border]="selectedView() === fv.viewName"
+              [class.cursor-pointer]="selectedView() !== fv.viewName"
+              (click)="handleViewClickFromFilmstrip(fv.viewName)"
+            >
+              <h3 class="bg-base-200 px-1 text-sm">
+                {{ fv.viewName }}
+              </h3>
+              <app-image-label-widget
+                class="!h-[120px] !w-[120px] block"
+                [fv]="fv"
+                [disableInteractions]="true"
+                [zoomableInteractivityDisabled]="true"
+              ></app-image-label-widget>
+            </div>
+          }
         }
-      }
-    </div>
+      </div>
+    }
   </div>
 
   <!-- Second Column: Single Row -->
@@ -109,163 +113,165 @@
     </div>
     @if (frame(); as frame2) {
       @let lbfl = labelFile()!;
-      <div class="panel m-4 mt-0">
-        <div>
-          <!-- panel header -->
-          <h1 class="px-2 mb-1 flex justify-between items-center">
-            Multiview tools
-            <button
-              class="btn btn-circle btn-info btn-soft btn-xs text-sm! tooltip tooltip-bottom"
-              data-tip="Learn more"
-              onclick="multiview_info.showModal()"
-            >
-              <span class="material-icons text-xs!">question_mark</span>
-            </button>
-          </h1>
-        </div>
-        <dialog class="modal" id="multiview_info">
-          <div class="modal-box w-5/6 max-w-3xl prose">
-            <button
-              class="btn btn-md btn-circle btn-ghost absolute right-4 top-4"
-              onclick="multiview_info.close()"
-            >
-              ✕
-            </button>
-            <h2 class="mt-0">Multiview tools</h2>
-            <p>Use camera parameters to assist labeling.</p>
-            <p>
-              With accurate parameters, you need only label two views per
-              keypoint: the other views can be auto-labeled by triangulating and
-              reprojecting.
-            </p>
-            <h3>How to provide camera parameters to Lightning Pose</h3>
-            <p>
-              Camera calibration is typically performed using Anipose before
-              every session. Camera parameters are recommended to be
-              session-specific to allow for changes in camera position from
-              session to session. A project-wide calibration file can be used as
-              a fallback.
-            </p>
-            <p>
-              For the session of the current labeled frame, the following
-              calibration file paths are expected:
-            </p>
-
-            <table class="table w-full">
-              <thead>
-                <tr>
-                  <th>Scope</th>
-                  <th>Calibration Path</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Session-level</td>
-                  <td>
-                    <code>{{
-                      "calibrations/" +
-                        (sessionKey() ?? "{sessionKey}") +
-                        ".toml" | path
-                    }}</code>
-                  </td>
-                </tr>
-                <tr>
-                  <td>Project-level fallback</td>
-                  <td>
-                    <code>{{ "calibration.toml" }}</code>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            <p>For more information, see:</p>
-            <ul>
-              <li>
-                <a
-                  href="https://lightning-pose.readthedocs.io/en/latest/source/directory_structure_reference/multiview_structure.html#project-level-camera-calibration-file-6"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="link link-primary"
-                >
-                  Calibration directory structure
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://lightning-pose.readthedocs.io/en/latest/source/directory_structure_reference/camera_calibration_file_format.html#camera-calibration-file-format"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="link link-primary"
-                >
-                  Calibration file format
-                </a>
-              </li>
-            </ul>
-
-            <div class="modal-action">
-              <form method="dialog">
-                <!-- if there is a button in form, it will close the modal -->
-                <button class="btn">Close</button>
-              </form>
-            </div>
+      @if (isMultiview()) {
+        <div class="panel m-4 mt-0">
+          <div>
+            <!-- panel header -->
+            <h1 class="px-2 mb-1 flex justify-between items-center">
+              Multiview tools
+              <button
+                class="btn btn-circle btn-info btn-soft btn-xs text-sm! tooltip tooltip-bottom"
+                data-tip="Learn more"
+                onclick="multiview_info.showModal()"
+              >
+                <span class="material-icons text-xs!">question_mark</span>
+              </button>
+            </h1>
           </div>
-        </dialog>
-        <div class="panel-content overflow-y-auto p-2!">
-          <div class="mb-2 px-1 text-xs text-base-content/70">
-            @switch (calibrationStatus()) {
-              @case ("session") {
-                <span class="text-success flex items-center gap-1">
-                  <span class="material-icons text-sm">check_circle</span>
-                  Session-level calibration found
-                </span>
-              }
-              @case ("project") {
-                <span class="text-info flex items-center gap-1">
-                  <span class="material-icons text-sm">info</span>
-                  Project calibration found
-                </span>
-              }
-              @default {
-                <span class="text-error flex items-center gap-1">
-                  <span class="material-icons text-sm">error</span>
-                  No calibration found.
-                  <button
-                    class="link link-error ml-1"
-                    onclick="multiview_info.showModal()"
+          <dialog class="modal" id="multiview_info">
+            <div class="modal-box w-5/6 max-w-3xl prose">
+              <button
+                class="btn btn-md btn-circle btn-ghost absolute right-4 top-4"
+                onclick="multiview_info.close()"
+              >
+                ✕
+              </button>
+              <h2 class="mt-0">Multiview tools</h2>
+              <p>Use camera parameters to assist labeling.</p>
+              <p>
+                With accurate parameters, you need only label two views per
+                keypoint: the other views can be auto-labeled by triangulating
+                and reprojecting.
+              </p>
+              <h3>How to provide camera parameters to Lightning Pose</h3>
+              <p>
+                Camera calibration is typically performed using Anipose before
+                every session. Camera parameters are recommended to be
+                session-specific to allow for changes in camera position from
+                session to session. A project-wide calibration file can be used
+                as a fallback.
+              </p>
+              <p>
+                For the session of the current labeled frame, the following
+                calibration file paths are expected:
+              </p>
+
+              <table class="table w-full">
+                <thead>
+                  <tr>
+                    <th>Scope</th>
+                    <th>Calibration Path</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Session-level</td>
+                    <td>
+                      <code>{{
+                        "calibrations/" +
+                          (sessionKey() ?? "{sessionKey}") +
+                          ".toml" | path
+                      }}</code>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Project-level fallback</td>
+                    <td>
+                      <code>{{ "calibration.toml" }}</code>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <p>For more information, see:</p>
+              <ul>
+                <li>
+                  <a
+                    href="https://lightning-pose.readthedocs.io/en/latest/source/directory_structure_reference/multiview_structure.html#project-level-camera-calibration-file-6"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="link link-primary"
                   >
-                    Learn more
-                  </button>
-                </span>
+                    Calibration directory structure
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://lightning-pose.readthedocs.io/en/latest/source/directory_structure_reference/camera_calibration_file_format.html#camera-calibration-file-format"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="link link-primary"
+                  >
+                    Calibration file format
+                  </a>
+                </li>
+              </ul>
+
+              <div class="modal-action">
+                <form method="dialog">
+                  <!-- if there is a button in form, it will close the modal -->
+                  <button class="btn">Close</button>
+                </form>
+              </div>
+            </div>
+          </dialog>
+          <div class="panel-content overflow-y-auto p-2!">
+            <div class="mb-2 px-1 text-xs text-base-content/70">
+              @switch (calibrationStatus()) {
+                @case ("session") {
+                  <span class="text-success flex items-center gap-1">
+                    <span class="material-icons text-sm">check_circle</span>
+                    Session-level calibration found
+                  </span>
+                }
+                @case ("project") {
+                  <span class="text-info flex items-center gap-1">
+                    <span class="material-icons text-sm">info</span>
+                    Project calibration found
+                  </span>
+                }
+                @default {
+                  <span class="text-error flex items-center gap-1">
+                    <span class="material-icons text-sm">error</span>
+                    No calibration found.
+                    <button
+                      class="link link-error ml-1"
+                      onclick="multiview_info.showModal()"
+                    >
+                      Learn more
+                    </button>
+                  </span>
+                }
               }
-            }
+            </div>
+            <button
+              class="btn btn-sm bg-sky-700 w-full mb-2"
+              [class.btn-disabled]="
+                !hasCameraCalibrationFiles() || disableInteractions()
+              "
+              (click)="handleMVAutoLabelClick(lbfl, frame2)"
+            >
+              ✨ Project keypoints to all views
+            </button>
+            <button
+              class="btn btn-sm w-full btn-soft"
+              [class.btn-disabled]="
+                !hasCameraCalibrationFiles() || disableInteractions()
+              "
+              (click)="baDialog.open()"
+            >
+              <span class="material-icons">model_training</span>
+              Refine calibration (bundle adjustment)
+            </button>
+            <app-bundle-adjust-dialog
+              #baDialog
+              [labelFile]="labelFile()"
+              [frame]="this.frame()"
+              [numLabeledFramesGetter]="numLabeledFramesGetter()"
+            ></app-bundle-adjust-dialog>
           </div>
-          <button
-            class="btn btn-sm bg-sky-700 w-full mb-2"
-            [class.btn-disabled]="
-              !hasCameraCalibrationFiles() || disableInteractions()
-            "
-            (click)="handleMVAutoLabelClick(lbfl, frame2)"
-          >
-            ✨ Project keypoints to all views
-          </button>
-          <button
-            class="btn btn-sm w-full btn-soft"
-            [class.btn-disabled]="
-              !hasCameraCalibrationFiles() || disableInteractions()
-            "
-            (click)="baDialog.open()"
-          >
-            <span class="material-icons">model_training</span>
-            Refine calibration (bundle adjustment)
-          </button>
-          <app-bundle-adjust-dialog
-            #baDialog
-            [labelFile]="labelFile()"
-            [frame]="this.frame()"
-            [numLabeledFramesGetter]="numLabeledFramesGetter()"
-          ></app-bundle-adjust-dialog>
         </div>
-      </div>
+      }
       <div class="panel m-4 mt-0">
         <input
           type="checkbox"
