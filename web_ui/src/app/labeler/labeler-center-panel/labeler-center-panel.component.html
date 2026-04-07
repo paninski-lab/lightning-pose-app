@@ -167,17 +167,19 @@
                   <tr>
                     <td>Session-level</td>
                     <td>
-                      <code>{{
-                        "calibrations/" +
-                          (sessionKey() ?? "{sessionKey}") +
-                          ".toml" | path
-                      }}</code>
+                      <app-path-display
+                        [path]="
+                          'calibrations/' +
+                          (sessionKey() ?? '{sessionKey}') +
+                          '.toml'
+                        "
+                      />
                     </td>
                   </tr>
                   <tr>
                     <td>Project-level fallback</td>
                     <td>
-                      <code>{{ "calibration.toml" }}</code>
+                      <app-path-display path="calibration.toml" />
                     </td>
                   </tr>
                 </tbody>

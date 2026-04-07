@@ -25,6 +25,7 @@ import { MVLabelFile } from '../../label-file.model';
 import { GetMVAutoLabelsResponse } from '../mv-autolabel';
 import { PathPipe } from '../../utils/pipes';
 import { BundleAdjustDialogComponent } from '../../bundle-adjust-dialog/bundle-adjust-dialog.component';
+import { PathDisplayComponent } from '../../components/path-display/path-display.component';
 import { ToastService } from '../../toast.service';
 import { firstValueFrom, Subject } from 'rxjs';
 import { FormsModule } from '@angular/forms';
@@ -39,6 +40,7 @@ import { ImageLabelWidgetComponent } from '../image-label-widget/image-label-wid
     BundleAdjustDialogComponent,
     FormsModule,
     ImageLabelWidgetComponent,
+    PathDisplayComponent,
   ],
   providers: [LabelerViewOptionsService],
   templateUrl: './labeler-center-panel.component.html',
