@@ -10,40 +10,38 @@
 <as-split unit="pixel" direction="horizontal">
   <as-split-area size="620">
     <div class="min-w-lg mt-4">
-      <div class="m-4">
-        <div class="flex gap-2 items-center mb-1">
-          <button
-            class="btn btn-primary tooltip tooltip-bottom"
-            data-tip="Create and train a model"
-            (click)="isCreateModelDialogOpen.set(true)"
-          >
-            New model
-          </button>
-          <app-dropdown #dropdown>
-            <app-dropdown-trigger>
-              <button
-                appDropdownTrigger
-                class="btn btn-accent"
-                [class.btn-disabled]="selectedModel() === null"
-                tabindex="0"
-              >
-                Actions
-              </button>
-            </app-dropdown-trigger>
-            <app-dropdown-content>
-              <ul class="menu p-2 w-52" tabindex="0">
-                <li>
-                  <button
-                    (click)="openInferenceDialog(); dropdown.close()"
-                    [disabled]="!selectedModel()"
-                  >
-                    Run inference
-                  </button>
-                </li>
-              </ul>
-            </app-dropdown-content>
-          </app-dropdown>
-        </div>
+      <div class="flex gap-2 items-center m-4">
+        <button
+          class="btn btn-primary tooltip tooltip-bottom"
+          data-tip="Create and train a model"
+          (click)="isCreateModelDialogOpen.set(true)"
+        >
+          New model
+        </button>
+        <app-dropdown #dropdown>
+          <app-dropdown-trigger>
+            <button
+              appDropdownTrigger
+              class="btn btn-accent"
+              [class.btn-disabled]="selectedModel() === null"
+              tabindex="0"
+            >
+              Actions
+            </button>
+          </app-dropdown-trigger>
+          <app-dropdown-content>
+            <ul class="menu p-2 w-52" tabindex="0">
+              <li>
+                <button
+                  (click)="openInferenceDialog(); dropdown.close()"
+                  [disabled]="!selectedModel()"
+                >
+                  Run inference
+                </button>
+              </li>
+            </ul>
+          </app-dropdown-content>
+        </app-dropdown>
       </div>
 
       <div class="overflow-auto max-h-5/6">
