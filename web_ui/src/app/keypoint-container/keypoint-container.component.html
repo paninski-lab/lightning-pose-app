@@ -171,74 +171,93 @@
     @let hideKeypointBecauseMoving =
       keypointIsSelected && selectedKeypointIsMoving();
     @if (keypoint.position() !== null) {
-      <div
-        [class.selected-keypoint-border]="keypointIsSelected"
-        [style.--selected-keypoint-border-width]="
-          selectedKeypointBorderWidth + 'px'
-        "
+      <!--
+        app-dropdown wraps the keypoint circle so that its host element (inline-block,
+        sized to the circle) is the mouseenter/mouseleave target for the hover tooltip.
+        Positioning styles are placed here so the host has the correct dimensions and
+        hit area. dropdown-hover is suppressed in crosshair (edit) mode to avoid
+        distracting popups while the user is actively placing a keypoint.
+      -->
+      <app-dropdown
+        class="absolute top-0 left-0 dropdown-top"
+        [class.dropdown-hover]="enableKeypointHoverTooltips() && !(showCrosshair() && crosshairPosition())"
         [style.will-change]="'transform'"
         [style.transform]="getTransform(keypoint)"
         [style.transform-origin]="'0 0'"
         [style.display]="hideKeypointBecauseMoving ? 'none' : 'block'"
-        [style.background-color]="
-          'rgba(' +
-          keypoint.color().join(',') +
-          ',' +
-          calculatedKeypointOpacity(keypoint.id) +
-          ')'
-        "
-        (click)="handleKeypointClick($event, keypoint)"
-        (keydown.enter)="handleKeypointClick($event, keypoint)"
-        (pointerdown)="handleKeypointPointerDown($event, keypoint)"
-        tabindex="0"
-        [style.height.px]="keypointSize()"
-        [style.width.px]="keypointSize()"
-        class="rounded-full absolute top-0 left-0"
-        [ngClass]="{
-          'shadow-sm/30': labelerViewOptions() ? false : true,
-        }"
-        [class.tooltip]="enableKeypointHoverTooltips()"
-        [attr.data-tip]="keypoint.hoverText"
       >
-        @if (
-          enableKeypointLabels() && !(showCrosshair() && crosshairPosition())
-        ) {
-          <span
-            class="text-[8px] text-nowrap pointer-events-none absolute select-none"
-            [style.top.px]="keypointSize() / 1.15"
-            [style.left.px]="keypointSize() / 1.15"
-            style="filter: url(#halo)"
-            >{{ keypoint.id }}</span
+        <app-dropdown-trigger>
+          <div
+            appDropdownTrigger
+            [class.selected-keypoint-border]="keypointIsSelected"
+            [style.--selected-keypoint-border-width]="
+              selectedKeypointBorderWidth + 'px'
+            "
+            [style.background-color]="
+              'rgba(' +
+              keypoint.color().join(',') +
+              ',' +
+              calculatedKeypointOpacity(keypoint.id) +
+              ')'
+            "
+            (click)="handleKeypointClick($event, keypoint)"
+            (keydown.enter)="handleKeypointClick($event, keypoint)"
+            (pointerdown)="handleKeypointPointerDown($event, keypoint)"
+            tabindex="0"
+            [style.height.px]="keypointSize()"
+            [style.width.px]="keypointSize()"
+            class="rounded-full"
+            [ngClass]="{
+              'shadow-sm/30': labelerViewOptions() ? false : true,
+            }"
           >
+            @if (
+              enableKeypointLabels() && !(showCrosshair() && crosshairPosition())
+            ) {
+              <span
+                class="text-nowrap pointer-events-none absolute select-none"
+                [style.font-size.px]="keypointLabelFontSize()"
+                [style.top.px]="keypointSize() / 1.15"
+                [style.left.px]="keypointSize() / 1.15"
+                style="filter: url(#halo)"
+                >{{ keypoint.id }}</span
+              >
+            }
+            @if (useCrossHairs()) {
+              <svg
+                class="absolute inset-0 w-full h-full pointer-events-none"
+                viewBox="0 0 2 2"
+              >
+                <!-- Horizontal line -->
+                <line
+                  x1="0"
+                  y1="1"
+                  x2="2"
+                  y2="1"
+                  [attr.stroke]="'var(--inner-crosshair-stroke-color)'"
+                  stroke-width=".02"
+                  stroke-opacity="0.5"
+                />
+                <!-- Vertical line -->
+                <line
+                  x1="1"
+                  y1="0"
+                  x2="1"
+                  y2="2"
+                  [attr.stroke]="'var(--inner-crosshair-stroke-color)'"
+                  stroke-width=".02"
+                  stroke-opacity="0.5"
+                />
+              </svg>
+            }
+          </div>
+        </app-dropdown-trigger>
+        @if (keypoint.hoverText) {
+          <app-dropdown-content class="z-50">
+            <div class="p-2 text-sm">{{ keypoint.hoverText }}</div>
+          </app-dropdown-content>
         }
-        @if (useCrossHairs()) {
-          <svg
-            class="absolute inset-0 w-full h-full pointer-events-none"
-            viewBox="0 0 2 2"
-          >
-            <!-- Horizontal line -->
-            <line
-              x1="0"
-              y1="1"
-              x2="2"
-              y2="1"
-              [attr.stroke]="'var(--inner-crosshair-stroke-color)'"
-              stroke-width=".02"
-              stroke-opacity="0.5"
-            />
-            <!-- Vertical line -->
-            <line
-              x1="1"
-              y1="0"
-              x2="1"
-              y2="2"
-              [attr.stroke]="'var(--inner-crosshair-stroke-color)'"
-              stroke-width=".02"
-              stroke-opacity="0.5"
-            />
-          </svg>
-        }
-      </div>
+      </app-dropdown>
     }
   }
 </div>

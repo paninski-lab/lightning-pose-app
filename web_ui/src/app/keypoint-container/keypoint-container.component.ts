@@ -14,13 +14,19 @@ import { Point } from '@angular/cdk/drag-drop';
 import { LabelerViewOptionsService } from '../labeler/labeler-view-options.service';
 import { ViewerViewOptionsService } from '../viewer/viewer-view-options.service';
 import { NgClass } from '@angular/common';
+import {
+  DropdownComponent,
+  DropdownContentComponent,
+  DropdownTriggerComponent,
+  DropdownTriggerDirective,
+} from '../components/dropdown/dropdown.component';
 
 @Component({
   selector: 'app-keypoint-container',
   templateUrl: './keypoint-container.component.html',
   styleUrl: './keypoint-container.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgClass],
+  imports: [NgClass, DropdownComponent, DropdownTriggerComponent, DropdownContentComponent, DropdownTriggerDirective],
 })
 export class KeypointContainerComponent {
   enableEditing = input<boolean>(false);
@@ -78,6 +84,14 @@ export class KeypointContainerComponent {
       this.labelerViewOptions()?.enableKeypointLabels() ??
       this.viewerViewOptions()?.enableKeypointLabels() ??
       true
+    );
+  });
+
+  keypointLabelFontSize = computed(() => {
+    return (
+      this.labelerViewOptions()?.keypointLabelFontSize() ??
+      this.viewerViewOptions()?.keypointLabelFontSize() ??
+      8
     );
   });
 

@@ -31,6 +31,9 @@ export class LabelerViewOptionsService {
     Number(localStorage.getItem('labeler-view-options.size')) ||
       this.colorService.defaultSize,
   );
+  keypointLabelFontSize = signal(
+    Number(localStorage.getItem('labeler-view-options.labelFontSize')) || 8,
+  );
   isBrightnessDefault = computed(
     () => this.imgBrightnessScalar() === DEFAULT_BRIGHTNESS,
   );
@@ -43,6 +46,7 @@ export class LabelerViewOptionsService {
   isSizeDefault = computed(
     () => this.keypointSize() === this.colorService.defaultSize,
   );
+  isLabelFontSizeDefault = computed(() => this.keypointLabelFontSize() === 8);
   enableKeypointLabels = signal(true);
 
   imgCssFilterString = computed(() => {
@@ -63,12 +67,19 @@ export class LabelerViewOptionsService {
         String(this.keypointSize()),
       ),
     );
+    effect(() =>
+      localStorage.setItem(
+        'labeler-view-options.labelFontSize',
+        String(this.keypointLabelFontSize()),
+      ),
+    );
 
     merge(
       toObservable(this.imgBrightnessScalar),
       toObservable(this.imgContrastScalar),
       toObservable(this.keypointOpacity),
       toObservable(this.keypointSize),
+      toObservable(this.keypointLabelFontSize),
       toObservable(this.enableKeypointLabels),
       toObservable(this.enablePixelGrid),
     )
@@ -82,6 +93,7 @@ export class LabelerViewOptionsService {
           imgContrastScalar: this.imgContrastScalar(),
           keypointOpacity: this.keypointOpacity(),
           keypointSize: this.keypointSize(),
+          keypointLabelFontSize: this.keypointLabelFontSize(),
           enableKeypointLabels: this.enableKeypointLabels(),
           enablePixelGrid: this.enablePixelGrid(),
         });
@@ -94,6 +106,10 @@ export class LabelerViewOptionsService {
 
   resetKeypointSize() {
     this.keypointSize.set(this.colorService.defaultSize);
+  }
+
+  resetLabelFontSize() {
+    this.keypointLabelFontSize.set(8);
   }
 
   resetBrightness() {
