@@ -23,7 +23,6 @@ import { Point } from '@angular/cdk/drag-drop';
 import { SessionService } from '../../session.service';
 import { MVLabelFile } from '../../label-file.model';
 import { GetMVAutoLabelsResponse } from '../mv-autolabel';
-import { PathPipe } from '../../utils/pipes';
 import { BundleAdjustDialogComponent } from '../../bundle-adjust-dialog/bundle-adjust-dialog.component';
 import { PathDisplayComponent } from '../../components/path-display/path-display.component';
 import { ToastService } from '../../toast.service';
@@ -36,7 +35,6 @@ import { ImageLabelWidgetComponent } from '../image-label-widget/image-label-wid
   imports: [
     DecimalPipe,
     HorizontalScrollDirective,
-    PathPipe,
     BundleAdjustDialogComponent,
     FormsModule,
     ImageLabelWidgetComponent,
