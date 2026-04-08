@@ -17,6 +17,10 @@ Our full documentation, including installation guides, API references, and advan
 
 ## 📝 Release Notes
 
+### [2.0.8.1] — 2026-04-08
+
+* Fix viewer bug impacting accuracy of keypoint placement in rare scenarios.
+
 ### [2.0.8.0] — 2026-04-07
 
 * Redesigned Home page with a responsive project grid and rich project statistics (https://github.com/paninski-lab/lightning-pose-app/pull/65)
