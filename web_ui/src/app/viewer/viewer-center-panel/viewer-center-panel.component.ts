@@ -219,6 +219,8 @@ export class ViewerCenterPanelComponent implements OnChanges {
         this.videoPlayerState.reset();
         this.videoPlayerState.duration.set(ffprobeData!.duration);
         this.videoPlayerState.fps.set(ffprobeData!.fps);
+        this.videoPlayerState.videoWidth.set(ffprobeData!.width);
+        this.videoPlayerState.videoHeight.set(ffprobeData!.height);
 
         this._loadedSessionKey.set(sessionKey);
       }
