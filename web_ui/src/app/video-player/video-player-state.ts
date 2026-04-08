@@ -33,6 +33,8 @@ export class VideoPlayerState {
 
   duration = signal<number>(0);
   fps = signal<number>(30);
+  videoWidth = signal<number>(0);
+  videoHeight = signal<number>(0);
 
   private videoPlayers: VideoTileComponent[] = [];
 
@@ -77,6 +79,8 @@ export class VideoPlayerState {
     this.isPlaying.next(false);
     this.currentTime.next(0);
     this.duration.set(0);
+    this.videoWidth.set(0);
+    this.videoHeight.set(0);
   }
 
   registerVideoPlayer(videoPlayer: VideoTileComponent) {

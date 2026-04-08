@@ -113,8 +113,12 @@ export class VideoTileComponent implements OnDestroy, OnInit {
 
   protected onLoadedMetadata() {
     this.videoMetadata.next({
-      height: this.videoElement?.nativeElement.videoHeight ?? 1,
-      width: this.videoElement?.nativeElement.videoWidth ?? 1,
+      height:
+        this.videoPlayerState.videoHeight() ||
+        (this.videoElement?.nativeElement.videoHeight ?? 1),
+      width:
+        this.videoPlayerState.videoWidth() ||
+        (this.videoElement?.nativeElement.videoWidth ?? 1),
       duration: this.videoElement?.nativeElement.duration ?? 0,
     });
 
