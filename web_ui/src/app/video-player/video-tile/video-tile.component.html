@@ -19,10 +19,10 @@
     (ended)="onEnd()"
     (error)="onVideoTagError()"
     [src]="src()"
-    [attr.width]="videoPlayerState.videoWidth() || null"
-    [attr.height]="videoPlayerState.videoHeight() || null"
-    [style.width.px]="videoPlayerState.videoWidth() || null"
-    [style.height.px]="videoPlayerState.videoHeight() || null"
+    [attr.width]="videoMetadata().width"
+    [attr.height]="videoMetadata().height"
+    [style.width.px]="videoMetadata().width"
+    [style.height.px]="videoMetadata().height"
     class="max-w-none"
   >
     Your browser does not support the video tag.

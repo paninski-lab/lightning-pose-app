@@ -28,7 +28,12 @@
               [style.height.px]="viewOptions.videoTileSizePx()"
               [style.width.px]="viewOptions.videoTileSizePx()"
             >
-              <app-video-tile #content [src]="w.videoSrc" class="relative">
+              <app-video-tile
+                #content
+                [src]="w.videoSrc"
+                [metadata]="w.metadata"
+                class="relative"
+              >
                 <app-keypoint-container
                   class="absolute top-0 left-0 h-full w-full"
                   [enableEditing]="false"

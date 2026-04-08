@@ -32,6 +32,8 @@ FFMPEG_OPTIONS = [
     "medium",
     "-crf",
     "23",
+    "-vf",
+    "setsar=1",
     "-an",
 ]
 
