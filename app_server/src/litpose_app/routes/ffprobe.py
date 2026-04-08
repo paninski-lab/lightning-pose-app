@@ -20,11 +20,19 @@ class FFProbeRequest(BaseModel):
 
 
 class FFProbeResponse(BaseModel):
-    codec: str
-    width: int
-    height: int
-    fps: int
-    duration: float
+    file_path: str  # Path to the video file
+    duration: float  # Duration of the video in seconds
+    width: int  # Width of the video in pixels
+    height: int  # Height of the video in pixels
+    fps: int  # Average frame rate of the video
+    format: str  # Format/container of the video
+    size: int  # File size in bytes
+    codec: str  # Video codec used
+    is_vfr: bool  # Whether the video has a variable frame rate
+    bitrate_str: str  # Nicely formatted bitrate (e.g., "1.5 Mbps")
+    dar: str  # Display aspect ratio
+    sar: str  # Sample aspect ratio
+    color_space: str  # Color space and HDR information
 
 
 @router.post("/app/v0/rpc/ffprobe")
@@ -47,6 +55,17 @@ def ffprobe(
     return response
 
 
+def format_bitrate(bitrate_bps: int) -> str:
+    """Formats bitrate from bits per second to a human-readable string."""
+    if bitrate_bps <= 0:
+        return "N/A"
+    for unit in ["bps", "kbps", "Mbps", "Gbps"]:
+        if bitrate_bps < 1000:
+            return f"{bitrate_bps:.1f} {unit}"
+        bitrate_bps /= 1000
+    return f"{bitrate_bps:.1f} Tbps"
+
+
 def run_ffprobe(video_path):
     """
     Executes ffprobe to get video metadata and parses the JSON output.
@@ -64,7 +83,7 @@ def run_ffprobe(video_path):
         "-select_streams",
         "v:0",  # Select the first video stream
         "-show_entries",
-        "format=duration:stream=avg_frame_rate,codec_name,width,height,display_aspect_ratio",
+        "format=duration,size,bit_rate,format_name:stream=avg_frame_rate,r_frame_rate,codec_name,width,height,display_aspect_ratio,sample_aspect_ratio,color_space,color_transfer,color_primaries",
         "-of",
         "json",  # Output in JSON format
         video_path,
@@ -72,11 +91,19 @@ def run_ffprobe(video_path):
 
     # Initialize extracted_info with default/None values and an error key
     extracted_info = {
-        "codec": None,
-        "width": None,
-        "height": None,
-        "fps": None,
-        "duration": None,
+        "file_path": video_path,
+        "duration": 0.0,
+        "width": 0,
+        "height": 0,
+        "fps": 0,
+        "format": "",
+        "size": 0,
+        "codec": "",
+        "is_vfr": False,
+        "bitrate_str": "N/A",
+        "dar": "",
+        "sar": "",
+        "color_space": "",
     }
 
     try:
@@ -87,14 +114,25 @@ def run_ffprobe(video_path):
         metadata = json.loads(process.stdout)
 
         # --- Extracting Data ---
-        if "format" in metadata and "duration" in metadata["format"]:
-            try:
-                extracted_info["duration"] = float(metadata["format"]["duration"])
-            except ValueError:
-                extracted_info["error"] = (
-                    f"Failed to parse duration: {metadata['format']['duration']}"
-                )
-                return extracted_info
+        if "format" in metadata:
+            fmt = metadata["format"]
+            if "duration" in fmt:
+                try:
+                    extracted_info["duration"] = float(fmt["duration"])
+                except ValueError:
+                    pass
+            if "size" in fmt:
+                try:
+                    extracted_info["size"] = int(fmt["size"])
+                except ValueError:
+                    pass
+            if "bit_rate" in fmt:
+                try:
+                    extracted_info["bitrate_str"] = format_bitrate(int(fmt["bit_rate"]))
+                except ValueError:
+                    pass
+            if "format_name" in fmt:
+                extracted_info["format"] = str(fmt["format_name"])
 
         if "streams" in metadata and len(metadata["streams"]) > 0:
             video_stream = metadata["streams"][
@@ -105,23 +143,31 @@ def run_ffprobe(video_path):
             if "codec_name" in video_stream:
                 extracted_info["codec"] = str(video_stream["codec_name"])
 
-            # Width and Height
-            if "width" in video_stream:
-                try:
-                    extracted_info["width"] = int(video_stream["width"])
-                except ValueError:
-                    extracted_info["error"] = (
-                        f"Failed to parse width: {video_stream['width']}"
-                    )
-                    return extracted_info
-            if "height" in video_stream:
-                try:
-                    extracted_info["height"] = int(video_stream["height"])
-                except ValueError:
-                    extracted_info["error"] = (
-                        f"Failed to parse height: {video_stream['height']}"
-                    )
-                    return extracted_info
+            # Resolution (Width and Height)
+            width = video_stream.get("width")
+            height = video_stream.get("height")
+            if width and height:
+                extracted_info["width"] = int(width)
+                extracted_info["height"] = int(height)
+
+            # Aspect Ratio
+            if "display_aspect_ratio" in video_stream:
+                extracted_info["dar"] = str(video_stream["display_aspect_ratio"])
+            if "sample_aspect_ratio" in video_stream:
+                extracted_info["sar"] = str(video_stream["sample_aspect_ratio"])
+
+            # VFR vs CFR
+            avg_fps = video_stream.get("avg_frame_rate")
+            r_fps = video_stream.get("r_frame_rate")
+            if avg_fps and r_fps:
+                extracted_info["is_vfr"] = avg_fps != r_fps
+
+            # Color Space / HDR
+            cs = video_stream.get("color_space", "")
+            ct = video_stream.get("color_transfer", "")
+            cp = video_stream.get("color_primaries", "")
+            color_info = [c for c in [cs, ct, cp] if c and c != "unknown"]
+            extracted_info["color_space"] = " / ".join(color_info)
 
             # FPS
             if "avg_frame_rate" in video_stream:
@@ -131,24 +177,13 @@ def run_ffprobe(video_path):
                         num, den = map(int, rate_str.split("/"))
                         if den != 0:  # Avoid division by zero
                             extracted_info["fps"] = round(num / den)
-                        else:
-                            extracted_info["error"] = (
-                                f"Framerate denominator is zero: {rate_str}"
-                            )
-                            return extracted_info
                     except ValueError:
-                        extracted_info["error"] = (
-                            f"Failed to parse fractional framerate: {rate_str}"
-                        )
-                        return extracted_info
+                        pass
                 else:
                     try:
                         extracted_info["fps"] = round(float(rate_str))
                     except ValueError:
-                        extracted_info["error"] = (
-                            f"Failed to parse float framerate: {rate_str}"
-                        )
-                        return extracted_info
+                        pass
 
         return extracted_info
 

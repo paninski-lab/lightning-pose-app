@@ -7,20 +7,21 @@ import { CopyDirective } from '../../utils/copy.directive';
   standalone: true,
   imports: [CommonModule, CopyDirective],
   template: `
-    <div class="flex items-center gap-2 group/path">
+    <div class="flex items-center gap-2 group/path min-w-0">
       @if (label) {
-        <span class="text-xs font-medium opacity-60 uppercase tracking-wider">{{
-          label
-        }}</span>
+        <span
+          class="text-xs font-medium opacity-60 uppercase tracking-wider shrink-0"
+          >{{ label }}</span
+        >
       }
       <div
-        class="bg-base-content/5 hover:bg-base-content/10 px-2 py-1 rounded font-mono text-xs flex items-center gap-2 cursor-pointer transition-colors border border-transparent hover:border-base-content/10"
+        class="bg-base-content/5 hover:bg-base-content/10 px-2 py-1 rounded font-mono text-xs flex items-center gap-2 cursor-pointer transition-colors border border-transparent hover:border-base-content/10 min-w-[100px]"
         [appCopy]="path"
         #copy="appCopy"
         [attr.aria-label]="'Copy ' + (label || 'path')"
         [title]="path"
       >
-        <span class="truncate select-all max-w-xs md:max-w-md">{{ path }}</span>
+        <span class="truncate select-all flex-1">{{ path }}</span>
         <span
           class="material-icons text-sm! transition-opacity shrink-0"
           [class.text-success]="copy.isCopied()"
@@ -35,7 +36,7 @@ import { CopyDirective } from '../../utils/copy.directive';
   styles: [
     `
       :host {
-        display: inline-block;
+        display: block;
       }
     `,
   ],

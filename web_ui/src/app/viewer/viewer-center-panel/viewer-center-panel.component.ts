@@ -14,6 +14,7 @@ import { EnabledViewsKeypointsService } from '../../enabled-views-keypoints.serv
 import { VideoPlayerState } from '../../video-player/video-player-state';
 import { KeypointContainerComponent } from '../../keypoint-container/keypoint-container.component';
 import { ViewerKeypoint } from '../../keypoint';
+import { VideoMetadata } from '../../video-metadata';
 import { VideoWidget } from '../../video-widget';
 
 import { CsvParserService } from '../../csv-parser.service';
@@ -33,6 +34,13 @@ import _ from 'lodash';
 import { ColorService } from '../../infra/color.service';
 
 import { ViewerViewOptionsService } from '../viewer-view-options.service';
+import { FFProbeInfoComponent } from '../../video-player/ffprobe-info/ffprobe-info.component';
+import {
+  DropdownComponent,
+  DropdownContentComponent,
+  DropdownTriggerComponent,
+  DropdownTriggerDirective,
+} from '../../components/dropdown/dropdown.component';
 
 @Component({
   selector: 'app-viewer-center-panel',
@@ -41,6 +49,11 @@ import { ViewerViewOptionsService } from '../viewer-view-options.service';
     VideoTileComponent,
     KeypointContainerComponent,
     ZoomableContentComponent,
+    FFProbeInfoComponent,
+    DropdownComponent,
+    DropdownContentComponent,
+    DropdownTriggerDirective,
+    DropdownTriggerComponent,
   ],
   templateUrl: './viewer-center-panel.component.html',
   styleUrl: './viewer-center-panel.component.css',
@@ -68,6 +81,7 @@ export class ViewerCenterPanelComponent implements OnChanges {
   protected widgetModels = signal([] as VideoWidget[]);
   // cached prediction files for this session.
   private predictionFiles = new Map<PredictionFile, dfd.DataFrame>();
+  private ffprobeData = new Map<string, VideoMetadata>();
 
   private buildKeypoint(
     keypointName: string,
@@ -120,12 +134,6 @@ export class ViewerCenterPanelComponent implements OnChanges {
 
   private sessionService = inject(SessionService);
 
-  private getVideoPathForFFProbe(sessionKey: string, view: string): string {
-    const dataDir = this.projectInfoService.projectInfo?.data_dir as string;
-
-    return dataDir + '/' + sessionKey.replace(/\*/g, view);
-  }
-
   ngOnChanges(changes: SimpleChanges) {
     if (changes['sessionKey']) {
       this.loadSessionAbort(this.sessionKey()!);
@@ -147,6 +155,7 @@ export class ViewerCenterPanelComponent implements OnChanges {
     if (sessionKey == null) {
       this.enabledViewsKeypoints.setModelOptions([]);
       this.predictionFiles = new Map();
+      this.ffprobeData = new Map();
       this.videoPlayerState.reset();
       this.videoPlayerState.duration.set(0);
       this.videoPlayerState.fps.set(30);
@@ -183,11 +192,14 @@ export class ViewerCenterPanelComponent implements OnChanges {
       const predictionFileCache = sessionChanged
         ? new Map<PredictionFile, dfd.DataFrame>()
         : this.predictionFiles;
-      let ffprobeData = null;
+      const ffprobeDataCache = sessionChanged
+        ? new Map<string, VideoMetadata>()
+        : this.ffprobeData;
+
       if (sessionChanged) {
         promises.push(
           this.loadFFProbeMetadata(session).then((data) => {
-            ffprobeData = data;
+            data.forEach((value, key) => ffprobeDataCache.set(key, value));
           }),
         );
       }
@@ -197,6 +209,7 @@ export class ViewerCenterPanelComponent implements OnChanges {
       const newWidgetModels = this.pureComputeWidgetModels(
         session,
         predictionFileCache,
+        ffprobeDataCache,
       );
 
       const availableModels = Array.from(
@@ -215,12 +228,14 @@ export class ViewerCenterPanelComponent implements OnChanges {
       }
       this.enabledViewsKeypoints.setModelOptions(availableModels);
       this.predictionFiles = predictionFileCache;
+      this.ffprobeData = ffprobeDataCache;
       if (sessionChanged) {
         this.videoPlayerState.reset();
-        this.videoPlayerState.duration.set(ffprobeData!.duration);
-        this.videoPlayerState.fps.set(ffprobeData!.fps);
-        this.videoPlayerState.videoWidth.set(ffprobeData!.width);
-        this.videoPlayerState.videoHeight.set(ffprobeData!.height);
+        const firstMetadata = Array.from(this.ffprobeData.values())[0];
+        if (firstMetadata) {
+          this.videoPlayerState.duration.set(firstMetadata.duration);
+          this.videoPlayerState.fps.set(30); // Default FPS if not in metadata, or should we add it?
+        }
 
         this._loadedSessionKey.set(sessionKey);
       }
@@ -247,6 +262,7 @@ export class ViewerCenterPanelComponent implements OnChanges {
   private pureComputeWidgetModels(
     session: Session,
     predictionFileCache: Map<PredictionFile, dfd.DataFrame>,
+    ffprobeData: Map<string, VideoMetadata>,
   ): VideoWidget[] {
     const viewSettings = this.enabledViewsKeypoints;
     return viewSettings
@@ -263,6 +279,7 @@ export class ViewerCenterPanelComponent implements OnChanges {
         return {
           id: view,
           videoSrc: this.fineVideoService.fineVideoPath(sessionView.videoPath),
+          metadata: ffprobeData.get(view),
           keypoints: signal(
             pfiles.flatMap((pf) => {
               return this.enabledViewsKeypoints
@@ -282,12 +299,15 @@ export class ViewerCenterPanelComponent implements OnChanges {
   }
 
   private async loadFFProbeMetadata(session: Session) {
-    return await this.sessionService.ffprobe(
-      this.getVideoPathForFFProbe(
-        session.relativePath,
-        session.views[0].viewName,
-      ),
-    );
+    const metadataMap = new Map<string, VideoMetadata>();
+    const promises = session.views.map(async (sv) => {
+      const data = (await this.sessionService.ffprobe(
+        sv.videoPath,
+      )) as VideoMetadata;
+      metadataMap.set(sv.viewName, data);
+    });
+    await Promise.all(promises);
+    return metadataMap;
   }
   private async fetchDataFiles(
     session: Session,

@@ -17,7 +17,14 @@ Our full documentation, including installation guides, API references, and advan
 
 ## 📝 Release Notes
 
+### [2.0.8.2] — 2026-04-08
+
+* Add ffprobe debug info to each video tile in the viewer.
+* Fix 2.0.8.1 bug when multiview videos had different sizes
+
 ### [2.0.8.1] — 2026-04-08
+
+(Yanked, do not use)
 
 * Fix viewer bug impacting accuracy of keypoint placement in rare scenarios.
 

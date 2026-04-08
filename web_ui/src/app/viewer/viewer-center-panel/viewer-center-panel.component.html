@@ -14,8 +14,24 @@
      changing videoSrc of an existing video does not work unfortunately. -->
         @for (w of widgetModels(); track w.videoSrc) {
           <div class="panel !border-none">
-            <div class="px-2 py-1 text-sm flex justify-between">
-              <h3>{{ w.id }}</h3>
+            <div class="px-2 py-1 text-sm flex justify-between items-center">
+              <div class="flex items-center gap-2">
+                <h3 class="font-semibold">{{ w.id }}</h3>
+                @if (w.metadata) {
+                  <app-dropdown class="dropdown-hover dropdown-right">
+                    <app-dropdown-trigger>
+                      <span
+                        appDropdownTrigger
+                        class="material-icons text-xs! opacity-70"
+                        >info</span
+                      ></app-dropdown-trigger
+                    >
+                    <app-dropdown-content>
+                      <app-ffprobe-info [data]="w.metadata"></app-ffprobe-info>
+                    </app-dropdown-content>
+                  </app-dropdown>
+                }
+              </div>
               <span
                 class="btn btn-circle btn-xs material-icons !text-sm"
                 (click)="onWidgetCloseClick(w)"
@@ -28,7 +44,12 @@
               [style.height.px]="viewOptions.videoTileSizePx()"
               [style.width.px]="viewOptions.videoTileSizePx()"
             >
-              <app-video-tile #content [src]="w.videoSrc" class="relative">
+              <app-video-tile
+                #content
+                [src]="w.videoSrc"
+                [metadata]="w.metadata"
+                class="relative"
+              >
                 <app-keypoint-container
                   class="absolute top-0 left-0 h-full w-full"
                   [enableEditing]="false"

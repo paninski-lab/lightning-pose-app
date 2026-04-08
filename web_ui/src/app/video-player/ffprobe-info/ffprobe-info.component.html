@@ -1,0 +1,67 @@
+<div
+  class="rounded-box border border-base-content/5 bg-base-100 max-w-md shadow-xl"
+>
+  <table class="table table-sm table-fixed w-full">
+    <colgroup>
+      <col class="w-24" />
+      <col />
+    </colgroup>
+    <tbody>
+      <tr>
+        <td class="font-medium text-base-content/70">File Path</td>
+        <td class="min-w-0">
+          <app-path-display [path]="data().file_path"></app-path-display>
+        </td>
+      </tr>
+      <tr>
+        <td class="font-medium text-base-content/70">Resolution</td>
+        <td class="font-semibold">{{ data().width }}x{{ data().height }}</td>
+      </tr>
+      @if (data().dar && data().dar !== "0:1") {
+        <tr>
+          <td class="font-medium text-base-content/70">DAR</td>
+          <td class="font-semibold">{{ data().dar }}</td>
+        </tr>
+      }
+      @if (data().sar && data().sar !== "0:1") {
+        <tr>
+          <td class="font-medium text-base-content/70">SAR</td>
+          <td class="font-semibold">{{ data().sar }}</td>
+        </tr>
+      }
+      <tr>
+        <td class="font-medium text-base-content/70">FPS</td>
+        <td class="font-semibold">
+          {{ data().fps }} fps
+          @if (data().is_vfr) {
+            <span class="badge badge-warning badge-xs font-bold ml-1">VFR</span>
+          }
+        </td>
+      </tr>
+      <tr>
+        <td class="font-medium text-base-content/70">Duration</td>
+        <td class="font-semibold">{{ formatDuration(data().duration) }}</td>
+      </tr>
+      <tr>
+        <td class="font-medium text-base-content/70">Format</td>
+        <td class="font-semibold">{{ data().format }}</td>
+      </tr>
+      <tr>
+        <td class="font-medium text-base-content/70">Codec</td>
+        <td class="font-semibold">{{ data().codec }}</td>
+      </tr>
+      <tr>
+        <td class="font-medium text-base-content/70">Bitrate</td>
+        <td class="font-semibold">{{ data().bitrate_str }}</td>
+      </tr>
+      <tr>
+        <td class="font-medium text-base-content/70">Size</td>
+        <td class="font-semibold">{{ formatBytes(data().size) }}</td>
+      </tr>
+      <tr>
+        <td class="font-medium text-base-content/70">Color Space</td>
+        <td class="font-semibold">{{ data().color_space || "N/A" }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

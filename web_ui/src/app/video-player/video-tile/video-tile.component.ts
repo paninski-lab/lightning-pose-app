@@ -1,5 +1,6 @@
 import {
   ChangeDetectionStrategy,
+  computed,
   Component,
   ElementRef,
   EventEmitter,
@@ -51,6 +52,7 @@ export class VideoTileComponent implements OnDestroy, OnInit {
     null;
 
   src = input<string>('');
+  metadata = input<VideoMetadata | undefined>(undefined);
 
   // Current time of the video element, for displaying for debug info.
   protected localCurrentTime = signal<number>(0);
@@ -90,10 +92,23 @@ export class VideoTileComponent implements OnDestroy, OnInit {
     this.videoPlayerState.unregisterVideoPlayer(this);
   }
 
-  videoMetadata = new BehaviorSubject<VideoMetadata>({
-    duration: 0,
-    width: 0,
-    height: 0,
+  videoMetadata = computed<VideoMetadata>(() => {
+    const m = this.metadata();
+    return {
+      file_path: m?.file_path || '',
+      height: m?.height || 1,
+      width: m?.width || 1,
+      duration: m?.duration || 0,
+      fps: m?.fps || 0,
+      format: m?.format || '',
+      size: m?.size || 0,
+      codec: m?.codec || '',
+      is_vfr: m?.is_vfr || false,
+      bitrate_str: m?.bitrate_str || '',
+      dar: m?.dar || '',
+      sar: m?.sar || '',
+      color_space: m?.color_space || '',
+    };
   });
 
   scaleFactor = signal<number>(1);
@@ -112,24 +127,12 @@ export class VideoTileComponent implements OnDestroy, OnInit {
   }
 
   protected onLoadedMetadata() {
-    this.videoMetadata.next({
-      height:
-        this.videoPlayerState.videoHeight() ||
-        (this.videoElement?.nativeElement.videoHeight ?? 1),
-      width:
-        this.videoPlayerState.videoWidth() ||
-        (this.videoElement?.nativeElement.videoWidth ?? 1),
-      duration: this.videoElement?.nativeElement.duration ?? 0,
-    });
-
-    this.updateScaleFactorSignal();
-
     this.showProjectedContent.set(true);
   }
 
   private updateScaleFactorSignal() {
     this.scaleFactor.set(
-      this.host.nativeElement.clientWidth / this.videoMetadata.value.width,
+      this.host.nativeElement.clientWidth / this.videoMetadata().width,
     );
   }
 

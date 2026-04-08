@@ -39,3 +39,20 @@ export const LongPath: Story = {
     path: '/very/long/nested/path/to/some/deeply/located/project/directory/that/might/overflow/the/container/if/not/handled',
   },
 };
+
+export const SmallParent: Story = {
+  decorators: [
+    (story) => ({
+      props: story().props,
+      template: `
+        <div style="width: 250px; border: 1px dashed #ccc; padding: 10px;">
+          <app-path-display [path]="path" [label]="label"></app-path-display>
+        </div>
+      `,
+    }),
+  ],
+  args: {
+    label: 'Small Parent Path',
+    path: '/very/long/nested/path/to/some/deeply/located/project/directory',
+  },
+};
