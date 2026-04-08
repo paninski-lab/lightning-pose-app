@@ -30,7 +30,8 @@ class FFProbeResponse(BaseModel):
     codec: str  # Video codec used
     is_vfr: bool  # Whether the video has a variable frame rate
     bitrate_str: str  # Nicely formatted bitrate (e.g., "1.5 Mbps")
-    aspect_ratio: str  # Display aspect ratio
+    dar: str  # Display aspect ratio
+    sar: str  # Sample aspect ratio
     color_space: str  # Color space and HDR information
 
 
@@ -82,7 +83,7 @@ def run_ffprobe(video_path):
         "-select_streams",
         "v:0",  # Select the first video stream
         "-show_entries",
-        "format=duration,size,bit_rate,format_name:stream=avg_frame_rate,r_frame_rate,codec_name,width,height,display_aspect_ratio,color_space,color_transfer,color_primaries",
+        "format=duration,size,bit_rate,format_name:stream=avg_frame_rate,r_frame_rate,codec_name,width,height,display_aspect_ratio,sample_aspect_ratio,color_space,color_transfer,color_primaries",
         "-of",
         "json",  # Output in JSON format
         video_path,
@@ -100,7 +101,8 @@ def run_ffprobe(video_path):
         "codec": "",
         "is_vfr": False,
         "bitrate_str": "N/A",
-        "aspect_ratio": "",
+        "dar": "",
+        "sar": "",
         "color_space": "",
     }
 
@@ -150,7 +152,9 @@ def run_ffprobe(video_path):
 
             # Aspect Ratio
             if "display_aspect_ratio" in video_stream:
-                extracted_info["aspect_ratio"] = str(video_stream["display_aspect_ratio"])
+                extracted_info["dar"] = str(video_stream["display_aspect_ratio"])
+            if "sample_aspect_ratio" in video_stream:
+                extracted_info["sar"] = str(video_stream["sample_aspect_ratio"])
 
             # VFR vs CFR
             avg_fps = video_stream.get("avg_frame_rate")

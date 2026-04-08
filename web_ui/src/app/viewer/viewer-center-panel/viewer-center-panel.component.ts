@@ -34,6 +34,13 @@ import _ from 'lodash';
 import { ColorService } from '../../infra/color.service';
 
 import { ViewerViewOptionsService } from '../viewer-view-options.service';
+import { FFProbeInfoComponent } from '../../video-player/ffprobe-info/ffprobe-info.component';
+import {
+  DropdownComponent,
+  DropdownContentComponent,
+  DropdownTriggerComponent,
+  DropdownTriggerDirective,
+} from '../../components/dropdown/dropdown.component';
 
 @Component({
   selector: 'app-viewer-center-panel',
@@ -42,6 +49,11 @@ import { ViewerViewOptionsService } from '../viewer-view-options.service';
     VideoTileComponent,
     KeypointContainerComponent,
     ZoomableContentComponent,
+    FFProbeInfoComponent,
+    DropdownComponent,
+    DropdownContentComponent,
+    DropdownTriggerDirective,
+    DropdownTriggerComponent,
   ],
   templateUrl: './viewer-center-panel.component.html',
   styleUrl: './viewer-center-panel.component.css',
@@ -289,7 +301,9 @@ export class ViewerCenterPanelComponent implements OnChanges {
   private async loadFFProbeMetadata(session: Session) {
     const metadataMap = new Map<string, VideoMetadata>();
     const promises = session.views.map(async (sv) => {
-      const data = await this.sessionService.ffprobe(sv.videoPath);
+      const data = (await this.sessionService.ffprobe(
+        sv.videoPath,
+      )) as VideoMetadata;
       metadataMap.set(sv.viewName, data);
     });
     await Promise.all(promises);

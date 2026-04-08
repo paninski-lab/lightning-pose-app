@@ -15,7 +15,6 @@ import {
 } from '@angular/core';
 import { VideoPlayerState } from '../video-player-state';
 import { VideoMetadata } from '../../video-metadata';
-import { VideoWidget } from '../../video-widget';
 import { BehaviorSubject, combineLatest } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
@@ -96,9 +95,19 @@ export class VideoTileComponent implements OnDestroy, OnInit {
   videoMetadata = computed<VideoMetadata>(() => {
     const m = this.metadata();
     return {
+      file_path: m?.file_path || '',
       height: m?.height || 1,
       width: m?.width || 1,
       duration: m?.duration || 0,
+      fps: m?.fps || 0,
+      format: m?.format || '',
+      size: m?.size || 0,
+      codec: m?.codec || '',
+      is_vfr: m?.is_vfr || false,
+      bitrate_str: m?.bitrate_str || '',
+      dar: m?.dar || '',
+      sar: m?.sar || '',
+      color_space: m?.color_space || '',
     };
   });
 

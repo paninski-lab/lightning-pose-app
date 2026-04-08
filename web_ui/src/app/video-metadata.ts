@@ -1,5 +1,3 @@
-export interface VideoMetadata {
-  height: number;
-  width: number;
-  duration: number;
-}
+import { FFProbeInfo } from './ffprobe-info';
+
+export type VideoMetadata = FFProbeInfo;
