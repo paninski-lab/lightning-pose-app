@@ -49,9 +49,14 @@
                 <p>
                   The settings in this form will be applied on top of the LP
                   config file:
-                  <code class="whitespace-nowrap"
-                    >PROJECT_DIR / configs / default.yaml</code
-                  >
+                  @if (baseConfigPath(); as configPath) {
+                    <app-path-display
+                      class="max-w-full"
+                      [path]="configPath"
+                    ></app-path-display>
+                  } @else {
+                    <span class="loading loading-spinner loading-xs"></span>
+                  }
                 </p>
               </fieldset>
               <fieldset class="fieldset my-2">

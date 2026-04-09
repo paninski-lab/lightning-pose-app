@@ -41,6 +41,7 @@ import {
   DropdownTriggerComponent,
   DropdownTriggerDirective,
 } from '../../components/dropdown/dropdown.component';
+import { ToastService } from '../../toast.service';
 
 @Component({
   selector: 'app-viewer-center-panel',
@@ -133,6 +134,7 @@ export class ViewerCenterPanelComponent implements OnChanges {
   }
 
   private sessionService = inject(SessionService);
+  private toastService = inject(ToastService);
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['sessionKey']) {
@@ -234,14 +236,46 @@ export class ViewerCenterPanelComponent implements OnChanges {
         const firstMetadata = Array.from(this.ffprobeData.values())[0];
         if (firstMetadata) {
           this.videoPlayerState.duration.set(firstMetadata.duration);
-          this.videoPlayerState.fps.set(30); // Default FPS if not in metadata, or should we add it?
+          this.videoPlayerState.fps.set(firstMetadata.fps);
         }
 
         this._loadedSessionKey.set(sessionKey);
       }
       this.widgetModels.set(newWidgetModels);
+      this.checkFpsConsistency(ffprobeDataCache);
     } finally {
       this.loadingService.isLoading.set(false);
+    }
+  }
+
+  private checkFpsConsistency(ffprobeData: Map<string, VideoMetadata>) {
+    const fpsValues = Array.from(ffprobeData.values()).map((m) => m.fps);
+    const durationValues = Array.from(ffprobeData.values()).map(
+      (m) => m.duration,
+    );
+
+    if (fpsValues.length > 1) {
+      const firstFps = fpsValues[0];
+      const allMatch = fpsValues.every((fps) => fps === firstFps);
+      if (!allMatch) {
+        this.toastService.showToast({
+          content: 'Warning: Inconsistent video framerate across across views',
+          variant: 'error',
+        });
+      }
+    }
+
+    if (durationValues.length > 1) {
+      const firstDuration = durationValues[0];
+      const allDurationsMatch = durationValues.every(
+        (duration) => duration === firstDuration,
+      );
+      if (!allDurationsMatch) {
+        this.toastService.showToast({
+          content: 'Warning: Inconsistent video duration across views',
+          variant: 'error',
+        });
+      }
     }
   }
 

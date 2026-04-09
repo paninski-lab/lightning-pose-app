@@ -43,6 +43,7 @@ import { DaisyFormControlDirective } from '../utils/daisy-form-control.directive
 import { LabelFilePickerComponent } from '../label-file-picker/label-file-picker.component';
 import { SelectComponent } from '../components/dropdown/select.component';
 import { ToastService } from '../toast.service';
+import { PathDisplayComponent } from '../components/path-display/path-display.component';
 
 @Component({
   selector: 'app-create-model-dialog',
@@ -55,6 +56,7 @@ import { ToastService } from '../toast.service';
     NgTemplateOutlet,
     LabelFilePickerComponent,
     SelectComponent,
+    PathDisplayComponent,
   ],
   templateUrl: './create-model-dialog.component.html',
   styleUrl: './create-model-dialog.component.css',
@@ -175,6 +177,7 @@ class CreateModelDialogComponent {
   protected generalForm: FormGroup = this.form.get('general') as FormGroup;
   protected dataForm: FormGroup = this.form.get('data') as FormGroup;
   protected trainingForm: FormGroup = this.form.get('training') as FormGroup;
+  protected baseConfigPath = signal<string | null>(null);
 
   private useTrueMultiviewModelAsSignal = toSignal(
     this.generalForm.controls['useTrueMultiviewModel'].valueChanges.pipe(
@@ -217,6 +220,33 @@ class CreateModelDialogComponent {
   ];
 
   constructor() {
+    const setBaseConfigToDefault = () => {
+      if (this.isMultiviewProject()) {
+        this.baseConfigPath.set(
+          'https://github.com/paninski-lab/lightning-pose-app/blob/main/app_server/src/litpose_app/config_default_multiview.yaml',
+        );
+      } else {
+        this.baseConfigPath.set(
+          'https://github.com/paninski-lab/lightning-pose-app/blob/main/app_server/src/litpose_app/config_default.yaml',
+        );
+      }
+    };
+    this.sessionService
+      .getYamlFile('configs/default.yaml')
+      .then((baseConfig) => {
+        if (baseConfig) {
+          this.baseConfigPath.set(
+            this.projectInfoService.projectInfo.data_dir +
+              '/configs/default.yaml',
+          );
+        } else {
+          setBaseConfigToDefault();
+        }
+      })
+      .catch(() => {
+        setBaseConfigToDefault();
+      });
+
     effect(() => {
       // Read the signal to track the dependency.
       this.useTrueMultiviewModelAsSignal();
