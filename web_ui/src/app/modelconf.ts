@@ -250,10 +250,23 @@ export interface TrainStatus {
   pid?: number | null;
 }
 
+export interface EnsembleMember {
+  id: string;
+}
+
+export interface EnsembleConfig {
+  members: EnsembleMember[];
+  view_names: string[];
+  smooth_param: number;
+  quantile_keep_pca: number;
+}
+
 export interface ModelListResponseEntry {
   model_name: string;
   model_relative_path: string;
+  model_kind: 'normal' | 'eks';
   config?: ModelConfig;
+  ensemble_config?: EnsembleConfig;
   status?: TrainStatus;
 }
 
@@ -266,7 +279,11 @@ export class mc_util {
   get c() {
     return this.m.config;
   }
-  get type() {
+  get isEks(): boolean {
+    return this.m.model_kind === 'eks';
+  }
+  get type(): ModelType | 'EKS' {
+    if (this.isEks) return 'EKS';
     if ((this.c!.model.losses_to_use?.length ?? 0) > 0) {
       return this.c!.model.model_type.endsWith('mhcrnn')
         ? ModelType.S_SUP_CTX
@@ -281,6 +298,7 @@ export class mc_util {
     return (this.c as any)?.creation_datetime;
   }
   get status(): string {
+    if (this.isEks) return 'COMPLETED';
     return this.m.status?.status ?? '';
   }
 }

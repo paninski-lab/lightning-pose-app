@@ -11,13 +11,35 @@
   <as-split-area size="620">
     <div class="min-w-lg mt-4">
       <div class="flex gap-2 items-center m-4">
-        <button
-          class="btn btn-primary tooltip tooltip-bottom"
-          data-tip="Create and train a model"
-          (click)="isCreateModelDialogOpen.set(true)"
-        >
-          New model
-        </button>
+        <app-dropdown #createDropdown>
+          <app-dropdown-trigger>
+            <button
+              appDropdownTrigger
+              class="btn btn-primary"
+              tabindex="0"
+            >
+              New model
+            </button>
+          </app-dropdown-trigger>
+          <app-dropdown-content>
+            <ul class="menu p-2 w-52" tabindex="0">
+              <li>
+                <button
+                  (click)="isCreateModelDialogOpen.set(true); createDropdown.close()"
+                >
+                  Training model
+                </button>
+              </li>
+              <li>
+                <button
+                  (click)="isCreateEksModelDialogOpen.set(true); createDropdown.close()"
+                >
+                  EKS ensemble model
+                </button>
+              </li>
+            </ul>
+          </app-dropdown-content>
+        </app-dropdown>
         <app-dropdown #dropdown>
           <app-dropdown-trigger>
             <button
@@ -61,9 +83,15 @@
     (done)="handleCreateModelDialogDone($event)"
   ></app-create-model-dialog>
 }
+@if (isCreateEksModelDialogOpen()) {
+  <app-create-eks-model-dialog
+    (done)="handleCreateEksModelDialogDone($event)"
+  ></app-create-eks-model-dialog>
+}
 @if (isInferenceDialogOpen()) {
   <app-model-inference-dialog
     [modelRelativePath]="selectedModel()?.model_relative_path ?? ''"
+    [modelKind]="selectedModel()?.model_kind ?? 'normal'"
     (done)="handleInferenceDialogDone()"
   ></app-model-inference-dialog>
 }

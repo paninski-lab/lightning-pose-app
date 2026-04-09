@@ -28,6 +28,7 @@ import { VideoImportStore } from '../video-import/video-import.store';
 export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
   // Inputs/outputs
   modelRelativePath = input<string>('');
+  modelKind = input<'normal' | 'eks'>('normal');
   done = output<void>();
 
   @ViewChild('dlg', { static: true })
@@ -109,7 +110,10 @@ export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
 
     this.inferenceRunning.set(true);
     this.inference.set({ status: 'running', progress: 0 });
-    const sub = this.sessionService.inferModelSse(modelRel, videos).subscribe({
+    const inferSse = this.modelKind() === 'eks'
+      ? this.sessionService.inferEksModelSse(modelRel, videos)
+      : this.sessionService.inferModelSse(modelRel, videos);
+    const sub = inferSse.subscribe({
       next: (st) => {
         const total = st.total ?? 0;
         const completed = st.completed ?? 0;

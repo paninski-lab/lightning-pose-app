@@ -52,6 +52,11 @@ export class ModelDetailComponent implements OnChanges, OnDestroy {
       return;
     }
 
+    // EKS models have no training logs — skip log polling
+    if (this.selectedModel()?.model_kind === 'eks') {
+      return;
+    }
+
     // Create new abort controller for this model
     this.currentController = new AbortController();
 
