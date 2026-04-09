@@ -17,41 +17,19 @@ logger = logging.getLogger(__name__)
 
 def needs_migration(paths: ProjectPaths) -> bool:
     project_yaml_path = paths.data_dir / "project.yaml"
-    if not project_yaml_path.exists():
-        return True
-    try:
-        with open(project_yaml_path, "r") as f:
-            data = yaml.safe_load(f)
-            # If it exists but is missing required fields, it needs migration (autocreation logic from deps.py)
-            return not (
-                isinstance(data, dict)
-                and "view_names" in data
-                and "keypoint_names" in data
-            )
-    except Exception:
-        return True
+    return not project_yaml_path.exists()
 
 
 def migrate(paths: ProjectPaths) -> None:
     """
-    Tries to create project.yaml from other YAML files in the base_dir if it's missing or invalid.
+    Tries to create project.yaml from other YAML files in the base_dir if it's missing.
     """
     base_dir = paths.data_dir
     project_yaml_file_path = base_dir / "project.yaml"
 
-    # If it already exists and is valid, skip (double-check needs_migration)
+    # If it already exists, skip
     if project_yaml_file_path.exists():
-        try:
-            with open(project_yaml_file_path, "r") as f:
-                data = yaml.safe_load(f)
-                if (
-                    isinstance(data, dict)
-                    and "view_names" in data
-                    and "keypoint_names" in data
-                ):
-                    return
-        except Exception:
-            pass
+        return
 
     yaml_files = base_dir.rglob("**/*.yaml")
     yaml_data = None
