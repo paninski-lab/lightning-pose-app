@@ -147,7 +147,6 @@ export class ProjectInfoService {
     return ctx.key;
   }
 
-  // New explicit APIs
   async updateProjectConfig(payload: {
     projectKey: string;
     projectInfo: Partial<ProjectInfo>;
@@ -161,6 +160,7 @@ export class ProjectInfoService {
       projectKey: payload.projectKey,
       projectInfo: cleaned,
     });
+    await this.fetchProjects();
   }
 
   async createNewProject(payload: {
@@ -181,18 +181,34 @@ export class ProjectInfoService {
     await this.fetchProjects();
   }
 
+  async updateProjectPaths(
+    data_dir: string,
+    model_dir?: string | null,
+    projectKey?: string,
+  ) {
+    await this.rpc.call('UpdateProjectPaths', {
+      projectKey: projectKey ?? this.getProjectKeyOrThrow(),
+      data_dir,
+      model_dir,
+    });
+    await this.fetchProjects();
+  }
+
+  async registerExistingProject(payload: {
+    projectKey: string;
+    data_dir: string;
+    model_dir?: string | null;
+  }): Promise<void> {
+    await this.rpc.call('RegisterExistingProject', payload);
+    await this.fetchProjects();
+  }
+
   async deleteProject(projectKey: string, removeFiles: boolean) {
     await this.rpc.call('deleteProject', {
       projectKey,
       removeFiles,
     });
     await this.fetchProjects();
-  }
-
-  // Backward-compat shim used by existing UI code: delegates to UpdateProjectConfig
-  async setProjectInfo(projectInfo: Partial<ProjectInfo>) {
-    const projectKey = this.getProjectKeyOrThrow();
-    await this.updateProjectConfig({ projectKey, projectInfo });
   }
 
   // Modern model catalogs

@@ -15,19 +15,64 @@
       </div>
     } @else if (projectInfo.projects()?.length === 0) {
       <p role="status">No projects found.</p>
-      <a
-        [routerLink]="['/']"
-        [queryParams]="{ createProject: true }"
-        class="btn btn-primary mt-4"
-        >New Project</a
-      >
+      <app-dropdown #newProjectDropdownNoProjects>
+        <app-dropdown-trigger>
+          <button appDropdownTrigger class="btn btn-primary mt-4">
+            New Project
+            <span class="material-icons">arrow_drop_down</span>
+          </button>
+        </app-dropdown-trigger>
+        <app-dropdown-content>
+          <ul class="menu p-2 w-56">
+            <li>
+              <a [routerLink]="['/']" [queryParams]="{ createProject: true }">
+                <span class="material-icons">add</span>
+                From Scratch
+              </a>
+            </li>
+            <li>
+              <a
+                (click)="
+                  showAddExistingDialog.set(true);
+                  newProjectDropdownNoProjects.close()
+                "
+              >
+                <span class="material-icons">folder_open</span>
+                Add Existing
+              </a>
+            </li>
+          </ul>
+        </app-dropdown-content>
+      </app-dropdown>
     } @else {
-      <a
-        [routerLink]="['/']"
-        [queryParams]="{ createProject: true }"
-        class="btn btn-primary mb-4"
-        >New Project</a
-      >
+      <app-dropdown #newProjectDropdown>
+        <app-dropdown-trigger>
+          <button appDropdownTrigger class="btn btn-primary mb-4">
+            New Project
+            <span class="material-icons">arrow_drop_down</span>
+          </button>
+        </app-dropdown-trigger>
+        <app-dropdown-content>
+          <ul class="menu p-2 w-56">
+            <li>
+              <a [routerLink]="['/']" [queryParams]="{ createProject: true }">
+                <span class="material-icons">add</span>
+                From Scratch
+              </a>
+            </li>
+            <li>
+              <a
+                (click)="
+                  showAddExistingDialog.set(true); newProjectDropdown.close()
+                "
+              >
+                <span class="material-icons">folder_open</span>
+                Add Existing
+              </a>
+            </li>
+          </ul>
+        </app-dropdown-content>
+      </app-dropdown>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
         @for (p of projectInfo.projects(); track p.data_dir) {
           <div
@@ -50,7 +95,13 @@
                 </button>
               </app-dropdown-trigger>
               <app-dropdown-content>
-                <ul class="menu p-2 w-36">
+                <ul class="menu p-2 w-48">
+                  <li>
+                    <a (click)="projectToUpdatePaths.set(p); dropdown.close()">
+                      <span class="material-icons text-sm">edit</span>
+                      Update Paths
+                    </a>
+                  </li>
                   <li>
                     <a
                       class="text-error"
@@ -216,6 +267,15 @@
   </section>
 </div>
 
+@if (projectToUpdatePaths(); as p) {
+  <app-update-project-paths-dialog
+    [projectKey]="p.project_key"
+    [initialDataDir]="p.data_dir"
+    [initialModelDir]="p.model_dir"
+    (done)="projectToUpdatePaths.set(null)"
+  />
+}
+
 @if (projectToDelete(); as p) {
   <app-project-delete-dialog
     [projectKey]="p.project_key"
@@ -223,4 +283,8 @@
     [modelDir]="p.model_dir ?? undefined"
     (done)="projectToDelete.set(null)"
   />
+}
+
+@if (showAddExistingDialog()) {
+  <app-add-existing-project-dialog (done)="showAddExistingDialog.set(false)" />
 }

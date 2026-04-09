@@ -35,7 +35,7 @@ def test_get_project_info(register_project, client: TestClient):
     }
 
 
-def test_add_existing_project_adds_to_projects_toml(
+def test_update_project_paths_adds_to_projects_toml(
     client: TestClient, override_config, tmp_path
 ):
     # data dir exists and has project.yaml, but is NOT in projects.toml
@@ -50,7 +50,7 @@ def test_add_existing_project_adds_to_projects_toml(
         "data_dir": str(data_dir),
     }
 
-    resp = client.post("/app/v0/rpc/UpdateProjectsTomlEntry", json=payload)
+    resp = client.post("/app/v0/rpc/UpdateProjectPaths", json=payload)
     assert resp.status_code == 200
     assert resp.json() is None
 
@@ -58,6 +58,64 @@ def test_add_existing_project_adds_to_projects_toml(
     with open(override_config.PROJECTS_TOML_PATH, "r") as f:
         data = toml.load(f)
         assert data == {"demo-project": {"data_dir": str(data_dir)}}
+
+
+def test_register_existing_project_adds_to_projects_toml(
+    client: TestClient, override_config, tmp_path
+):
+    # data dir exists and has project.yaml, but is NOT in projects.toml
+    data_dir = tmp_path / "sometestpath"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    with open(data_dir / "project.yaml", "w") as f:
+        yaml.safe_dump({"view_names": ["camA"]}, f)
+
+    # send a request to add existing project paths to projects.toml
+    payload = {
+        "projectKey": "demo-project",
+        "data_dir": str(data_dir),
+    }
+
+    resp = client.post("/app/v0/rpc/RegisterExistingProject", json=payload)
+    assert resp.status_code == 200
+    assert resp.json() is None
+
+    # Verify the TOML file contents updated
+    with open(override_config.PROJECTS_TOML_PATH, "r") as f:
+        data = toml.load(f)
+        assert data == {"demo-project": {"data_dir": str(data_dir)}}
+
+
+def test_register_existing_project_with_model_dir_adds_to_projects_toml(
+    client: TestClient, override_config, tmp_path
+):
+    # data dir and model dir exist, and has project.yaml, but is NOT in projects.toml
+    data_dir = tmp_path / "sometestpath_data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    model_dir = tmp_path / "sometestpath_models"
+    model_dir.mkdir(parents=True, exist_ok=True)
+    with open(data_dir / "project.yaml", "w") as f:
+        yaml.safe_dump({"view_names": ["camA"]}, f)
+
+    # send a request to add existing project paths to projects.toml
+    payload = {
+        "projectKey": "demo-project-with-model",
+        "data_dir": str(data_dir),
+        "model_dir": str(model_dir),
+    }
+
+    resp = client.post("/app/v0/rpc/RegisterExistingProject", json=payload)
+    assert resp.status_code == 200
+    assert resp.json() is None
+
+    # Verify the TOML file contents updated
+    with open(override_config.PROJECTS_TOML_PATH, "r") as f:
+        data = toml.load(f)
+        assert data == {
+            "demo-project-with-model": {
+                "data_dir": str(data_dir),
+                "model_dir": str(model_dir),
+            }
+        }
 
 
 def test_update_project_config_patches_yaml(

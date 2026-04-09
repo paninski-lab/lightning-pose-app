@@ -8,12 +8,14 @@ from litpose_app.rootconfig import RootConfig
 
 from . import unlabeled_to_jsonl_001
 from . import backfill_creation_datetime_002
+from . import ensure_project_yaml_003
 
 logger = logging.getLogger(__name__)
 
 MIGRATIONS = [
     unlabeled_to_jsonl_001,
     backfill_creation_datetime_002,
+    ensure_project_yaml_003,
 ]
 
 

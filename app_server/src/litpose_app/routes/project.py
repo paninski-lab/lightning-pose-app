@@ -20,6 +20,7 @@ from litpose_app.routes.rglob import _rglob
 from litpose_app.routes.labeler.find_label_files import _check_label_file_headers
 from litpose_app.routes.models import read_models_l1_from_base
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
+from litpose_app.migrations import run_migrations_for_project
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,7 @@ class GetProjectInfoResponse(BaseModel):
     projectInfo: ProjectInfo | None  # None if project info not yet initialized
 
 
-class AddExistingProjectRequest(BaseModel):
+class UpdateProjectPathsRequest(BaseModel):
     projectKey: str
     data_dir: Path
     model_dir: Path | None = None
@@ -90,6 +91,12 @@ class CreateNewProjectRequest(BaseModel):
     model_dir: Path | None = None
     # Additional configuration to write into project.yaml (now required)
     projectInfo: ProjectInfo
+
+
+class RegisterExistingProjectRequest(BaseModel):
+    projectKey: str
+    data_dir: Path
+    model_dir: Path | None = None
 
 
 class DeleteProjectRequest(BaseModel):
@@ -340,15 +347,33 @@ def get_project_info(
     return GetProjectInfoResponse(projectInfo=project_info)
 
 
-@router.post("/app/v0/rpc/UpdateProjectsTomlEntry")
-def add_existing_project(
-    request: AddExistingProjectRequest,
+@router.post("/app/v0/rpc/UpdateProjectPaths")
+def update_project_paths_rpc(
+    request: UpdateProjectPathsRequest,
     project_util: ProjectUtil = Depends(deps.project_util),
 ) -> None:
     pp_dict = {"data_dir": request.data_dir}
     if request.model_dir is not None:
         pp_dict["model_dir"] = request.model_dir
     pp = ProjectPaths.model_validate(pp_dict)
+    run_migrations_for_project(pp)
+    project_util.update_project_paths(project_key=request.projectKey, projectpaths=pp)
+    return None
+
+
+@router.post("/app/v0/rpc/RegisterExistingProject")
+def register_existing_project(
+    request: RegisterExistingProjectRequest,
+    project_util: ProjectUtil = Depends(deps.project_util),
+) -> None:
+    """
+    Registers an existing project directory into projects.toml.
+    """
+    pp_dict = {"data_dir": request.data_dir}
+    if request.model_dir is not None:
+        pp_dict["model_dir"] = request.model_dir
+    pp = ProjectPaths.model_validate(pp_dict)
+    run_migrations_for_project(pp)
     project_util.update_project_paths(project_key=request.projectKey, projectpaths=pp)
     return None
 

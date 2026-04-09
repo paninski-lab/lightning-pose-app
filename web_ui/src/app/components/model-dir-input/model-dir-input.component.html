@@ -1,0 +1,27 @@
+<fieldset class="fieldset">
+  <h3 class="text-md">Model directory</h3>
+
+  <div class="flex gap-2">
+    <input
+      type="checkbox"
+      class="checkbox"
+      [ngModel]="useDefaultModelDir()"
+      (ngModelChange)="onCheckboxChange($event)"
+      [disabled]="isDisabled()"
+    />
+    <span class="m-0!"> Use the default model directory </span>
+  </div>
+
+  <div class="input w-full">
+    <span class="material-icons !text-sm opacity-50">folder</span>
+    <input
+      type="text"
+      class="grow"
+      placeholder="/"
+      spellcheck="false"
+      [ngModel]="modelDir()"
+      (ngModelChange)="onInputChange($event)"
+      [disabled]="isDisabled() || useDefaultModelDir()"
+    />
+  </div>
+</fieldset>
