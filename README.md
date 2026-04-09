@@ -17,6 +17,12 @@ Our full documentation, including installation guides, API references, and advan
 
 ## 📝 Release Notes
 
+### [2.0.8.3] — 2026-04-08
+
+* Add viewer warning if video framerate or duration is inconsistent across views
+* Fix 2.0.8.2 fps calculation
+* Fix message in create model dialog about base 
+
 ### [2.0.8.2] — 2026-04-08
 
 * Add ffprobe debug info to each video tile in the viewer.

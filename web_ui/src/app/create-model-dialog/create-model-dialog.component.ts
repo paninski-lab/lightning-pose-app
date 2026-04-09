@@ -220,6 +220,17 @@ class CreateModelDialogComponent {
   ];
 
   constructor() {
+    const setBaseConfigToDefault = () => {
+      if (this.isMultiviewProject()) {
+        this.baseConfigPath.set(
+          'https://github.com/paninski-lab/lightning-pose-app/blob/main/app_server/src/litpose_app/config_default_multiview.yaml',
+        );
+      } else {
+        this.baseConfigPath.set(
+          'https://github.com/paninski-lab/lightning-pose-app/blob/main/app_server/src/litpose_app/config_default.yaml',
+        );
+      }
+    };
     this.sessionService
       .getYamlFile('configs/default.yaml')
       .then((baseConfig) => {
@@ -229,26 +240,11 @@ class CreateModelDialogComponent {
               '/configs/default.yaml',
           );
         } else {
-          if (this.isMultiviewProject()) {
-            this.baseConfigPath.set(
-              'https://github.com/paninski-lab/lightning-pose-app/blob/main/app_server/src/litpose_app/config_default_multiview.yaml',
-            );
-          } else {
-            this.baseConfigPath.set(
-              'https://github.com/paninski-lab/lightning-pose-app/blob/main/app_server/src/litpose_app/config_default.yaml',
-            );
-          }
+          setBaseConfigToDefault();
         }
       })
       .catch(() => {
-        // Fallback in case of error
-        if (this.isMultiviewProject()) {
-          this.baseConfigPath.set(
-            'LP / configs / config_default_multiview.yaml',
-          );
-        } else {
-          this.baseConfigPath.set('LP / configs / config_default.yaml');
-        }
+        setBaseConfigToDefault();
       });
 
     effect(() => {
