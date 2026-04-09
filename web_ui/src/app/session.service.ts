@@ -648,18 +648,6 @@ export class SessionService {
     });
   }
 
-  updateProjectPaths(
-    data_dir: string,
-    model_dir?: string | null,
-    projectKey?: string,
-  ) {
-    return this.rpc.call('UpdateProjectPaths', {
-      projectKey: projectKey ?? this.getProjectKeyOrThrow(),
-      data_dir,
-      model_dir,
-    });
-  }
-
   renameModel(modelRelativePath: string, newModelName: string) {
     return this.rpc.call('renameModel', {
       projectKey: this.getProjectKeyOrThrow(),
