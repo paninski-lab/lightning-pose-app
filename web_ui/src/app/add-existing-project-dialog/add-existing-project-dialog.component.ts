@@ -59,6 +59,23 @@ export class AddExistingProjectDialogComponent implements OnInit {
     this.done.emit(false);
   }
 
+  protected onDataDirBlur() {
+    if (!this.form) return;
+
+    const dataDir = this.form.get('dataDir')?.value;
+    const projectKeyControl = this.form.get('projectKey');
+
+    if (dataDir && projectKeyControl && !projectKeyControl.value) {
+      const fragments = dataDir
+        .split(/[/\\]/)
+        .filter((f: string) => f.length > 0);
+      if (fragments.length > 0) {
+        const lastFragment = fragments[fragments.length - 1];
+        projectKeyControl.setValue(lastFragment);
+      }
+    }
+  }
+
   protected async handleSave() {
     if (!this.form || this.form.invalid) {
       this.form?.markAllAsTouched();

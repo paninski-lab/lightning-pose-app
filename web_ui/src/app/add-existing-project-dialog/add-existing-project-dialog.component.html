@@ -9,6 +9,7 @@
           <div class="input w-full">
             <span class="material-icons !text-sm opacity-50">folder</span>
             <input
+              (blur)="onDataDirBlur()"
               formControlName="dataDir"
               type="text"
               class="grow"
