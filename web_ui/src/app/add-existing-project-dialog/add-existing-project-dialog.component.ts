@@ -5,6 +5,7 @@ import {
   OnInit,
   output,
 } from '@angular/core';
+import { Router } from '@angular/router';
 import {
   FormBuilder,
   FormGroup,
@@ -39,6 +40,7 @@ export class AddExistingProjectDialogComponent implements OnInit {
   private fb = inject(FormBuilder);
   private projectInfoService = inject(ProjectInfoService);
   private toastService = inject(ToastService);
+  private router = inject(Router);
 
   protected form?: FormGroup;
 
@@ -97,6 +99,7 @@ export class AddExistingProjectDialogComponent implements OnInit {
         content: 'Successfully added existing project',
         variant: 'success',
       });
+      await this.router.navigate(['/project', projectKey]);
       this.done.emit(true);
     } catch (error) {
       console.error('Failed to add existing project', error);

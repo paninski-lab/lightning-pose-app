@@ -53,18 +53,13 @@ export class ModelDirInputComponent implements ControlValueAccessor {
 
   constructor() {
     // Effect to auto-update modelDir when useDefault is true and dataDir changes
-    effect(
-      () => {
-        if (this.useDefaultModelDir()) {
-          const defaultDir = this.defaultModelDir();
-          if (this.modelDir() !== defaultDir) {
-            this.modelDir.set(defaultDir);
-            this.notify();
-          }
-        }
-      },
-      { allowSignalWrites: true },
-    );
+    effect(() => {
+      const defaultDir = this.defaultModelDir();
+      if (this.useDefaultModelDir()) {
+        this.modelDir.set(defaultDir);
+        this.notify();
+      }
+    });
   }
 
   // --- ControlValueAccessor Implementation ---
