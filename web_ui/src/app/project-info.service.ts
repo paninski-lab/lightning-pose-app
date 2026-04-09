@@ -161,6 +161,7 @@ export class ProjectInfoService {
       projectKey: payload.projectKey,
       projectInfo: cleaned,
     });
+    await this.fetchProjects();
   }
 
   async createNewProject(payload: {

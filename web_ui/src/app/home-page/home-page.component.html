@@ -50,7 +50,13 @@
                 </button>
               </app-dropdown-trigger>
               <app-dropdown-content>
-                <ul class="menu p-2 w-36">
+                <ul class="menu p-2 w-48">
+                  <li>
+                    <a (click)="projectToUpdatePaths.set(p); dropdown.close()">
+                      <span class="material-icons text-sm">edit</span>
+                      Update Paths
+                    </a>
+                  </li>
                   <li>
                     <a
                       class="text-error"
@@ -215,6 +221,15 @@
     }
   </section>
 </div>
+
+@if (projectToUpdatePaths(); as p) {
+  <app-update-project-paths-dialog
+    [projectKey]="p.project_key"
+    [initialDataDir]="p.data_dir"
+    [initialModelDir]="p.model_dir"
+    (done)="projectToUpdatePaths.set(null)"
+  />
+}
 
 @if (projectToDelete(); as p) {
   <app-project-delete-dialog

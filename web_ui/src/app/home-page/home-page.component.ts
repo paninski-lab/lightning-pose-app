@@ -8,6 +8,7 @@ import {
 import { RouterLink } from '@angular/router';
 import { ListProjectItem, ProjectInfoService } from '../project-info.service';
 import { ProjectDeleteDialogComponent } from './project-delete-dialog/project-delete-dialog.component';
+import { UpdateProjectPathsDialogComponent } from '../update-project-paths-dialog/update-project-paths-dialog.component';
 import {
   DropdownComponent,
   DropdownContentComponent,
@@ -22,6 +23,7 @@ import { PathDisplayComponent } from '../components/path-display/path-display.co
   imports: [
     RouterLink,
     ProjectDeleteDialogComponent,
+    UpdateProjectPathsDialogComponent,
     DropdownComponent,
     DropdownTriggerDirective,
     DropdownTriggerComponent,
@@ -35,6 +37,7 @@ import { PathDisplayComponent } from '../components/path-display/path-display.co
 export class HomePageComponent implements OnInit {
   protected projectInfo = inject(ProjectInfoService);
   protected projectToDelete = signal<ListProjectItem | null>(null);
+  protected projectToUpdatePaths = signal<ListProjectItem | null>(null);
 
   protected alert(message: string) {
     alert(message);

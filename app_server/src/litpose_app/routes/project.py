@@ -71,7 +71,7 @@ class GetProjectInfoResponse(BaseModel):
     projectInfo: ProjectInfo | None  # None if project info not yet initialized
 
 
-class AddExistingProjectRequest(BaseModel):
+class UpdateProjectPathsRequest(BaseModel):
     projectKey: str
     data_dir: Path
     model_dir: Path | None = None
@@ -90,6 +90,12 @@ class CreateNewProjectRequest(BaseModel):
     model_dir: Path | None = None
     # Additional configuration to write into project.yaml (now required)
     projectInfo: ProjectInfo
+
+
+class RegisterExistingProjectRequest(BaseModel):
+    projectKey: str
+    data_dir: Path
+    model_dir: Path | None = None
 
 
 class DeleteProjectRequest(BaseModel):
@@ -340,11 +346,30 @@ def get_project_info(
     return GetProjectInfoResponse(projectInfo=project_info)
 
 
-@router.post("/app/v0/rpc/UpdateProjectsTomlEntry")
-def add_existing_project(
-    request: AddExistingProjectRequest,
+@router.post("/app/v0/rpc/UpdateProjectPaths")
+def update_project_paths_rpc(
+    request: UpdateProjectPathsRequest,
     project_util: ProjectUtil = Depends(deps.project_util),
 ) -> None:
+    # Placeholder for where we will check for project.yaml and run migrations on it.
+    pp_dict = {"data_dir": request.data_dir}
+    if request.model_dir is not None:
+        pp_dict["model_dir"] = request.model_dir
+    pp = ProjectPaths.model_validate(pp_dict)
+    project_util.update_project_paths(project_key=request.projectKey, projectpaths=pp)
+    return None
+
+
+@router.post("/app/v0/rpc/RegisterExistingProject")
+def register_existing_project(
+    request: RegisterExistingProjectRequest,
+    project_util: ProjectUtil = Depends(deps.project_util),
+) -> None:
+    """
+    Registers an existing project directory into projects.toml.
+    """
+    # Placeholder for where we will check for project.yaml and run migrations on it.
+
     pp_dict = {"data_dir": request.data_dir}
     if request.model_dir is not None:
         pp_dict["model_dir"] = request.model_dir
