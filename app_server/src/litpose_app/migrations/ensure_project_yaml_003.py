@@ -10,7 +10,7 @@ import yaml
 from litpose_app.datatypes import ProjectPaths
 
 MIGRATION_ID = "003_ensure_project_yaml"
-DESCRIPTION = "Ensure project.yaml exists and contains view_names and keypoint_names."
+DESCRIPTION = "Backfill project.yaml from other config yaml files if it's missing."
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +35,8 @@ def migrate(paths: ProjectPaths) -> None:
     yaml_data = None
 
     for yf in yaml_files:
-        # Don't use the file we're trying to create if it exists but is invalid
         if yf.resolve() == project_yaml_file_path.resolve():
-            continue
+            break
 
         try:
             with open(yf, "r") as f:
@@ -53,8 +52,14 @@ def migrate(paths: ProjectPaths) -> None:
                 ):
                     # Found a suitable template
                     yaml_data = {
-                        "view_names": data_part["view_names"],
-                        "keypoint_names": data_part["keypoint_names"],
+                        "view_names": (
+                            data_part["view_names"] if data_part["view_names"] else []
+                        ),
+                        "keypoint_names": (
+                            data_part["keypoint_names"]
+                            if data_part["keypoint_names"]
+                            else []
+                        ),
                         "schema_version": 1,
                     }
                     # Create the project.yaml file
@@ -64,9 +69,16 @@ def migrate(paths: ProjectPaths) -> None:
                         f"Created {project_yaml_file_path} using template from {yf}"
                     )
                     break
+        except yaml.YAMLError as e:
+            logger.warning(
+                "Error parsing YAML from %s:\n%s",
+                yf,
+                e,
+            )
+            continue
         except Exception as e:
             logger.warning(
-                "Exception during project.yaml autocreation from %s:\n%s",
+                "Error reading file %s:\n%s",
                 yf,
                 e,
             )

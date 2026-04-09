@@ -104,3 +104,30 @@ def test_migrate_ignores_partially_invalid_data_key(tmp_path):
     
     migrate(paths)
     assert not (tmp_path / "project.yaml").exists()
+
+def test_migrate_logs_parsing_error(tmp_path, caplog):
+    paths = ProjectPaths(data_dir=tmp_path)
+    
+    # Malformed YAML
+    bad_yaml = tmp_path / "malformed.yaml"
+    bad_yaml.write_text("invalid: yaml: : content")
+    
+    migrate(paths)
+    
+    assert "Error parsing YAML from" in caplog.text
+    assert "malformed.yaml" in caplog.text
+
+def test_migrate_logs_read_error(tmp_path, caplog):
+    paths = ProjectPaths(data_dir=tmp_path)
+    
+    # File we can't read
+    unreadable = tmp_path / "unreadable.yaml"
+    unreadable.touch()
+    unreadable.chmod(0) # Remove all permissions
+    
+    try:
+        migrate(paths)
+        assert "Error reading file" in caplog.text
+        assert "unreadable.yaml" in caplog.text
+    finally:
+        unreadable.chmod(0o600) # Restore for cleanup
