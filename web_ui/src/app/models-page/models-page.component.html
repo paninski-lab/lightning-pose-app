@@ -32,6 +32,7 @@
                   <div class="text-xs opacity-60">Train a new pose estimation model</div>
                 </div>
               </li>
+              @if (projectInfo.projectInfo?.views?.length) {
               <li class="list-row cursor-pointer hover:bg-base-200 rounded-box" (click)="isCreateEksModelDialogOpen.set(true); createDropdown.close()">
                 <div class="flex items-center justify-center text-primary">
                   <span class="material-icons">hub</span>
@@ -41,6 +42,7 @@
                   <div class="text-xs opacity-60">EKS ensemble from models below</div>
                 </div>
               </li>
+              }
             </ul>
           </app-dropdown-content>
         </app-dropdown>
