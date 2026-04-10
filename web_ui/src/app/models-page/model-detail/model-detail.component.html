@@ -1,4 +1,4 @@
-@if (selectedModel()?.model_kind === 'eks') {
+@if (selectedModel()?.model_kind === "eks") {
   <div role="tablist" class="tabs tabs-lift">
     <a
       role="tab"
@@ -15,7 +15,8 @@
       <div class="prose">
         <h4 class="mt-0">EKS Ensemble Model</h4>
         <p class="text-sm text-base-content/70 mb-4">
-          This model runs Ensemble Kalman Smoothing over the member models below.
+          This model runs Ensemble Kalman Smoothing over the member models
+          below.
         </p>
         <h5 class="mb-1">Member models</h5>
         <ul class="mt-0">
@@ -34,10 +35,10 @@
               <td class="font-medium">Quantile keep PCA</td>
               <td>{{ ec.quantile_keep_pca }}%</td>
             </tr>
-            @if (ec.view_names?.length) {
+            @if (ec.view_names.length) {
               <tr>
                 <td class="font-medium">View names</td>
-                <td>{{ ec.view_names.join(', ') }}</td>
+                <td>{{ ec.view_names.join(", ") }}</td>
               </tr>
             }
           </tbody>
@@ -72,7 +73,9 @@
         every 1.5 seconds.
       </p>
       @for (logEntry of logs(); track logEntry.filename) {
-        <div class="collapse collapse-open collapse-arrow bg-base-100 border border-base-300">
+        <div
+          class="collapse collapse-open collapse-arrow bg-base-100 border border-base-300"
+        >
           <input
             type="checkbox"
             (change)="scrollHandle.scrollTop = scrollHandle.scrollHeight"

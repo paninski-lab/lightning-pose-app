@@ -11,8 +11,11 @@ Usage:
 
 Input files must be ordered: for each member model, one file per camera,
 with cameras in the same order as --camera_names.
+Each input file must follow the naming convention {session}_{view}.csv
+(e.g., "session_Cam-A.csv").
 """
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -49,6 +52,18 @@ def main():
         verbose=True,
     )
 
+    # Extract session name from first input file (assumes pattern "{session}_{view}.csv")
+    first_input = Path(args.input_files[0])
+    session_name = first_input.stem.rsplit("_", 1)[0]
+
+    # NOTE: EKS outputs files with the "multicam_{view}_results.csv" naming structure by default.
+    # This script works around that by renaming them to "{session}_{view}.csv".
+    # If EKS changes its output naming convention, this renaming logic would break.
+    for view in args.camera_names:
+        old_name = save_dir / f"multicam_{view}_results.csv"
+        new_name = save_dir / f"{session_name}_{view}.csv"
+        if old_name.exists():
+            os.rename(old_name, new_name)
     print("EKS complete.", flush=True)
 
 
