@@ -22,20 +22,24 @@
             </button>
           </app-dropdown-trigger>
           <app-dropdown-content>
-            <ul class="menu p-2 w-52" tabindex="0">
-              <li>
-                <button
-                  (click)="isCreateModelDialogOpen.set(true); createDropdown.close()"
-                >
-                  Training model
-                </button>
+            <ul class="list bg-base-100 rounded-box w-72" tabindex="0">
+              <li class="list-row cursor-pointer hover:bg-base-200 rounded-box" (click)="isCreateModelDialogOpen.set(true); createDropdown.close()">
+                <div class="flex items-center justify-center text-primary">
+                  <span class="material-icons">model_training</span>
+                </div>
+                <div>
+                  <div>Regular model</div>
+                  <div class="text-xs opacity-60">Train a new pose estimation model</div>
+                </div>
               </li>
-              <li>
-                <button
-                  (click)="isCreateEksModelDialogOpen.set(true); createDropdown.close()"
-                >
-                  EKS ensemble model
-                </button>
+              <li class="list-row cursor-pointer hover:bg-base-200 rounded-box" (click)="isCreateEksModelDialogOpen.set(true); createDropdown.close()">
+                <div class="flex items-center justify-center text-primary">
+                  <span class="material-icons">hub</span>
+                </div>
+                <div>
+                  <div>EKS ensemble model</div>
+                  <div class="text-xs opacity-60">EKS ensemble from models below</div>
+                </div>
               </li>
             </ul>
           </app-dropdown-content>
