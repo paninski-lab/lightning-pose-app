@@ -89,8 +89,8 @@ def test_migrate_handles_bad_yaml(tmp_path, caplog):
 
 
 def test_migrate_nested_model_dir(tmp_path):
-    # 2 levels deep (grandchild): models/outputs/2024-01-01/config.yaml
-    nested = tmp_path / "models" / "outputs" / "2024-01-01"
+    # 2 levels deep (grandchild): models/2024-01-01/10-00-00/config.yaml
+    nested = tmp_path / "models" / "2024-01-01" / "10-00-00"
     nested.mkdir(parents=True)
     _write_config(nested / "config.yaml", "/old/data", video_dir="/old/data/vids")
     paths = ProjectPaths(data_dir=tmp_path)

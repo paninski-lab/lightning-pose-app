@@ -15,9 +15,27 @@ Each input file must follow the naming convention {session}_{view}.csv
 (e.g., "session_Cam-A.csv").
 """
 import argparse
+import multiprocessing
 import os
 import sys
 from pathlib import Path
+
+
+def _plot_one(args):
+    import matplotlib
+    matplotlib.use('Agg')
+    from eks.utils import plot_results
+    output_df, input_dfs_list, key, idxs, s_final, save_dir = args
+    plot_results(
+        output_df=output_df,
+        input_dfs_list=input_dfs_list,
+        key=key,
+        idxs=idxs,
+        s_final=s_final,
+        nll_values=None,
+        save_dir=save_dir,
+        smoother_type='multicam',
+    )
 
 
 def main():
@@ -27,6 +45,7 @@ def main():
     parser.add_argument("--smooth_param", type=float, default=1000.0)
     parser.add_argument("--quantile_keep_pca", type=float, default=50.0)
     parser.add_argument("--input_files", nargs="+", required=True, help="Prediction CSV files (member × camera order)")
+    parser.add_argument("--debug_plots", action="store_true", default=False, help="Save per-keypoint debug plots for all cameras")
     args = parser.parse_args()
 
     try:
@@ -41,7 +60,7 @@ def main():
     print(f"Running EKS on {len(args.input_files)} input files across {len(args.camera_names)} cameras", flush=True)
     print(f"Saving to: {save_dir}", flush=True)
 
-    fit_eks_multicam(
+    camera_dfs, s_finals, input_dfs, bodypart_list, _df_3d = fit_eks_multicam(
         input_source=args.input_files,
         save_dir=str(save_dir),
         camera_names=args.camera_names,
@@ -65,6 +84,27 @@ def main():
         if old_name.exists():
             os.rename(old_name, new_name)
     print("EKS complete.", flush=True)
+
+    # ── Debug plots for all keypoints, all cameras ───────────────────────────
+    if not args.debug_plots:
+        return
+
+    try:
+        plot_args = []
+        for camera_c, cam_label in enumerate(args.camera_names):
+            cam_save_dir = save_dir / "debug_plots" / session_name / cam_label
+            cam_save_dir.mkdir(parents=True, exist_ok=True)
+            idx_labels = input_dfs[camera_c][0].index
+            idxs = (idx_labels[0], idx_labels[min(499, len(idx_labels) - 1)])
+            for keypoint_i, kp_label in enumerate(bodypart_list):
+                s_final = s_finals[keypoint_i] if hasattr(s_finals, '__getitem__') else s_finals
+                plot_args.append((camera_dfs[camera_c], input_dfs[camera_c], kp_label, idxs, s_final, str(cam_save_dir)))
+
+        with multiprocessing.get_context('spawn').Pool(os.cpu_count()) as pool:
+            pool.map(_plot_one, plot_args)
+        print("Debug plots saved.", flush=True)
+    except Exception as e:
+        print(f"WARNING: debug plots failed: {e}", file=sys.stderr, flush=True)
 
 
 if __name__ == "__main__":
