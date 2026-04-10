@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   inject,
   input,
   OnChanges,
@@ -13,10 +14,11 @@ import { ProjectInfoService } from '../../project-info.service';
 import { ToastService } from '../../toast.service';
 import { HighlightDirective } from '../../highlight.directive';
 import { YamlPipe } from '../../utils/pipes';
+import { PathDisplayComponent } from '../../components/path-display/path-display.component';
 
 @Component({
   selector: 'app-model-detail',
-  imports: [HighlightDirective, YamlPipe],
+  imports: [HighlightDirective, YamlPipe, PathDisplayComponent],
   templateUrl: './model-detail.component.html',
   styleUrl: './model-detail.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -111,6 +113,13 @@ export class ModelDetailComponent implements OnChanges, OnDestroy {
       this.reloadLog(log);
     }
   }
+
+  protected modelFilePath = computed(() => {
+    const modelDir = this.projectInfoService.projectInfo.model_dir;
+    const relPath = this.selectedModel()?.model_relative_path ?? '';
+    const filename = this.selectedModel()?.model_kind === 'eks' ? 'ensemble.yaml' : 'config.yaml';
+    return `${modelDir}/${relPath}/${filename}`;
+  });
 
   private getLogBasePath() {
     const basePath =

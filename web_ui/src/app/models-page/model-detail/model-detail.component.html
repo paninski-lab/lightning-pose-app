@@ -12,6 +12,9 @@
   <div class="p-4">
     @let ec = selectedModel()?.ensemble_config;
     @if (ec) {
+      <div class="mb-4">
+        <app-path-display label="ensemble.yaml" [path]="modelFilePath()" />
+      </div>
       <div class="prose">
         <h4 class="mt-0">EKS Ensemble Model</h4>
         <p class="text-sm text-base-content/70 mb-4">
@@ -66,6 +69,11 @@
   </div>
   <div class="p-4">
     @if (activeTab() === "general") {
+      @if (selectedModel()) {
+        <div class="mb-4">
+          <app-path-display label="config.yaml" [path]="modelFilePath()" />
+        </div>
+      }
       <pre><code [appHighlight]="selectedModel() | yaml" [language]="'yaml'"></code></pre>
     } @else if (activeTab() === "logs") {
       <p class="p-2 text-sm text-base-content/60">
