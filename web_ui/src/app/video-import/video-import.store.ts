@@ -177,7 +177,7 @@ export class VideoImportStore {
   // Internals ----------------------------------------------------------------
   private toItem(file: File): ParsedItem {
     const { baseName, ext } = splitExtension(file.name);
-    const allowedChars = /^[a-zA-Z0-9-_]+$/;
+    const allowedChars = /^[a-zA-Z0-9\-_.]+$/;
 
     let error: string | null = null;
     let sessionKey: string | null = null;

@@ -58,7 +58,9 @@ class CreateTrainTaskResponse(BaseModel):
 class ModelListResponseEntry(BaseModel):
     model_name: str
     model_relative_path: str
+    model_kind: Literal['normal', 'eks'] = 'normal'
     config: dict | None
+    ensemble_config: dict | None = None
     status: TrainStatus | None = None
 
 
@@ -140,12 +142,12 @@ def list_models(
     model_dir = Path(project.paths.model_dir)
     models = read_models_l1_from_base(model_dir, model_dir)
     for m in models:
-        if m.config is None:
+        if m.config is None and m.model_kind != 'eks':
             models.extend(
                 read_models_l1_from_base(model_dir, model_dir / m.model_relative_path)
             )
 
-    models = [m for m in models if m.config is not None]
+    models = [m for m in models if m.config is not None or m.model_kind == 'eks']
 
     return ListModelsResponse(models=models)
 
@@ -157,12 +159,22 @@ def read_models_l1_from_base(
         return []
 
     def read_model_config(child_path: Path) -> ModelListResponseEntry:
+        ensemble_path = child_path / "ensemble.yaml"
         config_path = child_path / "config.yaml"
         status_path = child_path / "train_status.json"
         config = None
+        ensemble_config = None
+        model_kind: Literal['normal', 'eks'] = 'normal'
         status = None
 
-        if config_path.is_file():
+        if ensemble_path.is_file():
+            model_kind = 'eks'
+            try:
+                content = ensemble_path.read_text()
+                ensemble_config = yaml.safe_load(content)
+            except Exception:
+                logger.exception("Failed to read ensemble.yaml for %s", child_path)
+        elif config_path.is_file():
             try:
                 content = config_path.read_text()
                 config = yaml.safe_load(content)
@@ -180,7 +192,9 @@ def read_models_l1_from_base(
         return ModelListResponseEntry(
             model_name=child_path.name,
             model_relative_path=str(child_path.relative_to(model_dir)),
+            model_kind=model_kind,
             config=config,
+            ensemble_config=ensemble_config,
             status=status,
         )
 
@@ -203,6 +217,64 @@ def delete_model(
     )
 
     shutil.rmtree(model_dir)
+
+
+class EnsembleMember(BaseModel):
+    id: str
+
+
+class CreateEksModelRequest(BaseModel):
+    projectKey: str
+    modelName: str = Field(..., min_length=1)
+    members: list[EnsembleMember]
+    view_names: list[str]
+    smooth_param: float = 1000.0
+    quantile_keep_pca: float = 50.0
+
+
+class CreateEksModelResponse(BaseModel):
+    ok: bool
+
+
+@router.post("/app/v0/rpc/createEksModel")
+def create_eks_model(
+    request: CreateEksModelRequest,
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+) -> CreateEksModelResponse:
+    project: Project = project_info_getter(request.projectKey)
+    if project.paths.model_dir is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Project model_dir is not configured.",
+        )
+
+    model_dir = Path(project.paths.model_dir / request.modelName).resolve()
+
+    try:
+        model_dir.relative_to(project.paths.model_dir)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid model name.",
+        )
+
+    if model_dir.exists():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Model already exists.",
+        )
+
+    model_dir.mkdir(parents=True, exist_ok=False)
+
+    ensemble_data = {
+        "members": [{"id": m.id} for m in request.members],
+        "view_names": request.view_names,
+        "smooth_param": request.smooth_param,
+        "quantile_keep_pca": request.quantile_keep_pca,
+    }
+    (model_dir / "ensemble.yaml").write_text(yaml.dump(ensemble_data, default_flow_style=False))
+
+    return CreateEksModelResponse(ok=True)
 
 
 @router.post("/app/v0/rpc/renameModel")

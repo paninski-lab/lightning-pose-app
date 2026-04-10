@@ -1,0 +1,104 @@
+<dialog class="modal" open>
+  <div class="modal-box overflow-x-hidden w-5/6 max-w-2xl">
+    <button
+      class="btn btn-md btn-circle btn-ghost absolute right-4 top-4"
+      (click)="handleCloseClick()"
+    >
+      ✕
+    </button>
+    <h3 class="text-xl font-bold mb-6">Create EKS Model</h3>
+
+    <form [formGroup]="form" class="prose">
+      <fieldset class="fieldset my-2">
+        <h3 class="text-md mt-0">Model name</h3>
+        <p class="m-0!">The name of the EKS model directory.</p>
+        <input
+          type="text"
+          class="input w-full"
+          placeholder="my_eks_model"
+          spellcheck="false"
+          formControlName="modelName"
+        />
+        <p
+          class="my-0! text-error invisible"
+          [class.visible!]="
+            form.controls.modelName.touched && form.controls.modelName.invalid
+          "
+        >
+          Invalid name
+        </p>
+      </fieldset>
+
+      <fieldset class="fieldset my-2">
+        <h3 class="text-md mt-0">Member models</h3>
+        <p class="m-0!">Select two or more trained models to ensemble.</p>
+        @if (availableModels().length === 0) {
+          <p class="text-base-content/60 text-sm">
+            No trained models found. Train at least two models first.
+          </p>
+        } @else {
+          <div class="flex flex-col gap-1 mt-2">
+            @for (m of availableModels(); track m.model_relative_path) {
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  class="checkbox"
+                  [checked]="isMemberSelected(m.model_relative_path)"
+                  (change)="toggleMember(m.model_relative_path)"
+                />
+                <span>{{ m.model_relative_path }}</span>
+              </label>
+            }
+          </div>
+        }
+        <p
+          class="my-1! text-error invisible"
+          [class.visible!]="
+            form.controls.memberIds.touched &&
+            form.controls.memberIds.value.length < 2
+          "
+        >
+          Select at least two models
+        </p>
+      </fieldset>
+
+      <fieldset class="fieldset my-2">
+        <h3 class="text-md mt-0">Smoothing parameters</h3>
+        <div class="flex gap-4 items-start">
+          <div class="grow">
+            <p class="m-0!">Smooth param</p>
+            <input
+              type="number"
+              class="input w-full"
+              formControlName="smoothParam"
+              min="0"
+            />
+          </div>
+          <div class="grow">
+            <p class="m-0!">Quantile keep PCA (%)</p>
+            <input
+              type="number"
+              class="input w-full"
+              formControlName="quantileKeepPca"
+              min="0"
+              max="100"
+            />
+          </div>
+        </div>
+      </fieldset>
+    </form>
+
+    <div class="modal-action">
+      <button class="btn btn-ghost" (click)="handleCloseClick()">Cancel</button>
+      <button
+        class="btn btn-primary"
+        (click)="onCreateClick()"
+        [class.btn-disabled]="
+          form.invalid || form.controls.memberIds.value.length < 2
+        "
+      >
+        Create
+      </button>
+    </div>
+  </div>
+</dialog>

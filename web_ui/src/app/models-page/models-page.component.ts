@@ -6,6 +6,7 @@ import {
   viewChild,
 } from '@angular/core';
 import CreateModelDialogComponent from '../create-model-dialog/create-model-dialog.component';
+import { CreateEksModelDialogComponent } from '../create-eks-model-dialog/create-eks-model-dialog.component';
 
 import { ModelsListComponent } from '../models-list/models-list.component';
 import { ModelListResponseEntry } from '../modelconf';
@@ -24,6 +25,7 @@ import { ProjectInfoService } from '../project-info.service';
   selector: 'app-models-page',
   imports: [
     CreateModelDialogComponent,
+    CreateEksModelDialogComponent,
     ModelsListComponent,
     ModelDetailComponent,
     ModelInferenceDialogComponent,
@@ -41,6 +43,7 @@ import { ProjectInfoService } from '../project-info.service';
 export class ModelsPageComponent {
   protected projectInfo = inject(ProjectInfoService);
   protected isCreateModelDialogOpen = signal(false);
+  protected isCreateEksModelDialogOpen = signal(false);
   protected isInferenceDialogOpen = signal(false);
 
   private modelsListComponent = viewChild(ModelsListComponent);
@@ -58,6 +61,20 @@ export class ModelsPageComponent {
       if (newlyCreatedModel) {
         this.selectedModel.set(newlyCreatedModel);
         this.modelsDetailComponent()?.activeTab.set('logs');
+      }
+    }
+  }
+
+  async handleCreateEksModelDialogDone(modelName: string | null) {
+    this.isCreateEksModelDialogOpen.set(false);
+    await this.modelsListComponent()?.reloadModels();
+    if (modelName) {
+      const newlyCreatedModel = this.modelsListComponent()!
+        .models()
+        .models.find((m) => m.model_relative_path === modelName);
+      if (newlyCreatedModel) {
+        this.selectedModel.set(newlyCreatedModel);
+        this.modelsDetailComponent()?.activeTab.set('general');
       }
     }
   }

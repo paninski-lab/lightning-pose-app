@@ -1,43 +1,103 @@
-<div role="tablist" class="tabs tabs-lift">
-  @let tabs =
-    [
-      { id: "general", label: "General" },
-      { id: "logs", label: "Logs" },
-    ];
-  @for (tab of tabs; track tab) {
+@if (selectedModel()?.model_kind === "eks") {
+  <div role="tablist" class="tabs tabs-lift">
     <a
       role="tab"
       class="tab"
-      [class.tab-active]="activeTab() === tab.id"
-      (click)="activeTab.set(tab.id)"
-      (keydown.enter)="activeTab.set(tab.id)"
-      >{{ tab.label }}</a
+      [class.tab-active]="activeTab() === 'general'"
+      (click)="activeTab.set('general')"
+      (keydown.enter)="activeTab.set('general')"
+      >General</a
     >
-  }
-</div>
-<div class="p-4">
-  @if (activeTab() === "general") {
-    <pre><code [appHighlight]="selectedModel() | yaml" [language]="'yaml'"></code></pre>
-  } @else if (activeTab() === "logs") {
-    <p class="p-2 text-sm text-base-content/60">
-      <span class="material-icons text-sm!">info</span> All logs are refreshed
-      every 1.5 seconds.
-    </p>
-    @for (logEntry of logs(); track logEntry.filename) {
-      <div class="collapse collapse-open collapse-arrow bg-base-100 border border-base-300">
-        <input
-          type="checkbox"
-          (change)="scrollHandle.scrollTop = scrollHandle.scrollHeight"
-        />
-        <div class="collapse-title font-semibold bg-base-200">
-          {{ logEntry.filename }}
-        </div>
-        <div class="collapse-content text-sm w-full min-w-0">
-          <pre class="max-h-140 overflow-auto w-full p-4" #scrollHandle>{{
-            logEntry.content
-          }}</pre>
-        </div>
+  </div>
+  <div class="p-4">
+    @let ec = selectedModel()?.ensemble_config;
+    @if (ec) {
+      <div class="mb-4">
+        <app-path-display label="ensemble.yaml" [path]="modelFilePath()" />
+      </div>
+      <div class="prose">
+        <h4 class="mt-0">EKS Ensemble Model</h4>
+        <p class="text-sm text-base-content/70 mb-4">
+          This model runs Ensemble Kalman Smoothing over the member models
+          below.
+        </p>
+        <h5 class="mb-1">Member models</h5>
+        <ul class="mt-0">
+          @for (m of ec.members; track m.id) {
+            <li>{{ m.id }}</li>
+          }
+        </ul>
+        <h5 class="mb-1">Smoothing parameters</h5>
+        <table class="table table-sm not-prose">
+          <tbody>
+            <tr>
+              <td class="font-medium">Smooth param</td>
+              <td>{{ ec.smooth_param }}</td>
+            </tr>
+            <tr>
+              <td class="font-medium">Quantile keep PCA</td>
+              <td>{{ ec.quantile_keep_pca }}%</td>
+            </tr>
+            @if (ec.view_names.length) {
+              <tr>
+                <td class="font-medium">View names</td>
+                <td>{{ ec.view_names.join(", ") }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
     }
-  }
-</div>
+  </div>
+} @else {
+  <div role="tablist" class="tabs tabs-lift">
+    @let tabs =
+      [
+        { id: "general", label: "General" },
+        { id: "logs", label: "Logs" },
+      ];
+    @for (tab of tabs; track tab) {
+      <a
+        role="tab"
+        class="tab"
+        [class.tab-active]="activeTab() === tab.id"
+        (click)="activeTab.set(tab.id)"
+        (keydown.enter)="activeTab.set(tab.id)"
+        >{{ tab.label }}</a
+      >
+    }
+  </div>
+  <div class="p-4">
+    @if (activeTab() === "general") {
+      @if (selectedModel()) {
+        <div class="mb-4">
+          <app-path-display label="config.yaml" [path]="modelFilePath()" />
+        </div>
+      }
+      <pre><code [appHighlight]="selectedModel() | yaml" [language]="'yaml'"></code></pre>
+    } @else if (activeTab() === "logs") {
+      <p class="p-2 text-sm text-base-content/60">
+        <span class="material-icons text-sm!">info</span> All logs are refreshed
+        every 1.5 seconds.
+      </p>
+      @for (logEntry of logs(); track logEntry.filename) {
+        <div
+          class="collapse collapse-open collapse-arrow bg-base-100 border border-base-300"
+        >
+          <input
+            type="checkbox"
+            (change)="scrollHandle.scrollTop = scrollHandle.scrollHeight"
+          />
+          <div class="collapse-title font-semibold bg-base-200">
+            {{ logEntry.filename }}
+          </div>
+          <div class="collapse-content text-sm w-full min-w-0">
+            <pre class="max-h-140 overflow-auto w-full p-4" #scrollHandle>{{
+              logEntry.content
+            }}</pre>
+          </div>
+        </div>
+      }
+    }
+  </div>
+}

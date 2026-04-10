@@ -585,6 +585,19 @@ export class SessionService {
     });
   }
 
+  async createEksModel(params: {
+    modelName: string;
+    members: { id: string }[];
+    view_names: string[];
+    smooth_param: number;
+    quantile_keep_pca: number;
+  }): Promise<void> {
+    await this.rpc.call('createEksModel', {
+      projectKey: this.getProjectKeyOrThrow(),
+      ...params,
+    });
+  }
+
   async listModels(): Promise<ModelListResponse> {
     const resp = (await this.rpc.call('listModels', {
       projectKey: this.getProjectKeyOrThrow(),
@@ -600,16 +613,34 @@ export class SessionService {
     modelRelativePath: string,
     videoRelativePaths: string[],
   ): Observable<InferenceTaskStatus> {
+    return this._inferSse('/app/v0/sse/InferModel', modelRelativePath, videoRelativePaths);
+  }
+
+  /**
+   * Start or attach to an EKS model inference run and stream progress via SSE.
+   * Runs litpose predict on each member model, then runs the EKS smoother.
+   */
+  inferEksModelSse(
+    modelRelativePath: string,
+    videoRelativePaths: string[],
+  ): Observable<InferenceTaskStatus> {
+    return this._inferSse('/app/v0/sse/InferEksModel', modelRelativePath, videoRelativePaths);
+  }
+
+  private _inferSse(
+    sseEndpoint: string,
+    modelRelativePath: string,
+    videoRelativePaths: string[],
+  ): Observable<InferenceTaskStatus> {
     const projectKey = this.getProjectKeyOrThrow();
     const params = new URLSearchParams({
       projectKey,
       modelRelativePath,
     });
-    // Append multiple videoRelativePaths entries
     for (const rel of videoRelativePaths) {
       params.append('videoRelativePaths', rel);
     }
-    const url = `/app/v0/sse/InferModel?${params.toString()}`;
+    const url = `${sseEndpoint}?${params.toString()}`;
 
     return new Observable<InferenceTaskStatus>((subscriber) => {
       const es = new EventSource(url);

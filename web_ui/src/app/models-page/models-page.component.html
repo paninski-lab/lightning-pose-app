@@ -11,13 +11,41 @@
   <as-split-area size="620">
     <div class="min-w-lg mt-4">
       <div class="flex gap-2 items-center m-4">
-        <button
-          class="btn btn-primary tooltip tooltip-bottom"
-          data-tip="Create and train a model"
-          (click)="isCreateModelDialogOpen.set(true)"
-        >
-          New model
-        </button>
+        <app-dropdown #createDropdown>
+          <app-dropdown-trigger>
+            <button
+              appDropdownTrigger
+              class="btn btn-primary"
+              tabindex="0"
+            >
+              New model
+            </button>
+          </app-dropdown-trigger>
+          <app-dropdown-content>
+            <ul class="list bg-base-100 rounded-box w-72" tabindex="0">
+              <li class="list-row cursor-pointer hover:bg-base-200 rounded-box" (click)="isCreateModelDialogOpen.set(true); createDropdown.close()">
+                <div class="flex items-center justify-center text-primary">
+                  <span class="material-icons">model_training</span>
+                </div>
+                <div>
+                  <div>Regular model</div>
+                  <div class="text-xs opacity-60">Train a new pose estimation model</div>
+                </div>
+              </li>
+              @if (projectInfo.projectInfo?.views?.length) {
+              <li class="list-row cursor-pointer hover:bg-base-200 rounded-box" (click)="isCreateEksModelDialogOpen.set(true); createDropdown.close()">
+                <div class="flex items-center justify-center text-primary">
+                  <span class="material-icons">hub</span>
+                </div>
+                <div>
+                  <div>EKS ensemble model</div>
+                  <div class="text-xs opacity-60">EKS ensemble from models below</div>
+                </div>
+              </li>
+              }
+            </ul>
+          </app-dropdown-content>
+        </app-dropdown>
         <app-dropdown #dropdown>
           <app-dropdown-trigger>
             <button
@@ -61,9 +89,15 @@
     (done)="handleCreateModelDialogDone($event)"
   ></app-create-model-dialog>
 }
+@if (isCreateEksModelDialogOpen()) {
+  <app-create-eks-model-dialog
+    (done)="handleCreateEksModelDialogDone($event)"
+  ></app-create-eks-model-dialog>
+}
 @if (isInferenceDialogOpen()) {
   <app-model-inference-dialog
     [modelRelativePath]="selectedModel()?.model_relative_path ?? ''"
+    [modelKind]="selectedModel()?.model_kind ?? 'normal'"
     (done)="handleInferenceDialogDone()"
   ></app-model-inference-dialog>
 }
