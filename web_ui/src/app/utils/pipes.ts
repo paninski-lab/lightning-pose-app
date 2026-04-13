@@ -20,7 +20,10 @@ export class PathPipe implements PipeTransform {
   standalone: true,
 })
 export class ModelTypeLabelPipe implements PipeTransform {
-  transform(modelType: ModelType | 'EKS'): string {
+  transform(modelType: ModelType | 'EKS' | null | undefined): string {
+    if (modelType === null || modelType === undefined) {
+      return '';
+    }
     if (modelType === 'EKS') return 'EKS Ensemble';
     return modelTypeLabels[modelType] || modelType.toString();
   }
