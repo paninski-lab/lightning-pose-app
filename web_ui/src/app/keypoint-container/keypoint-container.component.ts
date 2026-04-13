@@ -67,7 +67,7 @@ export class KeypointContainerComponent {
     return this.keypointOpacity();
   }
   reducedKeypointOpacity = computed(() => {
-    return 0;
+    return this.keypointOpacity() / 2;
   });
   keypointOpacity = computed(() => {
     if (this.labelerViewOptions()) {
