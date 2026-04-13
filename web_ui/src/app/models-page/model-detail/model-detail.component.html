@@ -1,103 +1,108 @@
-@if (selectedModel()?.model_kind === "eks") {
-  <div role="tablist" class="tabs tabs-lift">
+@if (selectedModel(); as model) {
+  <div class="px-4 py-3 bg-base-100/50">
+    <h2 class="text-xl font-bold truncate">{{ model.model_relative_path | path }}</h2>
+    <div class="text-xs opacity-60 mb-2">{{ mc_util()?.type | modelType }}</div>
+    <app-path-display [path]="modelDirAbsolutePath()" />
+  </div>
+}
+<div role="tablist" class="tabs tabs-lift">
+  @for (tab of tabs(); track tab.id) {
     <a
       role="tab"
       class="tab"
-      [class.tab-active]="activeTab() === 'general'"
-      (click)="activeTab.set('general')"
-      (keydown.enter)="activeTab.set('general')"
-      >General</a
+      [class.tab-active]="activeTab() === tab.id"
+      (click)="activeTab.set(tab.id)"
+      (keydown.enter)="activeTab.set(tab.id)"
+      >{{ tab.label }}</a
     >
-  </div>
-  <div class="p-4">
-    @let ec = selectedModel()?.ensemble_config;
-    @if (ec) {
-      <div class="mb-4">
-        <app-path-display label="ensemble.yaml" [path]="modelFilePath()" />
-      </div>
-      <div class="prose">
-        <h4 class="mt-0">EKS Ensemble Model</h4>
-        <p class="text-sm text-base-content/70 mb-4">
-          This model runs Ensemble Kalman Smoothing over the member models
-          below.
-        </p>
-        <h5 class="mb-1">Member models</h5>
-        <ul class="mt-0">
-          @for (m of ec.members; track m.id) {
-            <li>{{ m.id }}</li>
-          }
-        </ul>
-        <h5 class="mb-1">Smoothing parameters</h5>
-        <table class="table table-sm not-prose">
-          <tbody>
-            <tr>
-              <td class="font-medium">Smooth param</td>
-              <td>{{ ec.smooth_param }}</td>
-            </tr>
-            <tr>
-              <td class="font-medium">Quantile keep PCA</td>
-              <td>{{ ec.quantile_keep_pca }}%</td>
-            </tr>
-            @if (ec.view_names.length) {
-              <tr>
-                <td class="font-medium">View names</td>
-                <td>{{ ec.view_names.join(", ") }}</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    }
-  </div>
-} @else {
-  <div role="tablist" class="tabs tabs-lift">
-    @let tabs =
-      [
-        { id: "general", label: "General" },
-        { id: "logs", label: "Logs" },
-      ];
-    @for (tab of tabs; track tab) {
-      <a
-        role="tab"
-        class="tab"
-        [class.tab-active]="activeTab() === tab.id"
-        (click)="activeTab.set(tab.id)"
-        (keydown.enter)="activeTab.set(tab.id)"
-        >{{ tab.label }}</a
-      >
-    }
-  </div>
-  <div class="p-4">
-    @if (activeTab() === "general") {
-      @if (selectedModel()) {
-        <div class="mb-4">
-          <app-path-display label="config.yaml" [path]="modelFilePath()" />
-        </div>
-      }
-      <pre><code [appHighlight]="selectedModel() | yaml" [language]="'yaml'"></code></pre>
-    } @else if (activeTab() === "logs") {
-      <p class="p-2 text-sm text-base-content/60">
-        <span class="material-icons text-sm!">info</span> All logs are refreshed
-        every 1.5 seconds.
-      </p>
-      @for (logEntry of logs(); track logEntry.filename) {
-        <div
-          class="collapse collapse-open collapse-arrow bg-base-100 border border-base-300"
+  }
+</div>
+<div class="p-4">
+  @if (activeTab() === "config") {
+    @let model = selectedModel();
+    @if (model) {
+      <div class="mb-4 flex items-center gap-2">
+        <span class="text-xs font-semibold opacity-60 uppercase tracking-wider"
+          >{{ configLabel() }}:</span
         >
-          <input
-            type="checkbox"
-            (change)="scrollHandle.scrollTop = scrollHandle.scrollHeight"
-          />
-          <div class="collapse-title font-semibold bg-base-200">
-            {{ logEntry.filename }}
-          </div>
-          <div class="collapse-content text-sm w-full min-w-0">
-            <pre class="max-h-140 overflow-auto w-full p-4" #scrollHandle>{{
-              logEntry.content
-            }}</pre>
-          </div>
+        <app-path-display [path]="modelFilePath()" />
+      </div>
+      <pre class="text-xs"><code [appHighlight]="(model.config || model.ensemble_config) | yaml" [language]="'yaml'"></code></pre>
+    } @else {
+      <pre class="text-xs"><code [appHighlight]="null | yaml" [language]="'yaml'"></code></pre>
+    }
+  } @else if (activeTab() === "logs") {
+    <p class="p-2 text-sm text-base-content/60">
+      <span class="material-icons text-sm!">info</span> All logs are refreshed
+      every 1.5 seconds.
+    </p>
+    @for (logEntry of logs(); track logEntry.filename) {
+      <div
+        class="collapse collapse-open collapse-arrow bg-base-100 border border-base-300"
+      >
+        <input
+          type="checkbox"
+          (change)="scrollHandle.scrollTop = scrollHandle.scrollHeight"
+        />
+        <div class="collapse-title font-semibold bg-base-200">
+          {{ logEntry.filename }}
+        </div>
+        <div class="collapse-content text-sm w-full min-w-0">
+          <pre class="max-h-140 overflow-auto w-full p-4" #scrollHandle>{{
+            logEntry.content
+          }}</pre>
+        </div>
+      </div>
+    }
+  } @else if (activeTab() === "tensorboard") {
+    <div class="prose prose-sm max-w-none">
+      @if (selectedModel()?.model_kind === "eks") {
+        <div role="alert" class="alert alert-warning mb-4 py-2 not-prose">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-6 w-6 shrink-0 stroke-current"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+          <span class="text-xs"
+            >Note: This is an ensemble model. Training curves are only available
+            for the member models.</span
+          >
         </div>
       }
-    }
-  </div>
-}
+      <h4 class="mt-0">TensorBoard Instructions</h4>
+      <p>
+        To visualize training loss curves and other metrics, you can run
+        TensorBoard in your terminal pointing to your project's models
+        directory:
+      </p>
+      <app-terminal-command
+        class="not-prose"
+        [command]="'tensorboard --logdir ' + projectModelsDir()"
+      />
+      <p>
+        Once the command is running, open your browser and navigate to
+        <a
+          href="http://localhost:6006"
+          target="_blank"
+          class="link link-primary no-underline!"
+          >http://localhost:6006</a
+        >.
+      </p>
+
+      <p class="text-xs text-base-content/70 italic">
+        Note for cloud users: You may need to open port 6006 or use port
+        forwarding according to your cloud provider's instructions.
+      </p>
+    </div>
+  } @else if (activeTab() === "predictions") {
+    <div></div>
+  }
+</div>

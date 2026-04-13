@@ -360,6 +360,7 @@ class CreateModelDialogComponent {
       if (abortSignal?.aborted) return null;
 
       const merged = _.merge({}, baseConfig, patch);
+      (merged as any).creation_datetime = new Date().toISOString();
       const yamlText = yamlStringify(merged);
       if (abortSignal?.aborted) return null;
 

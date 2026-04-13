@@ -9,23 +9,60 @@ import {
   signal,
   SimpleChanges,
 } from '@angular/core';
-import { ModelListResponseEntry } from '../../modelconf';
+import { ModelListResponseEntry, mc_util } from '../../modelconf';
 import { ProjectInfoService } from '../../project-info.service';
 import { ToastService } from '../../toast.service';
 import { HighlightDirective } from '../../highlight.directive';
-import { YamlPipe } from '../../utils/pipes';
+import { ModelTypeLabelPipe, PathPipe, YamlPipe } from '../../utils/pipes';
 import { PathDisplayComponent } from '../../components/path-display/path-display.component';
+import { TerminalCommandComponent } from '../../components/terminal-command/terminal-command.component';
 
 @Component({
   selector: 'app-model-detail',
-  imports: [HighlightDirective, YamlPipe, PathDisplayComponent],
+  imports: [
+    HighlightDirective,
+    YamlPipe,
+    PathPipe,
+    ModelTypeLabelPipe,
+    PathDisplayComponent,
+    TerminalCommandComponent,
+  ],
   templateUrl: './model-detail.component.html',
   styleUrl: './model-detail.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ModelDetailComponent implements OnChanges, OnDestroy {
   selectedModel = input.required<ModelListResponseEntry | null>();
-  activeTab = signal('general');
+  activeTab = signal('config');
+  tabs = computed(() => {
+    const model = this.selectedModel();
+    const isEks = model?.model_kind === 'eks';
+
+    const tabs = [{ id: 'config', label: 'Config' }];
+
+    if (!isEks) {
+      tabs.push({ id: 'logs', label: 'Logs' });
+    }
+
+    tabs.push(
+      { id: 'tensorboard', label: 'Tensorboard' },
+      //{ id: 'predictions', label: 'Predictions' },
+    );
+
+    return tabs;
+  });
+
+  protected configLabel = computed(() => {
+    return this.selectedModel()?.model_kind === 'eks'
+      ? 'ensemble.yaml'
+      : 'config.yaml';
+  });
+
+  protected mc_util = computed(() => {
+    const model = this.selectedModel();
+    return model ? new mc_util(model) : null;
+  });
+
   logs = signal<
     { filename: string; logUrl: string; content: string; nextOffset: number }[]
   >([]);
@@ -49,6 +86,10 @@ export class ModelDetailComponent implements OnChanges, OnDestroy {
     this.cleanup();
 
     this.logs.set([]);
+
+    if (!this.tabs().some((t) => t.id === this.activeTab())) {
+      this.activeTab.set('config');
+    }
 
     if (!this.selectedModel()) {
       return;
@@ -114,11 +155,27 @@ export class ModelDetailComponent implements OnChanges, OnDestroy {
     }
   }
 
-  protected modelFilePath = computed(() => {
+  protected projectModelsDir = computed(() => {
+    return this.projectInfoService.projectInfo.model_dir;
+  });
+
+  protected modelDirAbsolutePath = computed(() => {
+    const model = this.selectedModel();
+    if (!model) return '';
     const modelDir = this.projectInfoService.projectInfo.model_dir;
-    const relPath = this.selectedModel()?.model_relative_path ?? '';
-    const filename = this.selectedModel()?.model_kind === 'eks' ? 'ensemble.yaml' : 'config.yaml';
-    return `${modelDir}/${relPath}/${filename}`;
+    const relPath = model.model_relative_path;
+    return relPath ? `${modelDir}/${relPath}` : modelDir;
+  });
+
+  protected modelFilePath = computed(() => {
+    const model = this.selectedModel();
+    if (!model) return '';
+    const modelDir = this.projectInfoService.projectInfo.model_dir;
+    const relPath = model.model_relative_path;
+    const filename = this.configLabel();
+    return relPath
+      ? `${modelDir}/${relPath}/${filename}`
+      : `${modelDir}/${filename}`;
   });
 
   private getLogBasePath() {

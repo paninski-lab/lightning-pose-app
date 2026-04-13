@@ -15,7 +15,7 @@ import { CopyDirective } from '../../utils/copy.directive';
         >
       }
       <div
-        class="bg-base-content/5 hover:bg-base-content/10 px-2 py-1 rounded font-mono text-xs flex items-center gap-2 cursor-pointer transition-colors border border-transparent hover:border-base-content/10 min-w-[100px]"
+        class="bg-transparent hover:bg-base-content/5 px-2 py-1 rounded font-mono text-xs flex items-center gap-2 cursor-pointer transition-colors border border-transparent hover:border-base-content/10 min-w-[100px]"
         [appCopy]="path"
         #copy="appCopy"
         [attr.aria-label]="'Copy ' + (label || 'path')"
