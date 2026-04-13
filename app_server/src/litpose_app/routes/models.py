@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import shutil
+from datetime import datetime
 from typing import Literal
 from pathlib import Path
 import os
@@ -271,6 +272,7 @@ def create_eks_model(
         "view_names": request.view_names,
         "smooth_param": request.smooth_param,
         "quantile_keep_pca": request.quantile_keep_pca,
+        "creation_datetime": datetime.now().isoformat(),
     }
     (model_dir / "ensemble.yaml").write_text(yaml.dump(ensemble_data, default_flow_style=False))
 

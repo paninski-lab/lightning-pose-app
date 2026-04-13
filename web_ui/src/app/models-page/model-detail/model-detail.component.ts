@@ -164,19 +164,22 @@ export class ModelDetailComponent implements OnChanges, OnDestroy {
   });
 
   protected modelDirAbsolutePath = computed(() => {
+    const model = this.selectedModel();
+    if (!model) return '';
     const modelDir = this.projectInfoService.projectInfo.model_dir;
-    const relPath = this.selectedModel()?.model_relative_path;
+    const relPath = model.model_relative_path;
     return relPath ? `${modelDir}/${relPath}` : modelDir;
   });
 
   protected modelFilePath = computed(() => {
+    const model = this.selectedModel();
+    if (!model) return '';
     const modelDir = this.projectInfoService.projectInfo.model_dir;
-    const relPath = this.selectedModel()?.model_relative_path ?? '';
-    const filename =
-      this.selectedModel()?.model_kind === 'eks'
-        ? 'ensemble.yaml'
-        : 'config.yaml';
-    return `${modelDir}/${relPath}/${filename}`;
+    const relPath = model.model_relative_path;
+    const filename = this.configLabel();
+    return relPath
+      ? `${modelDir}/${relPath}/${filename}`
+      : `${modelDir}/${filename}`;
   });
 
   private getLogBasePath() {

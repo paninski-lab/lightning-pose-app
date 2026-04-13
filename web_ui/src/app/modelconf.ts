@@ -295,6 +295,9 @@ export class mc_util {
     }
   }
   get createdAt(): string | undefined {
+    if (this.isEks) {
+      return (this.m.ensemble_config as any)?.creation_datetime;
+    }
     return (this.c as any)?.creation_datetime;
   }
   get status(): string {

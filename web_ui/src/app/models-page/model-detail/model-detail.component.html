@@ -21,6 +21,12 @@
   @if (activeTab() === "config") {
     @let model = selectedModel();
     @if (model) {
+      <div class="mb-4 flex items-center gap-2">
+        <span class="text-xs font-semibold opacity-60 uppercase tracking-wider"
+          >{{ configLabel() }}:</span
+        >
+        <app-path-display [path]="modelFilePath()" />
+      </div>
       <pre class="text-xs"><code [appHighlight]="(model.config || model.ensemble_config) | yaml" [language]="'yaml'"></code></pre>
     } @else {
       <pre class="text-xs"><code [appHighlight]="null | yaml" [language]="'yaml'"></code></pre>

@@ -94,12 +94,15 @@ describe('ModelDetailComponent', () => {
     const tab = compiled.querySelector('.tab-active');
     expect(tab?.textContent).toContain('Config');
 
+    expect(compiled.textContent).toContain('config.yaml:');
+    expect(compiled.textContent).toContain('/mock/model/dir/test/model/config.yaml');
+
     const pre = compiled.querySelector('pre.text-xs');
     expect(pre).toBeTruthy();
     expect(pre?.textContent).toContain('model_name: test-model');
   });
 
-  it('should show ensemble_config in Config tab for eks models', () => {
+  it('should show ensemble_config and ensemble.yaml in Config tab for eks models', () => {
     fixture.componentRef.setInput('selectedModel', {
       model_relative_path: 'test/eks',
       model_kind: 'eks',
@@ -110,6 +113,9 @@ describe('ModelDetailComponent', () => {
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('ensemble.yaml:');
+    expect(compiled.textContent).toContain('/mock/model/dir/test/eks/ensemble.yaml');
+
     const pre = compiled.querySelector('pre.text-xs');
     expect(pre?.textContent).toContain('smooth_param: 0.5');
   });
