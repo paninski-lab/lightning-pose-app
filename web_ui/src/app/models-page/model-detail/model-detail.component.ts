@@ -13,11 +13,7 @@ import { ModelListResponseEntry, mc_util } from '../../modelconf';
 import { ProjectInfoService } from '../../project-info.service';
 import { ToastService } from '../../toast.service';
 import { HighlightDirective } from '../../highlight.directive';
-import {
-  ModelTypeLabelPipe,
-  PathPipe,
-  YamlPipe,
-} from '../../utils/pipes';
+import { ModelTypeLabelPipe, PathPipe, YamlPipe } from '../../utils/pipes';
 import { PathDisplayComponent } from '../../components/path-display/path-display.component';
 import { TerminalCommandComponent } from '../../components/terminal-command/terminal-command.component';
 
@@ -50,7 +46,7 @@ export class ModelDetailComponent implements OnChanges, OnDestroy {
 
     tabs.push(
       { id: 'tensorboard', label: 'Tensorboard' },
-      { id: 'predictions', label: 'Predictions' },
+      //{ id: 'predictions', label: 'Predictions' },
     );
 
     return tabs;
