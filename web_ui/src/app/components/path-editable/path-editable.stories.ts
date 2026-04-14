@@ -12,6 +12,10 @@ const mockDirectories: Record<string, string[]> = {
   '/home/user1/documents': ['work', 'personal'],
   '/var': ['log', 'lib', 'cache'],
   '/etc': ['nginx', 'ssh', 'ssl'],
+  '/home/user1/projects': ['alpha', 'beta', 'gamma'],
+  '/home/user1/projects/alpha': ['data', 'models', 'videos'],
+  '/home/user1/projects/alpha/data': ['raw', 'processed'],
+  '/home/user1/projects/alpha/videos': ['session1', 'session2'],
 };
 
 class MockRpcService {
@@ -118,6 +122,28 @@ export const LoadingState: Story = {
         <app-path-editable [(path)]="path"></app-path-editable>
         <div class="mt-48 text-xs opacity-50 text-center font-bold text-error">
           (This story simulates a very slow RPC call)
+        </div>
+      </div>
+    `,
+  }),
+};
+
+export const RelativeMode: Story = {
+  args: {
+    path: '/home/user1/projects/alpha/data',
+    baseDir: '/home/user1/projects/alpha',
+    baseDirLabel: 'alpha',
+  },
+  render: (args) => ({
+    props: args,
+    template: `
+      <div class="w-[500px] h-[400px] p-8 bg-base-100 rounded-lg shadow-xl border border-base-300">
+        <app-path-editable [(path)]="path" [baseDir]="baseDir" [baseDirLabel]="baseDirLabel"></app-path-editable>
+        <div class="mt-48 p-2 bg-base-300 rounded text-xs font-mono">
+          Final path: {{ path }}
+        </div>
+        <div class="mt-4 text-xs opacity-50">
+          Navigation is locked to the base dir. The breadcrumb root shows "alpha" and you cannot go above it.
         </div>
       </div>
     `,

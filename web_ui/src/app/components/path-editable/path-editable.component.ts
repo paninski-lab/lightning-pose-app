@@ -38,7 +38,7 @@ interface RGlobResponse {
               class="bg-transparent hover:bg-base-content/5 px-2 py-1 rounded font-mono text-xs flex items-center gap-2 cursor-pointer transition-colors border border-transparent hover:border-base-content/10 min-w-[100px] flex-1 overflow-hidden"
               (click)="startEditing()"
             >
-              <span class="truncate flex-1">{{ path() }}</span>
+              <span class="truncate flex-1">{{ displayPath() }}</span>
               <span
                 class="material-icons text-sm! opacity-40 group-hover/path:opacity-100 transition-opacity shrink-0"
               >
@@ -52,14 +52,12 @@ interface RGlobResponse {
               @for (part of pathParts(); track part.fullPath) {
                 <button
                   (click)="onPartClick(part.fullPath, $event)"
-                  class="badge badge-ghost hover:badge-neutral transition-colors font-mono h-5 min-h-5 px-1.5 border-none bg-transparent"
+                  class="font-mono text-xs px-1 py-0.5 rounded cursor-pointer transition-colors hover:bg-base-content/10 hover:text-base-content"
                 >
                   {{ part.name || 'Root' }}
                 </button>
                 @if (!$last) {
-                  <span class="text-base-content/80 font-bold font-mono mx-0.5"
-                    >/</span
-                  >
+                  <span class="text-base-content/50 font-mono mx-0.5">/</span>
                 }
               }
             </div>
@@ -119,6 +117,11 @@ interface RGlobResponse {
 export class PathEditableComponent {
   path = model.required<string>();
 
+  /** When set, enables relative-path mode. The user cannot navigate above this directory. */
+  baseDir = input<string | null>(null);
+  /** Label shown in the breadcrumb for the base directory root (e.g. "project"). */
+  baseDirLabel = input<string | null>(null);
+
   protected isEditing = signal(false);
   protected editPath = signal('');
   protected subdirectories = signal<string[]>([]);
@@ -127,23 +130,54 @@ export class PathEditableComponent {
   private rpc = inject(RpcService);
   private projectInfoService = inject(ProjectInfoService);
 
+  /** The path shown in display (non-edit) mode — relative when baseDir is set. */
+  protected displayPath = computed(() => {
+    const base = this.baseDir();
+    const p = this.path();
+    if (base && p.startsWith(base)) {
+      const rel = p.slice(base.length).replace(/^\//, '');
+      const label = this.baseDirLabel() ?? base.split('/').pop() ?? base;
+      return rel ? `${label}/${rel}` : label;
+    }
+    return p;
+  });
+
   protected pathParts = computed(() => {
     const currentPath = this.editPath();
+    const base = this.baseDir();
+
+    if (base) {
+      const rootLabel = this.baseDirLabel() ?? base.split('/').pop() ?? base;
+      // Guard: if editPath somehow escaped above baseDir, clamp to base
+      const effectivePath = currentPath.startsWith(base) ? currentPath : base;
+      const relative = effectivePath.slice(base.length).replace(/^\//, '');
+      if (!relative) return [{ name: rootLabel, fullPath: base }];
+
+      const parts = relative.split('/').filter((p) => p !== '');
+      const result: { name: string; fullPath: string }[] = [
+        { name: rootLabel, fullPath: base },
+      ];
+      let cumulativePath = base;
+      for (const part of parts) {
+        cumulativePath += '/' + part;
+        result.push({ name: part, fullPath: cumulativePath });
+      }
+      return result;
+    }
+
+    // Absolute mode
     if (!currentPath || currentPath === '/')
       return [{ name: '', fullPath: '/' }];
 
     const parts = currentPath.split('/').filter((p) => p !== '');
-    const result = [{ name: '', fullPath: '/' }];
-
+    const result: { name: string; fullPath: string }[] = [
+      { name: '', fullPath: '/' },
+    ];
     let cumulativePath = '';
     for (const part of parts) {
-      cumulativePath += (cumulativePath === '/' ? '' : '/') + part;
-      result.push({
-        name: part,
-        fullPath: cumulativePath,
-      });
+      cumulativePath += '/' + part;
+      result.push({ name: part, fullPath: cumulativePath });
     }
-
     return result;
   });
 
@@ -159,7 +193,9 @@ export class PathEditableComponent {
   }
 
   protected startEditing() {
-    this.editPath.set(this.path());
+    const base = this.baseDir();
+    const p = this.path();
+    this.editPath.set(base && !p.startsWith(base) ? base : p);
     this.isEditing.set(true);
   }
 

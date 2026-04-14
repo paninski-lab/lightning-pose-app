@@ -160,7 +160,7 @@
         [attr.y]="crosshairPosition()!.y + gap / 1.25 + 2.5"
         font-size="6px"
         dominant-baseline="hanging"
-        [style.opacity]="calculatedKeypointOpacity(selectedKeypoint()!)"
+        [style.opacity]="calculatedKeypointLabelOpacity(selectedKeypoint()!)"
       >
         {{ selectedKeypoint() }}
       </text>
@@ -218,7 +218,7 @@
                 [style.font-size.px]="keypointLabelFontSize()"
                 [style.top.px]="keypointSize() / 1.15"
                 [style.left.px]="keypointSize() / 1.15"
-                [style.opacity]="calculatedKeypointOpacity(keypoint.id)"
+                [style.opacity]="calculatedKeypointLabelOpacity(keypoint.id)"
                 style="filter: url(#halo)"
                 >{{ keypoint.id }}</span
               >
