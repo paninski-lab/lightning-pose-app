@@ -54,8 +54,6 @@ import { PathPipe } from '../../utils/pipes';
     `
       :host {
         display: block;
-        height: 100%;
-        width: 100%;
       }
     `,
   ],

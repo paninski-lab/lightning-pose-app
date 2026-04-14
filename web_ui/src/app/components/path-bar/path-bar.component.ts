@@ -46,14 +46,14 @@ import { FormsModule } from '@angular/forms';
         @for (part of pathParts(); track part.fullPath) {
           <div class="flex items-center gap-1 shrink-0">
             <button
-              class="badge badge-ghost font-mono text-xs hover:badge-primary transition-colors cursor-pointer"
+              class="badge badge-ghost font-mono text-xs hover:badge-neutral transition-colors cursor-pointer bg-transparent"
               (click)="partClick.emit(part.fullPath)"
               [title]="part.fullPath"
             >
               {{ part.label }}
             </button>
             @if (!$last) {
-              <span class="text-base-content/30 text-xs select-none">/</span>
+              <span class="text-base-content/80 font-bold font-mono text-[10px] mx-0.5 shrink-0">/</span>
             }
           </div>
         }
@@ -86,7 +86,7 @@ export class PathBarComponent {
       .filter((s) => s.length > 0);
 
     const parts: { label: string; fullPath: string }[] = [
-      { label: '/', fullPath: '/' },
+      { label: 'Root', fullPath: '/' },
     ];
 
     let accumulated = '';

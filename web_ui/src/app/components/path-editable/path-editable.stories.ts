@@ -1,0 +1,142 @@
+import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
+import { CommonModule } from '@angular/common';
+import { PathEditableComponent } from './path-editable.component';
+import { RpcService } from '../../rpc.service';
+import { ProjectInfoService } from '../../project-info.service';
+import { signal } from '@angular/core';
+
+const mockDirectories: Record<string, string[]> = {
+  '/': ['home', 'var', 'etc', 'tmp'],
+  '/home': ['user1', 'user2'],
+  '/home/user1': ['documents', 'pictures', 'videos'],
+  '/home/user1/documents': ['work', 'personal'],
+  '/var': ['log', 'lib', 'cache'],
+  '/etc': ['nginx', 'ssh', 'ssl'],
+};
+
+class MockRpcService {
+  async call(method: string, params?: any): Promise<any> {
+    if (method === 'rglob') {
+      const baseDir = params.baseDir;
+      const dirs = mockDirectories[baseDir] || [];
+      // Simulate network delay
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      return {
+        entries: dirs.map((d) => ({ path: d, type: 'dir' })),
+        relativeTo: baseDir,
+      };
+    }
+    return {};
+  }
+}
+
+class MockProjectInfoService {
+  projectContext = signal({ key: 'mock-project' });
+}
+
+const meta: Meta<PathEditableComponent> = {
+  title: 'Components/PathEditable',
+  component: PathEditableComponent,
+  decorators: [
+    moduleMetadata({
+      imports: [CommonModule, PathEditableComponent],
+      providers: [
+        { provide: RpcService, useClass: MockRpcService },
+        { provide: ProjectInfoService, useClass: MockProjectInfoService },
+      ],
+    }),
+  ],
+  parameters: {
+    layout: 'centered',
+  },
+};
+
+export default meta;
+type Story = StoryObj<PathEditableComponent>;
+
+export const Default: Story = {
+  args: {
+    path: '/home/user1',
+  },
+  render: (args) => ({
+    props: args,
+    template: `
+      <div class="w-[500px] h-[400px] p-8 bg-base-100 rounded-lg shadow-xl border border-base-300">
+        <app-path-editable [(path)]="path"></app-path-editable>
+        <div class="mt-48 p-2 bg-base-300 rounded text-xs font-mono">
+          Final path: {{ path }}
+        </div>
+        <div class="mt-4 text-xs opacity-50">
+          Click the edit icon to enter edit mode. Click breadcrumbs or list items to navigate. Click the checkmark to save.
+        </div>
+      </div>
+    `,
+  }),
+};
+
+export const Root: Story = {
+  args: {
+    path: '/',
+  },
+  render: (args) => ({
+    props: args,
+    template: `
+      <div class="w-[500px] h-[400px] p-8 bg-base-100 rounded-lg shadow-xl border border-base-300">
+        <app-path-editable [(path)]="path"></app-path-editable>
+        <div class="mt-48 p-2 bg-base-300 rounded text-xs font-mono">
+          Final path: {{ path }}
+        </div>
+      </div>
+    `,
+  }),
+};
+
+export const LoadingState: Story = {
+  args: {
+    path: '/home/user1',
+  },
+  decorators: [
+    moduleMetadata({
+      providers: [
+        {
+          provide: RpcService,
+          useClass: class {
+            async call() {
+              return new Promise((resolve) =>
+                setTimeout(() => resolve({ entries: [] }), 10000)
+              );
+            }
+          },
+        },
+      ],
+    }),
+  ],
+  render: (args) => ({
+    props: args,
+    template: `
+      <div class="w-[500px] h-[400px] p-8 bg-base-100 rounded-lg shadow-xl border border-base-300">
+        <app-path-editable [(path)]="path"></app-path-editable>
+        <div class="mt-48 text-xs opacity-50 text-center font-bold text-error">
+          (This story simulates a very slow RPC call)
+        </div>
+      </div>
+    `,
+  }),
+};
+
+export const NoDirectories: Story = {
+  args: {
+    path: '/tmp',
+  },
+  render: (args) => ({
+    props: args,
+    template: `
+      <div class="w-[500px] h-[400px] p-8 bg-base-100 rounded-lg shadow-xl border border-base-300">
+        <app-path-editable [(path)]="path"></app-path-editable>
+        <div class="mt-48 text-xs opacity-50 text-center">
+          Navigating to /tmp should show "No directories".
+        </div>
+      </div>
+    `,
+  }),
+};

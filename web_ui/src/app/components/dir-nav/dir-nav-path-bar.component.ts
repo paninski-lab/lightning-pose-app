@@ -33,31 +33,28 @@ import {
         </button>
       </div>
     } @else {
-      <div class="flex items-center gap-1 min-w-0 w-full">
-        <div class="breadcrumbs text-sm min-w-0 flex-1 overflow-hidden py-0">
-          <ul class="flex-nowrap">
-            <li>
-              <button
-                class="flex items-center gap-1 hover:text-primary transition-colors"
-                (click)="segmentClick.emit('/')"
-                title="Root"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                </svg>
-              </button>
-            </li>
-            @for (seg of segments(); track seg.path) {
-              <li>
-                <button
-                  class="font-mono text-xs hover:text-primary transition-colors max-w-[180px] truncate"
-                  [title]="seg.label"
-                  (click)="segmentClick.emit(seg.path)"
-                >{{ seg.label }}</button>
-              </li>
-            }
-          </ul>
-        </div>
+      <div class="flex items-center gap-0.5 min-w-0 w-full overflow-x-auto whitespace-nowrap scrollbar-hide py-1">
+        <button
+          class="badge badge-ghost hover:badge-neutral transition-colors font-mono text-[10px] h-5 min-h-5 px-1.5 border-none shrink-0 bg-transparent"
+          (click)="segmentClick.emit('/')"
+          title="Root"
+        >
+          Root
+        </button>
+        @if (segments().length > 0) {
+          <span class="text-base-content/80 font-bold font-mono text-[10px] mx-0.5 shrink-0">/</span>
+        }
+        @for (seg of segments(); track seg.path) {
+          <button
+            class="badge badge-ghost hover:badge-neutral transition-colors font-mono text-[10px] h-5 min-h-5 px-1.5 border-none max-w-[180px] truncate shrink-0 bg-transparent"
+            [title]="seg.label"
+            (click)="segmentClick.emit(seg.path)"
+          >{{ seg.label }}</button>
+          @if (!$last) {
+            <span class="text-base-content/80 font-bold font-mono text-[10px] mx-0.5 shrink-0">/</span>
+          }
+        }
+      </div>
 
         <button
           class="btn btn-xs btn-ghost shrink-0 text-base-content/50 hover:text-base-content"

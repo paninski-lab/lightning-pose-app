@@ -10,24 +10,19 @@ import {
   selector: 'app-directory-breadcrumbs',
   standalone: true,
   template: `
-    <div class="breadcrumbs text-sm p-2 bg-base-200 rounded-lg shadow-inner w-full overflow-x-auto">
-      <ul>
-        @for (part of parts(); track part.path) {
-          <li>
-            <a
-              class="flex items-center gap-1 hover:text-primary transition-colors cursor-pointer"
-              (click)="pathClick.emit(part.path)"
-              [title]="part.path"
-            >
-              @if (part.isRoot) {
-                <span class="material-icons text-base">home</span>
-              } @else {
-                {{ part.name }}
-              }
-            </a>
-          </li>
+    <div class="flex items-center p-2 bg-base-200 rounded-lg shadow-inner w-full overflow-x-auto gap-0.5">
+      @for (part of parts(); track part.path) {
+        <button
+          class="badge badge-ghost hover:badge-neutral transition-colors font-mono text-[10px] h-5 min-h-5 px-1.5 border-none cursor-pointer bg-transparent"
+          (click)="pathClick.emit(part.path)"
+          [title]="part.path"
+        >
+          {{ part.isRoot ? 'Root' : part.name }}
+        </button>
+        @if (!$last) {
+          <span class="text-base-content/80 font-bold font-mono text-[10px] mx-0.5">/</span>
         }
-      </ul>
+      }
     </div>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -43,7 +38,7 @@ export class DirectoryBreadcrumbsComponent {
     const p = this.path();
     const segments = p.split('/').filter((s) => s.length > 0);
     const result: { name: string; path: string; isRoot?: boolean }[] = [
-      { name: 'Root', path: '/', isRoot: true },
+      { name: '/', path: '/', isRoot: true },
     ];
 
     let current = '';

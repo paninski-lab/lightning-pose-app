@@ -26,25 +26,32 @@ import { FormsModule } from '@angular/forms';
             (keydown.escape)="cancelEdit()"
             autofocus
           />
-          <button class="btn btn-sm btn-ghost btn-circle" (click)="toggleEdit()" title="Finish editing">
+          <button
+            class="btn btn-sm btn-ghost btn-circle"
+            (click)="toggleEdit()"
+            title="Finish editing"
+          >
             <span class="material-icons text-sm">check</span>
           </button>
         </div>
       } @else {
         <div class="flex-1 flex items-center overflow-hidden">
-          <div class="breadcrumbs text-sm overflow-x-auto whitespace-nowrap scrollbar-hide flex-1">
-            <ul>
-              @for (part of pathParts(); track $index) {
-                <li>
-                  <a
-                    (click)="onPartClick(part.fullPath)"
-                    class="cursor-pointer hover:text-primary transition-colors"
-                  >
-                    {{ part.name || 'Root' }}
-                  </a>
-                </li>
+          <div
+            class="flex-1 flex items-center overflow-x-auto whitespace-nowrap scrollbar-hide gap-0.5"
+          >
+            @for (part of pathParts(); track $index) {
+              <button
+                (click)="onPartClick(part.fullPath)"
+                class="badge badge-ghost hover:badge-neutral transition-colors font-mono  h-5 min-h-5 px-1.5 border-none bg-transparent"
+              >
+                {{ part.name || 'Root' }}
+              </button>
+              @if (!$last) {
+                <span class="text-base-content/80 font-bold font-mono  mx-0.5"
+                  >/</span
+                >
               }
-            </ul>
+            }
           </div>
           <button
             class="btn btn-sm btn-ghost btn-circle shrink-0"
