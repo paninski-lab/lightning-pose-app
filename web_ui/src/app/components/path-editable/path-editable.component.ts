@@ -14,6 +14,7 @@ import { ProjectInfoService } from '../../project-info.service';
 import { DenseListboxComponent } from '../dense-listbox/dense-listbox.component';
 import { DenseListboxItemComponent } from '../dense-listbox/dense-listbox-item.component';
 import { PathPipe } from '../../utils/pipes';
+import { CopyDirective } from '../../utils/copy.directive';
 
 interface RGlobResponse {
   entries: { path: string; type?: 'dir' | 'file' }[];
@@ -28,6 +29,7 @@ interface RGlobResponse {
     DenseListboxComponent,
     DenseListboxItemComponent,
     PathPipe,
+    CopyDirective,
   ],
   template: `
     <div class="flex flex-col w-full">
@@ -36,6 +38,7 @@ interface RGlobResponse {
           @if (!isEditing()) {
             <div
               class="bg-transparent hover:bg-base-content/5 px-2 py-1 rounded font-mono text-xs flex items-center gap-2 cursor-pointer transition-colors border border-transparent hover:border-base-content/10 min-w-[100px] flex-1 overflow-hidden"
+              [title]="path()"
               (click)="startEditing()"
             >
               <span class="truncate flex-1">{{ displayPath() }}</span>
@@ -47,28 +50,49 @@ interface RGlobResponse {
             </div>
           } @else {
             <div
-              class="flex-1 flex items-center gap-0.5 bg-base-300 px-2 py-1 rounded-md overflow-x-auto whitespace-nowrap scrollbar-hide border border-base-content/10"
+              class="flex-1 flex items-center flex-wrap gap-y-0.5 gap-x-0 bg-base-300 px-2 py-1 rounded-md border border-base-content/10"
             >
               @for (part of pathParts(); track part.fullPath) {
-                <button
-                  (click)="onPartClick(part.fullPath, $event)"
-                  class="font-mono text-xs px-1 py-0.5 rounded cursor-pointer transition-colors hover:bg-base-content/10 hover:text-base-content"
-                >
-                  {{ part.name || 'Root' }}
-                </button>
-                @if (!$last) {
-                  <span class="text-base-content/50 font-mono mx-0.5">/</span>
+                @if ($last && pathParts().length > 1) {
+                  <span class="flex items-center gap-0.5 font-mono text-xs px-1 py-0.5 rounded bg-base-content/10">
+                    <span>{{ part.name }}</span>
+                    <button
+                      (click)="onClearLastPart($event)"
+                      class="material-icons text-xs! leading-none cursor-pointer opacity-50 hover:opacity-100 transition-opacity"
+                    >close</button>
+                  </span>
+                } @else {
+                  <button
+                    (click)="onPartClick(part.fullPath, $event)"
+                    class="font-mono text-xs px-1 py-0.5 rounded cursor-pointer transition-colors hover:bg-base-content/10 hover:text-base-content"
+                  >
+                    {{ part.name || 'Root' }}
+                  </button>
+                  @if (!$last) {
+                    <span class="text-base-content/50 font-mono mx-0.5">/</span>
+                  }
                 }
               }
+              <div class="flex items-center gap-1 ml-auto shrink-0">
+                <button
+                  [appCopy]="editPath()"
+                  #copy="appCopy"
+                  class="btn btn-xs btn-ghost"
+                  title="Copy path"
+                >
+                  <span class="material-icons text-sm!" [class.text-success]="copy.isCopied()">
+                    {{ copy.isCopied() ? 'check' : 'content_copy' }}
+                  </span>
+                </button>
+                <button
+                  class="btn btn-xs btn-primary shrink-0"
+                  (click)="finishEditing()"
+                  title="Accept"
+                >
+                  <span class="material-icons text-sm!">check</span>
+                </button>
+              </div>
             </div>
-
-            <button
-              class="btn btn-sm btn-ghost btn-circle text-success shrink-0"
-              (click)="finishEditing()"
-              title="Accept"
-            >
-              <span class="material-icons">check</span>
-            </button>
           }
         </div>
       </div>
@@ -76,7 +100,7 @@ interface RGlobResponse {
       @if (isEditing()) {
         <div class="relative w-full mt-1 z-50">
           <div
-            class="absolute top-0 left-0 w-full rounded-box shadow-xl border border-base-300 overflow-hidden max-h-60 flex flex-col"
+            class="absolute top-0 left-0 w-full rounded-box shadow-xl border border-base-300 max-h-60 overflow-y-auto flex flex-col"
           >
             @if (!loading()) {
               @if (subdirectories().length > 0) {
@@ -126,6 +150,7 @@ export class PathEditableComponent {
   protected editPath = signal('');
   protected subdirectories = signal<string[]>([]);
   protected loading = signal(false);
+  private autoAcceptOnEmptyDirs = false;
 
   private rpc = inject(RpcService);
   private projectInfoService = inject(ProjectInfoService);
@@ -209,10 +234,19 @@ export class PathEditableComponent {
     this.editPath.set(fullPath);
   }
 
+  protected onClearLastPart(event: MouseEvent) {
+    event.stopPropagation();
+    const parts = this.pathParts();
+    if (parts.length > 1) {
+      this.editPath.set(parts[parts.length - 2].fullPath);
+    }
+  }
+
   protected onSubdirSelect(subdir: string | undefined) {
     if (!subdir) return;
     const current = this.editPath();
     const nextPath = current === '/' ? `/${subdir}` : `${current}/${subdir}`;
+    this.autoAcceptOnEmptyDirs = true;
     this.editPath.set(nextPath);
   }
 
@@ -230,6 +264,7 @@ export class PathEditableComponent {
         baseDir: basePath,
         pattern: '*',
         noDirs: false,
+        stat: true,
       })) as RGlobResponse;
 
       const dirs = response.entries
@@ -237,6 +272,10 @@ export class PathEditableComponent {
         .map((e) => e.path);
 
       this.subdirectories.set(dirs);
+      if (dirs.length === 0 && this.autoAcceptOnEmptyDirs) {
+        this.finishEditing();
+      }
+      this.autoAcceptOnEmptyDirs = false;
     } catch (error) {
       console.error('Failed to fetch subdirectories', error);
       this.subdirectories.set([]);

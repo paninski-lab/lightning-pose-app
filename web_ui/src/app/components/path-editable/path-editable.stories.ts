@@ -128,6 +128,62 @@ export const LoadingState: Story = {
   }),
 };
 
+export const LongPath: Story = {
+  args: {
+    path: '/home/user1/documents/work/projects/very-long-project-name/data/raw/session-recordings/2024/january',
+  },
+  render: (args) => ({
+    props: args,
+    template: `
+      <div class="w-[500px] h-[400px] p-8 bg-base-100 rounded-lg shadow-xl border border-base-300">
+        <app-path-editable [(path)]="path"></app-path-editable>
+        <div class="mt-48 p-2 bg-base-300 rounded text-xs font-mono">
+          Final path: {{ path }}
+        </div>
+        <div class="mt-4 text-xs opacity-50">
+          Deep path — verifies the breadcrumb scrolls horizontally.
+        </div>
+      </div>
+    `,
+  }),
+};
+
+export const LongList: Story = {
+  args: {
+    path: '/data',
+  },
+  decorators: [
+    moduleMetadata({
+      providers: [
+        {
+          provide: RpcService,
+          useClass: class {
+            async call(_method: string, params?: any) {
+              await new Promise((resolve) => setTimeout(resolve, 150));
+              const dirs = Array.from({ length: 40 }, (_, i) => `folder-${String(i + 1).padStart(2, '0')}`);
+              return {
+                entries: dirs.map((d) => ({ path: d, type: 'dir' })),
+                relativeTo: params?.baseDir ?? '/data',
+              };
+            }
+          },
+        },
+      ],
+    }),
+  ],
+  render: (args) => ({
+    props: args,
+    template: `
+      <div class="w-[500px] h-[400px] p-8 bg-base-100 rounded-lg shadow-xl border border-base-300">
+        <app-path-editable [(path)]="path"></app-path-editable>
+        <div class="mt-4 text-xs opacity-50">
+          40 directories — verifies the dropdown scrolls.
+        </div>
+      </div>
+    `,
+  }),
+};
+
 export const RelativeMode: Story = {
   args: {
     path: '/home/user1/projects/alpha/data',

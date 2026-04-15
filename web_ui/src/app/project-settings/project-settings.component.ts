@@ -20,11 +20,12 @@ import {
 import { ProjectInfo } from '../project-info';
 import { JsonPipe, NgTemplateOutlet } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { PathEditableComponent } from '../components/path-editable/path-editable.component';
 
 @Component({
   selector: 'app-project-settings',
   standalone: true,
-  imports: [ReactiveFormsModule, JsonPipe, NgTemplateOutlet],
+  imports: [ReactiveFormsModule, JsonPipe, NgTemplateOutlet, PathEditableComponent],
   templateUrl: './project-settings.component.html',
   styleUrl: './project-settings.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -275,6 +276,9 @@ export class ProjectSettingsComponent implements OnInit {
   protected getDefaultModelDir(dataDir: string): string {
     return dataDir ? `${dataDir.replace(/\/$/, '')}/models` : '';
   }
+
+  /** Temporary field for testing path-editable + RPC integration. Not wired to form data. */
+  protected fakeDir = signal(this.projectInfoService.globalContext()?.homeDir ?? '/');
 
   protected readonly cameraViewPlaceholder = `view1
     view2
