@@ -12,16 +12,9 @@
     <span class="m-0!"> Use the default model directory </span>
   </div>
 
-  <div class="input w-full">
-    <span class="material-icons !text-sm opacity-50">folder</span>
-    <input
-      type="text"
-      class="grow"
-      placeholder="/"
-      spellcheck="false"
-      [ngModel]="modelDir()"
-      (ngModelChange)="onInputChange($event)"
-      [disabled]="isDisabled() || useDefaultModelDir()"
-    />
-  </div>
+  <app-path-editable
+    [path]="modelDir()"
+    (pathChange)="onInputChange($event)"
+    [disabled]="useDefaultModelDir() || isDisabled()"
+  />
 </fieldset>

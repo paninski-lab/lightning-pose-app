@@ -34,16 +34,26 @@ interface RGlobResponse {
         <div class="flex-1 flex items-center gap-2 min-w-0">
           @if (!isEditing()) {
             <div
-              class="bg-transparent hover:bg-base-content/5 px-2 py-1 rounded font-mono text-xs flex items-center gap-2 cursor-pointer transition-colors border border-transparent hover:border-base-content/10 min-w-[100px] flex-1 overflow-hidden"
+              class="px-2 py-1 rounded font-mono text-xs flex items-center gap-2 transition-colors border min-w-[100px] flex-1 overflow-hidden"
               [title]="path()"
+              [class.bg-transparent]="!disabled()"
+              [class.hover:bg-base-content/5]="!disabled()"
+              [class.cursor-pointer]="!disabled()"
+              [class.border-transparent]="!disabled()"
+              [class.hover:border-base-content/10]="!disabled()"
+              [class.opacity-50]="disabled()"
+              [class.cursor-default]="disabled()"
+              [class.border-base-content/10]="disabled()"
               (click)="startEditing()"
             >
               <span class="truncate flex-1">{{ displayPath() }}</span>
-              <span
-                class="material-icons text-sm! opacity-40 group-hover/path:opacity-100 transition-opacity shrink-0"
-              >
-                edit
-              </span>
+              @if (!disabled()) {
+                <span
+                  class="material-icons text-sm! opacity-40 group-hover/path:opacity-100 transition-opacity shrink-0"
+                >
+                  edit
+                </span>
+              }
             </div>
           } @else {
             <div
@@ -138,6 +148,9 @@ interface RGlobResponse {
 export class PathEditableComponent {
   path = model.required<string>();
 
+  /** When true, the path is shown read-only with no editing affordance. */
+  disabled = input(false);
+
   /** When set, enables relative-path mode. The user cannot navigate above this directory. */
   baseDir = input<string | null>(null);
   /** Label shown in the breadcrumb for the base directory root (e.g. "project"). */
@@ -214,6 +227,7 @@ export class PathEditableComponent {
   }
 
   protected startEditing() {
+    if (this.disabled()) return;
     const base = this.baseDir();
     const p = this.path();
     this.editPath.set(base && !p.startsWith(base) ? base : p);
