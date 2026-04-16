@@ -92,7 +92,6 @@ export class ModelsPageComponent {
   }
 
   openRunModelInferenceDialog() {
-    if (!this.selectedModel()) return;
     this.isRunModelInferenceDialogOpen.set(true);
   }
 

@@ -600,50 +600,31 @@ export class SessionService {
     return resp;
   }
 
-  /**
-   * Start or attach to a model inference run for a set of videos and stream progress via SSE.
-   * Mirrors the TranscodeVideo SSE pattern.
-   */
-  inferModelSse(
-    modelRelativePath: string,
-    videoRelativePaths: string[],
-  ): Observable<InferenceTaskStatus> {
-    return this._inferSse('/app/v0/sse/InferModel', modelRelativePath, videoRelativePaths);
-  }
-
-  /**
-   * Start or attach to an EKS model inference run and stream progress via SSE.
-   * Runs litpose predict on each member model, then runs the EKS smoother.
-   */
-  inferEksModelSse(
-    modelRelativePath: string,
-    videoRelativePaths: string[],
-  ): Observable<InferenceTaskStatus> {
-    return this._inferSse('/app/v0/sse/InferEksModel', modelRelativePath, videoRelativePaths);
-  }
-
-  private _inferSse(
-    sseEndpoint: string,
-    modelRelativePath: string,
-    videoRelativePaths: string[],
-  ): Observable<InferenceTaskStatus> {
+  async inferTask(
+    models: string[],
+    sessions: string[],
+    videoRelativePaths: string[] = [],
+  ): Promise<{ taskId: string }> {
     const projectKey = this.getProjectKeyOrThrow();
-    const params = new URLSearchParams({
-      projectKey,
-      modelRelativePath,
-    });
-    for (const rel of videoRelativePaths) {
-      params.append('videoRelativePaths', rel);
-    }
-    const url = `${sseEndpoint}?${params.toString()}`;
+    return firstValueFrom(
+      this.httpClient.post<{ taskId: string }>('/app/v0/inference/task', {
+        projectKey,
+        models,
+        sessions,
+        videoRelativePaths,
+      }),
+    );
+  }
 
+  streamTaskProgress(taskId: string): Observable<InferenceTaskStatus> {
+    const url = `/app/v0/inference/task/${taskId}/stream`;
     return new Observable<InferenceTaskStatus>((subscriber) => {
       const es = new EventSource(url);
       const onMessage = (ev: MessageEvent) => {
         try {
           const data = JSON.parse(ev.data) as InferenceTaskStatus;
           subscriber.next(data);
-          if (data.status === 'DONE' || data.status === 'ERROR') {
+          if (data.status === 'COMPLETED' || data.status === 'FAILED') {
             es.close();
             subscriber.complete();
           }
@@ -665,6 +646,22 @@ export class SessionService {
         } catch {}
       };
     });
+  }
+
+  async resolveInference(
+    models: string[],
+    sessions: string[],
+    videoRelativePaths: string[] = [],
+  ): Promise<ResolveInferenceResponse> {
+    const projectKey = this.getProjectKeyOrThrow();
+    return firstValueFrom(
+      this.httpClient.post<ResolveInferenceResponse>('/app/v0/inference/resolve', {
+        projectKey,
+        models,
+        sessions,
+        videoRelativePaths,
+      }),
+    );
   }
 
   deleteModel(modelRelativePath: string) {
@@ -691,7 +688,13 @@ export interface VideoTaskStatus {
   error?: string | null;
 }
 
-export type InferenceStatus = 'PENDING' | 'ACTIVE' | 'DONE' | 'ERROR';
+export type InferenceStatus =
+  | 'PENDING'
+  | 'RUNNING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELLED';
+
 export interface InferenceTaskStatus {
   taskId: string;
   status: InferenceStatus;
@@ -699,6 +702,18 @@ export interface InferenceTaskStatus {
   total: number | null;
   error?: string | null;
   message?: string | null;
+}
+
+export interface InferRun {
+  model: string;
+  session: string;
+  kind: 'normal' | 'member' | 'eks';
+  member_of?: string;
+}
+
+export interface ResolveInferenceResponse {
+  runs: InferRun[];
+  skipped_count: number;
 }
 
 interface RGlobResponse {
