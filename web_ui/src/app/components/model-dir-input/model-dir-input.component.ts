@@ -37,6 +37,7 @@ export interface ModelDirValue {
 export class ModelDirInputComponent implements ControlValueAccessor {
   // Input signal for data directory to calculate default
   dataDir = input.required<string>();
+  newDirMode = input<boolean>(false);
 
   // Internal signals for state
   protected modelDir = signal('');

@@ -16,5 +16,6 @@
     [path]="modelDir()"
     (pathChange)="onInputChange($event)"
     [disabled]="useDefaultModelDir() || isDisabled()"
+    [newDirMode]="newDirMode()"
   />
 </fieldset>
