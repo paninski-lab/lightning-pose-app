@@ -35,18 +35,6 @@ class RGlobResponse(BaseModel):
 
 @router.post("/app/v0/rpc/rglob")
 def rglob(request: RGlobRequest) -> RGlobResponse:
-    # TODO: re-enable allowlist once path-editable integration is validated.
-    # Prevent secrets like /etc/passwd and ~/.ssh/ from being leaked.
-    # if not (
-    #     request.pattern.endswith(".csv")
-    #     or request.pattern.endswith(".mp4")
-    #     or request.pattern.endswith(".toml")
-    # ):
-    #     raise HTTPException(
-    #         status_code=status.HTTP_403_FORBIDDEN,
-    #         detail="Only csv, mp4, toml files are supported.",
-    #     )
-
     response = RGlobResponse(entries=[], relativeTo=request.baseDir)
 
     results = _rglob(
