@@ -108,6 +108,7 @@ export class VideoTileComponent implements OnDestroy, OnInit {
       dar: m?.dar || '',
       sar: m?.sar || '',
       color_space: m?.color_space || '',
+      is_all_intra: m?.is_all_intra ?? true,
     };
   });
 

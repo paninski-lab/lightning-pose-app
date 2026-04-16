@@ -51,6 +51,16 @@
         <td class="font-semibold">{{ data().codec }}</td>
       </tr>
       <tr>
+        <td class="font-medium text-base-content/70">All Intra</td>
+        <td class="font-semibold">
+          @if (data().is_all_intra) {
+            <span class="text-success">Yes</span>
+          } @else {
+            <span class="text-warning">No (GOP used)</span>
+          }
+        </td>
+      </tr>
+      <tr>
         <td class="font-medium text-base-content/70">Bitrate</td>
         <td class="font-semibold">{{ data().bitrate_str }}</td>
       </tr>

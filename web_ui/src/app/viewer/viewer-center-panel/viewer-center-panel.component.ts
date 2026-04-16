@@ -242,16 +242,19 @@ export class ViewerCenterPanelComponent implements OnChanges {
         this._loadedSessionKey.set(sessionKey);
       }
       this.widgetModels.set(newWidgetModels);
-      this.checkFpsConsistency(ffprobeDataCache);
+      this.checkMetadataConsistency(ffprobeDataCache);
     } finally {
       this.loadingService.isLoading.set(false);
     }
   }
 
-  private checkFpsConsistency(ffprobeData: Map<string, VideoMetadata>) {
+  private checkMetadataConsistency(ffprobeData: Map<string, VideoMetadata>) {
     const fpsValues = Array.from(ffprobeData.values()).map((m) => m.fps);
     const durationValues = Array.from(ffprobeData.values()).map(
       (m) => m.duration,
+    );
+    const anyNotAllIntra = Array.from(ffprobeData.values()).some(
+      (m) => !m.is_all_intra,
     );
 
     if (fpsValues.length > 1) {
@@ -276,6 +279,14 @@ export class ViewerCenterPanelComponent implements OnChanges {
           variant: 'error',
         });
       }
+    }
+
+    if (anyNotAllIntra) {
+      this.toastService.showToast({
+        content:
+          'Warning: Video is not all-intra. Frame accuracy is not guaranteed and scrubbing may not be smooth.',
+        variant: 'warning',
+      });
     }
   }
 

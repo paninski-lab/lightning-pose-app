@@ -12,4 +12,5 @@ export interface FFProbeInfo {
   dar: string;
   sar: string;
   color_space: string;
+  is_all_intra: boolean;
 }
