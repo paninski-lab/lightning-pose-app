@@ -10,10 +10,8 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RpcService } from '../../rpc.service';
-import { ProjectInfoService } from '../../project-info.service';
 import { DenseListboxComponent } from '../dense-listbox/dense-listbox.component';
 import { DenseListboxItemComponent } from '../dense-listbox/dense-listbox-item.component';
-import { PathPipe } from '../../utils/pipes';
 import { CopyDirective } from '../../utils/copy.directive';
 
 interface RGlobResponse {
@@ -28,7 +26,6 @@ interface RGlobResponse {
     CommonModule,
     DenseListboxComponent,
     DenseListboxItemComponent,
-    PathPipe,
     CopyDirective,
   ],
   template: `
@@ -153,7 +150,6 @@ export class PathEditableComponent {
   private autoAcceptOnEmptyDirs = false;
 
   private rpc = inject(RpcService);
-  private projectInfoService = inject(ProjectInfoService);
 
   /** The path shown in display (non-edit) mode — relative when baseDir is set. */
   protected displayPath = computed(() => {
@@ -251,16 +247,9 @@ export class PathEditableComponent {
   }
 
   private async fetchSubdirectories(basePath: string) {
-    const projectKey = this.projectInfoService.projectContext()?.key;
-    if (!projectKey) {
-      // Fallback for Storybook or when projectKey is not available
-      // If we're in Storybook, RpcService should be mocked.
-    }
-
     this.loading.set(true);
     try {
       const response = (await this.rpc.call('rglob', {
-        projectKey: projectKey || 'mock-project',
         baseDir: basePath,
         pattern: '*',
         noDirs: false,

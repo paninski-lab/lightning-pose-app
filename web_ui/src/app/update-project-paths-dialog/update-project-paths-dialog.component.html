@@ -6,16 +6,7 @@
       <form [formGroup]="form">
         <fieldset class="fieldset">
           <h3 class="text-md">Data directory</h3>
-          <div class="input w-full">
-            <span class="material-icons !text-sm opacity-50">folder</span>
-            <input
-              formControlName="dataDir"
-              type="text"
-              class="grow"
-              placeholder="/"
-              spellcheck="false"
-            />
-          </div>
+          <app-path-editable [(path)]="dataDirPath" />
           @if (
             form.controls["dataDir"].invalid && form.controls["dataDir"].touched
           ) {

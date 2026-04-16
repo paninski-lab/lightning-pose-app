@@ -1,10 +1,12 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  effect,
   inject,
   input,
   OnInit,
   output,
+  signal,
 } from '@angular/core';
 import {
   FormBuilder,
@@ -20,6 +22,7 @@ import {
   AlertHeaderComponent,
 } from '../components/alert-dialog/alert-dialog.component';
 import { ModelDirInputComponent } from '../components/model-dir-input/model-dir-input.component';
+import { PathEditableComponent } from '../components/path-editable/path-editable.component';
 
 @Component({
   selector: 'app-update-project-paths-dialog',
@@ -30,6 +33,7 @@ import { ModelDirInputComponent } from '../components/model-dir-input/model-dir-
     AlertHeaderComponent,
     AlertFooterComponent,
     ModelDirInputComponent,
+    PathEditableComponent,
   ],
   templateUrl: './update-project-paths-dialog.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -46,6 +50,13 @@ export class UpdateProjectPathsDialogComponent implements OnInit {
   private toastService = inject(ToastService);
 
   protected form?: FormGroup;
+  protected dataDirPath = signal('');
+
+  constructor() {
+    effect(() => {
+      this.form?.patchValue({ dataDir: this.dataDirPath() }, { emitEvent: true });
+    });
+  }
 
   ngOnInit() {
     const projectInfo = this.projectInfoService.projectContext()?.projectInfo;
@@ -66,6 +77,8 @@ export class UpdateProjectPathsDialogComponent implements OnInit {
         },
       ],
     });
+
+    this.dataDirPath.set(dataDir);
   }
 
   private getDefaultModelDir(dataDir: string): string {
