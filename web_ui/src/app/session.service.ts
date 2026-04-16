@@ -616,15 +616,18 @@ export class SessionService {
     );
   }
 
-  streamTaskProgress(taskId: string): Observable<InferenceTaskStatus> {
+  streamTaskProgress(taskId: string): Observable<TaskStreamEvent> {
     const url = `/app/v0/inference/task/${taskId}/stream`;
-    return new Observable<InferenceTaskStatus>((subscriber) => {
+    return new Observable<TaskStreamEvent>((subscriber) => {
       const es = new EventSource(url);
       const onMessage = (ev: MessageEvent) => {
         try {
-          const data = JSON.parse(ev.data) as InferenceTaskStatus;
-          subscriber.next(data);
-          if (data.status === 'COMPLETED' || data.status === 'FAILED') {
+          const event = JSON.parse(ev.data) as TaskStreamEvent;
+          subscriber.next(event);
+          if (
+            event.type === 'status' &&
+            (event.status === 'COMPLETED' || event.status === 'FAILED')
+          ) {
             es.close();
             subscriber.complete();
           }
@@ -646,6 +649,18 @@ export class SessionService {
         } catch {}
       };
     });
+  }
+
+  async getInferenceTaskStatus(taskId: string): Promise<InferenceTaskStatus> {
+    return firstValueFrom(
+      this.httpClient.get<InferenceTaskStatus>(`/app/v0/inference/task/${taskId}`),
+    );
+  }
+
+  async getActiveInferenceTask(): Promise<{ taskId: string | null }> {
+    return firstValueFrom(
+      this.httpClient.get<{ taskId: string | null }>('/app/v0/inference/task/active'),
+    );
   }
 
   async resolveInference(
@@ -702,7 +717,12 @@ export interface InferenceTaskStatus {
   total: number | null;
   error?: string | null;
   message?: string | null;
+  logs?: string[];
 }
+
+export type TaskStreamEvent =
+  | ({ type: 'status' } & InferenceTaskStatus)
+  | { type: 'log'; lines: string[] };
 
 export interface InferRun {
   model: string;

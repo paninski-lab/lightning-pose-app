@@ -61,7 +61,7 @@
 
     <!-- Inference progress -->
     @if (inferState().status === 'running') {
-      <div class="mb-4">
+      <div class="mb-2">
         <div class="flex items-center gap-3">
           <span class="font-semibold text-sm">Running inference…</span>
           <progress
@@ -76,11 +76,18 @@
         }
       </div>
     } @else if (inferState().status === 'done') {
-      <div class="mb-4 flex items-center gap-2">
+      <div class="mb-2 flex items-center gap-2">
         <span class="badge badge-success">Inference completed</span>
       </div>
     } @else if (inferState().status === 'error') {
-      <div class="text-error text-sm mb-4">{{ inferState().error ?? 'Inference failed' }}</div>
+      <div class="text-error text-sm mb-2">{{ inferState().error ?? 'Inference failed' }}</div>
+    }
+
+    <!-- Terminal output -->
+    @if (showTerminal) {
+      <div class="mb-4">
+        <app-terminal-output [lines]="logLines()" />
+      </div>
     }
 
     <footer class="shrink-0 modal-action justify-between!">

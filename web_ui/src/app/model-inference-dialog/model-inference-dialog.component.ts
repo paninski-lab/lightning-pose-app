@@ -13,13 +13,14 @@ import {
 
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
-import { SessionService } from '../session.service';
+import { SessionService, TaskStreamEvent } from '../session.service';
+import { TerminalOutputComponent } from '../terminal-output/terminal-output.component';
 import { VideoFileTableComponent } from '../video-import/video-file-table/video-file-table.component';
 import { VideoImportStore } from '../video-import/video-import.store';
 
 @Component({
   selector: 'app-model-inference-dialog',
-  imports: [FormsModule, VideoFileTableComponent],
+  imports: [FormsModule, VideoFileTableComponent, TerminalOutputComponent],
   templateUrl: './model-inference-dialog.component.html',
   styleUrl: './model-inference-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -47,6 +48,7 @@ export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
     status: 'idle',
     progress: 0,
   });
+  protected logLines = signal<string[]>([]);
 
   ngAfterViewInit(): void {
     queueMicrotask(() => {
@@ -97,13 +99,19 @@ export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
     if (videos.length === 0) return;
 
     this.inferenceRunning.set(true);
+    this.logLines.set([]);
     this.inference.set({ status: 'running', progress: 0 });
 
     this.sessionService
       .inferTask([modelRel], [], videos)
       .then(({ taskId }) => {
         const sub = this.sessionService.streamTaskProgress(taskId).subscribe({
-          next: (st) => {
+          next: (event: TaskStreamEvent) => {
+            if (event.type === 'log') {
+              this.logLines.update((lines) => [...lines, ...event.lines]);
+              return;
+            }
+            const st = event;
             const total = st.total ?? 0;
             const completed = st.completed ?? 0;
             const progress = total > 0 ? Math.round((completed / total) * 100) : 0;

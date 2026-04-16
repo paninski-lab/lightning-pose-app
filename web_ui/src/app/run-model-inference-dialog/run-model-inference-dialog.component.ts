@@ -14,13 +14,15 @@ import {
   InferenceTaskStatus,
   ResolveInferenceResponse,
   SessionService,
+  TaskStreamEvent,
 } from '../session.service';
 import { ModelListResponseEntry } from '../modelconf';
+import { TerminalOutputComponent } from '../terminal-output/terminal-output.component';
 
 @Component({
   selector: 'app-run-model-inference-dialog',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, TerminalOutputComponent],
   templateUrl: './run-model-inference-dialog.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -39,17 +41,52 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
   protected resolveError = signal<string | null>(null);
 
   protected inferState = signal<InferUiState>({ status: 'idle', progress: 0 });
+  protected logLines = signal<string[]>([]);
 
   protected get inferenceRunning() {
     return this.inferState().status === 'running';
   }
 
+  protected get showTerminal() {
+    return this.inferState().status !== 'idle';
+  }
+
   async ngOnInit() {
     await this.loadModels();
+    await this.reconnectActiveTask();
   }
 
   ngOnDestroy() {
     this.subs.forEach((s) => s.unsubscribe());
+  }
+
+  private async reconnectActiveTask() {
+    try {
+      const { taskId } = await this.sessionService.getActiveInferenceTask();
+      if (!taskId) return;
+
+      const status = await this.sessionService.getInferenceTaskStatus(taskId);
+      if (status.logs && status.logs.length > 0) {
+        this.logLines.set(status.logs);
+      }
+
+      const uiStatus = this.toUiStatus(status.status);
+      const total = status.total ?? 0;
+      const completed = status.completed ?? 0;
+      const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+      this.inferState.set({
+        status: uiStatus,
+        progress,
+        message: status.message ?? undefined,
+        error: status.error ?? undefined,
+      });
+
+      if (uiStatus === 'running') {
+        this.subscribeToStream(taskId);
+      }
+    } catch {
+      // Non-critical — ignore reconnect failures
+    }
   }
 
   private async loadModels() {
@@ -104,48 +141,65 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
     const selected = Array.from(this.selectedPaths());
     if (selected.length === 0) return;
 
+    this.logLines.set([]);
     this.inferState.set({ status: 'running', progress: 0 });
     try {
       const { taskId } = await this.sessionService.inferTask(selected, ['all']);
-      const sub = this.sessionService.streamTaskProgress(taskId).subscribe({
-        next: (st: InferenceTaskStatus) => {
-          const total = st.total ?? 0;
-          const completed = st.completed ?? 0;
-          const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-          const status =
-            st.status === 'COMPLETED'
-              ? 'done'
-              : st.status === 'FAILED'
-                ? 'error'
-                : 'running';
-          this.inferState.set({
-            status,
-            progress,
-            message: st.message ?? undefined,
-            error: st.error ?? undefined,
-          });
-        },
-        error: (err: Error) => {
-          this.inferState.set({
-            status: 'error',
-            progress: 0,
-            error: err.message ?? 'Inference stream error',
-          });
-        },
-        complete: () => {
-          const cur = this.inferState();
-          if (cur.status !== 'error') {
-            this.inferState.set({ ...cur, status: 'done', progress: 100 });
-          }
-        },
-      });
-      this.subs.push(sub);
+      this.subscribeToStream(taskId);
     } catch (err: any) {
       this.inferState.set({
         status: 'error',
         progress: 0,
         error: err?.message ?? 'Failed to start inference',
       });
+    }
+  }
+
+  private subscribeToStream(taskId: string) {
+    const sub = this.sessionService.streamTaskProgress(taskId).subscribe({
+      next: (event: TaskStreamEvent) => {
+        if (event.type === 'log') {
+          this.logLines.update((lines) => [...lines, ...event.lines]);
+        } else {
+          const total = event.total ?? 0;
+          const completed = event.completed ?? 0;
+          const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+          this.inferState.set({
+            status: this.toUiStatus(event.status),
+            progress,
+            message: event.message ?? undefined,
+            error: event.error ?? undefined,
+          });
+        }
+      },
+      error: (err: Error) => {
+        this.inferState.set({
+          status: 'error',
+          progress: 0,
+          error: err.message ?? 'Inference stream error',
+        });
+      },
+      complete: () => {
+        const cur = this.inferState();
+        if (cur.status !== 'error') {
+          this.inferState.set({ ...cur, status: 'done', progress: 100 });
+        }
+      },
+    });
+    this.subs.push(sub);
+  }
+
+  private toUiStatus(status: string): InferUiState['status'] {
+    switch (status) {
+      case 'COMPLETED':
+        return 'done';
+      case 'FAILED':
+        return 'error';
+      case 'RUNNING':
+      case 'PENDING':
+        return 'running';
+      default:
+        return 'running';
     }
   }
 

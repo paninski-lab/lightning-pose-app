@@ -61,6 +61,12 @@
         } @else if (inference().status === 'error') {
           <div class="text-error">{{ inference().error ?? 'Inference failed' }}</div>
         }
+
+        @if (inference().status !== 'idle' && logLines().length > 0) {
+          <div class="mt-2">
+            <app-terminal-output [lines]="logLines()" />
+          </div>
+        }
       </div>
 
       <div class="flex justify-between items-center mt-6 flex-shrink-0">

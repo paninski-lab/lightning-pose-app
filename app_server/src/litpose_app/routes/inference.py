@@ -65,9 +65,12 @@ class InferenceTaskStatus:
     total: int | None = None
     error: str | None = None
     message: str | None = None
+    logs: List[str] = field(default_factory=list)
 
 
 _status_by_task: Dict[str, InferenceTaskStatus] = {}
+# Ordered list of task IDs so we can find the most recent one
+_task_id_order: List[str] = []
 
 
 def _get_or_create_status_nolock(task_id: str) -> InferenceTaskStatus:
@@ -75,6 +78,7 @@ def _get_or_create_status_nolock(task_id: str) -> InferenceTaskStatus:
     if s is None:
         s = InferenceTaskStatus(taskId=task_id)
         _status_by_task[task_id] = s
+        _task_id_order.append(task_id)
     return s
 
 
@@ -93,13 +97,65 @@ def set_status(task_id: str, **kwargs):
 
 def _status_snapshot_dict(task_id: str) -> dict:
     st = get_or_create_status(task_id)
-    return asdict(st)
+    d = asdict(st)
+    # Hydrate logs from the log buffer (status object doesn't store them)
+    d["logs"] = _get_logs(task_id)
+    return d
 
 
 def _stream_sse_sync(gen: Iterator[dict]):
     for payload in gen:
         data = json.dumps(payload)
         yield f"data: {data}\n\n"
+
+
+# -----------------------------
+# Log buffer
+# -----------------------------
+
+_logs_by_task: Dict[str, List[str]] = {}
+_logs_lock = threading.RLock()
+
+
+def _append_log(task_id: str, line: str):
+    with _logs_lock:
+        _logs_by_task.setdefault(task_id, []).append(line)
+
+
+def _get_logs(task_id: str, from_offset: int = 0) -> List[str]:
+    with _logs_lock:
+        return list(_logs_by_task.get(task_id, [])[from_offset:])
+
+
+# -----------------------------
+# Subprocess helper
+# -----------------------------
+
+def _run_subprocess_with_logging(task_id: str, cmd: List[str]) -> int:
+    """Run a subprocess, capturing stdout/stderr into the task log buffer. Returns exit code."""
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,
+    )
+
+    def _reader(pipe, prefix: str):
+        for line in iter(pipe.readline, ''):
+            stripped = line.rstrip('\n')
+            if stripped:
+                _append_log(task_id, f"{prefix}{stripped}")
+        pipe.close()
+
+    t_out = threading.Thread(target=_reader, args=(proc.stdout, ''), daemon=True)
+    t_err = threading.Thread(target=_reader, args=(proc.stderr, '[stderr] '), daemon=True)
+    t_out.start()
+    t_err.start()
+    ret = proc.wait()
+    t_out.join()
+    t_err.join()
+    return ret
 
 
 # -----------------------------
@@ -320,7 +376,7 @@ def _run_eks_step(task_id: str, step: InferStep) -> bool:
         "--quantile_keep_pca", str(quantile_keep_pca),
         "--input_files", *input_files,
     ]
-    ret = subprocess.Popen(cmd).wait()
+    ret = _run_subprocess_with_logging(task_id, cmd)
     if ret != 0:
         set_status(
             task_id,
@@ -344,13 +400,13 @@ def _start_batch_inference_background(task_id: str, plan: InferPlan) -> Future:
     def _run():
         try:
             for i, step in enumerate(steps):
-                set_status(
-                    task_id,
-                    message=(
-                        f"Step {i + 1}/{total}: {step.kind} — "
-                        f"{step.model_dir.name} on {step.session}"
-                    ),
+                msg = (
+                    f"Step {i + 1}/{total}: {step.kind} — "
+                    f"{step.model_dir.name} on {step.session}"
                 )
+                set_status(task_id, message=msg)
+                _append_log(task_id, f"=== {msg} ===")
+
                 if step.kind in ("normal", "member"):
                     cmd = [
                         "litpose", "predict",
@@ -358,7 +414,7 @@ def _start_batch_inference_background(task_id: str, plan: InferPlan) -> Future:
                         *[str(p) for p in step.video_paths],
                         "--skip_viz",
                     ]
-                    ret = subprocess.Popen(cmd).wait()
+                    ret = _run_subprocess_with_logging(task_id, cmd)
                     if ret != 0:
                         set_status(
                             task_id,
@@ -375,8 +431,10 @@ def _start_batch_inference_background(task_id: str, plan: InferPlan) -> Future:
                 set_status(task_id, completed=i + 1)
 
             set_status(task_id, status=InferenceStatus.COMPLETED, completed=total)
+            _append_log(task_id, "=== Inference completed ===")
         except Exception as e:
             set_status(task_id, status=InferenceStatus.FAILED, error=f"Exception: {e}")
+            _append_log(task_id, f"[error] Exception: {e}")
 
     future = get_executor().submit(_run)
     with _status_lock:
@@ -446,23 +504,57 @@ def start_inference_task(
     return {"taskId": task_id, "status": "ACCEPTED"}
 
 
+@router.get("/app/v0/inference/task/active")
+def get_active_inference_task():
+    """Return the taskId of the most recent non-terminal task, or null."""
+    terminal = {InferenceStatus.COMPLETED, InferenceStatus.FAILED, InferenceStatus.CANCELLED}
+    with _status_lock:
+        for task_id in reversed(_task_id_order):
+            st = _status_by_task.get(task_id)
+            if st is not None and st.status not in terminal:
+                return {"taskId": task_id}
+    return {"taskId": None}
+
+
 @router.get("/app/v0/inference/task/{taskId}")
 def get_inference_task_status(taskId: str):
-    """Get the current status of an inference task."""
+    """Get the current status of an inference task, including all log lines so far."""
     return _status_snapshot_dict(taskId)
 
 
 @router.get("/app/v0/inference/task/{taskId}/stream")
 def stream_inference_task(taskId: str):
-    """Stream real-time status updates for an inference task via SSE."""
+    """Stream real-time status updates and log lines for an inference task via SSE."""
     terminal = {InferenceStatus.COMPLETED, InferenceStatus.FAILED, InferenceStatus.CANCELLED}
 
     def poller() -> Iterator[dict]:
+        log_offset = 0
+
+        # Replay all logs accumulated before the subscriber connected
+        initial_logs = _get_logs(taskId, 0)
+        if initial_logs:
+            yield {"type": "log", "lines": initial_logs}
+            log_offset = len(initial_logs)
+
         while True:
-            payload = _status_snapshot_dict(taskId)
-            yield payload
-            if payload["status"] in terminal:
+            snapshot = _status_snapshot_dict(taskId)
+            # Don't include the full logs list in SSE status events — too large
+            snapshot.pop("logs", None)
+            snapshot["type"] = "status"
+            yield snapshot
+
+            new_lines = _get_logs(taskId, log_offset)
+            if new_lines:
+                yield {"type": "log", "lines": new_lines}
+                log_offset += len(new_lines)
+
+            if snapshot["status"] in terminal:
+                # Final flush in case lines arrived after the last poll
+                final_lines = _get_logs(taskId, log_offset)
+                if final_lines:
+                    yield {"type": "log", "lines": final_lines}
                 break
+
             time.sleep(0.1)
 
     return StreamingResponse(_stream_sse_sync(poller()), media_type="text/event-stream")
