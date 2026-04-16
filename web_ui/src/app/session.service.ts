@@ -125,7 +125,6 @@ export class SessionService {
     try {
       const uploadDir = await this.getUploadDir();
       const response = (await this.rpc.call('rglob', {
-        projectKey: this.getProjectKeyOrThrow(),
         baseDir: uploadDir,
         pattern: filename,
         noDirs: true,
@@ -172,7 +171,6 @@ export class SessionService {
     const projectInfo = this.projectInfoService.projectInfo;
 
     const response = (await this.rpc.call('rglob', {
-      projectKey: this.getProjectKeyOrThrow(),
       baseDir: projectInfo.data_dir,
       pattern: 'videos*/**/*.mp4',
       noDirs: true,
@@ -251,7 +249,6 @@ export class SessionService {
     const projectInfo = this.projectInfoService.projectInfo;
     // Search for all CSV files.
     const response = (await this.rpc.call('rglob', {
-      projectKey: this.getProjectKeyOrThrow(),
       baseDir: projectInfo.model_dir,
       pattern: '**/video_preds/**/*.csv',
       noDirs: true,
@@ -546,7 +543,6 @@ export class SessionService {
 
     // Search for session-level calibration file.
     let response = (await this.rpc.call('rglob', {
-      projectKey: this.getProjectKeyOrThrow(),
       baseDir: projectInfo.data_dir,
       pattern: `calibrations/${sessionKey}.toml`,
       noDirs: true,
@@ -557,7 +553,6 @@ export class SessionService {
 
     // Search for project-level calibration file.
     response = (await this.rpc.call('rglob', {
-      projectKey: this.getProjectKeyOrThrow(),
       baseDir: projectInfo.data_dir,
       pattern: `calibration.toml`,
       noDirs: true,
