@@ -412,6 +412,57 @@ export class SessionService {
     return this.sessionModelMap[sessionKey] || [];
   }
 
+  async getSessions(
+    baseDir: string,
+  ): Promise<{ sessions: Session[]; ungroupedDirs: string[]; ungroupedVideos: string[] }> {
+    const response = (await this.rpc.call('rglob', {
+      baseDir,
+      pattern: '*',
+      stat: true,
+    })) as RGlobResponse;
+
+    const ungroupedDirs: string[] = [];
+    const videoPaths: string[] = [];
+
+    for (const entry of response.entries) {
+      if (entry.type === 'dir') {
+        ungroupedDirs.push(entry.path);
+      } else if (entry.path.endsWith('.mp4') || entry.path.endsWith('.avi')) {
+        videoPaths.push(entry.path);
+      }
+    }
+
+    const views = this.projectInfoService.projectInfo.views;
+    const pathKeyToViewFiles = this.groupFilesByView(videoPaths, views);
+    const cmp = createSessionViewComparator(this.projectInfoService.allViews());
+
+    const sessions: Session[] = [];
+    const ungroupedVideos: string[] = [];
+
+    for (const [pathKey, groupedFiles] of pathKeyToViewFiles.entries()) {
+      const knownViews = groupedFiles.filter((f) => f.view !== 'unknown');
+      const unknownViews = groupedFiles.filter((f) => f.view === 'unknown');
+
+      if (knownViews.length === 0) {
+        ungroupedVideos.push(...unknownViews.map((f) => f.filename));
+      } else {
+        const sessionViews = knownViews.map(({ view, filename }) => ({
+          viewName: view,
+          videoPath: baseDir + '/' + filename,
+        }));
+        const key = pathKey.split('/').at(-1)!.replace(/\.(mp4|avi)$/, '');
+        sessions.push({
+          key,
+          relativePath: pathKey,
+          views: [...sessionViews].sort(cmp),
+        });
+        ungroupedVideos.push(...unknownViews.map((f) => f.filename));
+      }
+    }
+
+    return { sessions, ungroupedDirs, ungroupedVideos };
+  }
+
   private groupFilesBySession(filenames: string[], views: string[]): Session[] {
     const pathKeyToItsViewFiles = this.groupFilesByView(filenames, views);
     // Convert the Map to the required Session array format

@@ -2,40 +2,38 @@ import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
 import { CommonModule } from '@angular/common';
 import { BaseSessionPickerComponent } from './base-session-picker.component';
 import { Session } from '../../session.model';
-import { PathPipe } from '../../utils/pipes';
 import { SessionService } from '../../session.service';
-import { signal } from '@angular/core';
-import { fn } from 'storybook/test';
 
 const sessions: Session[] = [
   {
     key: 'session1',
-    relativePath: 'videos/2026-04-13/session1',
+    relativePath: 'session1*.mp4',
     views: [
-      { viewName: 'view1', videoPath: 'videos/2026-04-13/session1view1.mp4' },
-      { viewName: 'view2', videoPath: 'videos/2026-04-13/session1view2.mp4' },
+      { viewName: 'view1', videoPath: '/data/videos/session1view1.mp4' },
+      { viewName: 'view2', videoPath: '/data/videos/session1view2.mp4' },
     ],
   },
   {
     key: 'session2',
-    relativePath: 'videos/2026-04-13/session2',
+    relativePath: 'session2*.mp4',
     views: [
-      { viewName: 'view1', videoPath: 'videos/2026-04-13/session2view1.mp4' },
-      { viewName: 'view2', videoPath: 'videos/2026-04-13/session2view2.mp4' },
+      { viewName: 'view1', videoPath: '/data/videos/session2view1.mp4' },
+      { viewName: 'view2', videoPath: '/data/videos/session2view2.mp4' },
     ],
   },
   {
     key: 'session3',
-    relativePath: 'videos/2026-04-14/session3',
+    relativePath: 'session3*.mp4',
     views: [
-      { viewName: 'view1', videoPath: 'videos/2026-04-14/session3view1.mp4' },
+      { viewName: 'view1', videoPath: '/data/videos/session3view1.mp4' },
     ],
   },
   {
-    key: 'session4',
-    relativePath: 'videos/long/path/to/my/session4',
+    key: 'session_2026-04-14_mouse42',
+    relativePath: 'session_2026-04-14_mouse42*.mp4',
     views: [
-      { viewName: 'view1', videoPath: 'videos/long/path/to/my/session4view1.mp4' },
+      { viewName: 'view1', videoPath: '/data/videos/session_2026-04-14_mouse42view1.mp4' },
+      { viewName: 'view2', videoPath: '/data/videos/session_2026-04-14_mouse42view2.mp4' },
     ],
   },
 ];
@@ -49,14 +47,16 @@ const meta: Meta<BaseSessionPickerComponent> = {
   component: BaseSessionPickerComponent,
   decorators: [
     moduleMetadata({
-      imports: [CommonModule, BaseSessionPickerComponent, PathPipe],
+      imports: [CommonModule, BaseSessionPickerComponent],
       providers: [
         {
           provide: SessionService,
           useValue: {
-            allSessions: signal(sessions),
-            sessionsLoading: signal(false),
-            loadSessions: fn(),
+            getSessions: async () => ({
+              sessions,
+              ungroupedDirs: ['calibrations', 'extra_folder'],
+              ungroupedVideos: ['session_unknown.mp4', 'vid_noview.avi', 'recording_2026.mp4'],
+            }),
           },
         },
       ],
@@ -73,12 +73,14 @@ type Story = StoryObj<BaseSessionPickerComponent>;
 export const Basic: Story = {
   args: {
     selected: sessions[0],
+    baseDir: '/data/videos',
   },
   render: (args) => ({
     props: args,
     template: `
       <div class="w-80 h-96 border border-base-300 rounded-md overflow-hidden bg-base-100 shadow-xl">
         <app-base-session-picker
+          [baseDir]="baseDir"
           [(selected)]="selected"
         ></app-base-session-picker>
       </div>
@@ -96,20 +98,20 @@ export const Loading: Story = {
         {
           provide: SessionService,
           useValue: {
-            allSessions: signal([]),
-            sessionsLoading: signal(true),
-            loadSessions: fn(),
+            getSessions: () => new Promise(() => {}),
           },
         },
       ],
     }),
   ],
-  args: {},
+  args: {
+    baseDir: '/data/videos',
+  },
   render: (args) => ({
     props: args,
     template: `
       <div class="w-80 h-96 border border-base-300 rounded-md overflow-hidden bg-base-100 shadow-xl">
-        <app-base-session-picker></app-base-session-picker>
+        <app-base-session-picker [baseDir]="baseDir"></app-base-session-picker>
       </div>
     `,
   }),
@@ -118,12 +120,14 @@ export const Loading: Story = {
 export const WithRightTemplate: Story = {
   args: {
     selected: sessions[1],
+    baseDir: '/data/videos',
   },
   render: (args) => ({
     props: args,
     template: `
       <div class="w-80 h-96 border border-base-300 rounded-md overflow-hidden bg-base-100 shadow-xl">
         <app-base-session-picker
+          [baseDir]="baseDir"
           [(selected)]="selected"
           [rightTemplate]="myTemplate"
         ></app-base-session-picker>

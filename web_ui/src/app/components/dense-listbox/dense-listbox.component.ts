@@ -78,7 +78,13 @@ export class DenseListboxComponent<T = any> {
 
       untracked(() => {
         if (this.keyManager && selectedValue !== undefined) {
-          const index = items.findIndex((item) => item.value() === selectedValue);
+          const index = items.findIndex((item) => {
+            try {
+              return item.value() === selectedValue;
+            } catch {
+              return false;
+            }
+          });
           if (index !== -1 && this.keyManager.activeItemIndex !== index) {
             this.keyManager.setActiveItem(index);
           }
