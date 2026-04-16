@@ -1,8 +1,10 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  inject,
   input,
   model,
+  OnInit,
   TemplateRef,
   viewChild,
 } from '@angular/core';
@@ -11,6 +13,7 @@ import { Session } from '../../session.model';
 import { DenseListboxComponent } from '../dense-listbox/dense-listbox.component';
 import { DenseListboxItemComponent } from '../dense-listbox/dense-listbox-item.component';
 import { PathPipe } from '../../utils/pipes';
+import { SessionService } from '../../session.service';
 
 @Component({
   selector: 'app-base-session-picker',
@@ -59,15 +62,17 @@ import { PathPipe } from '../../utils/pipes';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class BaseSessionPickerComponent {
+export class BaseSessionPickerComponent implements OnInit {
+  private sessionService = inject(SessionService);
+
   /** The list of sessions to display. */
-  sessions = input.required<Session[]>();
+  protected sessions = this.sessionService.allSessions;
 
   /** The currently selected session. */
   selected = model<Session | undefined>();
 
   /** Whether sessions are still loading. */
-  loading = input<boolean>(false);
+  protected loading = this.sessionService.sessionsLoading;
 
   /**
    * Optional template for the right slot of each session item.
@@ -87,6 +92,10 @@ export class BaseSessionPickerComponent {
    */
   protected getRightTemplate(): TemplateRef<{ $implicit: Session }> | null {
     return this.rightTemplate() || this.defaultRightTemplate() || null;
+  }
+
+  ngOnInit() {
+    this.sessionService.loadSessions();
   }
 
   /**

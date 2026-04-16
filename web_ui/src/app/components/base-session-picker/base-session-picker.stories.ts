@@ -3,6 +3,9 @@ import { CommonModule } from '@angular/common';
 import { BaseSessionPickerComponent } from './base-session-picker.component';
 import { Session } from '../../session.model';
 import { PathPipe } from '../../utils/pipes';
+import { SessionService } from '../../session.service';
+import { signal } from '@angular/core';
+import { fn } from 'storybook/test';
 
 const sessions: Session[] = [
   {
@@ -47,6 +50,16 @@ const meta: Meta<BaseSessionPickerComponent> = {
   decorators: [
     moduleMetadata({
       imports: [CommonModule, BaseSessionPickerComponent, PathPipe],
+      providers: [
+        {
+          provide: SessionService,
+          useValue: {
+            allSessions: signal(sessions),
+            sessionsLoading: signal(false),
+            loadSessions: fn(),
+          },
+        },
+      ],
     }),
   ],
   parameters: {
@@ -59,18 +72,14 @@ type Story = StoryObj<BaseSessionPickerComponent>;
 
 export const Basic: Story = {
   args: {
-    sessions,
     selected: sessions[0],
-    loading: false,
   },
   render: (args) => ({
     props: args,
     template: `
       <div class="w-80 h-96 border border-base-300 rounded-md overflow-hidden bg-base-100 shadow-xl">
         <app-base-session-picker
-          [sessions]="sessions"
           [(selected)]="selected"
-          [loading]="loading"
         ></app-base-session-picker>
       </div>
       <div class="mt-4 p-2 bg-base-300 rounded text-xs font-mono w-80 overflow-hidden text-ellipsis">
@@ -81,18 +90,26 @@ export const Basic: Story = {
 };
 
 export const Loading: Story = {
-  args: {
-    sessions: [],
-    loading: true,
-  },
+  decorators: [
+    moduleMetadata({
+      providers: [
+        {
+          provide: SessionService,
+          useValue: {
+            allSessions: signal([]),
+            sessionsLoading: signal(true),
+            loadSessions: fn(),
+          },
+        },
+      ],
+    }),
+  ],
+  args: {},
   render: (args) => ({
     props: args,
     template: `
       <div class="w-80 h-96 border border-base-300 rounded-md overflow-hidden bg-base-100 shadow-xl">
-        <app-base-session-picker
-          [sessions]="sessions"
-          [loading]="loading"
-        ></app-base-session-picker>
+        <app-base-session-picker></app-base-session-picker>
       </div>
     `,
   }),
@@ -100,18 +117,14 @@ export const Loading: Story = {
 
 export const WithRightTemplate: Story = {
   args: {
-    sessions,
     selected: sessions[1],
-    loading: false,
   },
   render: (args) => ({
     props: args,
     template: `
       <div class="w-80 h-96 border border-base-300 rounded-md overflow-hidden bg-base-100 shadow-xl">
         <app-base-session-picker
-          [sessions]="sessions"
           [(selected)]="selected"
-          [loading]="loading"
           [rightTemplate]="myTemplate"
         ></app-base-session-picker>
 
