@@ -25,6 +25,7 @@ const mockData: FFProbeInfo = {
   dar: '16:9',
   sar: '1:1',
   color_space: 'bt709 / bt709 / bt709',
+  is_all_intra: true,
 };
 
 export const Default: Story = {
@@ -61,6 +62,16 @@ export const LargeFile: Story = {
       size: 2147483648, // 2 GB
       bitrate_str: '20.5 Mbps',
       file_path: '/path/to/video/large_high_quality_video.mp4',
+    },
+  },
+};
+
+export const NonIntraVideo: Story = {
+  args: {
+    data: {
+      ...mockData,
+      is_all_intra: false,
+      file_path: '/path/to/video/gop_video.mp4',
     },
   },
 };

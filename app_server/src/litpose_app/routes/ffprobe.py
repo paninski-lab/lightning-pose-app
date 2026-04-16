@@ -33,6 +33,7 @@ class FFProbeResponse(BaseModel):
     dar: str  # Display aspect ratio
     sar: str  # Sample aspect ratio
     color_space: str  # Color space and HDR information
+    is_all_intra: bool  # Whether all frames are intra-frames
 
 
 @router.post("/app/v0/rpc/ffprobe")
@@ -80,10 +81,12 @@ def run_ffprobe(video_path):
         "ffprobe",
         "-v",
         "error",  # Suppress verbose output
+        "-read_intervals",
+        "%+10",  # limit scan to first 10 seconds for efficiency
         "-select_streams",
         "v:0",  # Select the first video stream
         "-show_entries",
-        "format=duration,size,bit_rate,format_name:stream=avg_frame_rate,r_frame_rate,codec_name,width,height,display_aspect_ratio,sample_aspect_ratio,color_space,color_transfer,color_primaries",
+        "format=duration,size,bit_rate,format_name:stream=avg_frame_rate,r_frame_rate,codec_name,width,height,display_aspect_ratio,sample_aspect_ratio,color_space,color_transfer,color_primaries:frame=pict_type",
         "-of",
         "json",  # Output in JSON format
         video_path,
@@ -104,6 +107,7 @@ def run_ffprobe(video_path):
         "dar": "",
         "sar": "",
         "color_space": "",
+        "is_all_intra": True,
     }
 
     try:
@@ -168,6 +172,16 @@ def run_ffprobe(video_path):
             cp = video_stream.get("color_primaries", "")
             color_info = [c for c in [cs, ct, cp] if c and c != "unknown"]
             extracted_info["color_space"] = " / ".join(color_info)
+
+            # Check if all frames are intra-frames
+            if "frames" in metadata:
+                # Heuristic: check first 60 frames
+                # (matching previous behavior of check_is_all_intra)
+                max_frames = 60
+                check_frames = metadata["frames"][:max_frames]
+                extracted_info["is_all_intra"] = all(
+                    f.get("pict_type") == "I" for f in check_frames
+                )
 
             # FPS
             if "avg_frame_rate" in video_stream:
