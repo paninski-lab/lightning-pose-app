@@ -4,6 +4,7 @@ import {
   Component,
   computed,
   DestroyRef,
+  effect,
   inject,
   input,
   OnInit,
@@ -20,11 +21,19 @@ import {
 import { ProjectInfo } from '../project-info';
 import { JsonPipe, NgTemplateOutlet } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { PathEditableComponent } from '../components/path-editable/path-editable.component';
+import { ModelDirInputComponent } from '../components/model-dir-input/model-dir-input.component';
 
 @Component({
   selector: 'app-project-settings',
   standalone: true,
-  imports: [ReactiveFormsModule, JsonPipe, NgTemplateOutlet],
+  imports: [
+    ReactiveFormsModule,
+    JsonPipe,
+    NgTemplateOutlet,
+    PathEditableComponent,
+    ModelDirInputComponent,
+  ],
   templateUrl: './project-settings.component.html',
   styleUrl: './project-settings.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -63,8 +72,12 @@ export class ProjectSettingsComponent implements OnInit {
         // projectKey only required in setupMode, validators set in ngOnInit
         projectKey: [''],
         dataDir: ['', Validators.required], // dataDir is typically always required
-        modelDir: [{ value: '', disabled: true }], // defaults to disabled due to useDefaultModelDir: true
-        useDefaultModelDir: [true],
+        modelDirInfo: [
+          {
+            modelDir: '',
+            useDefaultModelDir: true,
+          },
+        ],
       }),
       keypoints: this.fb.group({
         keypointNames: [''],
@@ -79,26 +92,19 @@ export class ProjectSettingsComponent implements OnInit {
     this.keypointsForm = this.projectInfoForm.get('keypoints') as FormGroup;
     this.multiviewForm = this.projectInfoForm.get('multiview') as FormGroup;
 
-    const dataDirControl = this.directoriesForm.get('dataDir');
-    const modelDirControl = this.directoriesForm.get('modelDir');
-    const useDefaultModelDirControl =
-      this.directoriesForm.get('useDefaultModelDir');
-
-    useDefaultModelDirControl?.valueChanges.subscribe((useDefault) => {
-      if (useDefault) {
-        modelDirControl?.disable();
-        modelDirControl?.setValue(
-          this.getDefaultModelDir(dataDirControl?.value),
-        );
-      } else {
-        modelDirControl?.enable();
+    // Sync dataDir control with dataDirPath signal
+    this.directoriesForm.get('dataDir')?.valueChanges.subscribe((val) => {
+      if (this.dataDirPath() !== val) {
+        this.dataDirPath.set(val);
       }
     });
-    dataDirControl?.valueChanges.subscribe((dataDir) => {
-      if (useDefaultModelDirControl?.value) {
-        this.directoriesForm
-          .get('modelDir')
-          ?.setValue(this.getDefaultModelDir(dataDir));
+
+    effect(() => {
+      const val = this.dataDirPath();
+      const control = this.directoriesForm.get('dataDir');
+      if (control && control.value !== val) {
+        control.setValue(val, { emitEvent: true });
+        control.markAsDirty();
       }
     });
   }
@@ -148,7 +154,10 @@ export class ProjectSettingsComponent implements OnInit {
           directories: {
             projectKey: this.projectKey(),
             dataDir: projectInfo.data_dir,
-            useDefaultModelDir: isDefault,
+            modelDirInfo: {
+              modelDir: projectInfo.model_dir ?? '',
+              useDefaultModelDir: isDefault,
+            },
           },
           multiview: {
             views: projectInfo.views.join('\n'),
@@ -157,12 +166,6 @@ export class ProjectSettingsComponent implements OnInit {
             keypointNames: projectInfo.keypoint_names.join('\n'),
           },
         });
-
-        if (!isDefault) {
-          this.directoriesForm.patchValue({
-            modelDir: projectInfo.model_dir,
-          });
-        }
 
         this.projectInfoForm.markAsPristine();
 
@@ -184,8 +187,8 @@ export class ProjectSettingsComponent implements OnInit {
       this.saveSuccessMessageClearTimerId = 0;
     }
 
-    const useDefaultModelDir =
-      this.directoriesForm.get('useDefaultModelDir')?.value;
+    const modelDirInfo = this.directoriesForm.get('modelDirInfo')?.value;
+    const useDefaultModelDir = modelDirInfo?.useDefaultModelDir;
     const key = this.directoriesForm.get('projectKey')?.value;
 
     if (!key) {
@@ -198,7 +201,7 @@ export class ProjectSettingsComponent implements OnInit {
       const dataDir: string = this.directoriesForm.get('dataDir')?.value ?? '';
       const modelDir: string | null = useDefaultModelDir
         ? null
-        : (this.directoriesForm.get('modelDir')?.value ?? null);
+        : (modelDirInfo?.modelDir ?? null);
 
       await this.projectInfoService.createNewProject({
         projectKey: key,
@@ -222,13 +225,9 @@ export class ProjectSettingsComponent implements OnInit {
         projectInfo.data_dir = this.directoriesForm.get('dataDir')?.value ?? '';
       }
 
-      if (
-        this.directoriesForm.get('useDefaultModelDir')?.dirty ||
-        this.directoriesForm.get('modelDir')?.dirty
-      ) {
+      if (this.directoriesForm.get('modelDirInfo')?.dirty) {
         if (!useDefaultModelDir) {
-          projectInfo.model_dir =
-            this.directoriesForm.get('modelDir')?.value ?? '';
+          projectInfo.model_dir = modelDirInfo?.modelDir ?? '';
         } else {
           const d: string = this.directoriesForm.get('dataDir')?.value ?? '';
           projectInfo.model_dir = this.getDefaultModelDir(d);
@@ -275,6 +274,10 @@ export class ProjectSettingsComponent implements OnInit {
   protected getDefaultModelDir(dataDir: string): string {
     return dataDir ? `${dataDir.replace(/\/$/, '')}/models` : '';
   }
+
+  protected dataDirPath = signal(
+    this.projectInfoService.globalContext()?.homeDir ?? '/',
+  );
 
   protected readonly cameraViewPlaceholder = `view1
     view2

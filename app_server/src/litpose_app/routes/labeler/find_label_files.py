@@ -51,13 +51,11 @@ def find_label_files(
         e.path
         for e in rglob(
             RGlobRequest(
-                projectKey=request.projectKey,
                 baseDir=project.paths.data_dir,
                 pattern="*.csv",
                 noDirs=True,
                 stat=False,
-            ),
-            project_info_getter,
+            )
         ).entries
     ]
 

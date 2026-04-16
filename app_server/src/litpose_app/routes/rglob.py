@@ -1,17 +1,12 @@
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
 router = APIRouter()
 
-from litpose_app import deps
-from litpose_app.deps import ProjectInfoGetter
-
 
 class RGlobRequest(BaseModel):
-    # Project scoping for new API; route will validate and otherwise ignore.
-    projectKey: str
     baseDir: Path
     pattern: str
     noDirs: bool = False
@@ -39,23 +34,7 @@ class RGlobResponse(BaseModel):
 
 
 @router.post("/app/v0/rpc/rglob")
-def rglob(
-    request: RGlobRequest,
-    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
-) -> RGlobResponse:
-    # Validate projectKey and obtain Project (not used further here)
-    _ = project_info_getter(request.projectKey)
-    # Prevent secrets like /etc/passwd and ~/.ssh/ from being leaked.
-    if not (
-        request.pattern.endswith(".csv")
-        or request.pattern.endswith(".mp4")
-        or request.pattern.endswith(".toml")
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only csv, mp4, toml files are supported.",
-        )
-
+def rglob(request: RGlobRequest) -> RGlobResponse:
     response = RGlobResponse(entries=[], relativeTo=request.baseDir)
 
     results = _rglob(
@@ -64,7 +43,7 @@ def rglob(
         no_dirs=request.noDirs,
         stat=request.stat,
     )
-    for r in results:
+    for r in sorted(results, key=lambda e: str(e["path"]).lower()):
         # Convert dict to pydantic model
         converted = RGlobResponseEntry.model_validate(r)
         response.entries.append(converted)

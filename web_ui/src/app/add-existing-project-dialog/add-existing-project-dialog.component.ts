@@ -1,9 +1,11 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  effect,
   inject,
   OnInit,
   output,
+  signal,
 } from '@angular/core';
 import { Router } from '@angular/router';
 import {
@@ -20,6 +22,7 @@ import {
   AlertHeaderComponent,
 } from '../components/alert-dialog/alert-dialog.component';
 import { ModelDirInputComponent } from '../components/model-dir-input/model-dir-input.component';
+import { PathEditableComponent } from '../components/path-editable/path-editable.component';
 
 @Component({
   selector: 'app-add-existing-project-dialog',
@@ -30,6 +33,7 @@ import { ModelDirInputComponent } from '../components/model-dir-input/model-dir-
     AlertHeaderComponent,
     AlertFooterComponent,
     ModelDirInputComponent,
+    PathEditableComponent,
   ],
   templateUrl: './add-existing-project-dialog.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -43,6 +47,24 @@ export class AddExistingProjectDialogComponent implements OnInit {
   private router = inject(Router);
 
   protected form?: FormGroup;
+  protected dataDirPath = signal(this.projectInfoService.globalContext()?.homeDir ?? '/');
+
+  constructor() {
+    effect(() => {
+      const dataDir = this.dataDirPath();
+      if (!this.form) return;
+      this.form.patchValue({ dataDir }, { emitEvent: true });
+
+      // Auto-fill project key from the last path fragment if still empty.
+      const projectKeyControl = this.form.get('projectKey');
+      if (dataDir && projectKeyControl && !projectKeyControl.value) {
+        const fragments = dataDir.split(/[/\\]/).filter((f: string) => f.length > 0);
+        if (fragments.length > 0) {
+          projectKeyControl.setValue(fragments[fragments.length - 1]);
+        }
+      }
+    });
+  }
 
   ngOnInit() {
     this.form = this.fb.group({
@@ -59,23 +81,6 @@ export class AddExistingProjectDialogComponent implements OnInit {
 
   protected closeDialog() {
     this.done.emit(false);
-  }
-
-  protected onDataDirBlur() {
-    if (!this.form) return;
-
-    const dataDir = this.form.get('dataDir')?.value;
-    const projectKeyControl = this.form.get('projectKey');
-
-    if (dataDir && projectKeyControl && !projectKeyControl.value) {
-      const fragments = dataDir
-        .split(/[/\\]/)
-        .filter((f: string) => f.length > 0);
-      if (fragments.length > 0) {
-        const lastFragment = fragments[fragments.length - 1];
-        projectKeyControl.setValue(lastFragment);
-      }
-    }
   }
 
   protected async handleSave() {

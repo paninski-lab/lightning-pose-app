@@ -12,6 +12,7 @@ import {
   FormsModule,
   NG_VALUE_ACCESSOR,
 } from '@angular/forms';
+import { PathEditableComponent } from '../path-editable/path-editable.component';
 
 export interface ModelDirValue {
   modelDir: string;
@@ -21,7 +22,7 @@ export interface ModelDirValue {
 @Component({
   selector: 'app-model-dir-input',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, PathEditableComponent],
   templateUrl: './model-dir-input.component.html',
   styleUrl: './model-dir-input.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,6 +37,7 @@ export interface ModelDirValue {
 export class ModelDirInputComponent implements ControlValueAccessor {
   // Input signal for data directory to calculate default
   dataDir = input.required<string>();
+  newDirMode = input<boolean>(false);
 
   // Internal signals for state
   protected modelDir = signal('');

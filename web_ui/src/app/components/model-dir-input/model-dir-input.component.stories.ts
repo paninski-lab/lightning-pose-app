@@ -33,3 +33,19 @@ export const CustomPath: Story = {
     }
   },
 };
+
+export const NewDirMode: Story = {
+  args: {
+    dataDir: '/home/user/project',
+    newDirMode: true,
+  },
+  play: async ({ canvasElement }) => {
+    // Uncheck "use default" to show the path editor in edit mode
+    const checkbox = canvasElement.querySelector(
+      'input[type="checkbox"]',
+    ) as HTMLInputElement;
+    if (checkbox) {
+      checkbox.click();
+    }
+  },
+};

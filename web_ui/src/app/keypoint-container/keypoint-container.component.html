@@ -160,6 +160,7 @@
         [attr.y]="crosshairPosition()!.y + gap / 1.25 + 2.5"
         font-size="6px"
         dominant-baseline="hanging"
+        [style.opacity]="calculatedKeypointLabelOpacity(selectedKeypoint()!)"
       >
         {{ selectedKeypoint() }}
       </text>
@@ -211,14 +212,13 @@
               'shadow-sm/30': labelerViewOptions() ? false : true,
             }"
           >
-            @if (
-              enableKeypointLabels() && !(showCrosshair() && crosshairPosition())
-            ) {
+            @if (enableKeypointLabels()) {
               <span
                 class="text-nowrap pointer-events-none absolute select-none"
                 [style.font-size.px]="keypointLabelFontSize()"
                 [style.top.px]="keypointSize() / 1.15"
                 [style.left.px]="keypointSize() / 1.15"
+                [style.opacity]="calculatedKeypointLabelOpacity(keypoint.id)"
                 style="filter: url(#halo)"
                 >{{ keypoint.id }}</span
               >

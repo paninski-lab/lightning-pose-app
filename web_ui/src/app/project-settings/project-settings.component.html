@@ -75,16 +75,7 @@
             <p class="m-0!">
               The directory will be created if it doesn't exist.
             </p>
-            <div class="input w-full">
-              <span class="material-icons !text-sm opacity-50">folder</span>
-              <input
-                formControlName="dataDir"
-                type="text"
-                class="grow"
-                placeholder="/"
-                spellcheck="false"
-              />
-            </div>
+            <app-path-editable [(path)]="dataDirPath" [newDirMode]="setupMode()" />
             @if (
               directoriesForm.controls["dataDir"].invalid &&
               directoriesForm.controls["dataDir"].touched
@@ -93,29 +84,11 @@
             }
           </fieldset>
 
-          <fieldset class="fieldset">
-            <h3 class="text-md">Model directory</h3>
-
-            <div class="flex gap-2">
-              <input
-                type="checkbox"
-                class="checkbox"
-                formControlName="useDefaultModelDir"
-              />
-              <span class="m-0!"> Use the default model directory </span>
-            </div>
-
-            <div class="input w-full">
-              <span class="material-icons !text-sm opacity-50">folder</span>
-              <input
-                formControlName="modelDir"
-                type="text"
-                class="grow"
-                placeholder="/"
-                spellcheck="false"
-              />
-            </div>
-          </fieldset>
+          <app-model-dir-input
+            formControlName="modelDirInfo"
+            [dataDir]="dataDirPath()"
+            [newDirMode]="setupMode()"
+          />
         </form>
       }
       @if (selectedTab() === "keypoints") {

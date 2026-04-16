@@ -12,6 +12,7 @@ import { ModelsListComponent } from '../models-list/models-list.component';
 import { ModelListResponseEntry } from '../modelconf';
 import { ModelDetailComponent } from './model-detail/model-detail.component';
 import { ModelInferenceDialogComponent } from '../model-inference-dialog/model-inference-dialog.component';
+import { RunModelInferenceDialogComponent } from '../run-model-inference-dialog/run-model-inference-dialog.component';
 import { SplitAreaComponent, SplitComponent } from 'angular-split';
 import {
   DropdownComponent,
@@ -29,6 +30,7 @@ import { ProjectInfoService } from '../project-info.service';
     ModelsListComponent,
     ModelDetailComponent,
     ModelInferenceDialogComponent,
+    RunModelInferenceDialogComponent,
     SplitComponent,
     SplitAreaComponent,
     DropdownComponent,
@@ -45,6 +47,7 @@ export class ModelsPageComponent {
   protected isCreateModelDialogOpen = signal(false);
   protected isCreateEksModelDialogOpen = signal(false);
   protected isInferenceDialogOpen = signal(false);
+  protected isRunModelInferenceDialogOpen = signal(false);
 
   private modelsListComponent = viewChild(ModelsListComponent);
   private modelsDetailComponent = viewChild(ModelDetailComponent);
@@ -86,5 +89,14 @@ export class ModelsPageComponent {
 
   handleInferenceDialogDone() {
     this.isInferenceDialogOpen.set(false);
+  }
+
+  openRunModelInferenceDialog() {
+    if (!this.selectedModel()) return;
+    this.isRunModelInferenceDialogOpen.set(true);
+  }
+
+  handleRunModelInferenceDialogDone() {
+    this.isRunModelInferenceDialogOpen.set(false);
   }
 }

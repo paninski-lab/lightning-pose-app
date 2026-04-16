@@ -67,8 +67,16 @@ export class KeypointContainerComponent {
     return this.keypointOpacity();
   }
   reducedKeypointOpacity = computed(() => {
-    return 0;
+    return this.keypointOpacity() / 2;
   });
+
+  /** Fraction of the way from keypointOpacity to 1 for label opacity. 0 = same as keypoint, 1 = fully opaque. */
+  private readonly keypointLabelOpacityFraction = 0.5;
+
+  calculatedKeypointLabelOpacity(keypointId: string) {
+    const kpOpacity = this.calculatedKeypointOpacity(keypointId);
+    return kpOpacity + this.keypointLabelOpacityFraction * (1 - kpOpacity);
+  }
   keypointOpacity = computed(() => {
     if (this.labelerViewOptions()) {
       return this.labelerViewOptions()!.keypointOpacity();
