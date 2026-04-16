@@ -2,7 +2,6 @@ import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
 import { CommonModule } from '@angular/common';
 import { PathEditableComponent } from './path-editable.component';
 import { RpcService } from '../../rpc.service';
-import { ProjectInfoService } from '../../project-info.service';
 import { signal } from '@angular/core';
 
 const mockDirectories: Record<string, string[]> = {
@@ -34,20 +33,13 @@ class MockRpcService {
   }
 }
 
-class MockProjectInfoService {
-  projectContext = signal({ key: 'mock-project' });
-}
-
 const meta: Meta<PathEditableComponent> = {
   title: 'Components/PathEditable',
   component: PathEditableComponent,
   decorators: [
     moduleMetadata({
       imports: [CommonModule, PathEditableComponent],
-      providers: [
-        { provide: RpcService, useClass: MockRpcService },
-        { provide: ProjectInfoService, useClass: MockProjectInfoService },
-      ],
+      providers: [{ provide: RpcService, useClass: MockRpcService }],
     }),
   ],
   parameters: {
@@ -217,6 +209,27 @@ export const NoDirectories: Story = {
         <app-path-editable [(path)]="path"></app-path-editable>
         <div class="mt-48 text-xs opacity-50 text-center">
           Navigating to /tmp should show "No directories".
+        </div>
+      </div>
+    `,
+  }),
+};
+
+export const NewDirMode: Story = {
+  args: {
+    path: '/home/user1',
+    newDirMode: true,
+  },
+  render: (args) => ({
+    props: args,
+    template: `
+      <div class="w-[500px] h-[400px] p-8 bg-base-100 rounded-lg shadow-xl border border-base-300">
+        <app-path-editable [(path)]="path" [newDirMode]="newDirMode"></app-path-editable>
+        <div class="mt-48 p-2 bg-base-300 rounded text-xs font-mono">
+          Final path: {{ path }}
+        </div>
+        <div class="mt-4 text-xs opacity-50">
+          In new dir mode, you can type a new directory name at the end of the breadcrumbs.
         </div>
       </div>
     `,

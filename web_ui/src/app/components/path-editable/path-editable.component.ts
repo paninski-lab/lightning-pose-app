@@ -7,6 +7,8 @@ import {
   model,
   signal,
   effect,
+  viewChild,
+  ElementRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RpcService } from '../../rpc.service';
@@ -75,10 +77,21 @@ interface RGlobResponse {
                   >
                     {{ part.name || 'Root' }}
                   </button>
-                  @if (!$last) {
-                    <span class="text-base-content/50 font-mono mx-0.5">/</span>
-                  }
                 }
+                @if (!$last || newDirMode()) {
+                  <span class="text-base-content/50 font-mono mx-0.5">/</span>
+                }
+              }
+              @if (newDirMode()) {
+                <input
+                  #newDirInput
+                  type="text"
+                  [value]="newDirName()"
+                  (input)="newDirName.set(newDirInput.value)"
+                  (keydown.enter)="finishEditing()"
+                  class="bg-transparent border-none outline-none font-mono text-xs p-0 min-w-[50px] flex-1"
+                  placeholder="new directory..."
+                />
               }
               <div class="flex items-center gap-1 ml-auto shrink-0">
                 <button
@@ -147,6 +160,7 @@ interface RGlobResponse {
 })
 export class PathEditableComponent {
   path = model.required<string>();
+  newDirMode = input<boolean>(false);
 
   /** When true, the path is shown read-only with no editing affordance. */
   disabled = input(false);
@@ -158,11 +172,13 @@ export class PathEditableComponent {
 
   protected isEditing = signal(false);
   protected editPath = signal('');
+  protected newDirName = signal('');
   protected subdirectories = signal<string[]>([]);
   protected loading = signal(false);
   private autoAcceptOnEmptyDirs = false;
 
   private rpc = inject(RpcService);
+  private newDirInput = viewChild<ElementRef<HTMLInputElement>>('newDirInput');
 
   /** The path shown in display (non-edit) mode — relative when baseDir is set. */
   protected displayPath = computed(() => {
@@ -216,14 +232,20 @@ export class PathEditableComponent {
   });
 
   constructor() {
-    effect(
-      () => {
-        if (this.isEditing()) {
-          this.fetchSubdirectories(this.editPath());
+    effect(() => {
+      if (this.isEditing()) {
+        this.fetchSubdirectories(this.editPath());
+      }
+    });
+
+    effect(() => {
+      if (this.isEditing() && this.newDirMode()) {
+        const input = this.newDirInput()?.nativeElement;
+        if (input) {
+          input.focus();
         }
-      },
-      { allowSignalWrites: true },
-    );
+      }
+    });
   }
 
   protected startEditing() {
@@ -232,16 +254,23 @@ export class PathEditableComponent {
     const p = this.path();
     this.editPath.set(base && !p.startsWith(base) ? base : p);
     this.isEditing.set(true);
+    this.newDirName.set('');
   }
 
   protected finishEditing() {
-    this.path.set(this.editPath());
+    let finalPath = this.editPath();
+    const newName = this.newDirName().trim();
+    if (this.newDirMode() && newName) {
+      finalPath = finalPath === '/' ? `/${newName}` : `${finalPath}/${newName}`;
+    }
+    this.path.set(finalPath);
     this.isEditing.set(false);
   }
 
   protected onPartClick(fullPath: string, event: MouseEvent) {
     event.stopPropagation();
     this.editPath.set(fullPath);
+    this.newDirName.set('');
   }
 
   protected onClearLastPart(event: MouseEvent) {
@@ -258,6 +287,7 @@ export class PathEditableComponent {
     const nextPath = current === '/' ? `/${subdir}` : `${current}/${subdir}`;
     this.autoAcceptOnEmptyDirs = true;
     this.editPath.set(nextPath);
+    this.newDirName.set('');
   }
 
   private async fetchSubdirectories(basePath: string) {
