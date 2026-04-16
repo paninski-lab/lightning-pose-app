@@ -1,0 +1,9 @@
+<div
+  #scroll
+  class="terminal-scroll"
+  (scroll)="onScroll($event)"
+>
+  <pre class="terminal-pre">@for (line of lines(); track $index) {
+<span [class.stderr]="line.startsWith('[stderr] ')">{{ line }}</span>
+}</pre>
+</div>
