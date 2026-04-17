@@ -10,9 +10,15 @@
       </button>
       <h3 class="text-xl font-bold mb-2">Run model inference</h3>
       <p class="text-sm mb-4">
-        Select one or more local video files to upload and transcode. Filenames must follow the
-        <code class="code">session_view.ext</code> pattern. Only alphanumeric, dash and underscore are allowed before the extension.
-        The <code class="code">view</code> part must not contain underscores.
+        Select one or more local video files to upload and transcode.
+        @if (isMultiview()) {
+          <strong class="text-error">Filenames must follow the <code class="code">session_view.ext</code> pattern</strong>.
+          Only alphanumeric, dash and underscore are allowed before the extension.
+          The <code class="code">view</code> part must not contain underscores.
+        } @else {
+          <strong>Filenames must follow the <code class="code">session.ext</code> pattern</strong>.
+          Only alphanumeric, dash and underscore are allowed before the extension.
+        }
       </p>
 
       <div class="flex gap-3 items-center mb-4 flex-shrink-0">

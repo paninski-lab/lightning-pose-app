@@ -32,20 +32,29 @@ router = APIRouter()
 ALLOWED_FILENAME_RE = re.compile(r"^[A-Za-z0-9_.\-]+$")
 
 
-def parse_session_view(filename: str) -> tuple[str, str, str]:
-    """Parse filename of form session_view.ext and validate rules.
+def parse_session_view(
+    filename: str, is_multiview: bool = True
+) -> tuple[str, Optional[str], str]:
+    """Parse filename and validate rules.
 
     Returns (session, view, ext)
     """
     if not ALLOWED_FILENAME_RE.match(filename):
         raise HTTPException(status_code=400, detail="Invalid filename characters.")
     if "/" in filename or ".." in filename:
-        raise HTTPException(status_code=400, detail="Invalid filename path components.")
+        raise HTTPException(
+            status_code=400, detail="Invalid filename path components."
+        )
     stem, dot, ext = filename.rpartition(".")
     if dot == "":
         raise HTTPException(
             status_code=400, detail="Filename must include an extension."
         )
+
+    if not is_multiview:
+        # singleview: session.ext
+        return stem, None, ext
+
     if "_" not in stem:
         raise HTTPException(
             status_code=400,
@@ -53,7 +62,9 @@ def parse_session_view(filename: str) -> tuple[str, str, str]:
         )
     session, _, view = stem.rpartition("_")
     if not session or not view:
-        raise HTTPException(status_code=400, detail="Invalid session/view in filename.")
+        raise HTTPException(
+            status_code=400, detail="Invalid session/view in filename."
+        )
     return session, view, ext
 
 
@@ -333,9 +344,9 @@ def upload_video(
     - 409: File exists and `should_overwrite` is false.
     """
     # Validate project exists (also used to set videos dir later)
-    _ = project_info_getter(projectKey)
+    project = project_info_getter(projectKey)
     # Validate filename
-    parse_session_view(filename)
+    parse_session_view(filename, is_multiview=len(project.config.view_names) > 0)
 
     # Determine upload path
     dst = root_config.UPLOADS_DIR / filename
@@ -436,7 +447,7 @@ def transcode_video(
     in_path, is_upload = _resolve_input_path(inputPath, root_config.UPLOADS_DIR)
     filename = in_path.name
     # Validate filename (prevents path traversal in output dir)
-    parse_session_view(filename)
+    parse_session_view(filename, is_multiview=len(project.config.view_names) > 0)
 
     if not in_path.exists():
         raise HTTPException(

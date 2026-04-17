@@ -45,6 +45,15 @@
             [selectedSessionKey]="_sessionKey()"
             (selectedSessionChange)="handleSelectedSessionChange($event)"
           ></app-sessions-panel>
+          <div class="mt-4 flex justify-center">
+            <button
+              class="btn btn-sm btn-outline w-full"
+              data-tip="Upload local video files to create a new session"
+              (click)="sessionImportOpen.set(true)"
+            >
+              Upload a new session
+            </button>
+          </div>
         </div>
         <app-loading-bar class="h-20 p-4"></app-loading-bar>
       </div>
@@ -421,4 +430,7 @@
   <app-run-model-inference-dialog
     (close)="handleRunModelInferenceDialogDone()"
   ></app-run-model-inference-dialog>
+}
+@if (sessionImportOpen()) {
+  <app-session-import (done)="onImportDone()"></app-session-import>
 }

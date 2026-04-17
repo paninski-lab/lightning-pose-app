@@ -38,6 +38,7 @@ export class SessionImportComponent implements AfterViewInit, OnDestroy {
   protected uploading = this.store.uploading;
   protected allValid = this.store.allValid;
   protected allTranscoded = this.store.allTranscoded; // Inject the allTranscoded signal
+  protected isMultiview = this.store.isMultiview;
 
   // Local state to track if an import cycle has finished
   protected importAttempted = signal(false);

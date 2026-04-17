@@ -11,7 +11,7 @@ import psutil
 
 from . import deps
 from .routes.models import TrainStatus
-from .utils.gpu_lock import gpu_lock_nonblocking
+from .utils.gpu_lock import gpu_lock_nonblocking, clear_gpu_task, read_gpu_task
 
 logger = logging.getLogger(__name__)
 
@@ -199,6 +199,13 @@ def train_scheduler_loop(poll_interval_seconds: float = 2.0) -> None:
                     ):
                         _write_status(status_path, TrainStatus(status="FAILED", pid=ts.pid))
                         logger.info("Marked %s as FAILED due to defunct PID %s", d.name, ts.pid)
+                        # Also clear the GPU task if it matches this defunct task.
+                        # This prevents the UI from showing a stuck active task after it failed.
+                        defunct_task_id = f"train:{project_key}:{d.name}"
+                        current_gpu_task = read_gpu_task()
+                        if current_gpu_task and current_gpu_task.get("taskId") == defunct_task_id:
+                            clear_gpu_task()
+                            logger.info("Cleared stale GPU task info for defunct task %s", defunct_task_id)
 
                 # Find first PENDING task
                 pending_dirs = [

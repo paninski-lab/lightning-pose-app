@@ -56,37 +56,12 @@
             </ul>
           </app-dropdown-content>
         </app-dropdown>
-        <app-dropdown #dropdown>
-          <app-dropdown-trigger>
-            <button
-              appDropdownTrigger
-              class="btn btn-accent"
-              [class.btn-disabled]="selectedModel() === null"
-              tabindex="0"
-            >
-              Actions
-            </button>
-          </app-dropdown-trigger>
-          <app-dropdown-content>
-            <ul class="menu p-2 w-52" tabindex="0">
-              <li>
-                <button
-                  (click)="openInferenceDialog(); dropdown.close()"
-                  [disabled]="!selectedModel()"
-                >
-                  Run inference on videos
-                </button>
-              </li>
-              <li>
-                <button
-                  (click)="openRunModelInferenceDialog(); dropdown.close()"
-                >
-                  Run inference on all sessions
-                </button>
-              </li>
-            </ul>
-          </app-dropdown-content>
-        </app-dropdown>
+        <button
+          class="btn btn-accent"
+          (click)="openRunModelInferenceDialog()"
+        >
+          Run inference on all sessions
+        </button>
       </div>
 
       <div class="overflow-auto max-h-5/6">
@@ -110,12 +85,6 @@
   <app-create-eks-model-dialog
     (done)="handleCreateEksModelDialogDone($event)"
   ></app-create-eks-model-dialog>
-}
-@if (isInferenceDialogOpen()) {
-  <app-model-inference-dialog
-    [modelRelativePath]="selectedModel()?.model_relative_path ?? ''"
-    (done)="handleInferenceDialogDone()"
-  ></app-model-inference-dialog>
 }
 @if (isRunModelInferenceDialogOpen()) {
   <app-run-model-inference-dialog

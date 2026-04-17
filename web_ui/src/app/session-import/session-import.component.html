@@ -12,10 +12,13 @@
       </button>
       <h3 class="text-xl font-bold mb-2">Import session</h3>
       <p class="text-sm mb-4">
-        Select one or more local video files to upload. Filenames must follow
-        the
-        <code class="code">session_view.ext</code> pattern. Only alphanumeric,
-        dash and underscore are allowed before the extension.
+        Select one or more local video files to upload.
+        @if (isMultiview()) {
+          <strong class="text-error">Filenames must follow the <code class="code">session_view.ext</code> pattern</strong>.
+        } @else {
+          <strong>Filenames must follow the <code class="code">session.ext</code> pattern</strong>.
+        }
+        Only alphanumeric, dash and underscore are allowed before the extension.
       </p>
 
       <div class="flex gap-3 items-center mb-4 flex-shrink-0">

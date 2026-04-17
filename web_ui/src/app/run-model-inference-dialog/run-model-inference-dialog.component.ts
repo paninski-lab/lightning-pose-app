@@ -4,12 +4,14 @@ import {
   computed,
   DestroyRef,
   inject,
+  OnDestroy,
   OnInit,
   output,
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import {
   InferenceTaskStatus,
   ResolveInferenceResponse,
@@ -19,25 +21,30 @@ import {
 import { mc_util, ModelListResponseEntry } from '../modelconf';
 import { TerminalOutputComponent } from '../terminal-output/terminal-output.component';
 import { ProjectInfoService } from '../project-info.service';
+import { SessionImportComponent } from '../session-import/session-import.component';
 
 @Component({
   selector: 'app-run-model-inference-dialog',
   standalone: true,
-  imports: [FormsModule, TerminalOutputComponent],
+  imports: [FormsModule, TerminalOutputComponent, SessionImportComponent],
   templateUrl: './run-model-inference-dialog.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(window:keydown.escape)': 'onEscape()',
   },
 })
-export class RunModelInferenceDialogComponent implements OnInit {
+export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
   close = output<void>();
 
   private sessionService = inject(SessionService);
   private projectInfoService = inject(ProjectInfoService);
   private destroyRef = inject(DestroyRef);
 
+  private streamSubscription?: Subscription;
+  private isDestroyed = false;
+
   protected models = signal<ModelListResponseEntry[]>([]);
+  protected sessionImportOpen = signal(false);
 
   protected eksValidationError = computed(() => {
     const ctx = this.projectInfoService.globalContext();
@@ -74,17 +81,38 @@ export class RunModelInferenceDialogComponent implements OnInit {
     return s !== 'idle' && s !== 'waiting';
   });
 
+  /** Called when the Session Import dialog finishes/closed. */
+  protected async onImportDone() {
+    // Close the import dialog UI
+    this.sessionImportOpen.set(false);
+    // Refresh the sessions list so the table reflects any newly transcoded videos
+    try {
+      await this.sessionService.loadSessions();
+    } catch (e) {
+      // Non-fatal: keep UI responsive even if refresh fails
+      console.error('Failed to refresh sessions after import dialog closed', e);
+    }
+  }
+
   async ngOnInit() {
     await this.loadModels();
+    if (this.isDestroyed) return;
     await this.reconnectActiveTask();
+  }
+
+  ngOnDestroy() {
+    this.isDestroyed = true;
+    this.streamSubscription?.unsubscribe();
   }
 
   private async reconnectActiveTask() {
     try {
       const { taskId } = await this.sessionService.getActiveInferenceTask();
-      if (!taskId) return;
+      if (!taskId || this.isDestroyed) return;
 
       const status = await this.sessionService.getInferenceTaskStatus(taskId);
+      if (this.isDestroyed) return;
+
       if (status.logs && status.logs.length > 0) {
         this.logLines.set(status.logs);
       }
@@ -167,9 +195,11 @@ export class RunModelInferenceDialogComponent implements OnInit {
     this.inferState.set({ status: 'waiting', progress: 0 });
     try {
       const { taskId } = await this.sessionService.inferTask(selected, ['all']);
+      if (this.isDestroyed) return;
       this.currentTaskId.set(taskId);
       this.subscribeToStream(taskId);
     } catch (err: any) {
+      if (this.isDestroyed) return;
       this.inferState.set({
         status: 'error',
         progress: 0,
@@ -179,7 +209,9 @@ export class RunModelInferenceDialogComponent implements OnInit {
   }
 
   private subscribeToStream(taskId: string) {
-    this.sessionService
+    if (this.isDestroyed) return;
+    this.streamSubscription?.unsubscribe();
+    this.streamSubscription = this.sessionService
       .streamTaskProgress(taskId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({

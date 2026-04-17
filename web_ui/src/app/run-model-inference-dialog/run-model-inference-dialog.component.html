@@ -10,6 +10,22 @@
 
     <!-- Model list -->
     @if (!inferenceActive()) {
+      <div class="mb-4 text-sm">
+        <p class="font-semibold">
+          Runs on all sessions in the videos directory of the project.
+        </p>
+        <div class="flex items-center gap-2 mt-1">
+          <span class="opacity-70">optional:</span>
+          <button
+            class="btn btn-sm btn-outline"
+            data-tip="Upload local video files to create a new session"
+            (click)="sessionImportOpen.set(true)"
+          >
+            Upload a new session
+          </button>
+        </div>
+      </div>
+
       <p class="text-sm opacity-70 mb-4">
         Select models to run, then preview which steps will execute before starting.
       </p>
@@ -144,3 +160,7 @@
     <button (click)="handleCloseClick()">close</button>
   </form>
 </dialog>
+
+@if (sessionImportOpen()) {
+  <app-session-import (done)="onImportDone()"></app-session-import>
+}

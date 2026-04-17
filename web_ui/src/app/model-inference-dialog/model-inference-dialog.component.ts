@@ -36,6 +36,7 @@ export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
   private sessionService = inject(SessionService);
   private store = inject(VideoImportStore);
   private subs: Subscription[] = [];
+  private isDestroyed = false;
 
   protected uploading = this.store.uploading;
   protected inferenceRunning = signal<boolean>(false);
@@ -43,6 +44,7 @@ export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
   protected items = this.store.items;
   protected allValid = this.store.allValid;
   protected allTranscoded = this.store.allTranscoded;
+  protected isMultiview = this.store.isMultiview;
 
   protected inference = signal<InferenceUiState>({
     status: 'idle',
@@ -59,6 +61,7 @@ export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.isDestroyed = true;
     this.subs.forEach((s) => s.unsubscribe());
   }
 
@@ -105,6 +108,7 @@ export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
     this.sessionService
       .inferTask([modelRel], [], videos)
       .then(({ taskId }) => {
+        if (this.isDestroyed) return;
         const sub = this.sessionService.streamTaskProgress(taskId).subscribe({
           next: (event: TaskStreamEvent) => {
             if (event.type === 'log') {
@@ -154,9 +158,14 @@ export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
             }
           },
         });
-        this.subs.push(sub);
+        if (this.isDestroyed) {
+          sub.unsubscribe();
+        } else {
+          this.subs.push(sub);
+        }
       })
       .catch((err) => {
+        if (this.isDestroyed) return;
         this.inferenceRunning.set(false);
         this.inference.set({
           status: 'error',

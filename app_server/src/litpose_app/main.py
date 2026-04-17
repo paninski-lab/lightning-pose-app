@@ -23,6 +23,7 @@ from .routes.videos import cleanup_old_uploads
 from .train_scheduler import _train_scheduler_process_target
 from .utils.check_for_upgrade import check_for_upgrade
 from .utils.file_response import file_response
+from .utils.gpu_lock import read_gpu_task, clear_gpu_task, clear_stale_gpu_task
 
 ## Setup logging
 logging.basicConfig(
@@ -62,6 +63,11 @@ async def lifespan(app: FastAPI):
 
     # Warm up anipose in the background (first run is ~1-2s slow).
     asyncio.create_task(anyio.to_thread.run_sync(warm_up_anipose))
+
+    # Clear stale GPU lock info on startup if the OS lock is free.
+    # This covers any task type (inference, training) that might have survived
+    # a crash but is no longer actually running.
+    clear_stale_gpu_task()
 
     # Start model train scheduler loop in a separate process
     try:
