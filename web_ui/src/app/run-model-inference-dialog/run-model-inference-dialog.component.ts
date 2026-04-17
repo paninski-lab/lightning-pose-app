@@ -101,7 +101,7 @@ export class RunModelInferenceDialogComponent implements OnInit {
         error: status.error ?? undefined,
       });
 
-      if (uiStatus === 'running') {
+      if (uiStatus === 'running' || uiStatus === 'waiting') {
         this.subscribeToStream(taskId);
       }
     } catch {
@@ -164,7 +164,7 @@ export class RunModelInferenceDialogComponent implements OnInit {
 
     this.logLines.set([]);
     this.currentTaskId.set(null);
-    this.inferState.set({ status: 'running', progress: 0 });
+    this.inferState.set({ status: 'waiting', progress: 0 });
     try {
       const { taskId } = await this.sessionService.inferTask(selected, ['all']);
       this.currentTaskId.set(taskId);

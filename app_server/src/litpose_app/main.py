@@ -31,6 +31,27 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+class NoisyEndpointFilter(logging.Filter):
+    """Filter out 200 OK logs for noisy polling endpoints."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        # uvicorn access logs have the following format for record.args:
+        # (client_addr, method, path, http_version, status_code)
+        if record.args and len(record.args) >= 5:
+            path = record.args[2]
+            status_code = record.args[4]
+            if status_code in (200,206):
+                if path in ["/app/v0/rpc/listModels", "/app/v0/task/active"]:
+                    return False
+                if str(path).startswith("/app/v0/files/"):
+                    return False
+        return True
+
+
+# Add filter to uvicorn.access logger to silence noisy polling requests
+logging.getLogger("uvicorn.access").addFilter(NoisyEndpointFilter())
+
+
 ## Configure additional things to happen on server startup and shutdown.
 @asynccontextmanager
 async def lifespan(app: FastAPI):
