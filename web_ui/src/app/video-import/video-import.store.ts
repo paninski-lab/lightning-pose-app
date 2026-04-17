@@ -142,7 +142,7 @@ export class VideoImportStore {
       progress: 0,
       error: null,
     });
-    this.sessionService.transcodeVideoSse(filename, false).subscribe({
+    this.sessionService.transcodeVideoSse(`uploads://${filename}`, false).subscribe({
       next: (e: VideoTaskStatus) => {
         const total = e.totalFrames ?? 0;
         const done = e.framesDone ?? 0;

@@ -221,7 +221,7 @@ def _stream_sse_sync(gen: Iterator[dict]):
         yield f"data: {data}\n\n"
 
 
-def _start_transcode_background(filename: str, input_path: Path, output_path: Path):
+def _start_transcode_background(filename: str, input_path: Path, output_path: Path, delete_on_success: bool = False):
     # If already running, return existing future
     with _status_lock:
         fut = _futures_by_file.get(filename)
@@ -274,11 +274,11 @@ def _start_transcode_background(filename: str, input_path: Path, output_path: Pa
                     transcodeStatus=TranscodeStatus.DONE,
                     framesDone=frames_done_local,
                 )
-                # Cleanup the uploaded file
-                try:
-                    input_path.unlink()
-                except FileNotFoundError:
-                    pass
+                if delete_on_success:
+                    try:
+                        input_path.unlink()
+                    except FileNotFoundError:
+                        pass
             else:
                 set_status(
                     filename,
@@ -375,46 +375,73 @@ def get_video_status(
     )
 
 
+UPLOADS_SCHEME = "uploads://"
+
+
+def _resolve_input_path(inputPath: str, uploads_dir: Path) -> tuple[Path, bool]:
+    """Resolve inputPath to an absolute Path and whether it lives in the uploads dir.
+
+    Accepts either ``uploads://<filename>`` (a sentinel for the uploads directory)
+    or a plain absolute path.  Returns ``(resolved_path, is_upload)``.
+    """
+    if inputPath.startswith(UPLOADS_SCHEME):
+        name = inputPath[len(UPLOADS_SCHEME):]
+        if not name or "/" in name or ".." in name:
+            raise HTTPException(status_code=400, detail="Invalid uploads:// path.")
+        return uploads_dir / name, True
+    p = Path(inputPath)
+    if not p.is_absolute():
+        raise HTTPException(status_code=400, detail="inputPath must be absolute or use uploads:// scheme.")
+    try:
+        p.resolve().relative_to(p.resolve())  # normalise; raises nothing
+    except Exception:
+        pass
+    return p, False
+
+
 @router.get("/app/v0/sse/TranscodeVideo")
 def transcode_video(
     projectKey: str,
-    filename: str,
+    inputPath: str,
     should_overwrite: bool = False,
     root_config: RootConfig = Depends(deps.root_config),
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ):
     """Start or attach to a background transcode and stream progress via SSE.
 
-    This endpoint starts a background ffmpeg transcode of the previously
-    uploaded file `~/.lightning-pose/uploads/<filename>` into the project
-    videos directory `<project.data_dir>/videos/<filename>`. Progress events
-    are streamed as Server-Sent Events (SSE), each event being a JSON
-    serialization of the current `VideoTaskStatus` for the filename.
+    This endpoint starts a background ffmpeg transcode of an input file into
+    the project videos directory ``<project.data_dir>/videos/<basename>``.
+    Progress events are streamed as Server-Sent Events (SSE), each event being
+    a JSON serialization of the current ``VideoTaskStatus`` for the file.
 
     Query Parameters
     - projectKey: Project identifier used to resolve the output videos folder.
-    - filename: Name of the uploaded file to transcode.
+    - inputPath: Either ``uploads://<filename>`` (file in the system uploads
+      directory) or an absolute filesystem path to the source video.
     - should_overwrite: If false and output exists, a single DONE event is
       emitted immediately without starting a new transcode.
 
     Event payload shape
-    - `{ "transcodeStatus": "PENDING|ACTIVE|DONE|ERROR", "framesDone": int|null, "totalFrames": int|null, "error": str|null }`
+    - ``{ "transcodeStatus": "PENDING|ACTIVE|DONE|ERROR", "framesDone": int|null, "totalFrames": int|null, "error": str|null }``
 
     Behavior
     - If the output already exists and overwrite is false, emits one DONE event.
     - Otherwise, launches a single background task per filename and polls
-      status periodically until reaching DONE or ERROR. On success, the
-      uploaded source file is removed.
+      status periodically until reaching DONE or ERROR.
+    - The source file is deleted after a successful transcode only when it
+      originated from the uploads directory (``uploads://`` scheme).
     """
     project: Project = project_info_getter(projectKey)
-    # Validate filename (prevents path traversal)
+
+    in_path, is_upload = _resolve_input_path(inputPath, root_config.UPLOADS_DIR)
+    filename = in_path.name
+    # Validate filename (prevents path traversal in output dir)
     parse_session_view(filename)
 
-    in_path = root_config.UPLOADS_DIR / filename
     if not in_path.exists():
         raise HTTPException(
             status_code=404,
-            detail="Uploaded file not found. Upload before transcoding.",
+            detail="Input file not found.",
         )
 
     out_dir = videos_dir_for_project(project)
@@ -438,7 +465,7 @@ def transcode_video(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Start background transcode if needed
-    _start_transcode_background(filename, in_path, out_path)
+    _start_transcode_background(filename, in_path, out_path, delete_on_success=is_upload)
 
     def poller_sync() -> Iterator[dict]:
         # Periodically emit current status until terminal

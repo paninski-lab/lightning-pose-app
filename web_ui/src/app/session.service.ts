@@ -27,6 +27,11 @@ import { ModelListResponse } from './modelconf';
 
 type SessionModelMap = Record<string, string[]>;
 
+interface RGlobResponse {
+  entries: { path: string; type?: 'dir' | 'file' }[];
+  relativeTo: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -67,17 +72,18 @@ export class SessionService {
   }
 
   /**
-   * Start or attach to a transcode for a given uploaded filename and stream progress via SSE.
+   * Start or attach to a transcode and stream progress via SSE.
+   * inputPath must be either an absolute filesystem path or an ``uploads://`` URI.
    * Completes when server reports DONE or ERROR.
    */
   transcodeVideoSse(
-    filename: string,
+    inputPath: string,
     shouldOverwrite = false,
   ): Observable<VideoTaskStatus> {
     const projectKey = this.getProjectKeyOrThrow();
     const params = new URLSearchParams({
       projectKey,
-      filename,
+      inputPath,
       should_overwrite: String(shouldOverwrite),
     });
     const url = `/app/v0/sse/TranscodeVideo?${params.toString()}`;
@@ -176,20 +182,73 @@ export class SessionService {
       noDirs: true,
     })) as RGlobResponse;
 
-    /* To test long request:
-    const sleep = (ms: number) =>
-      new Promise((resolve) => setTimeout(resolve, ms));
-    await sleep(1000);
-     */
-
     const mp4Files: string[] = response.entries.map((entry) => entry.path);
-
     const sessions: Session[] = this.groupFilesBySession(
       mp4Files,
       this.projectInfoService.projectInfo.views,
     );
 
     return sessions;
+  }
+
+  private groupFilesBySession(filenames: string[], views: string[]): Session[] {
+    const pathKeyToItsViewFiles = this.groupFilesByView(filenames, views);
+    // Convert the Map to the required Session array format
+    const cmp = createSessionViewComparator(this.projectInfoService.allViews());
+    return Array.from(pathKeyToItsViewFiles.entries()).map(
+      ([relativePath, groupedFiles]) => {
+        const sessionViews = groupedFiles.map(({ view, filename }) => ({
+          viewName: view,
+          videoPath:
+            this.projectInfoService.projectInfo.data_dir + '/' + filename,
+        }));
+        // The filename is the key.
+        const key = relativePath
+          .split('/')
+          .at(-1)!
+          .replace(/\.(mp4|avi)$/, '');
+        return {
+          key: key,
+          relativePath,
+          views: [...sessionViews].sort(cmp),
+        };
+      },
+    );
+  }
+
+  private groupFilesByView(
+    paths: string[],
+    views: string[],
+  ): Map<string, { view: string; filename: string }[]> {
+    // Use a Map to group files by their session key
+    const pathKeyToItsFiles = new Map<
+      string,
+      { view: string; filename: string }[]
+    >();
+
+    for (const path of paths) {
+      const parts = path.split('/');
+      const filename = parts.at(-1)!;
+      let viewName = views.find((v) => filename.includes(v));
+      if (!viewName) {
+        viewName = 'unknown';
+      }
+
+      // Remove the view name to get the base session key
+      const pathKey =
+        viewName == 'unknown'
+          ? path
+          : [...parts.slice(0, -1), filename.replace(viewName, '*')].join('/');
+
+      if (!pathKeyToItsFiles.has(pathKey)) {
+        pathKeyToItsFiles.set(pathKey, []);
+      }
+      pathKeyToItsFiles.get(pathKey)!.push({
+        view: viewName,
+        filename: path,
+      });
+    }
+    return pathKeyToItsFiles;
   }
 
   labelFilesLoading = signal(false);
@@ -414,7 +473,11 @@ export class SessionService {
 
   async getSessions(
     baseDir: string,
-  ): Promise<{ sessions: Session[]; ungroupedDirs: string[]; ungroupedVideos: string[] }> {
+  ): Promise<{
+    sessions: Session[];
+    ungroupedDirs: string[];
+    ungroupedVideos: string[];
+  }> {
     const response = (await this.rpc.call('rglob', {
       baseDir,
       pattern: '*',
@@ -461,65 +524,6 @@ export class SessionService {
     }
 
     return { sessions, ungroupedDirs, ungroupedVideos };
-  }
-
-  private groupFilesBySession(filenames: string[], views: string[]): Session[] {
-    const pathKeyToItsViewFiles = this.groupFilesByView(filenames, views);
-    // Convert the Map to the required Session array format
-    const cmp = createSessionViewComparator(this.projectInfoService.allViews());
-    return Array.from(pathKeyToItsViewFiles.entries()).map(
-      ([relativePath, groupedFiles]) => {
-        const sessionViews = groupedFiles.map(({ view, filename }) => ({
-          viewName: view,
-          videoPath:
-            this.projectInfoService.projectInfo.data_dir + '/' + filename,
-        }));
-        // The filename is the key.
-        const key = relativePath
-          .split('/')
-          .at(-1)!
-          .replace(/\.mp4$/, '');
-        return {
-          key: key,
-          relativePath,
-          views: [...sessionViews].sort(cmp),
-        };
-      },
-    );
-  }
-  private groupFilesByView(
-    paths: string[],
-    views: string[],
-  ): Map<string, { view: string; filename: string }[]> {
-    // Use a Map to group files by their session key
-    const pathKeyToItsFiles = new Map<
-      string,
-      { view: string; filename: string }[]
-    >();
-
-    for (const path of paths) {
-      const parts = path.split('/');
-      const filename = parts.at(-1)!;
-      let viewName = views.find((v) => filename.includes(v));
-      if (!viewName) {
-        viewName = 'unknown';
-      }
-
-      // Remove the view name to get the base session key
-      const pathKey =
-        viewName == 'unknown'
-          ? path
-          : [...parts.slice(0, -1), filename.replace(viewName, '*')].join('/');
-
-      if (!pathKeyToItsFiles.has(pathKey)) {
-        pathKeyToItsFiles.set(pathKey, []);
-      }
-      pathKeyToItsFiles.get(pathKey)!.push({
-        view: viewName,
-        filename: path,
-      });
-    }
-    return pathKeyToItsFiles;
   }
 
   async saveMVFrame(
@@ -785,11 +789,4 @@ export interface InferRun {
 export interface ResolveInferenceResponse {
   runs: InferRun[];
   skipped_count: number;
-}
-
-interface RGlobResponse {
-  entries: {
-    type: string;
-    path: string;
-  }[];
 }

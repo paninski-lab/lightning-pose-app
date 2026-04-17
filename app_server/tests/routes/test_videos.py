@@ -122,7 +122,7 @@ def test_transcode_sse_output_exists_returns_done(
 
     with client.stream(
         "GET",
-        f"/app/v0/sse/TranscodeVideo?projectKey={project_key}&filename={filename}",
+        f"/app/v0/sse/TranscodeVideo?projectKey={project_key}&inputPath=uploads://{filename}",
     ) as resp:
         assert resp.status_code == 200
         payloads = _collect_sse_data_lines(resp)
@@ -191,7 +191,7 @@ def test_transcode_sse_success_flow(
 
     with client.stream(
         "GET",
-        f"/app/v0/sse/TranscodeVideo?projectKey={project_key}&filename={filename}",
+        f"/app/v0/sse/TranscodeVideo?projectKey={project_key}&inputPath=uploads://{filename}",
     ) as resp:
         assert resp.status_code == 200
         payloads = _collect_sse_data_lines(resp)
@@ -200,7 +200,7 @@ def test_transcode_sse_success_flow(
     assert payloads, "No SSE payloads received"
     assert payloads[-1]["transcodeStatus"] == "DONE"
     assert payloads[-1]["framesDone"] == 10
-    # Uploaded file should have been removed
+    # Uploaded file should have been removed (uploads:// source is deleted on success)
     uploads = override_config.UPLOADS_DIR
     assert not (uploads / filename).exists()
 
@@ -246,7 +246,7 @@ def test_transcode_sse_failure_flow(
 
     with client.stream(
         "GET",
-        f"/app/v0/sse/TranscodeVideo?projectKey={project_key}&filename={filename}",
+        f"/app/v0/sse/TranscodeVideo?projectKey={project_key}&inputPath=uploads://{filename}",
     ) as resp:
         assert resp.status_code == 200
         payloads = _collect_sse_data_lines(resp)
