@@ -42,13 +42,15 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
 
   protected inferState = signal<InferUiState>({ status: 'idle', progress: 0 });
   protected logLines = signal<string[]>([]);
+  protected currentTaskId = signal<string | null>(null);
 
   protected get inferenceRunning() {
     return this.inferState().status === 'running';
   }
 
   protected get showTerminal() {
-    return this.inferState().status !== 'idle';
+    const s = this.inferState().status;
+    return s !== 'idle';
   }
 
   async ngOnInit() {
@@ -70,6 +72,7 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
         this.logLines.set(status.logs);
       }
 
+      this.currentTaskId.set(taskId);
       const uiStatus = this.toUiStatus(status.status);
       const total = status.total ?? 0;
       const completed = status.completed ?? 0;
@@ -142,9 +145,11 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
     if (selected.length === 0) return;
 
     this.logLines.set([]);
+    this.currentTaskId.set(null);
     this.inferState.set({ status: 'running', progress: 0 });
     try {
       const { taskId } = await this.sessionService.inferTask(selected, ['all']);
+      this.currentTaskId.set(taskId);
       this.subscribeToStream(taskId);
     } catch (err: any) {
       this.inferState.set({
@@ -181,7 +186,7 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
       },
       complete: () => {
         const cur = this.inferState();
-        if (cur.status !== 'error') {
+        if (cur.status !== 'error' && cur.status !== 'cancelled') {
           this.inferState.set({ ...cur, status: 'done', progress: 100 });
         }
       },
@@ -195,7 +200,10 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
         return 'done';
       case 'FAILED':
         return 'error';
+      case 'CANCELLED':
+        return 'cancelled';
       case 'RUNNING':
+      case 'WAITING':
       case 'PENDING':
         return 'running';
       default:
@@ -210,13 +218,23 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
     }
   }
 
-  handleCloseClick() {
+  protected handleCloseClick() {
     this.close.emit();
+  }
+
+  protected async cancelTask() {
+    const taskId = this.currentTaskId();
+    if (!taskId) return;
+    try {
+      await this.sessionService.cancelInferenceTask(taskId);
+    } catch {
+      // best-effort
+    }
   }
 }
 
 interface InferUiState {
-  status: 'idle' | 'running' | 'done' | 'error';
+  status: 'idle' | 'running' | 'done' | 'error' | 'cancelled';
   progress: number;
   message?: string;
   error?: string;

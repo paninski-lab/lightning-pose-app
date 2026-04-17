@@ -12,51 +12,65 @@
     </p>
 
     <!-- Model list -->
-    @if (modelsLoading()) {
-      <div class="flex items-center gap-2 py-4">
-        <span class="loading loading-spinner loading-sm"></span>
-        <span class="text-sm">Loading models…</span>
-      </div>
-    } @else if (models().length === 0) {
-      <p class="text-sm opacity-60 py-4">No models found in this project.</p>
-    } @else {
-      <div class="overflow-y-auto grow min-h-0 border rounded-box mb-4">
-        @for (model of models(); track model.model_relative_path) {
-          <label
-            class="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-base-200"
-          >
-            <input
-              type="checkbox"
-              class="checkbox checkbox-sm"
-              [checked]="isSelected(model.model_relative_path)"
-              (change)="toggleModel(model.model_relative_path)"
-              [disabled]="inferenceRunning"
-            />
-            <span class="text-sm font-medium">{{ model.model_name }}</span>
-            <span class="badge badge-sm badge-ghost">{{ model.model_kind }}</span>
-          </label>
-        }
-      </div>
+    @if (!inferenceRunning) {
+      @if (modelsLoading()) {
+        <div class="flex items-center gap-2 py-4">
+          <span class="loading loading-spinner loading-sm"></span>
+          <span class="text-sm">Loading models…</span>
+        </div>
+      } @else if (models().length === 0) {
+        <p class="text-sm opacity-60 py-4">No models found in this project.</p>
+      } @else {
+        <div class="overflow-y-auto grow min-h-0 border rounded-box mb-4">
+          @for (model of models(); track model.model_relative_path) {
+            <label
+              class="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-base-200"
+            >
+              <input
+                type="checkbox"
+                class="checkbox checkbox-sm"
+                [checked]="isSelected(model.model_relative_path)"
+                (change)="toggleModel(model.model_relative_path)"
+                [disabled]="inferenceRunning"
+              />
+              <span class="text-sm font-medium">{{ model.model_name }}</span>
+              <span class="badge badge-sm badge-ghost">{{ model.model_kind }}</span>
+            </label>
+          }
+        </div>
+      }
+
+      <!-- Resolve preview -->
+      @if (resolveLoading()) {
+        <div class="flex items-center gap-2 mb-4 text-sm opacity-70">
+          <span class="loading loading-spinner loading-xs"></span>
+          Calculating steps…
+        </div>
+      } @else if (resolveResult(); as r) {
+        <div class="text-sm mb-4">
+          <span class="font-semibold">{{ r.runs.length }}</span> step(s) will run
+          @if (r.skipped_count > 0) {
+            <span class="opacity-60"> · {{ r.skipped_count }} already done (skipped)</span>
+          }
+          @if (r.runs.length === 0) {
+            <span class="badge badge-success badge-sm ml-2">All up to date</span>
+          }
+        </div>
+      } @else if (resolveError()) {
+        <p class="text-sm text-warning mb-4">{{ resolveError() }}</p>
+      }
     }
 
-    <!-- Resolve preview -->
-    @if (resolveLoading()) {
-      <div class="flex items-center gap-2 mb-4 text-sm opacity-70">
-        <span class="loading loading-spinner loading-xs"></span>
-        Calculating steps…
+    @if (inferenceRunning) {
+      <div class="alert mb-4">
+        <span class="material-icons">info</span>
+        <span>Showing ongoing inference task</span>
+        <div class="flex-none">
+          <button class="btn btn-sm btn-error" (click)="cancelTask()">
+            Cancel task
+          </button>
+        </div>
       </div>
-    } @else if (resolveResult(); as r) {
-      <div class="text-sm mb-4">
-        <span class="font-semibold">{{ r.runs.length }}</span> step(s) will run
-        @if (r.skipped_count > 0) {
-          <span class="opacity-60"> · {{ r.skipped_count }} already done (skipped)</span>
-        }
-        @if (r.runs.length === 0) {
-          <span class="badge badge-success badge-sm ml-2">All up to date</span>
-        }
-      </div>
-    } @else if (resolveError()) {
-      <p class="text-sm text-warning mb-4">{{ resolveError() }}</p>
     }
 
     <!-- Inference progress -->
@@ -78,6 +92,10 @@
     } @else if (inferState().status === 'done') {
       <div class="mb-2 flex items-center gap-2">
         <span class="badge badge-success">Inference completed</span>
+      </div>
+    } @else if (inferState().status === 'cancelled') {
+      <div class="mb-2 flex items-center gap-2">
+        <span class="badge badge-warning">Inference cancelled</span>
       </div>
     } @else if (inferState().status === 'error') {
       <div class="text-error text-sm mb-2">{{ inferState().error ?? 'Inference failed' }}</div>

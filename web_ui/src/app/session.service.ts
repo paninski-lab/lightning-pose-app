@@ -681,7 +681,7 @@ export class SessionService {
           subscriber.next(event);
           if (
             event.type === 'status' &&
-            (event.status === 'COMPLETED' || event.status === 'FAILED')
+            (event.status === 'COMPLETED' || event.status === 'FAILED' || event.status === 'CANCELLED')
           ) {
             es.close();
             subscriber.complete();
@@ -715,6 +715,12 @@ export class SessionService {
   async getActiveInferenceTask(): Promise<{ taskId: string | null }> {
     return firstValueFrom(
       this.httpClient.get<{ taskId: string | null }>('/app/v0/inference/task/active'),
+    );
+  }
+
+  async cancelInferenceTask(taskId: string): Promise<void> {
+    await firstValueFrom(
+      this.httpClient.post<{ ok: boolean }>(`/app/v0/inference/task/${taskId}/cancel`, {}),
     );
   }
 

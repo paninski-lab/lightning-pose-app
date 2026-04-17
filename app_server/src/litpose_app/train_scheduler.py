@@ -11,6 +11,7 @@ import psutil
 
 from . import deps
 from .routes.models import TrainStatus
+from .utils.gpu_lock import gpu_lock_nonblocking
 
 logger = logging.getLogger(__name__)
 
@@ -97,11 +98,7 @@ def _write_status(path: Path, status: TrainStatus) -> None:
     tmp.replace(path)
 
 
-def _launch_training(model_dir: Path) -> None:
-    """Launch a dummy training script that updates status and writes logs.
-
-    In real usage, this would call the actual training script.
-    """
+def _launch_training(model_dir: Path) -> subprocess.Popen:
     config_path = model_dir / "config.yaml"
     status_path = model_dir / "train_status.json"
     stdout_path = model_dir / "train_stdout.log"
@@ -126,85 +123,116 @@ def _launch_training(model_dir: Path) -> None:
         )
 
     _write_status(status_path, TrainStatus(status="STARTED", pid=proc.pid))
-
     logger.info("Launched training pid=%s for %s", proc.pid, model_dir)
+    return proc
 
 
 def train_scheduler_loop(poll_interval_seconds: float = 2.0) -> None:
-    """Periodically checks for PENDING tasks and launches at most one training."""
+    """Periodically checks for PENDING tasks and launches at most one training.
+
+    Holds the GPU lock for the entire lifetime of the training subprocess so that
+    inference tasks wait rather than running concurrently.
+    """
+    # GPU lock held across iterations while a training subprocess is alive.
+    _gpu_lock_ctx = None
+    _active_proc: Optional[subprocess.Popen] = None
+    _active_model_dir: Optional[Path] = None
+
     while True:
-        lock_file = None
+        scheduler_lock_file = None
         try:
+            # --- Check if our currently tracked subprocess has finished ---
+            if _active_proc is not None:
+                if not _is_pid_alive(_active_proc.pid):
+                    logger.info(
+                        "Training subprocess pid=%s finished for %s",
+                        _active_proc.pid,
+                        _active_model_dir,
+                    )
+                    if _gpu_lock_ctx is not None:
+                        try:
+                            _gpu_lock_ctx.__exit__(None, None, None)
+                        except Exception as e:
+                            logger.error("Error releasing GPU lock: %s", e)
+                        _gpu_lock_ctx = None
+                    _active_proc = None
+                    _active_model_dir = None
+                else:
+                    # Training still running — GPU is in use, nothing to launch.
+                    time.sleep(poll_interval_seconds)
+                    continue
+
             project_util = deps.project_util(root_config=deps.root_config())
             pps = project_util.get_all_project_paths()
             for project_key, project_info in pps.items():
-                if (
+                if not (
                     project_info
                     and project_info.model_dir
                     and project_info.model_dir.exists()
                 ):
-                    base = project_info.model_dir
-                    lock_path = base / "scheduler.lock"
+                    continue
 
-                    try:
-                        # Use portalocker.Lock to acquire an exclusive non-blocking lock
-                        # mode='a' is important to avoid truncating existing lock files on some platforms
-                        # timeout=0 means non-blocking
-                        lock_file = portalocker.Lock(
-                            str(lock_path), mode="a", timeout=0
-                        )
-                        lock_file.acquire()
-                        logger.debug(f"Acquired lock on {lock_path}")
-                    except portalocker.exceptions.LockException:
-                        logger.debug(
-                            f"Another scheduler holds the lock on {lock_path}. Skipping this cycle."
-                        )
-                        continue  # Skip this cycle if lock cannot be acquired
+                base = project_info.model_dir
+                lock_path = base / "scheduler.lock"
 
-                    active_found = False
-                    for d in [p for p in base.iterdir() if p.is_dir()]:
-                        status_path = d / "train_status.json"
-                        ts = _read_status(status_path)
-                        if (
-                            ts
-                            and ts.status
-                            in ("STARTING", "STARTED", "TRAINING", "EVALUATING")
-                            and ts.pid
-                        ):
-                            if _is_pid_alive(ts.pid):
-                                active_found = True
-                                break
-                            else:
-                                # Process died, update status to FAILED
-                                _write_status(
-                                    status_path,
-                                    TrainStatus(status="FAILED", pid=ts.pid),
-                                )
-                                logger.info(
-                                    f"Marked {d.name} as FAILED due to defunct PID {ts.pid}"
-                                )
+                try:
+                    scheduler_lock_file = portalocker.Lock(
+                        str(lock_path), mode="a", timeout=0
+                    )
+                    scheduler_lock_file.acquire()
+                    logger.debug(f"Acquired scheduler lock on {lock_path}")
+                except portalocker.exceptions.LockException:
+                    logger.debug(
+                        f"Another scheduler holds the lock on {lock_path}. Skipping."
+                    )
+                    continue
 
-                    if not active_found:
-                        pending_dirs = []
-                        for d in sorted([p for p in base.iterdir() if p.is_dir()]):
-                            status_path = d / "train_status.json"
-                            ts = _read_status(status_path)
-                            if ts and ts.status == "PENDING":
-                                pending_dirs.append(d)
-                        if pending_dirs:
-                            _launch_training(pending_dirs[0])
-                            logger.info(f"Launched training for {pending_dirs[0].name}")
+                # Mark any tasks whose process died as FAILED
+                for d in [p for p in base.iterdir() if p.is_dir()]:
+                    status_path = d / "train_status.json"
+                    ts = _read_status(status_path)
+                    if (
+                        ts
+                        and ts.status in ("STARTING", "STARTED", "TRAINING", "EVALUATING")
+                        and ts.pid
+                        and not _is_pid_alive(ts.pid)
+                    ):
+                        _write_status(status_path, TrainStatus(status="FAILED", pid=ts.pid))
+                        logger.info("Marked %s as FAILED due to defunct PID %s", d.name, ts.pid)
+
+                # Find first PENDING task
+                pending_dirs = [
+                    d for d in sorted(p for p in base.iterdir() if p.is_dir())
+                    if (ts := _read_status(d / "train_status.json")) and ts.status == "PENDING"
+                ]
+                if not pending_dirs:
+                    continue
+
+                # Try to acquire the GPU lock (non-blocking — inference may be running)
+                task_id = f"train:{project_key}:{pending_dirs[0].relative_to(base)}"
+                try:
+                    ctx = gpu_lock_nonblocking("training", task_id)
+                    ctx.__enter__()
+                except portalocker.exceptions.LockException:
+                    logger.debug("GPU busy (inference running), will retry.")
+                    continue
+
+                proc = _launch_training(pending_dirs[0])
+                _gpu_lock_ctx = ctx
+                _active_proc = proc
+                _active_model_dir = pending_dirs[0]
+                logger.info("Launched training for %s", pending_dirs[0].name)
+                break  # Only launch one task per cycle
 
         except Exception:
             logger.exception("Error in train scheduler loop")
         finally:
-            # Finally also executes when `continue` from a try block.
-            if lock_file:
+            if scheduler_lock_file:
                 try:
-                    lock_file.release()  # Release the lock
-                    logger.debug(f"Released lock.")
+                    scheduler_lock_file.release()
+                    logger.debug("Released scheduler lock.")
                 except Exception as e:
-                    logger.error(f"Error releasing lock file {lock_path}: {e}")
+                    logger.error("Error releasing scheduler lock: %s", e)
             time.sleep(poll_interval_seconds)
 
 

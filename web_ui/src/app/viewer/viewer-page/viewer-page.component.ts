@@ -25,7 +25,7 @@ import { SessionService } from '../../session.service';
 import { LoadingBarComponent } from '../../loading-bar/loading-bar.component';
 import { LoadingService } from '../../loading.service';
 import { Session } from '../../session.model';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { LabelFilePickerComponent } from '../../label-file-picker/label-file-picker.component';
 import { RpcService } from '../../rpc.service';
 import { ExtractFramesRequest } from '../../extract-frames-request';
@@ -36,6 +36,7 @@ import { FormsModule } from '@angular/forms';
 
 import { ViewerViewOptionsService } from '../viewer-view-options.service';
 import { SelectComponent } from '../../components/dropdown/select.component';
+import { RunModelInferenceDialogComponent } from '../../run-model-inference-dialog/run-model-inference-dialog.component';
 
 @Component({
   selector: 'app-viewer',
@@ -52,6 +53,8 @@ import { SelectComponent } from '../../components/dropdown/select.component';
     DropdownTriggerComponent,
     DropdownContentComponent,
     DropdownTriggerDirective,
+    RunModelInferenceDialogComponent,
+    RouterLink,
   ],
   templateUrl: './viewer-page.component.html',
   styleUrl: './viewer-page.component.css',
@@ -95,6 +98,7 @@ export class ViewerPageComponent implements OnInit {
   _sessionKey = signal<string | null>(null);
 
   protected isIniting = signal(true);
+  protected isRunModelInferenceDialogOpen = signal(false);
   async ngOnInit() {
     // Page inits by loading project info, and if it does not exist,
     // it will (future) open a dialog to get the project info.
@@ -198,6 +202,11 @@ export class ViewerPageComponent implements OnInit {
     }
 
     this.enabledViewsKeypoints.setModelsShown(modelsShown);
+  }
+
+  protected async handleRunModelInferenceDialogDone() {
+    this.isRunModelInferenceDialogOpen.set(false);
+    await this.sessionService.loadPredictionIndex();
   }
 
   protected handleSelectedSessionChange(session: Session | null) {

@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from ..datatypes import Project
 from .. import deps
 from ..deps import ProjectInfoGetter
+from ..utils.gpu_lock import gpu_lock_blocking, read_gpu_task
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -32,6 +33,8 @@ router = APIRouter()
 _executor: Optional[ThreadPoolExecutor] = None
 _status_lock = threading.RLock()
 _futures_by_task: Dict[str, Future] = {}
+_active_procs_by_task: Dict[str, subprocess.Popen] = {}
+_cancel_requests: set = set()
 
 
 def get_executor() -> ThreadPoolExecutor:
@@ -51,6 +54,7 @@ def get_executor() -> ThreadPoolExecutor:
 
 class InferenceStatus(str):
     PENDING = "PENDING"
+    WAITING = "WAITING"
     RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
@@ -140,6 +144,8 @@ def _run_subprocess_with_logging(task_id: str, cmd: List[str]) -> int:
         text=True,
         bufsize=1,
     )
+    with _status_lock:
+        _active_procs_by_task[task_id] = proc
 
     def _reader(pipe, prefix: str):
         for line in iter(pipe.readline, ''):
@@ -152,7 +158,11 @@ def _run_subprocess_with_logging(task_id: str, cmd: List[str]) -> int:
     t_err = threading.Thread(target=_reader, args=(proc.stderr, '[stderr] '), daemon=True)
     t_out.start()
     t_err.start()
-    ret = proc.wait()
+    try:
+        ret = proc.wait()
+    finally:
+        with _status_lock:
+            _active_procs_by_task.pop(task_id, None)
     t_out.join()
     t_err.join()
     return ret
@@ -395,48 +405,20 @@ def _start_batch_inference_background(task_id: str, plan: InferPlan) -> Future:
 
     steps = plan.steps
     total = len(steps)
-    set_status(task_id, status=InferenceStatus.RUNNING, completed=0, total=total, error=None)
+    set_status(task_id, status=InferenceStatus.WAITING, completed=0, total=total, error=None)
 
     def _run():
         try:
-            for i, step in enumerate(steps):
-                msg = (
-                    f"Step {i + 1}/{total}: {step.kind} — "
-                    f"{step.model_dir.name} on {step.session}"
-                )
-                set_status(task_id, message=msg)
-                _append_log(task_id, f"=== {msg} ===")
-
-                if step.kind in ("normal", "member"):
-                    predict_wrapper = (
-                        Path(__file__).parent.parent
-                        / "utils" / "inference" / "predict_wrapper.py"
-                    )
-                    cmd = [
-                        sys.executable, str(predict_wrapper),
-                        str(step.model_dir),
-                        *[str(p) for p in step.video_paths],
-                        "--skip_viz",
-                    ]
-                    ret = _run_subprocess_with_logging(task_id, cmd)
-                    if ret != 0:
-                        set_status(
-                            task_id,
-                            status=InferenceStatus.FAILED,
-                            error=(
-                                f"litpose predict failed for {step.model_dir.name} "
-                                f"on {step.session}"
-                            ),
-                        )
+            with gpu_lock_blocking("inference", task_id):
+                with _status_lock:
+                    if task_id in _cancel_requests:
                         return
-                else:
-                    if not _run_eks_step(task_id, step):
-                        return
-                set_status(task_id, completed=i + 1)
-
-            set_status(task_id, status=InferenceStatus.COMPLETED, completed=total)
-            _append_log(task_id, "=== Inference completed ===")
+                set_status(task_id, status=InferenceStatus.RUNNING)
+                _run_steps(task_id, steps, total)
         except Exception as e:
+            with _status_lock:
+                if task_id in _cancel_requests:
+                    return
             set_status(task_id, status=InferenceStatus.FAILED, error=f"Exception: {e}")
             _append_log(task_id, f"[error] Exception: {e}")
 
@@ -444,6 +426,58 @@ def _start_batch_inference_background(task_id: str, plan: InferPlan) -> Future:
     with _status_lock:
         _futures_by_task[task_id] = future
     return future
+
+
+def _is_cancelled(task_id: str) -> bool:
+    with _status_lock:
+        return task_id in _cancel_requests
+
+
+def _run_steps(task_id: str, steps: List[InferStep], total: int) -> None:
+    for i, step in enumerate(steps):
+        if _is_cancelled(task_id):
+            return
+
+        msg = (
+            f"Step {i + 1}/{total}: {step.kind} — "
+            f"{step.model_dir.name} on {step.session}"
+        )
+        set_status(task_id, message=msg)
+        _append_log(task_id, f"=== {msg} ===")
+
+        if step.kind in ("normal", "member"):
+            predict_wrapper = (
+                Path(__file__).parent.parent
+                / "utils" / "inference" / "predict_wrapper.py"
+            )
+            cmd = [
+                sys.executable, str(predict_wrapper),
+                str(step.model_dir),
+                *[str(p) for p in step.video_paths],
+                "--skip_viz",
+            ]
+            ret = _run_subprocess_with_logging(task_id, cmd)
+            if ret != 0:
+                if _is_cancelled(task_id):
+                    return
+                set_status(
+                    task_id,
+                    status=InferenceStatus.FAILED,
+                    error=(
+                        f"litpose predict failed for {step.model_dir.name} "
+                        f"on {step.session}"
+                    ),
+                )
+                return
+        else:
+            if not _run_eks_step(task_id, step):
+                return
+        set_status(task_id, completed=i + 1)
+
+    if _is_cancelled(task_id):
+        return
+    set_status(task_id, status=InferenceStatus.COMPLETED, completed=total)
+    _append_log(task_id, "=== Inference completed ===")
 
 
 # -----------------------------
@@ -508,6 +542,25 @@ def start_inference_task(
     return {"taskId": task_id, "status": "ACCEPTED"}
 
 
+@router.post("/app/v0/inference/task/{taskId}/cancel")
+def cancel_inference_task(taskId: str):
+    """Cancel a running or waiting inference task."""
+    with _status_lock:
+        st = _status_by_task.get(taskId)
+        terminal = {InferenceStatus.COMPLETED, InferenceStatus.FAILED, InferenceStatus.CANCELLED}
+        if st is None or st.status in terminal:
+            return {"ok": True}
+        _cancel_requests.add(taskId)
+        st.status = InferenceStatus.CANCELLED
+        proc = _active_procs_by_task.get(taskId)
+    if proc is not None:
+        try:
+            proc.kill()
+        except Exception:
+            pass
+    return {"ok": True}
+
+
 @router.get("/app/v0/inference/task/active")
 def get_active_inference_task():
     """Return the taskId of the most recent non-terminal task, or null."""
@@ -517,6 +570,15 @@ def get_active_inference_task():
             st = _status_by_task.get(task_id)
             if st is not None and st.status not in terminal:
                 return {"taskId": task_id}
+    return {"taskId": None}
+
+
+@router.get("/app/v0/task/active")
+def get_active_task():
+    """Return the task currently holding the GPU lock, or null."""
+    task = read_gpu_task()
+    if task:
+        return task
     return {"taskId": None}
 
 
