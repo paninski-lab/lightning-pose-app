@@ -1,12 +1,12 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  effect,
   inject,
-  input,
   model,
-  OnInit,
   signal,
   TemplateRef,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { CommonModule, NgTemplateOutlet } from '@angular/common';
@@ -20,6 +20,7 @@ import {
   DropdownTriggerComponent,
   DropdownTriggerDirective,
 } from '../dropdown/dropdown.component';
+import { PathEditableComponent } from '../path-editable/path-editable.component';
 
 @Component({
   selector: 'app-base-session-picker',
@@ -33,8 +34,13 @@ import {
     DropdownContentComponent,
     DropdownTriggerComponent,
     DropdownTriggerDirective,
+    PathEditableComponent,
   ],
   template: `
+    <div class="px-3 py-2 border-b border-base-300 shrink-0">
+      <app-path-editable [(path)]="baseDir"></app-path-editable>
+    </div>
+
     @if (loading()) {
       <div class="p-4 flex justify-center">
         <progress class="progress w-full"></progress>
@@ -117,11 +123,11 @@ import {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class BaseSessionPickerComponent implements OnInit {
+export class BaseSessionPickerComponent {
   private sessionService = inject(SessionService);
 
-  /** The directory to search for sessions. */
-  baseDir = input.required<string>();
+  /** The directory to search for sessions. Editable via the path picker. */
+  baseDir = model.required<string>();
 
   /** The list of sessions found under baseDir. */
   protected sessions = signal<Session[]>([]);
@@ -139,7 +145,7 @@ export class BaseSessionPickerComponent implements OnInit {
   protected loading = signal(false);
 
   /** Optional template for the right slot of each session item. */
-  rightTemplate = input<TemplateRef<{ $implicit: Session }> | null>(null);
+  rightTemplate = model<TemplateRef<{ $implicit: Session }> | null>(null);
 
   protected defaultRightTemplate = viewChild<
     TemplateRef<{ $implicit: Session }>
@@ -149,14 +155,17 @@ export class BaseSessionPickerComponent implements OnInit {
     return this.rightTemplate() || this.defaultRightTemplate() || null;
   }
 
-  ngOnInit() {
-    this.load();
+  constructor() {
+    effect(() => {
+      const dir = this.baseDir();
+      untracked(() => this.load(dir));
+    });
   }
 
-  private async load() {
+  private async load(dir: string) {
     this.loading.set(true);
     try {
-      const result = await this.sessionService.getSessions(this.baseDir());
+      const result = await this.sessionService.getSessions(dir);
       this.sessions.set(result.sessions);
       this.ungroupedDirs.set(result.ungroupedDirs);
       this.ungroupedVideos.set(result.ungroupedVideos);
