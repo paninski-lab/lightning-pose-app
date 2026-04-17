@@ -7,12 +7,13 @@
       ✕
     </button>
     <h3 class="text-xl font-bold mb-2">Run inference on all sessions</h3>
-    <p class="text-sm opacity-70 mb-4">
-      Select models to run, then preview which steps will execute before starting.
-    </p>
 
     <!-- Model list -->
     @if (!inferenceRunning) {
+      <p class="text-sm opacity-70 mb-4">
+        Select models to run, then preview which steps will execute before starting.
+      </p>
+
       @if (modelsLoading()) {
         <div class="flex items-center gap-2 py-4">
           <span class="loading loading-spinner loading-sm"></span>
@@ -61,18 +62,6 @@
       }
     }
 
-    @if (inferenceRunning) {
-      <div class="alert mb-4">
-        <span class="material-icons">info</span>
-        <span>Showing ongoing inference task</span>
-        <div class="flex-none">
-          <button class="btn btn-sm btn-error" (click)="cancelTask()">
-            Cancel task
-          </button>
-        </div>
-      </div>
-    }
-
     <!-- Inference progress -->
     @if (inferState().status === 'running') {
       <div class="mb-2">
@@ -105,11 +94,23 @@
     @if (showTerminal) {
       <div class="mb-4">
         <app-terminal-output [lines]="logLines()" [staticHeight]="true" />
+        <p class="text-sm opacity-70 mt-2">
+          Streaming output of inference.
+          @if (inferenceRunning) {
+            The task will continue to run in the background if this dialog is closed.
+          }
+        </p>
       </div>
     }
 
     <footer class="shrink-0 modal-action justify-between!">
-      <div></div>
+      <div>
+        @if (inferenceRunning) {
+          <button class="btn btn-soft btn-error" (click)="cancelTask()">
+            Cancel task
+          </button>
+        }
+      </div>
       <div class="flex gap-2">
         <button class="btn btn-soft" (click)="handleCloseClick()">
           {{ inferenceRunning ? 'Close' : 'Cancel' }}
