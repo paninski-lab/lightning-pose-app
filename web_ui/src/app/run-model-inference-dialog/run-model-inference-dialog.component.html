@@ -60,6 +60,10 @@
       } @else if (resolveError()) {
         <p class="text-sm text-warning mb-4">{{ resolveError() }}</p>
       }
+
+      @if (eksValidationError()) {
+        <p class="text-sm text-error mb-4">{{ eksValidationError() }}</p>
+      }
     }
 
     <!-- Inference progress -->
@@ -119,7 +123,9 @@
           <button
             class="btn btn-soft btn-primary"
             [disabled]="
-              selectedPaths().size === 0 || (resolveResult()?.runs?.length ?? 1) === 0
+              selectedPaths().size === 0 ||
+              (resolveResult()?.runs?.length ?? 1) === 0 ||
+              !!eksValidationError()
             "
             (click)="startInference()"
           >

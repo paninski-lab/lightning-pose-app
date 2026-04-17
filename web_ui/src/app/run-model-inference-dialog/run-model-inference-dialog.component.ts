@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   HostListener,
   inject,
   OnDestroy,
@@ -18,6 +19,7 @@ import {
 } from '../session.service';
 import { ModelListResponseEntry } from '../modelconf';
 import { TerminalOutputComponent } from '../terminal-output/terminal-output.component';
+import { ProjectInfoService } from '../project-info.service';
 
 @Component({
   selector: 'app-run-model-inference-dialog',
@@ -30,9 +32,23 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
   close = output<void>();
 
   private sessionService = inject(SessionService);
+  private projectInfoService = inject(ProjectInfoService);
   private subs: Subscription[] = [];
 
   protected models = signal<ModelListResponseEntry[]>([]);
+
+  protected eksValidationError = computed(() => {
+    const ctx = this.projectInfoService.globalContext();
+    const eksInstalled = ctx?.versions['ensemble-kalman-smoother'] != null;
+    if (eksInstalled) return null;
+    const selected = this.selectedPaths();
+    const hasEksModel = this.models().some(
+      (m) => m.model_kind === 'eks' && selected.has(m.model_relative_path),
+    );
+    return hasEksModel
+      ? 'EKS models require the ensemble-kalman-smoother package. Run "pip install ensemble-kalman-smoother" to enable inference.'
+      : null;
+  });
   protected modelsLoading = signal(false);
   protected selectedPaths = signal<Set<string>>(new Set());
 

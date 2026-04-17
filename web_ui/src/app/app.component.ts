@@ -34,6 +34,7 @@ import { filter } from 'rxjs/operators';
 import { LocalStorageService } from './local-storage.service';
 import { ToastService } from './toast.service';
 import { PathDisplayComponent } from './components/path-display/path-display.component';
+import { ActiveTaskIndicatorComponent } from './components/active-task-indicator/active-task-indicator.component';
 
 @Component({
   selector: 'app-root',
@@ -47,6 +48,7 @@ import { PathDisplayComponent } from './components/path-display/path-display.com
     DropdownTriggerComponent,
     DropdownContentComponent,
     PathDisplayComponent,
+    ActiveTaskIndicatorComponent,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
