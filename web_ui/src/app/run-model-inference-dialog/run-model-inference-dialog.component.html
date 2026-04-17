@@ -104,7 +104,7 @@
     <!-- Terminal output -->
     @if (showTerminal) {
       <div class="mb-4">
-        <app-terminal-output [lines]="logLines()" />
+        <app-terminal-output [lines]="logLines()" [staticHeight]="true" />
       </div>
     }
 
@@ -114,13 +114,17 @@
         <button class="btn btn-soft" (click)="handleCloseClick()">
           {{ inferenceRunning ? 'Close' : 'Cancel' }}
         </button>
-        <button
-          class="btn btn-soft btn-primary"
-          [disabled]="inferenceRunning || selectedPaths().size === 0 || (resolveResult()?.runs?.length ?? 1) === 0"
-          (click)="startInference()"
-        >
-          Run
-        </button>
+        @if (!inferenceRunning) {
+          <button
+            class="btn btn-soft btn-primary"
+            [disabled]="
+              selectedPaths().size === 0 || (resolveResult()?.runs?.length ?? 1) === 0
+            "
+            (click)="startInference()"
+          >
+            Run
+          </button>
+        }
       </div>
     </footer>
   </div>

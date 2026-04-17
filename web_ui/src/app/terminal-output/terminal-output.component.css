@@ -6,6 +6,10 @@
   padding: 0.5rem;
 }
 
+.terminal-scroll.static-height {
+  height: 300px;
+}
+
 .terminal-pre {
   margin: 0;
   font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace;

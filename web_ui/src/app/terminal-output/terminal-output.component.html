@@ -1,6 +1,7 @@
 <div
   #scroll
   class="terminal-scroll"
+  [class.static-height]="staticHeight()"
   (scroll)="onScroll($event)"
 >
   <pre class="terminal-pre">@for (line of lines(); track $index) {

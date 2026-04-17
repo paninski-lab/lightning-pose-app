@@ -16,6 +16,7 @@ import {
 })
 export class TerminalOutputComponent implements AfterViewChecked {
   lines = input<string[]>([]);
+  staticHeight = input(false);
 
   @ViewChild('scroll') private scrollEl!: ElementRef<HTMLDivElement>;
 
