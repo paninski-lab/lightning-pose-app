@@ -8,6 +8,7 @@ export type TaskType = 'inference' | 'training';
 export interface ActiveTaskResponse {
   taskId: string | null;
   type?: TaskType;
+  projectKey?: string;
 }
 
 @Injectable({

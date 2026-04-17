@@ -397,7 +397,7 @@ def _run_eks_step(task_id: str, step: InferStep) -> bool:
     return True
 
 
-def _start_batch_inference_background(task_id: str, plan: InferPlan) -> Future:
+def _start_batch_inference_background(task_id: str, plan: InferPlan, project_key: str) -> Future:
     with _status_lock:
         fut = _futures_by_task.get(task_id)
         if fut is not None and not fut.done():
@@ -409,7 +409,7 @@ def _start_batch_inference_background(task_id: str, plan: InferPlan) -> Future:
 
     def _run():
         try:
-            with gpu_lock_blocking("inference", task_id):
+            with gpu_lock_blocking("inference", task_id, project_key=project_key):
                 with _status_lock:
                     if task_id in _cancel_requests:
                         return
@@ -538,7 +538,7 @@ def start_inference_task(
         force=req.force,
     )
     task_id = str(uuid.uuid4())
-    _start_batch_inference_background(task_id, plan)
+    _start_batch_inference_background(task_id, plan, req.projectKey)
     return {"taskId": task_id, "status": "ACCEPTED"}
 
 

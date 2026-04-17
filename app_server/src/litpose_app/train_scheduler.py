@@ -211,7 +211,7 @@ def train_scheduler_loop(poll_interval_seconds: float = 2.0) -> None:
                 # Try to acquire the GPU lock (non-blocking — inference may be running)
                 task_id = f"train:{project_key}:{pending_dirs[0].relative_to(base)}"
                 try:
-                    ctx = gpu_lock_nonblocking("training", task_id)
+                    ctx = gpu_lock_nonblocking("training", task_id, project_key=project_key)
                     ctx.__enter__()
                 except portalocker.exceptions.LockException:
                     logger.debug("GPU busy (inference running), will retry.")

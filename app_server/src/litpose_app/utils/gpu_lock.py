@@ -7,9 +7,12 @@ GPU_LOCK_PATH = "/tmp/litpose_gpu.lock"
 GPU_TASK_PATH = "/tmp/litpose_gpu_task.json"
 
 
-def _write_gpu_task(task_type: str, task_id: str) -> None:
+def _write_gpu_task(task_type: str, task_id: str, project_key: str | None = None) -> None:
     tmp = Path(GPU_TASK_PATH + ".tmp")
-    tmp.write_text(json.dumps({"type": task_type, "taskId": task_id}))
+    data = {"type": task_type, "taskId": task_id}
+    if project_key:
+        data["projectKey"] = project_key
+    tmp.write_text(json.dumps(data))
     tmp.rename(GPU_TASK_PATH)
 
 
@@ -28,12 +31,12 @@ def read_gpu_task() -> dict | None:
 
 
 @contextlib.contextmanager
-def gpu_lock_blocking(task_type: str, task_id: str):
+def gpu_lock_blocking(task_type: str, task_id: str, project_key: str | None = None):
     """Blocking GPU lock. Waits until acquired."""
     lock = portalocker.Lock(GPU_LOCK_PATH, mode="a", timeout=None)
     lock.acquire()
     try:
-        _write_gpu_task(task_type, task_id)
+        _write_gpu_task(task_type, task_id, project_key=project_key)
         yield
     finally:
         _clear_gpu_task()
@@ -41,12 +44,12 @@ def gpu_lock_blocking(task_type: str, task_id: str):
 
 
 @contextlib.contextmanager
-def gpu_lock_nonblocking(task_type: str, task_id: str):
+def gpu_lock_nonblocking(task_type: str, task_id: str, project_key: str | None = None):
     """Non-blocking GPU lock. Raises portalocker.LockException if busy."""
     lock = portalocker.Lock(GPU_LOCK_PATH, mode="a", timeout=0)
     lock.acquire()  # raises LockException if busy; no cleanup needed since lock wasn't held
     try:
-        _write_gpu_task(task_type, task_id)
+        _write_gpu_task(task_type, task_id, project_key=project_key)
         yield lock
     finally:
         _clear_gpu_task()
