@@ -81,7 +81,7 @@ def main():
             batch_size = cache[cache_key]
             print(f"--- Using cached batch size {batch_size} for {cache_key} ---")
         else:
-            batch_size = 64
+            batch_size = 96
     
     while batch_size >= 1:
         # Construct the command
@@ -105,14 +105,15 @@ def main():
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            text=True
+            text=True,
+            bufsize=1,
         )
-        
+
         output_log = []
         oom_detected = False
-        
-        for line in process.stdout:
-            print(line, end="")
+
+        for line in iter(process.stdout.readline, ''):
+            print(line, end="", flush=True)
             output_log.append(line)
             if "CUDA out of memory" in line:
                 oom_detected = True

@@ -408,8 +408,12 @@ def _start_batch_inference_background(task_id: str, plan: InferPlan) -> Future:
                 _append_log(task_id, f"=== {msg} ===")
 
                 if step.kind in ("normal", "member"):
+                    predict_wrapper = (
+                        Path(__file__).parent.parent
+                        / "utils" / "inference" / "predict_wrapper.py"
+                    )
                     cmd = [
-                        "litpose", "predict",
+                        sys.executable, str(predict_wrapper),
                         str(step.model_dir),
                         *[str(p) for p in step.video_paths],
                         "--skip_viz",
