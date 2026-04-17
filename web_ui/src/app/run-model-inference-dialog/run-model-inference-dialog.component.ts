@@ -17,7 +17,7 @@ import {
   SessionService,
   TaskStreamEvent,
 } from '../session.service';
-import { ModelListResponseEntry } from '../modelconf';
+import { mc_util, ModelListResponseEntry } from '../modelconf';
 import { TerminalOutputComponent } from '../terminal-output/terminal-output.component';
 import { ProjectInfoService } from '../project-info.service';
 
@@ -112,8 +112,9 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
     this.modelsLoading.set(true);
     try {
       const resp = await this.sessionService.listModels();
-      this.models.set(resp.models);
-      this.selectedPaths.set(new Set(resp.models.map((m) => m.model_relative_path)));
+      const completed = resp.models.filter((m) => new mc_util(m).status === 'COMPLETED');
+      this.models.set(completed);
+      this.selectedPaths.set(new Set(completed.map((m) => m.model_relative_path)));
       await this.loadResolvePreview();
     } finally {
       this.modelsLoading.set(false);

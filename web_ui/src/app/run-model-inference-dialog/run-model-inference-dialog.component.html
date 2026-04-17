@@ -20,7 +20,7 @@
           <span class="text-sm">Loading models…</span>
         </div>
       } @else if (models().length === 0) {
-        <p class="text-sm opacity-60 py-4">No models found in this project.</p>
+        <p class="text-sm opacity-60 py-4">No completed models found in this project.</p>
       } @else {
         <div class="overflow-y-auto grow min-h-0 border rounded-box mb-4">
           @for (model of models(); track model.model_relative_path) {
