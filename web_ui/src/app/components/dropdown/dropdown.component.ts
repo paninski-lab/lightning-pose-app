@@ -7,6 +7,7 @@ import {
   ElementRef,
   inject,
   input,
+  model,
   Renderer2,
   signal,
   viewChild,
@@ -51,6 +52,7 @@ let nextDropdownId = 0;
         [style.position-anchor]="anchorName"
         class="popover-container"
         [class.dropdown-end]="alignEnd()"
+        [class.w-full]="fullWidth()"
         (toggle)="onPopoverToggle($event)"
       >
         <div
@@ -107,6 +109,9 @@ let nextDropdownId = 0;
         top: anchor(top);
         left: anchor(right);
       }
+      [popover].w-full {
+        width: anchor-size(width);
+      }
       [popover]:popover-open .dropdown-content {
         visibility: visible !important;
         opacity: 1 !important;
@@ -117,7 +122,8 @@ let nextDropdownId = 0;
 export class DropdownComponent {
   private renderer = inject(Renderer2);
   private el = inject(ElementRef);
-  isOpen = signal(false);
+  isOpen = model(false);
+  triggerAction = input<'toggle' | 'show'>('toggle');
   alignEnd = input(false, { transform: booleanAttribute });
   fullWidth = input(false, { transform: booleanAttribute });
   trigger = contentChild(DropdownTriggerDirective, { read: ElementRef });
@@ -128,6 +134,20 @@ export class DropdownComponent {
   protected anchorName = `--anchor-${this.id}`;
 
   constructor() {
+    // Sync the model with the actual popover state
+    effect(() => {
+      const open = this.isOpen();
+      const popover = this.popoverContent()?.nativeElement;
+      if (!popover) return;
+
+      const isActuallyOpen = popover.matches(':popover-open');
+      if (open && !isActuallyOpen) {
+        popover.showPopover();
+      } else if (!open && isActuallyOpen) {
+        popover.hidePopover();
+      }
+    });
+
     // Automatically manage the popover attributes when the trigger is available
     effect((onCleanup) => {
       const triggerEl = this.trigger()?.nativeElement;
@@ -135,6 +155,7 @@ export class DropdownComponent {
 
       if (triggerEl) {
         this.renderer.setStyle(triggerEl, 'anchor-name', this.anchorName);
+        onCleanup(() => this.renderer.removeStyle(triggerEl, 'anchor-name'));
 
         const isButton =
           triggerEl.tagName === 'BUTTON' || triggerEl.tagName === 'INPUT';
@@ -145,13 +166,26 @@ export class DropdownComponent {
             'popovertarget',
             this.popoverId,
           );
+          this.renderer.setAttribute(
+            triggerEl,
+            'popovertargetaction',
+            this.triggerAction(),
+          );
         } else {
           // Manual toggle for non-button elements
           const unlisten = this.renderer.listen(triggerEl, 'click', () => {
-            this.popoverContent()?.nativeElement.togglePopover();
+            const popover = this.popoverContent()?.nativeElement;
+            if (this.triggerAction() === 'show') {
+              popover?.showPopover();
+            } else {
+              popover?.togglePopover();
+            }
           });
           onCleanup(() => unlisten());
         }
+      } else {
+        this.renderer.setStyle(hostEl, 'anchor-name', this.anchorName);
+        onCleanup(() => this.renderer.removeStyle(hostEl, 'anchor-name'));
       }
 
       // Handle hover if class is present on host

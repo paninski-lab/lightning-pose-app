@@ -15,6 +15,12 @@ import { RpcService } from '../../rpc.service';
 import { DenseListboxComponent } from '../dense-listbox/dense-listbox.component';
 import { DenseListboxItemComponent } from '../dense-listbox/dense-listbox-item.component';
 import { CopyDirective } from '../../utils/copy.directive';
+import {
+  DropdownComponent,
+  DropdownContentComponent,
+  DropdownTriggerComponent,
+  DropdownTriggerDirective,
+} from '../dropdown/dropdown.component';
 
 interface RGlobResponse {
   entries: { path: string; type?: 'dir' | 'file' }[];
@@ -29,119 +35,130 @@ interface RGlobResponse {
     DenseListboxComponent,
     DenseListboxItemComponent,
     CopyDirective,
+    DropdownComponent,
+    DropdownContentComponent,
+    DropdownTriggerComponent,
+    DropdownTriggerDirective,
   ],
   template: `
-    <div class="flex flex-col w-full">
-      <div class="flex items-center gap-2 group/path min-w-0 w-full">
-        <div class="flex-1 flex items-center gap-2 min-w-0">
-          @if (!isEditing()) {
-            <div
-              class="px-2 py-1 rounded font-mono text-xs flex items-center gap-2 transition-colors border min-w-[100px] flex-1 overflow-hidden"
-              [title]="path()"
-              [class.bg-transparent]="!disabled()"
-              [class.hover:bg-base-content/5]="!disabled()"
-              [class.cursor-pointer]="!disabled()"
-              [class.border-transparent]="!disabled()"
-              [class.hover:border-base-content/10]="!disabled()"
-              [class.opacity-50]="disabled()"
-              [class.cursor-default]="disabled()"
-              [class.border-base-content/10]="disabled()"
-              (click)="startEditing()"
-            >
-              <span class="truncate flex-1">{{ displayPath() }}</span>
-              @if (!disabled()) {
-                <span
-                  class="material-icons text-sm! opacity-40 group-hover/path:opacity-100 transition-opacity shrink-0"
+    <app-dropdown
+      class="w-full"
+      [fullWidth]="true"
+      [(isOpen)]="isDropdownOpen"
+      triggerAction="show"
+    >
+      <app-dropdown-trigger>
+        <div class="flex flex-col w-full">
+          <div class="flex items-center gap-2 group/path min-w-0 w-full">
+            <div class="flex-1 flex items-center gap-2 min-w-0">
+              @if (!isEditing()) {
+                <div
+                  class="px-2 py-1 rounded font-mono text-xs flex items-center gap-2 transition-colors border min-w-[100px] flex-1 overflow-hidden"
+                  [title]="path()"
+                  [class.bg-transparent]="!disabled()"
+                  [class.hover:bg-base-content/5]="!disabled()"
+                  [class.cursor-pointer]="!disabled()"
+                  [class.border-transparent]="!disabled()"
+                  [class.hover:border-base-content/10]="!disabled()"
+                  [class.opacity-50]="disabled()"
+                  [class.cursor-default]="disabled()"
+                  [class.border-base-content/10]="disabled()"
+                  (click)="startEditing()"
                 >
-                  edit
-                </span>
-              }
-            </div>
-          } @else {
-            <div
-              class="flex-1 flex items-center flex-wrap gap-y-0.5 gap-x-0 bg-base-300 px-2 py-1 rounded-md border border-base-content/10"
-            >
-              @for (part of pathParts(); track part.fullPath) {
-                @if ($last && pathParts().length > 1) {
-                  <span class="flex items-center gap-0.5 font-mono text-xs px-1 py-0.5 rounded bg-base-content/10">
-                    <span>{{ part.name }}</span>
-                    <button
-                      (click)="onClearLastPart($event)"
-                      class="material-icons text-xs! leading-none cursor-pointer opacity-50 hover:opacity-100 transition-opacity"
-                    >close</button>
-                  </span>
-                } @else {
-                  <button
-                    (click)="onPartClick(part.fullPath, $event)"
-                    class="font-mono text-xs px-1 py-0.5 rounded cursor-pointer transition-colors hover:bg-base-content/10 hover:text-base-content"
-                  >
-                    {{ part.name || 'Root' }}
-                  </button>
-                }
-                @if (!$last || newDirMode()) {
-                  <span class="text-base-content/50 font-mono mx-0.5">/</span>
-                }
-              }
-              @if (newDirMode()) {
-                <input
-                  #newDirInput
-                  type="text"
-                  [value]="newDirName()"
-                  (input)="newDirName.set(newDirInput.value)"
-                  (keydown.enter)="finishEditing()"
-                  class="bg-transparent border-none outline-none font-mono text-xs p-0 min-w-[50px] flex-1"
-                  placeholder="new directory..."
-                />
-              }
-              <div class="flex items-center gap-1 ml-auto shrink-0">
-                <button
-                  [appCopy]="editPath()"
-                  #copy="appCopy"
-                  class="btn btn-xs btn-ghost"
-                  title="Copy path"
-                >
-                  <span class="material-icons text-sm!" [class.text-success]="copy.isCopied()">
-                    {{ copy.isCopied() ? 'check' : 'content_copy' }}
-                  </span>
-                </button>
-                <button
-                  class="btn btn-xs btn-primary shrink-0"
-                  (click)="finishEditing()"
-                  title="Accept"
-                >
-                  <span class="material-icons text-sm!">check</span>
-                </button>
-              </div>
-            </div>
-          }
-        </div>
-      </div>
-
-      @if (isEditing()) {
-        <div class="relative w-full mt-1 z-50">
-          <div
-            class="absolute top-0 left-0 w-full rounded-box shadow-xl border border-base-300 max-h-60 overflow-y-auto flex flex-col"
-          >
-            @if (!loading()) {
-              @if (subdirectories().length > 0) {
-                <app-dense-listbox (selectedChange)="onSubdirSelect($event)">
-                  @for (subdir of subdirectories(); track subdir) {
-                    <app-dense-listbox-item [value]="subdir">
-                      <div left class="flex items-center gap-2">
-                        <span class="material-icons text-xs opacity-40"
-                          >folder</span
-                        >
-                        <span class="text-xs font-mono">{{ subdir }}</span>
-                      </div>
-                    </app-dense-listbox-item>
+                  <span class="truncate flex-1">{{ displayPath() }}</span>
+                  @if (!disabled()) {
+                    <span
+                      class="material-icons text-sm! opacity-40 group-hover/path:opacity-100 transition-opacity shrink-0"
+                    >
+                      edit
+                    </span>
                   }
-                </app-dense-listbox>
+                </div>
+              } @else {
+                <div
+                  appDropdownTrigger
+                  class="flex-1 flex items-center flex-wrap gap-y-0.5 gap-x-0 bg-base-300 px-2 py-1 rounded-md border border-base-content/10"
+                >
+                  @for (part of pathParts(); track part.fullPath) {
+                    @if ($last && pathParts().length > 1) {
+                      <span
+                        class="flex items-center gap-0.5 font-mono text-xs px-1 py-0.5 rounded bg-base-content/10"
+                      >
+                        <span>{{ part.name }}</span>
+                        <button
+                          (click)="onClearLastPart($event)"
+                          class="material-icons text-xs! leading-none cursor-pointer opacity-50 hover:opacity-100 transition-opacity"
+                        >
+                          close
+                        </button>
+                      </span>
+                    } @else {
+                      <button
+                        (click)="onPartClick(part.fullPath, $event)"
+                        class="font-mono text-xs px-1 py-0.5 rounded cursor-pointer transition-colors hover:bg-base-content/10 hover:text-base-content"
+                      >
+                        {{ part.name || 'Root' }}
+                      </button>
+                    }
+                    @if (!$last || newDirMode()) {
+                      <span class="text-base-content/50 font-mono mx-0.5">/</span>
+                    }
+                  }
+                  @if (newDirMode()) {
+                    <input
+                      #newDirInput
+                      type="text"
+                      [value]="newDirName()"
+                      (input)="newDirName.set(newDirInput.value)"
+                      (keydown.enter)="finishEditing()"
+                      class="bg-transparent border-none outline-none font-mono text-xs p-0 min-w-[50px] flex-1"
+                      placeholder="new directory..."
+                    />
+                  }
+                  <div class="flex items-center gap-1 ml-auto shrink-0">
+                    <button
+                      [appCopy]="editPath()"
+                      #copy="appCopy"
+                      class="btn btn-xs btn-ghost"
+                      title="Copy path"
+                    >
+                      <span
+                        class="material-icons text-sm!"
+                        [class.text-success]="copy.isCopied()"
+                      >
+                        {{ copy.isCopied() ? 'check' : 'content_copy' }}
+                      </span>
+                    </button>
+                    <button
+                      class="btn btn-xs btn-primary shrink-0"
+                      (click)="finishEditing()"
+                      title="Accept"
+                    >
+                      <span class="material-icons text-sm!">check</span>
+                    </button>
+                  </div>
+                </div>
               }
-            }
+            </div>
           </div>
         </div>
-      }
-    </div>
+      </app-dropdown-trigger>
+
+      <app-dropdown-content class="w-full">
+        @if (isEditing() && !loading() && subdirectories().length > 0) {
+          <app-dense-listbox (selectedChange)="onSubdirSelect($event)">
+            @for (subdir of subdirectories(); track subdir) {
+              <app-dense-listbox-item [value]="subdir">
+                <div left class="flex items-center gap-2">
+                  <span class="material-icons text-xs opacity-40">folder</span>
+                  <span class="text-xs font-mono">{{ subdir }}</span>
+                </div>
+              </app-dense-listbox-item>
+            }
+          </app-dense-listbox>
+        }
+      </app-dropdown-content>
+    </app-dropdown>
   `,
   styles: `
     :host {
@@ -175,6 +192,7 @@ export class PathEditableComponent {
   protected newDirName = signal('');
   protected subdirectories = signal<string[]>([]);
   protected loading = signal(false);
+  protected isDropdownOpen = signal(false);
   private autoAcceptOnEmptyDirs = false;
 
   private rpc = inject(RpcService);
@@ -265,6 +283,7 @@ export class PathEditableComponent {
     }
     this.path.set(finalPath);
     this.isEditing.set(false);
+    this.isDropdownOpen.set(false);
   }
 
   protected onPartClick(fullPath: string, event: MouseEvent) {
@@ -305,6 +324,12 @@ export class PathEditableComponent {
         .map((e) => e.path);
 
       this.subdirectories.set(dirs);
+      if (dirs.length > 0 && this.isEditing()) {
+        this.isDropdownOpen.set(true);
+      } else {
+        this.isDropdownOpen.set(false);
+      }
+
       if (dirs.length === 0 && this.autoAcceptOnEmptyDirs) {
         this.finishEditing();
       }

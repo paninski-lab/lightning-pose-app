@@ -89,4 +89,19 @@ describe('PathEditableComponent', () => {
     component['finishEditing']();
     expect(component.path()).toBe('/rootfolder');
   });
+
+  it('should open dropdown when subdirectories are found', async () => {
+    component['startEditing']();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(component['isDropdownOpen']()).toBeTrue();
+  });
+
+  it('should close dropdown when finishing editing', () => {
+    component['startEditing']();
+    component['isDropdownOpen'].set(true);
+    component['finishEditing']();
+    expect(component['isDropdownOpen']()).toBeFalse();
+  });
 });
