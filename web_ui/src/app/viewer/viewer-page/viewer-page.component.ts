@@ -25,7 +25,7 @@ import { SessionService } from '../../session.service';
 import { LoadingBarComponent } from '../../loading-bar/loading-bar.component';
 import { LoadingService } from '../../loading.service';
 import { Session } from '../../session.model';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { LabelFilePickerComponent } from '../../label-file-picker/label-file-picker.component';
 import { RpcService } from '../../rpc.service';
 import { ExtractFramesRequest } from '../../extract-frames-request';
@@ -54,7 +54,6 @@ import { RunModelInferenceDialogComponent } from '../../run-model-inference-dial
     DropdownContentComponent,
     DropdownTriggerDirective,
     RunModelInferenceDialogComponent,
-    RouterLink,
   ],
   templateUrl: './viewer-page.component.html',
   styleUrl: './viewer-page.component.css',

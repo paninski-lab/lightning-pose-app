@@ -2,15 +2,14 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  HostListener,
+  DestroyRef,
   inject,
-  OnDestroy,
   OnInit,
   output,
   signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Subscription } from 'rxjs';
 import {
   InferenceTaskStatus,
   ResolveInferenceResponse,
@@ -27,13 +26,16 @@ import { ProjectInfoService } from '../project-info.service';
   imports: [FormsModule, TerminalOutputComponent],
   templateUrl: './run-model-inference-dialog.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(window:keydown.escape)': 'onEscape()',
+  },
 })
-export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
+export class RunModelInferenceDialogComponent implements OnInit {
   close = output<void>();
 
   private sessionService = inject(SessionService);
   private projectInfoService = inject(ProjectInfoService);
-  private subs: Subscription[] = [];
+  private destroyRef = inject(DestroyRef);
 
   protected models = signal<ModelListResponseEntry[]>([]);
 
@@ -60,22 +62,21 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
   protected logLines = signal<string[]>([]);
   protected currentTaskId = signal<string | null>(null);
 
-  protected get inferenceRunning() {
-    return this.inferState().status === 'running';
-  }
+  protected inferenceRunning = computed(() => this.inferState().status === 'running');
 
-  protected get showTerminal() {
+  protected inferenceActive = computed(() => {
     const s = this.inferState().status;
-    return s !== 'idle';
-  }
+    return s === 'running' || s === 'waiting';
+  });
+
+  protected showTerminal = computed(() => {
+    const s = this.inferState().status;
+    return s !== 'idle' && s !== 'waiting';
+  });
 
   async ngOnInit() {
     await this.loadModels();
     await this.reconnectActiveTask();
-  }
-
-  ngOnDestroy() {
-    this.subs.forEach((s) => s.unsubscribe());
   }
 
   private async reconnectActiveTask() {
@@ -157,7 +158,7 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
   }
 
   protected async startInference() {
-    if (this.inferenceRunning) return;
+    if (this.inferenceActive()) return;
     const selected = Array.from(this.selectedPaths());
     if (selected.length === 0) return;
 
@@ -178,37 +179,39 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
   }
 
   private subscribeToStream(taskId: string) {
-    const sub = this.sessionService.streamTaskProgress(taskId).subscribe({
-      next: (event: TaskStreamEvent) => {
-        if (event.type === 'log') {
-          this.logLines.update((lines) => [...lines, ...event.lines]);
-        } else {
-          const total = event.total ?? 0;
-          const completed = event.completed ?? 0;
-          const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+    this.sessionService
+      .streamTaskProgress(taskId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (event: TaskStreamEvent) => {
+          if (event.type === 'log') {
+            this.logLines.update((lines) => [...lines, ...event.lines]);
+          } else {
+            const total = event.total ?? 0;
+            const completed = event.completed ?? 0;
+            const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+            this.inferState.set({
+              status: this.toUiStatus(event.status),
+              progress,
+              message: event.message ?? undefined,
+              error: event.error ?? undefined,
+            });
+          }
+        },
+        error: (err: Error) => {
           this.inferState.set({
-            status: this.toUiStatus(event.status),
-            progress,
-            message: event.message ?? undefined,
-            error: event.error ?? undefined,
+            status: 'error',
+            progress: 0,
+            error: err.message ?? 'Inference stream error',
           });
-        }
-      },
-      error: (err: Error) => {
-        this.inferState.set({
-          status: 'error',
-          progress: 0,
-          error: err.message ?? 'Inference stream error',
-        });
-      },
-      complete: () => {
-        const cur = this.inferState();
-        if (cur.status !== 'error' && cur.status !== 'cancelled') {
-          this.inferState.set({ ...cur, status: 'done', progress: 100 });
-        }
-      },
-    });
-    this.subs.push(sub);
+        },
+        complete: () => {
+          const cur = this.inferState();
+          if (cur.status !== 'error' && cur.status !== 'cancelled') {
+            this.inferState.set({ ...cur, status: 'done', progress: 100 });
+          }
+        },
+      });
   }
 
   private toUiStatus(status: string): InferUiState['status'] {
@@ -219,18 +222,18 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
         return 'error';
       case 'CANCELLED':
         return 'cancelled';
-      case 'RUNNING':
       case 'WAITING':
       case 'PENDING':
+        return 'waiting';
+      case 'RUNNING':
         return 'running';
       default:
         return 'running';
     }
   }
 
-  @HostListener('window:keydown.escape')
   onEscape() {
-    if (!this.inferenceRunning) {
+    if (!this.inferenceActive()) {
       this.close.emit();
     }
   }
@@ -251,7 +254,7 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
 }
 
 interface InferUiState {
-  status: 'idle' | 'running' | 'done' | 'error' | 'cancelled';
+  status: 'idle' | 'waiting' | 'running' | 'done' | 'error' | 'cancelled';
   progress: number;
   message?: string;
   error?: string;

@@ -15,7 +15,6 @@ import { PathBarComponent } from '../path-bar/path-bar.component';
 import { RpcService } from '../../rpc.service';
 import { DenseListboxComponent } from '../dense-listbox/dense-listbox.component';
 import { DenseListboxItemComponent } from '../dense-listbox/dense-listbox-item.component';
-import { CopyDirective } from '../../utils/copy.directive';
 import {
   DropdownComponent,
   DropdownContentComponent,
@@ -35,7 +34,6 @@ interface RGlobResponse {
     CommonModule,
     DenseListboxComponent,
     DenseListboxItemComponent,
-    CopyDirective,
     DropdownComponent,
     DropdownContentComponent,
     DropdownTriggerComponent,

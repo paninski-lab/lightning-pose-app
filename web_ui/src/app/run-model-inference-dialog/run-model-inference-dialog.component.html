@@ -9,7 +9,7 @@
     <h3 class="text-xl font-bold mb-2">Run inference on all sessions</h3>
 
     <!-- Model list -->
-    @if (!inferenceRunning) {
+    @if (!inferenceActive()) {
       <p class="text-sm opacity-70 mb-4">
         Select models to run, then preview which steps will execute before starting.
       </p>
@@ -32,7 +32,7 @@
                 class="checkbox checkbox-sm"
                 [checked]="isSelected(model.model_relative_path)"
                 (change)="toggleModel(model.model_relative_path)"
-                [disabled]="inferenceRunning"
+                [disabled]="inferenceActive()"
               />
               <span class="text-sm font-medium">{{ model.model_name }}</span>
               <span class="badge badge-sm badge-ghost">{{ model.model_kind }}</span>
@@ -67,7 +67,12 @@
     }
 
     <!-- Inference progress -->
-    @if (inferState().status === 'running') {
+    @if (inferState().status === 'waiting') {
+      <div class="mb-2 flex items-center gap-2">
+        <span class="loading loading-spinner loading-sm"></span>
+        <span class="text-sm">Waiting for GPU — a training job is currently running.</span>
+      </div>
+    } @else if (inferState().status === 'running') {
       <div class="mb-2">
         <div class="flex items-center gap-3">
           <span class="font-semibold text-sm">Running inference…</span>
@@ -95,12 +100,12 @@
     }
 
     <!-- Terminal output -->
-    @if (showTerminal) {
+    @if (showTerminal()) {
       <div class="mb-4">
         <app-terminal-output [lines]="logLines()" [staticHeight]="true" />
         <p class="text-sm opacity-70 mt-2">
           Streaming output of inference.
-          @if (inferenceRunning) {
+          @if (inferenceRunning()) {
             The task will continue to run in the background if this dialog is closed.
           }
         </p>
@@ -109,7 +114,7 @@
 
     <footer class="shrink-0 modal-action justify-between!">
       <div>
-        @if (inferenceRunning) {
+        @if (inferenceActive()) {
           <button class="btn btn-soft btn-error" (click)="cancelTask()">
             Cancel task
           </button>
@@ -117,9 +122,9 @@
       </div>
       <div class="flex gap-2">
         <button class="btn btn-soft" (click)="handleCloseClick()">
-          {{ inferenceRunning ? 'Close' : 'Cancel' }}
+          {{ inferenceActive() ? 'Close' : 'Cancel' }}
         </button>
-        @if (!inferenceRunning) {
+        @if (!inferenceActive()) {
           <button
             class="btn btn-soft btn-primary"
             [disabled]="
