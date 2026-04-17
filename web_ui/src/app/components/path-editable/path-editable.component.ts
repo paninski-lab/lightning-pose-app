@@ -11,6 +11,7 @@ import {
   ElementRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { PathBarComponent } from '../path-bar/path-bar.component';
 import { RpcService } from '../../rpc.service';
 import { DenseListboxComponent } from '../dense-listbox/dense-listbox.component';
 import { DenseListboxItemComponent } from '../dense-listbox/dense-listbox-item.component';
@@ -39,6 +40,7 @@ interface RGlobResponse {
     DropdownContentComponent,
     DropdownTriggerComponent,
     DropdownTriggerDirective,
+    PathBarComponent,
   ],
   template: `
     <app-dropdown
@@ -75,69 +77,16 @@ interface RGlobResponse {
                   }
                 </div>
               } @else {
-                <div
+                <app-path-bar
                   appDropdownTrigger
-                  class="flex-1 flex items-center flex-wrap gap-y-0.5 gap-x-0 bg-base-300 px-2 py-1 rounded-md border border-base-content/10"
-                >
-                  @for (part of pathParts(); track part.fullPath) {
-                    @if ($last && pathParts().length > 1) {
-                      <span
-                        class="flex items-center gap-0.5 font-mono text-xs px-1 py-0.5 rounded bg-base-content/10"
-                      >
-                        <span>{{ part.name }}</span>
-                        <button
-                          (click)="onClearLastPart($event)"
-                          class="material-icons text-xs! leading-none cursor-pointer opacity-50 hover:opacity-100 transition-opacity"
-                        >
-                          close
-                        </button>
-                      </span>
-                    } @else {
-                      <button
-                        (click)="onPartClick(part.fullPath, $event)"
-                        class="font-mono text-xs px-1 py-0.5 rounded cursor-pointer transition-colors hover:bg-base-content/10 hover:text-base-content"
-                      >
-                        {{ part.name || 'Root' }}
-                      </button>
-                    }
-                    @if (!$last || newDirMode()) {
-                      <span class="text-base-content/50 font-mono mx-0.5">/</span>
-                    }
-                  }
-                  @if (newDirMode()) {
-                    <input
-                      #newDirInput
-                      type="text"
-                      [value]="newDirName()"
-                      (input)="newDirName.set(newDirInput.value)"
-                      (keydown.enter)="finishEditing()"
-                      class="bg-transparent border-none outline-none font-mono text-xs p-0 min-w-[50px] flex-1"
-                      placeholder="new directory..."
-                    />
-                  }
-                  <div class="flex items-center gap-1 ml-auto shrink-0">
-                    <button
-                      [appCopy]="editPath()"
-                      #copy="appCopy"
-                      class="btn btn-xs btn-ghost"
-                      title="Copy path"
-                    >
-                      <span
-                        class="material-icons text-sm!"
-                        [class.text-success]="copy.isCopied()"
-                      >
-                        {{ copy.isCopied() ? 'check' : 'content_copy' }}
-                      </span>
-                    </button>
-                    <button
-                      class="btn btn-xs btn-primary shrink-0"
-                      (click)="finishEditing()"
-                      title="Accept"
-                    >
-                      <span class="material-icons text-sm!">check</span>
-                    </button>
-                  </div>
-                </div>
+                  class="flex-1"
+                  [(path)]="editPath"
+                  [baseDir]="baseDir()"
+                  [baseDirLabel]="baseDirLabel()"
+                  [newDirMode]="newDirMode()"
+                  [(newDirName)]="newDirName"
+                  (accept)="finishEditing($event)"
+                />
               }
             </div>
           </div>
@@ -196,7 +145,6 @@ export class PathEditableComponent {
   private autoAcceptOnEmptyDirs = false;
 
   private rpc = inject(RpcService);
-  private newDirInput = viewChild<ElementRef<HTMLInputElement>>('newDirInput');
 
   /** The path shown in display (non-edit) mode — relative when baseDir is set. */
   protected displayPath = computed(() => {
@@ -210,58 +158,11 @@ export class PathEditableComponent {
     return p;
   });
 
-  protected pathParts = computed(() => {
-    const currentPath = this.editPath();
-    const base = this.baseDir();
-
-    if (base) {
-      const rootLabel = this.baseDirLabel() ?? base.split('/').pop() ?? base;
-      // Guard: if editPath somehow escaped above baseDir, clamp to base
-      const effectivePath = currentPath.startsWith(base) ? currentPath : base;
-      const relative = effectivePath.slice(base.length).replace(/^\//, '');
-      if (!relative) return [{ name: rootLabel, fullPath: base }];
-
-      const parts = relative.split('/').filter((p) => p !== '');
-      const result: { name: string; fullPath: string }[] = [
-        { name: rootLabel, fullPath: base },
-      ];
-      let cumulativePath = base;
-      for (const part of parts) {
-        cumulativePath += '/' + part;
-        result.push({ name: part, fullPath: cumulativePath });
-      }
-      return result;
-    }
-
-    // Absolute mode
-    if (!currentPath || currentPath === '/')
-      return [{ name: '', fullPath: '/' }];
-
-    const parts = currentPath.split('/').filter((p) => p !== '');
-    const result: { name: string; fullPath: string }[] = [
-      { name: '', fullPath: '/' },
-    ];
-    let cumulativePath = '';
-    for (const part of parts) {
-      cumulativePath += '/' + part;
-      result.push({ name: part, fullPath: cumulativePath });
-    }
-    return result;
-  });
 
   constructor() {
     effect(() => {
       if (this.isEditing()) {
         this.fetchSubdirectories(this.editPath());
-      }
-    });
-
-    effect(() => {
-      if (this.isEditing() && this.newDirMode()) {
-        const input = this.newDirInput()?.nativeElement;
-        if (input) {
-          input.focus();
-        }
       }
     });
   }
@@ -275,29 +176,10 @@ export class PathEditableComponent {
     this.newDirName.set('');
   }
 
-  protected finishEditing() {
-    let finalPath = this.editPath();
-    const newName = this.newDirName().trim();
-    if (this.newDirMode() && newName) {
-      finalPath = finalPath === '/' ? `/${newName}` : `${finalPath}/${newName}`;
-    }
-    this.path.set(finalPath);
+  protected finishEditing(finalPath?: string) {
+    this.path.set(finalPath ?? this.editPath());
     this.isEditing.set(false);
     this.isDropdownOpen.set(false);
-  }
-
-  protected onPartClick(fullPath: string, event: MouseEvent) {
-    event.stopPropagation();
-    this.editPath.set(fullPath);
-    this.newDirName.set('');
-  }
-
-  protected onClearLastPart(event: MouseEvent) {
-    event.stopPropagation();
-    const parts = this.pathParts();
-    if (parts.length > 1) {
-      this.editPath.set(parts[parts.length - 2].fullPath);
-    }
   }
 
   protected onSubdirSelect(subdir: string | undefined) {
