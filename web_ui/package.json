@@ -7,8 +7,7 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "e2e": "playwright test",
-    "e2e:ui": "playwright test --ui",
+    "e2e": "playwright test --workers=2",
     "lint": "ng lint",
     "storybook": "ng run ng_app:storybook",
     "build-storybook": "ng run ng_app:build-storybook"

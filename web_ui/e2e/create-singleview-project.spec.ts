@@ -1,11 +1,18 @@
-import { test, expect } from '@playwright/test';
-import { createSingleViewProject, openNavbarPages } from './utils/actions';
+import { test, expect } from './utils/e2e-test';
+import {
+  createSingleViewProject,
+  openNavbarPages,
+} from './utils/actions';
 
-test('create new single-view project and open all navbar pages', async ({ page }: any) => {
+test('create new single-view project and open all navbar pages', async ({
+  page,
+  registerE2eProject,
+}: any) => {
   test.setTimeout(120_000);
   const { projectKey } = await createSingleViewProject(page, {
     keypoints: ['left', 'right'],
   });
+  registerE2eProject(projectKey);
 
   await openNavbarPages(page, projectKey);
 

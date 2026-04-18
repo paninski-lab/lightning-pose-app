@@ -85,16 +85,12 @@ export async function deleteE2eTestProject(
 
   await page.goto('/');
 
-  const projectLink = page.getByRole('link', {
-    name: `Open project ${projectKey}`,
-  });
+  const projectLink = page.locator(
+    `a[aria-label="Open project ${projectKey}"]`,
+  );
   await expect(projectLink).toBeVisible();
 
-  const card = page
-    .locator('a[aria-label^="Open project "]')
-    .filter({ has: page.getByRole('heading', { name: projectKey }) })
-    .first();
-  const cardContainer = card.locator('..');
+  const cardContainer = projectLink.first().locator('..');
   const optionsButton = cardContainer.getByRole('button', {
     name: 'Project options',
   });
@@ -105,4 +101,40 @@ export async function deleteE2eTestProject(
   await page.getByTestId('delete-project-confirm').click();
 
   await expect(projectLink).toHaveCount(0);
+}
+
+async function getE2eTestProjectKeysOnHomePage(page: Page): Promise<string[]> {
+  await page.goto('/');
+
+  await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
+  try {
+    await page
+      .locator('a[aria-label^="Open project "]')
+      .first()
+      .waitFor({ state: 'visible', timeout: 3000 });
+  } catch {
+    // ignore
+  }
+
+  const cards = page.locator('a[aria-label^="Open project "]');
+  const count = await cards.count();
+
+  const keys: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const card = cards.nth(i);
+    const label = (await card.getAttribute('aria-label'))?.trim();
+    if (!label) continue;
+    const match = /^Open project\s+(.+)$/.exec(label);
+    const key = match?.[1]?.trim();
+    if (key && key.startsWith('e2etest')) keys.push(key);
+  }
+
+  return Array.from(new Set(keys));
+}
+
+export async function deleteAllE2eTestProjects(page: Page): Promise<void> {
+  const keys = await getE2eTestProjectKeysOnHomePage(page);
+  for (const key of keys) {
+    await deleteE2eTestProject(page, key);
+  }
 }
