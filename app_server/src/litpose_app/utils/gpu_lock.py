@@ -67,7 +67,10 @@ def clear_stale_gpu_task() -> bool:
 @contextlib.contextmanager
 def gpu_lock_blocking(task_type: str, task_id: str, project_key: str | None = None):
     """Blocking GPU lock. Waits until acquired."""
-    lock = portalocker.Lock(GPU_LOCK_PATH, mode="a", timeout=None)
+    # portalocker.Lock by default includes NON_BLOCKING flag in LOCK_METHOD.
+    # We explicitly remove it to ensure we use the OS-level blocking lock.
+    flags = portalocker.LOCK_EX
+    lock = portalocker.Lock(GPU_LOCK_PATH, mode="a", timeout=None, flags=flags)
     try:
         lock.acquire()
     except Exception as e:
