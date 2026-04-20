@@ -45,7 +45,7 @@ def get_executor() -> ThreadPoolExecutor:
         _executor = ThreadPoolExecutor(
             max_workers=workers, thread_name_prefix="model-infer"
         )
-    return _executor
+    return _executor  # type: ignore
 
 
 # -----------------------------
@@ -595,6 +595,7 @@ def stream_inference_task(taskId: str):
 
     def poller() -> Iterator[dict]:
         log_offset = 0
+        last_snapshot = None
 
         # Replay all logs accumulated before the subscriber connected
         initial_logs = _get_logs(taskId, 0)
@@ -607,7 +608,11 @@ def stream_inference_task(taskId: str):
             # Don't include the full logs list in SSE status events — too large
             snapshot.pop("logs", None)
             snapshot["type"] = "status"
-            yield snapshot
+
+            # Only yield if status-related fields have changed
+            if snapshot != last_snapshot:
+                yield snapshot
+                last_snapshot = snapshot
 
             new_lines = _get_logs(taskId, log_offset)
             if new_lines:
@@ -621,7 +626,7 @@ def stream_inference_task(taskId: str):
                     yield {"type": "log", "lines": final_lines}
                 break
 
-            time.sleep(0.1)
+            time.sleep(0.5)
 
     return StreamingResponse(_stream_sse_sync(poller()), media_type="text/event-stream")
 

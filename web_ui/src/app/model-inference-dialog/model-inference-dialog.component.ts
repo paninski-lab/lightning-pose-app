@@ -38,7 +38,7 @@ export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
   private subs: Subscription[] = [];
   private isDestroyed = false;
 
-  protected uploading = this.store.uploading;
+  protected isProcessing = this.store.isProcessing;
   protected inferenceRunning = signal<boolean>(false);
 
   protected items = this.store.items;
@@ -93,7 +93,11 @@ export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
     if (this.inferenceRunning()) return;
     const modelRel = this.modelRelativePath();
     if (!modelRel) {
-      this.inference.set({ status: 'error', progress: 0, error: 'No model selected' });
+      this.inference.set({
+        status: 'error',
+        progress: 0,
+        error: 'No model selected',
+      });
       return;
     }
     const videos = this.items()
@@ -118,7 +122,8 @@ export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
             const st = event;
             const total = st.total ?? 0;
             const completed = st.completed ?? 0;
-            const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+            const progress =
+              total > 0 ? Math.round((completed / total) * 100) : 0;
             let uiStatus: InferenceUiState['status'];
             switch (st.status) {
               case 'RUNNING':

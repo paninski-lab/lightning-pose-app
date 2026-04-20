@@ -1,10 +1,4 @@
-import {
-  computed,
-  inject,
-  Injectable,
-  OnDestroy,
-  signal,
-} from '@angular/core';
+import { computed, inject, Injectable, OnDestroy, signal } from '@angular/core';
 import { HttpEvent, HttpEventType } from '@angular/common/http';
 import { Subscription } from 'rxjs';
 import { SessionService, VideoTaskStatus } from '../session.service';
@@ -23,6 +17,13 @@ export class VideoImportStore implements OnDestroy {
   // Selection + busy flag
   readonly selectedFiles = signal<File[]>([]);
   readonly uploading = signal<boolean>(false);
+
+  readonly isProcessing = computed(() => {
+    if (this.uploading()) return true;
+    const items = this.items();
+    if (items.length === 0) return false;
+    return items.some((i) => i.transcode?.status === 'transcoding');
+  });
 
   // Per-file states
   private uploadStates = signal<Record<string, UploadState>>({});

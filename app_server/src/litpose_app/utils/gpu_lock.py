@@ -68,13 +68,20 @@ def clear_stale_gpu_task() -> bool:
 def gpu_lock_blocking(task_type: str, task_id: str, project_key: str | None = None):
     """Blocking GPU lock. Waits until acquired."""
     lock = portalocker.Lock(GPU_LOCK_PATH, mode="a", timeout=None)
-    lock.acquire()
+    try:
+        lock.acquire()
+    except Exception as e:
+        logger.exception(f"Failed to acquire GPU lock for {task_id}")
+        raise
     try:
         _write_gpu_task(task_type, task_id, project_key=project_key)
         yield
     finally:
         clear_gpu_task()
-        lock.release()
+        try:
+            lock.release()
+        except Exception:
+            logger.exception(f"Failed to release GPU lock for {task_id}")
 
 
 @contextlib.contextmanager
