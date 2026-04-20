@@ -39,12 +39,19 @@ export class CreateEksModelDialogComponent implements OnInit {
     modelName: ['', [Validators.required, fileNameValidator]],
     memberIds: [[] as string[], Validators.required],
     smoothParam: [1000, [Validators.required, Validators.min(0)]],
-    quantileKeepPca: [50.0, [Validators.required, Validators.min(0), Validators.max(100)]],
+    quantileKeepPca: [
+      50.0,
+      [Validators.required, Validators.min(0), Validators.max(100)],
+    ],
   });
 
   async ngOnInit() {
     const resp = await this.sessionService.listModels();
-    this.availableModels.set(resp.models.filter((m) => m.model_kind === 'normal'));
+    this.availableModels.set(
+      resp.models.filter(
+        (m) => m.model_kind === 'normal' && m.status?.status === 'COMPLETED',
+      ),
+    );
   }
 
   handleCloseClick() {
@@ -54,7 +61,9 @@ export class CreateEksModelDialogComponent implements OnInit {
   protected toggleMember(modelPath: string) {
     const current = this.form.controls.memberIds.value;
     if (current.includes(modelPath)) {
-      this.form.controls.memberIds.setValue(current.filter((id) => id !== modelPath));
+      this.form.controls.memberIds.setValue(
+        current.filter((id) => id !== modelPath),
+      );
     } else {
       this.form.controls.memberIds.setValue([...current, modelPath]);
     }
@@ -67,7 +76,8 @@ export class CreateEksModelDialogComponent implements OnInit {
   async onCreateClick() {
     if (this.form.invalid) return;
 
-    const { modelName, memberIds, smoothParam, quantileKeepPca } = this.form.value as {
+    const { modelName, memberIds, smoothParam, quantileKeepPca } = this.form
+      .value as {
       modelName: string;
       memberIds: string[];
       smoothParam: number;
