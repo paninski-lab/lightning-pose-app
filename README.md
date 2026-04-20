@@ -17,6 +17,49 @@ Our full documentation, including installation guides, API references, and advan
 
 ## 📝 Release Notes
 
+### [2.0.8.4] — 2026-04-20
+
+**Multiview EKS Model Support**
+
+This release introduces support for **Ensemble Kalman Smoother (EKS)** for multiview projects. It uses ensemble variance and spatiotemporal constraints to produce better predictions in cases where views disagree due to occlusions or overconfident tracking errors.
+
+* **Workflow:**
+  * Create an EKS model from the Models page. Select base models trained with different random seeds. This just creates a directory with the member models.
+  * Run inference on all sessions to get predictions that can be viewed in the Viewer
+* **Seamless Integration:** EKS model predictions follow the standard model directory schema.
+* **Chained Inference:** Running inference on an EKS model automatically triggers inference for all constituent member models.
+
+**Limitations:** Currently the app does not yet support non-linear EKS and singleview EKS. You can run these manually and view the predictions in the viewer as long as the model directory schema matches the schema expected by the app.
+
+**New "Run inference on all sessions" Flow:**
+
+* **Replaces** old inference that only ran inference on newly uploaded videos.
+* **Full coverage:** Automatically processes all new sessions and models, skipping already-processed sessions, to ensure maximum model coverage in the Viewer.
+* **OOM Solution:** Dynamically reduces batch size to prevent CUDA Out-of-Memory errors.
+* **Live Feedback:** Displays real-time terminal output with an option to cancel.
+
+**Project management:**
+
+* **Add existing project** from the homepage
+* **Update existing project paths** from the homepage
+* **New Directory picker UI** replaces plain text path inputs
+
+**Other new features**
+
+* **Global Task Indicator:** Animated indicator in the navbar when there is active training or inference going on.
+* **Viewer > Upload session:** Added ability to "Upload a new session" from the viewer
+* **Tensorboard Integration:** Model details page now includes a "Tensorboard" tab with a ready-to-copy --logdir command.
+* **Viewer > videos all intra check:** Added a warning when viewer detects videos that are not transcoded to the Viewer requirement of every-frame-is-intra-frame. This happens normally during video import but users may manually add videos to the directory and should be aware of it.
+
+**Bug Fixes**
+
+* **Train/inference concurrency:** Enforce a limit of one active inference or training session at a time.
+* **UI Status Polling:** Fixed a bug where models remained in PENDING status; the list now correctly refreshes every 2.5s to show TRAINING.
+* **Path Persistence:** Added automatic repair of stale data_dir and video_dir paths in model configs when a project is relocated.
+* **Video import normalization:** Normalize Pixel Aspect Ratio to 1:1
+* **Video import singleview UX**: no longer has leaks of multiview UI
+* **Video import session completeness validation**: no longer allows importing sessions with some views missing
+
 ### [2.0.8.3] — 2026-04-08
 
 * Add viewer warning if video framerate or duration is inconsistent across views
