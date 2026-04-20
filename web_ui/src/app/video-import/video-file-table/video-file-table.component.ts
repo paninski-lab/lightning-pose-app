@@ -1,11 +1,14 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   EventEmitter,
+  inject,
   Input,
   Output,
 } from '@angular/core';
 
+import { ProjectInfoService } from '../../project-info.service';
 import { ParsedItem } from '../video-import.types';
 
 @Component({
@@ -17,6 +20,14 @@ import { ParsedItem } from '../video-import.types';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class VideoFileTableComponent {
+  private projectInfoService = inject(ProjectInfoService);
+
+  isMultiview = computed(() => {
+    const views =
+      this.projectInfoService.projectContext()?.projectInfo?.views ?? [];
+    return views.length > 0;
+  });
+
   @Input({ required: true }) items: ParsedItem[] = [];
   @Input() uploading = false;
   @Output() removeAt = new EventEmitter<number>();

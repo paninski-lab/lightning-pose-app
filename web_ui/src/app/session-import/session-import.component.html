@@ -12,16 +12,25 @@
       </button>
       <h3 class="text-xl font-bold mb-2">Import session</h3>
       <p class="text-sm mb-4">
-        Select one or more local video files to upload. Filenames must follow
-        the
-        <code class="code">session_view.ext</code> pattern. Only alphanumeric,
-        dash and underscore are allowed before the extension.
+        Select one or more local video files to upload.
+        @if (isMultiview()) {
+          <strong class="text-error"
+            >Filenames must follow the
+            <code class="code">session_view.ext</code> pattern</strong
+          >.
+        } @else {
+          <strong
+            >Filenames must follow the
+            <code class="code">session.ext</code> pattern</strong
+          >.
+        }
+        Only alphanumeric, dash and underscore are allowed before the extension.
       </p>
 
       <div class="flex gap-3 items-center mb-4 flex-shrink-0">
         <label
           class="btn btn-primary"
-          [class.btn-disabled]="uploading()"
+          [class.btn-disabled]="isProcessing()"
           for="videoFileInput"
           >Choose videos</label
         >
@@ -30,7 +39,7 @@
           type="file"
           #fileInput
           class="hidden"
-          [disabled]="uploading()"
+          [disabled]="isProcessing()"
           (change)="addFiles(fileInput.files)"
           accept="video/*"
           multiple
@@ -38,7 +47,7 @@
         <button
           class="btn btn-ghost"
           (click)="clearAll()"
-          [disabled]="items().length === 0 || uploading()"
+          [disabled]="items().length === 0 || isProcessing()"
         >
           Clear selection
         </button>
@@ -51,7 +60,7 @@
       >
         <app-video-file-table
           [items]="items()"
-          [uploading]="uploading()"
+          [uploading]="isProcessing()"
           (removeAt)="removeAt($event)"
         />
       </div>
@@ -71,7 +80,7 @@
           <button class="btn btn-outline" (click)="closeDialog()">
             Cancel
           </button>
-          @if (uploading()) {
+          @if (isProcessing()) {
             <span
               class="loading loading-spinner loading-sm"
               aria-label="Importing"
@@ -79,7 +88,7 @@
           }
           <button
             class="btn btn-primary"
-            [disabled]="!allValid() || uploading()"
+            [disabled]="!allValid() || isProcessing()"
             (click)="startImport()"
           >
             Import

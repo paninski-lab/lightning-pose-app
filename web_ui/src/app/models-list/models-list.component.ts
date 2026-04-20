@@ -98,7 +98,7 @@ export class ModelsListComponent implements OnInit, OnDestroy {
     });
 
     this.pollInterval = setInterval(() => {
-      //this.reloadModels();
+      this.reloadModels();
     }, 2500) as unknown as number;
   }
 

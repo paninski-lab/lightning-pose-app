@@ -23,12 +23,34 @@ from .routes.videos import cleanup_old_uploads
 from .train_scheduler import _train_scheduler_process_target
 from .utils.check_for_upgrade import check_for_upgrade
 from .utils.file_response import file_response
+from .utils.gpu_lock import read_gpu_task, clear_gpu_task, clear_stale_gpu_task
 
 ## Setup logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+
+class NoisyEndpointFilter(logging.Filter):
+    """Filter out 200 OK logs for noisy polling endpoints."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        # uvicorn access logs have the following format for record.args:
+        # (client_addr, method, path, http_version, status_code)
+        if record.args and len(record.args) >= 5:
+            path = record.args[2]
+            status_code = record.args[4]
+            if status_code == 200:
+                if path in ["/app/v0/rpc/listModels", "/app/v0/task/active"]:
+                    return False
+            if str(path).startswith("/app/v0/files/"):
+                return False
+        return True
+
+
+# Add filter to uvicorn.access logger to silence noisy polling requests
+logging.getLogger("uvicorn.access").addFilter(NoisyEndpointFilter())
 
 
 ## Configure additional things to happen on server startup and shutdown.
@@ -41,6 +63,11 @@ async def lifespan(app: FastAPI):
 
     # Warm up anipose in the background (first run is ~1-2s slow).
     asyncio.create_task(anyio.to_thread.run_sync(warm_up_anipose))
+
+    # Clear stale GPU lock info on startup if the OS lock is free.
+    # This covers any task type (inference, training) that might have survived
+    # a crash but is no longer actually running.
+    clear_stale_gpu_task()
 
     # Start model train scheduler loop in a separate process
     try:

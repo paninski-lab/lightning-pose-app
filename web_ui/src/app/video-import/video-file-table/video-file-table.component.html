@@ -7,7 +7,9 @@
         <th scope="col">File</th>
         <th scope="col">Size</th>
         <th scope="col">Session</th>
-        <th scope="col">View</th>
+        @if (isMultiview()) {
+          <th scope="col">View</th>
+        }
         <th scope="col">Status</th>
         <th scope="col"><span class="sr-only">Actions</span></th>
       </tr>
@@ -18,7 +20,9 @@
           <td class="break-all">{{ it.name }}</td>
           <td>{{ formatBytes(it.size) }}</td>
           <td>{{ it.sessionKey ?? '—' }}</td>
-          <td>{{ it.view ?? '—' }}</td>
+          @if (isMultiview()) {
+            <td>{{ it.view ?? '—' }}</td>
+          }
           <td>
             <!-- Upload phase -->
             @if (it.upload) {

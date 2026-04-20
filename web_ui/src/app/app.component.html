@@ -74,6 +74,7 @@
     </div>
 
     <div class="navbar-end flex gap-2">
+      <app-active-task-indicator />
       @if (!isCompatibleBrowser) {
         <div role="alert" class="alert alert-warning alert-soft">
           <span
@@ -135,10 +136,11 @@
 </main>
 
 <!-- Settings dialog -->
-<dialog #settingsDialog class="modal">
+<dialog #settingsDialog class="modal" data-testid="settings-dialog">
   @if (settingsDialogOpen()) {
     <app-project-settings
       class="modal-box w-5/6 max-w-3xl h-2/3 max-h-150"
+      data-testid="project-settings"
       [setupMode]="settingsSetupMode()"
       [projectKey]="settingsProjectKey()"
       (doneCreation)="handleSettingsDialogDoneCreation($event)"
@@ -147,7 +149,7 @@
 
     <!-- Makes the dialog close when clicked from outside. -->
     <div class="modal-backdrop">
-      <button (click)="closeSettingsDialog()">close</button>
+      <button data-testid="settings-dialog-backdrop-close" (click)="closeSettingsDialog()">close</button>
     </div>
   }
 </dialog>

@@ -144,3 +144,41 @@ export const FullWidth: Story = {
     `,
   }),
 };
+
+export const ProgrammaticAndShowTrigger: Story = {
+  render: (args) => {
+    const isOpen = signal(false);
+    return {
+      props: {
+        ...args,
+        isOpen,
+        toggle: () => isOpen.set(!isOpen()),
+      },
+      template: `
+        <div class="p-20 flex flex-col items-center gap-4">
+          <button class="btn btn-secondary" (click)="toggle()">
+            External Toggle Button (Current: {{ isOpen() ? 'Open' : 'Closed' }})
+          </button>
+
+          <div class="mt-10 border p-4 relative bg-base-300 rounded">
+             <app-dropdown [(isOpen)]="isOpen" triggerAction="show">
+               <app-dropdown-trigger>
+                 <div appDropdownTrigger class="cursor-pointer px-4 py-2 hover:bg-base-content/5 rounded border border-dashed border-base-content/20">
+                   Internal Trigger (Action: "show")
+                 </div>
+               </app-dropdown-trigger>
+               <app-dropdown-content>
+                 <div class="p-4 w-64">
+                   <p class="text-sm font-bold">Programmatic + "Show" Action</p>
+                   <p class="text-sm mt-1">The internal trigger above only OPENS the dropdown. It doesn't toggle it off.</p>
+                   <p class="text-sm mt-2">The external button above still toggles it normally.</p>
+                   <button class="btn btn-xs btn-error mt-4" (click)="isOpen.set(false)">Close me</button>
+                 </div>
+               </app-dropdown-content>
+             </app-dropdown>
+          </div>
+        </div>
+      `,
+    };
+  },
+};

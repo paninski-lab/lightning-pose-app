@@ -1,20 +1,39 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, OnDestroy, signal } from '@angular/core';
 import { HttpEvent, HttpEventType } from '@angular/common/http';
+import { Subscription } from 'rxjs';
 import { SessionService, VideoTaskStatus } from '../session.service';
+import { ProjectInfoService } from '../project-info.service';
 import { ParsedItem, TranscodeState, UploadState } from './video-import.types';
 import { splitExtension } from './filename';
 
 @Injectable()
-export class VideoImportStore {
+export class VideoImportStore implements OnDestroy {
   private sessionService = inject(SessionService);
+  private projectInfoService = inject(ProjectInfoService);
+
+  private subs = new Map<string, Subscription>();
+  private isDestroyed = false;
 
   // Selection + busy flag
   readonly selectedFiles = signal<File[]>([]);
   readonly uploading = signal<boolean>(false);
 
+  readonly isProcessing = computed(() => {
+    if (this.uploading()) return true;
+    const items = this.items();
+    if (items.length === 0) return false;
+    return items.some((i) => i.transcode?.status === 'transcoding');
+  });
+
   // Per-file states
   private uploadStates = signal<Record<string, UploadState>>({});
   private transcodeStates = signal<Record<string, TranscodeState>>({});
+
+  readonly isMultiview = computed(() => {
+    const views =
+      this.projectInfoService.projectContext()?.projectInfo?.views ?? [];
+    return views.length > 0;
+  });
 
   // Derived view model of selected files
   readonly items = computed<ParsedItem[]>(() => {
@@ -23,7 +42,37 @@ export class VideoImportStore {
     const _u = this.uploadStates();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _t = this.transcodeStates();
-    return this.selectedFiles().map((f) => this.toItem(f));
+    const items = this.selectedFiles().map((f) => this.toItem(f));
+
+    if (this.isMultiview()) {
+      const views =
+        this.projectInfoService.projectContext()?.projectInfo?.views ?? [];
+      const sessionMap = new Map<string, Set<string>>();
+
+      // Group views by session
+      items.forEach((item) => {
+        if (item.valid && item.sessionKey && item.view) {
+          if (!sessionMap.has(item.sessionKey)) {
+            sessionMap.set(item.sessionKey, new Set());
+          }
+          sessionMap.get(item.sessionKey)!.add(item.view);
+        }
+      });
+
+      // Check completeness for each session
+      items.forEach((item) => {
+        if (item.valid && item.sessionKey) {
+          const sessionViews = sessionMap.get(item.sessionKey);
+          const missing = views.filter((v) => !sessionViews?.has(v));
+          if (missing.length > 0) {
+            item.valid = false;
+            item.error = `Missing views: ${missing.join(', ')}`;
+          }
+        }
+      });
+    }
+
+    return items;
   });
 
   readonly allValid = computed(
@@ -61,9 +110,17 @@ export class VideoImportStore {
   }
 
   clearAll(): void {
+    this.subs.forEach((s) => s.unsubscribe());
+    this.subs.clear();
     this.selectedFiles.set([]);
     this.uploadStates.set({});
     this.transcodeStates.set({});
+  }
+
+  ngOnDestroy() {
+    this.isDestroyed = true;
+    this.subs.forEach((s) => s.unsubscribe());
+    this.subs.clear();
   }
 
   async startImport(): Promise<void> {
@@ -100,36 +157,44 @@ export class VideoImportStore {
         progress: 0,
         error: null,
       });
-      this.sessionService.uploadVideo(it.file, it.name, false).subscribe({
-        next: (event: HttpEvent<unknown>) => {
-          if (event.type === HttpEventType.UploadProgress) {
-            const total =
-              event.total && event.total > 0 ? event.total : undefined;
-            const loaded = event.loaded ?? 0;
-            const pct = total
-              ? Math.min(100, Math.round((loaded / total) * 100))
-              : undefined;
-            this.setUploadState(it.name, {
-              status: 'uploading',
-              progress: pct ?? this.uploadStates()[it.name]?.progress ?? 0,
-              error: null,
-            });
-          } else if (event.type === HttpEventType.Response) {
-            this.setUploadState(it.name, {
-              status: 'done',
-              progress: 100,
-              error: null,
-            });
-            this.startTranscode(it.name);
+      const sub = this.sessionService
+        .uploadVideo(it.file, it.name, false)
+        .subscribe({
+          next: (event: HttpEvent<unknown>) => {
+            if (this.isDestroyed) return;
+            if (event.type === HttpEventType.UploadProgress) {
+              const total =
+                event.total && event.total > 0 ? event.total : undefined;
+              const loaded = event.loaded ?? 0;
+              const pct = total
+                ? Math.min(100, Math.round((loaded / total) * 100))
+                : undefined;
+              this.setUploadState(it.name, {
+                status: 'uploading',
+                progress: pct ?? this.uploadStates()[it.name]?.progress ?? 0,
+                error: null,
+              });
+            } else if (event.type === HttpEventType.Response) {
+              this.subs.get(it.name)?.unsubscribe();
+              this.subs.delete(it.name);
+              this.setUploadState(it.name, {
+                status: 'done',
+                progress: 100,
+                error: null,
+              });
+              this.startTranscode(it.name);
+              runNext(index + 1);
+            }
+          },
+          error: (err) => {
+            this.subs.delete(it.name);
+            if (this.isDestroyed) return;
+            const msg = err?.error?.detail || err?.message || 'Upload failed';
+            this.setUploadState(it.name, { status: 'error', error: msg });
             runNext(index + 1);
-          }
-        },
-        error: (err) => {
-          const msg = err?.error?.detail || err?.message || 'Upload failed';
-          this.setUploadState(it.name, { status: 'error', error: msg });
-          runNext(index + 1);
-        },
-      });
+          },
+        });
+      this.subs.set(it.name, sub);
     };
 
     runNext(0);
@@ -142,40 +207,50 @@ export class VideoImportStore {
       progress: 0,
       error: null,
     });
-    this.sessionService.transcodeVideoSse(filename, false).subscribe({
-      next: (e: VideoTaskStatus) => {
-        const total = e.totalFrames ?? 0;
-        const done = e.framesDone ?? 0;
-        const progress = total > 0 ? Math.round((done / total) * 100) : 0;
-        if (e.transcodeStatus === 'ERROR') {
-          this.setTranscodeState(filename, {
-            status: 'error',
-            error: e.error ?? 'Transcode error',
-          });
-        } else if (e.transcodeStatus === 'DONE') {
-          this.setTranscodeState(filename, {
-            status: 'done',
-            progress: 100,
-            error: null,
-          });
-        } else {
-          this.setTranscodeState(filename, {
-            status: 'transcoding',
-            progress,
-            error: null,
-          });
-        }
-      },
-      error: (err) => {
-        const msg =
-          err?.error?.detail || err?.message || 'Transcode stream error';
-        this.setTranscodeState(filename, { status: 'error', error: msg });
-      },
-    });
+    this.subs.get(filename)?.unsubscribe();
+    const sub = this.sessionService
+      .transcodeVideoSse(`uploads://${filename}`, false)
+      .subscribe({
+        next: (e: VideoTaskStatus) => {
+          if (this.isDestroyed) return;
+          const total = e.totalFrames ?? 0;
+          const done = e.framesDone ?? 0;
+          const progress = total > 0 ? Math.round((done / total) * 100) : 0;
+          if (e.transcodeStatus === 'ERROR') {
+            this.subs.delete(filename);
+            this.setTranscodeState(filename, {
+              status: 'error',
+              error: e.error ?? 'Transcode error',
+            });
+          } else if (e.transcodeStatus === 'DONE') {
+            this.subs.delete(filename);
+            this.setTranscodeState(filename, {
+              status: 'done',
+              progress: 100,
+              error: null,
+            });
+          } else {
+            this.setTranscodeState(filename, {
+              status: 'transcoding',
+              progress,
+              error: null,
+            });
+          }
+        },
+        error: (err) => {
+          this.subs.delete(filename);
+          if (this.isDestroyed) return;
+          const msg =
+            err?.error?.detail || err?.message || 'Transcode stream error';
+          this.setTranscodeState(filename, { status: 'error', error: msg });
+        },
+      });
+    this.subs.set(filename, sub);
   }
 
   // Internals ----------------------------------------------------------------
   private toItem(file: File): ParsedItem {
+    const isMultiview = this.isMultiview();
     const { baseName, ext } = splitExtension(file.name);
     const allowedChars = /^[a-zA-Z0-9\-_.]+$/;
 
@@ -187,19 +262,25 @@ export class VideoImportStore {
       error = 'Filename must include an extension';
     } else if (!allowedChars.test(baseName)) {
       error = 'Filename contains invalid characters';
-    } else if (baseName.indexOf('_') === -1) {
-      error = 'Filename must be of the form session_view.ext';
-    } else {
-      const lastUnderscore = baseName.lastIndexOf('_');
-      sessionKey = baseName.substring(0, lastUnderscore);
-      view = baseName.substring(lastUnderscore + 1);
-      if (!sessionKey) {
-        error = 'Missing session name before underscore';
-      } else if (!view) {
-        error = 'Missing view name after underscore';
-      } else if (view.includes('_')) {
-        error = 'View name must not contain underscore';
+    } else if (isMultiview) {
+      if (baseName.indexOf('_') === -1) {
+        error = 'Filename must be of the form session_view.ext';
+      } else {
+        const lastUnderscore = baseName.lastIndexOf('_');
+        sessionKey = baseName.substring(0, lastUnderscore);
+        view = baseName.substring(lastUnderscore + 1);
+        if (!sessionKey) {
+          error = 'Missing session name before underscore';
+        } else if (!view) {
+          error = 'Missing view name after underscore';
+        } else if (view.includes('_')) {
+          error = 'View name must not contain underscore';
+        }
       }
+    } else {
+      // singleview: session.ext
+      sessionKey = baseName;
+      view = null;
     }
 
     return {

@@ -2,14 +2,16 @@ import asyncio
 import json
 import logging
 import shutil
+import time
 from datetime import datetime
-from typing import Literal
+from typing import Iterator, Literal
 from pathlib import Path
 import os
 
 import yaml
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from litpose_app import deps
@@ -291,3 +293,83 @@ def rename_model(
         os.path.normpath(project.paths.model_dir)
     )
     shutil.move(model_dir, project.paths.model_dir / request.newModelName)
+
+
+_TRAIN_TERMINAL = {"COMPLETED", "FAILED", "CANCELED"}
+
+
+def _tail_log_file(path: Path, offset: int) -> tuple[list[str], int]:
+    """Read new bytes from a log file starting at byte offset. Returns (lines, new_offset)."""
+    try:
+        with open(path, "rb") as f:
+            f.seek(offset)
+            chunk = f.read()
+        new_offset = offset + len(chunk)
+        lines = [l for l in chunk.decode("utf-8", errors="replace").splitlines() if l]
+        return lines, new_offset
+    except FileNotFoundError:
+        return [], offset
+
+
+def _stream_sse_sync(gen: Iterator[dict]):
+    for payload in gen:
+        data = json.dumps(payload)
+        yield f"data: {data}\n\n"
+
+
+@router.get("/app/v0/rpc/models/{projectKey}/{modelRelativePath:path}/stream")
+def stream_train_task(
+    projectKey: str,
+    modelRelativePath: str,
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+):
+    """Stream training logs and status updates via SSE for a given model."""
+    project: Project = project_info_getter(projectKey)
+    if project.paths.model_dir is None:
+        raise HTTPException(status_code=400, detail="Project model_dir is not configured.")
+    model_dir = (Path(project.paths.model_dir) / modelRelativePath).resolve()
+    try:
+        model_dir.relative_to(project.paths.model_dir)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid model path.")
+    if not model_dir.exists():
+        raise HTTPException(status_code=404, detail="Model directory not found.")
+
+    stdout_path = model_dir / "train_stdout.log"
+    stderr_path = model_dir / "train_stderr.log"
+    status_path = model_dir / "train_status.json"
+
+    def poller() -> Iterator[dict]:
+        stdout_offset = 0
+        stderr_offset = 0
+        last_status: str | None = None
+
+        while True:
+            # Emit any new log lines
+            stdout_lines, stdout_offset = _tail_log_file(stdout_path, stdout_offset)
+            stderr_lines, stderr_offset = _tail_log_file(stderr_path, stderr_offset)
+            all_lines = stdout_lines + [f"[stderr] {l}" for l in stderr_lines]
+            if all_lines:
+                yield {"type": "log", "lines": all_lines}
+
+            # Emit status if it changed
+            try:
+                ts = TrainStatus.model_validate(json.loads(status_path.read_text()))
+                if ts.status != last_status:
+                    last_status = ts.status
+                    yield {"type": "status", **ts.model_dump()}
+            except Exception:
+                pass
+
+            if last_status in _TRAIN_TERMINAL:
+                # Final drain
+                stdout_lines, _ = _tail_log_file(stdout_path, stdout_offset)
+                stderr_lines, _ = _tail_log_file(stderr_path, stderr_offset)
+                final_lines = stdout_lines + [f"[stderr] {l}" for l in stderr_lines]
+                if final_lines:
+                    yield {"type": "log", "lines": final_lines}
+                break
+
+            time.sleep(0.2)
+
+    return StreamingResponse(_stream_sse_sync(poller()), media_type="text/event-stream")

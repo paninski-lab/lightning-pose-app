@@ -27,6 +27,11 @@ import { ModelListResponse } from './modelconf';
 
 type SessionModelMap = Record<string, string[]>;
 
+interface RGlobResponse {
+  entries: { path: string; type?: 'dir' | 'file' }[];
+  relativeTo: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -67,17 +72,18 @@ export class SessionService {
   }
 
   /**
-   * Start or attach to a transcode for a given uploaded filename and stream progress via SSE.
+   * Start or attach to a transcode and stream progress via SSE.
+   * inputPath must be either an absolute filesystem path or an ``uploads://`` URI.
    * Completes when server reports DONE or ERROR.
    */
   transcodeVideoSse(
-    filename: string,
+    inputPath: string,
     shouldOverwrite = false,
   ): Observable<VideoTaskStatus> {
     const projectKey = this.getProjectKeyOrThrow();
     const params = new URLSearchParams({
       projectKey,
-      filename,
+      inputPath,
       should_overwrite: String(shouldOverwrite),
     });
     const url = `/app/v0/sse/TranscodeVideo?${params.toString()}`;
@@ -176,20 +182,73 @@ export class SessionService {
       noDirs: true,
     })) as RGlobResponse;
 
-    /* To test long request:
-    const sleep = (ms: number) =>
-      new Promise((resolve) => setTimeout(resolve, ms));
-    await sleep(1000);
-     */
-
     const mp4Files: string[] = response.entries.map((entry) => entry.path);
-
     const sessions: Session[] = this.groupFilesBySession(
       mp4Files,
       this.projectInfoService.projectInfo.views,
     );
 
     return sessions;
+  }
+
+  private groupFilesBySession(filenames: string[], views: string[]): Session[] {
+    const pathKeyToItsViewFiles = this.groupFilesByView(filenames, views);
+    // Convert the Map to the required Session array format
+    const cmp = createSessionViewComparator(this.projectInfoService.allViews());
+    return Array.from(pathKeyToItsViewFiles.entries()).map(
+      ([relativePath, groupedFiles]) => {
+        const sessionViews = groupedFiles.map(({ view, filename }) => ({
+          viewName: view,
+          videoPath:
+            this.projectInfoService.projectInfo.data_dir + '/' + filename,
+        }));
+        // The filename is the key.
+        const key = relativePath
+          .split('/')
+          .at(-1)!
+          .replace(/\.(mp4|avi)$/, '');
+        return {
+          key: key,
+          relativePath,
+          views: [...sessionViews].sort(cmp),
+        };
+      },
+    );
+  }
+
+  private groupFilesByView(
+    paths: string[],
+    views: string[],
+  ): Map<string, { view: string; filename: string }[]> {
+    // Use a Map to group files by their session key
+    const pathKeyToItsFiles = new Map<
+      string,
+      { view: string; filename: string }[]
+    >();
+
+    for (const path of paths) {
+      const parts = path.split('/');
+      const filename = parts.at(-1)!;
+      let viewName = views.find((v) => filename.includes(v));
+      if (!viewName) {
+        viewName = 'unknown';
+      }
+
+      // Remove the view name to get the base session key
+      const pathKey =
+        viewName == 'unknown'
+          ? path
+          : [...parts.slice(0, -1), filename.replace(viewName, '*')].join('/');
+
+      if (!pathKeyToItsFiles.has(pathKey)) {
+        pathKeyToItsFiles.set(pathKey, []);
+      }
+      pathKeyToItsFiles.get(pathKey)!.push({
+        view: viewName,
+        filename: path,
+      });
+    }
+    return pathKeyToItsFiles;
   }
 
   labelFilesLoading = signal(false);
@@ -412,63 +471,59 @@ export class SessionService {
     return this.sessionModelMap[sessionKey] || [];
   }
 
-  private groupFilesBySession(filenames: string[], views: string[]): Session[] {
-    const pathKeyToItsViewFiles = this.groupFilesByView(filenames, views);
-    // Convert the Map to the required Session array format
-    const cmp = createSessionViewComparator(this.projectInfoService.allViews());
-    return Array.from(pathKeyToItsViewFiles.entries()).map(
-      ([relativePath, groupedFiles]) => {
-        const sessionViews = groupedFiles.map(({ view, filename }) => ({
-          viewName: view,
-          videoPath:
-            this.projectInfoService.projectInfo.data_dir + '/' + filename,
-        }));
-        // The filename is the key.
-        const key = relativePath
-          .split('/')
-          .at(-1)!
-          .replace(/\.mp4$/, '');
-        return {
-          key: key,
-          relativePath,
-          views: [...sessionViews].sort(cmp),
-        };
-      },
-    );
-  }
-  private groupFilesByView(
-    paths: string[],
-    views: string[],
-  ): Map<string, { view: string; filename: string }[]> {
-    // Use a Map to group files by their session key
-    const pathKeyToItsFiles = new Map<
-      string,
-      { view: string; filename: string }[]
-    >();
+  async getSessions(
+    baseDir: string,
+  ): Promise<{
+    sessions: Session[];
+    ungroupedDirs: string[];
+    ungroupedVideos: string[];
+  }> {
+    const response = (await this.rpc.call('rglob', {
+      baseDir,
+      pattern: '*',
+      stat: true,
+    })) as RGlobResponse;
 
-    for (const path of paths) {
-      const parts = path.split('/');
-      const filename = parts.at(-1)!;
-      let viewName = views.find((v) => filename.includes(v));
-      if (!viewName) {
-        viewName = 'unknown';
+    const ungroupedDirs: string[] = [];
+    const videoPaths: string[] = [];
+
+    for (const entry of response.entries) {
+      if (entry.type === 'dir') {
+        ungroupedDirs.push(entry.path);
+      } else if (entry.path.endsWith('.mp4') || entry.path.endsWith('.avi')) {
+        videoPaths.push(entry.path);
       }
-
-      // Remove the view name to get the base session key
-      const pathKey =
-        viewName == 'unknown'
-          ? path
-          : [...parts.slice(0, -1), filename.replace(viewName, '*')].join('/');
-
-      if (!pathKeyToItsFiles.has(pathKey)) {
-        pathKeyToItsFiles.set(pathKey, []);
-      }
-      pathKeyToItsFiles.get(pathKey)!.push({
-        view: viewName,
-        filename: path,
-      });
     }
-    return pathKeyToItsFiles;
+
+    const views = this.projectInfoService.projectInfo.views;
+    const pathKeyToViewFiles = this.groupFilesByView(videoPaths, views);
+    const cmp = createSessionViewComparator(this.projectInfoService.allViews());
+
+    const sessions: Session[] = [];
+    const ungroupedVideos: string[] = [];
+
+    for (const [pathKey, groupedFiles] of pathKeyToViewFiles.entries()) {
+      const knownViews = groupedFiles.filter((f) => f.view !== 'unknown');
+      const unknownViews = groupedFiles.filter((f) => f.view === 'unknown');
+
+      if (knownViews.length === 0) {
+        ungroupedVideos.push(...unknownViews.map((f) => f.filename));
+      } else {
+        const sessionViews = knownViews.map(({ view, filename }) => ({
+          viewName: view,
+          videoPath: baseDir + '/' + filename,
+        }));
+        const key = pathKey.split('/').at(-1)!.replace(/\.(mp4|avi)$/, '');
+        sessions.push({
+          key,
+          relativePath: pathKey,
+          views: [...sessionViews].sort(cmp),
+        });
+        ungroupedVideos.push(...unknownViews.map((f) => f.filename));
+      }
+    }
+
+    return { sessions, ungroupedDirs, ungroupedVideos };
   }
 
   async saveMVFrame(
@@ -600,50 +655,34 @@ export class SessionService {
     return resp;
   }
 
-  /**
-   * Start or attach to a model inference run for a set of videos and stream progress via SSE.
-   * Mirrors the TranscodeVideo SSE pattern.
-   */
-  inferModelSse(
-    modelRelativePath: string,
-    videoRelativePaths: string[],
-  ): Observable<InferenceTaskStatus> {
-    return this._inferSse('/app/v0/sse/InferModel', modelRelativePath, videoRelativePaths);
-  }
-
-  /**
-   * Start or attach to an EKS model inference run and stream progress via SSE.
-   * Runs litpose predict on each member model, then runs the EKS smoother.
-   */
-  inferEksModelSse(
-    modelRelativePath: string,
-    videoRelativePaths: string[],
-  ): Observable<InferenceTaskStatus> {
-    return this._inferSse('/app/v0/sse/InferEksModel', modelRelativePath, videoRelativePaths);
-  }
-
-  private _inferSse(
-    sseEndpoint: string,
-    modelRelativePath: string,
-    videoRelativePaths: string[],
-  ): Observable<InferenceTaskStatus> {
+  async inferTask(
+    models: string[],
+    sessions: string[],
+    videoRelativePaths: string[] = [],
+  ): Promise<{ taskId: string }> {
     const projectKey = this.getProjectKeyOrThrow();
-    const params = new URLSearchParams({
-      projectKey,
-      modelRelativePath,
-    });
-    for (const rel of videoRelativePaths) {
-      params.append('videoRelativePaths', rel);
-    }
-    const url = `${sseEndpoint}?${params.toString()}`;
+    return firstValueFrom(
+      this.httpClient.post<{ taskId: string }>('/app/v0/inference/task', {
+        projectKey,
+        models,
+        sessions,
+        videoRelativePaths,
+      }),
+    );
+  }
 
-    return new Observable<InferenceTaskStatus>((subscriber) => {
+  streamTaskProgress(taskId: string): Observable<TaskStreamEvent> {
+    const url = `/app/v0/inference/task/${taskId}/stream`;
+    return new Observable<TaskStreamEvent>((subscriber) => {
       const es = new EventSource(url);
       const onMessage = (ev: MessageEvent) => {
         try {
-          const data = JSON.parse(ev.data) as InferenceTaskStatus;
-          subscriber.next(data);
-          if (data.status === 'DONE' || data.status === 'ERROR') {
+          const event = JSON.parse(ev.data) as TaskStreamEvent;
+          subscriber.next(event);
+          if (
+            event.type === 'status' &&
+            (event.status === 'COMPLETED' || event.status === 'FAILED' || event.status === 'CANCELLED')
+          ) {
             es.close();
             subscriber.complete();
           }
@@ -665,6 +704,40 @@ export class SessionService {
         } catch {}
       };
     });
+  }
+
+  async getInferenceTaskStatus(taskId: string): Promise<InferenceTaskStatus> {
+    return firstValueFrom(
+      this.httpClient.get<InferenceTaskStatus>(`/app/v0/inference/task/${taskId}`),
+    );
+  }
+
+  async getActiveInferenceTask(): Promise<{ taskId: string | null }> {
+    return firstValueFrom(
+      this.httpClient.get<{ taskId: string | null }>('/app/v0/inference/task/active'),
+    );
+  }
+
+  async cancelInferenceTask(taskId: string): Promise<void> {
+    await firstValueFrom(
+      this.httpClient.post<{ ok: boolean }>(`/app/v0/inference/task/${taskId}/cancel`, {}),
+    );
+  }
+
+  async resolveInference(
+    models: string[],
+    sessions: string[],
+    videoRelativePaths: string[] = [],
+  ): Promise<ResolveInferenceResponse> {
+    const projectKey = this.getProjectKeyOrThrow();
+    return firstValueFrom(
+      this.httpClient.post<ResolveInferenceResponse>('/app/v0/inference/resolve', {
+        projectKey,
+        models,
+        sessions,
+        videoRelativePaths,
+      }),
+    );
   }
 
   deleteModel(modelRelativePath: string) {
@@ -691,7 +764,13 @@ export interface VideoTaskStatus {
   error?: string | null;
 }
 
-export type InferenceStatus = 'PENDING' | 'ACTIVE' | 'DONE' | 'ERROR';
+export type InferenceStatus =
+  | 'PENDING'
+  | 'RUNNING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELLED';
+
 export interface InferenceTaskStatus {
   taskId: string;
   status: InferenceStatus;
@@ -699,11 +778,21 @@ export interface InferenceTaskStatus {
   total: number | null;
   error?: string | null;
   message?: string | null;
+  logs?: string[];
 }
 
-interface RGlobResponse {
-  entries: {
-    type: string;
-    path: string;
-  }[];
+export type TaskStreamEvent =
+  | ({ type: 'status' } & InferenceTaskStatus)
+  | { type: 'log'; lines: string[] };
+
+export interface InferRun {
+  model: string;
+  session: string;
+  kind: 'normal' | 'member' | 'eks';
+  member_of?: string;
+}
+
+export interface ResolveInferenceResponse {
+  runs: InferRun[];
+  skipped_count: number;
 }

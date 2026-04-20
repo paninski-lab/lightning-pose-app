@@ -36,6 +36,9 @@ import { FormsModule } from '@angular/forms';
 
 import { ViewerViewOptionsService } from '../viewer-view-options.service';
 import { SelectComponent } from '../../components/dropdown/select.component';
+import { RunModelInferenceDialogComponent } from '../../run-model-inference-dialog/run-model-inference-dialog.component';
+
+import { SessionImportComponent } from '../../session-import/session-import.component';
 
 @Component({
   selector: 'app-viewer',
@@ -52,6 +55,8 @@ import { SelectComponent } from '../../components/dropdown/select.component';
     DropdownTriggerComponent,
     DropdownContentComponent,
     DropdownTriggerDirective,
+    RunModelInferenceDialogComponent,
+    SessionImportComponent,
   ],
   templateUrl: './viewer-page.component.html',
   styleUrl: './viewer-page.component.css',
@@ -95,6 +100,8 @@ export class ViewerPageComponent implements OnInit {
   _sessionKey = signal<string | null>(null);
 
   protected isIniting = signal(true);
+  protected isRunModelInferenceDialogOpen = signal(false);
+  protected sessionImportOpen = signal(false);
   async ngOnInit() {
     // Page inits by loading project info, and if it does not exist,
     // it will (future) open a dialog to get the project info.
@@ -198,6 +205,24 @@ export class ViewerPageComponent implements OnInit {
     }
 
     this.enabledViewsKeypoints.setModelsShown(modelsShown);
+  }
+
+  protected async handleRunModelInferenceDialogDone() {
+    this.isRunModelInferenceDialogOpen.set(false);
+    await this.sessionService.loadPredictionIndex();
+  }
+
+  /** Called when the Session Import dialog finishes/closed. */
+  protected async onImportDone() {
+    // Close the import dialog UI
+    this.sessionImportOpen.set(false);
+    // Refresh the sessions list so the table reflects any newly transcoded videos
+    try {
+      await this.sessionService.loadSessions();
+    } catch (e) {
+      // Non-fatal: keep UI responsive even if refresh fails
+      console.error('Failed to refresh sessions after import dialog closed', e);
+    }
   }
 
   protected handleSelectedSessionChange(session: Session | null) {

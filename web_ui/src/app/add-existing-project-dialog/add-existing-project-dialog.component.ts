@@ -47,9 +47,12 @@ export class AddExistingProjectDialogComponent implements OnInit {
   private router = inject(Router);
 
   protected form?: FormGroup;
-  protected dataDirPath = signal(this.projectInfoService.globalContext()?.homeDir ?? '/');
+  protected dataDirPath = signal(
+    this.projectInfoService.globalContext()?.homeDir ?? '/',
+  );
 
   constructor() {
+    let isInitial = true;
     effect(() => {
       const dataDir = this.dataDirPath();
       if (!this.form) return;
@@ -57,12 +60,20 @@ export class AddExistingProjectDialogComponent implements OnInit {
 
       // Auto-fill project key from the last path fragment if still empty.
       const projectKeyControl = this.form.get('projectKey');
-      if (dataDir && projectKeyControl && !projectKeyControl.value) {
-        const fragments = dataDir.split(/[/\\]/).filter((f: string) => f.length > 0);
+      if (
+        !isInitial &&
+        dataDir &&
+        projectKeyControl &&
+        !projectKeyControl.dirty
+      ) {
+        const fragments = dataDir
+          .split(/[/\\]/)
+          .filter((f: string) => f.length > 0);
         if (fragments.length > 0) {
           projectKeyControl.setValue(fragments[fragments.length - 1]);
         }
       }
+      isInitial = false;
     });
   }
 

@@ -35,9 +35,10 @@ export class SessionImportComponent implements AfterViewInit, OnDestroy {
   private toast = inject(ToastService);
 
   protected items = this.store.items;
-  protected uploading = this.store.uploading;
+  protected isProcessing = this.store.isProcessing;
   protected allValid = this.store.allValid;
   protected allTranscoded = this.store.allTranscoded; // Inject the allTranscoded signal
+  protected isMultiview = this.store.isMultiview;
 
   // Local state to track if an import cycle has finished
   protected importAttempted = signal(false);

@@ -1,22 +1,158 @@
 <dialog class="modal modal-open">
-  <div class="modal-box w-5/6 max-w-3xl">
+  <div class="modal-box w-5/6 max-w-3xl flex flex-col max-h-[85vh]">
     <button
       class="btn btn-md btn-circle btn-ghost absolute right-4 top-4"
       (click)="handleCloseClick()"
     >
       ✕
     </button>
-    <h3 class="text-xl font-bold mb-4">Run inference (new)</h3>
-    <div class="py-4">
-      <p>Hello World</p>
-    </div>
+    <h3 class="text-xl font-bold mb-2">Run inference on all sessions</h3>
+
+    <!-- Model list -->
+    @if (!inferenceActive()) {
+      <div class="mb-4 text-sm">
+        <p class="font-semibold">
+          Runs on all sessions in the videos directory of the project.
+        </p>
+        <div class="flex items-center gap-2 mt-1">
+          <span class="opacity-70">optional:</span>
+          <button
+            class="btn btn-sm btn-outline"
+            data-tip="Upload local video files to create a new session"
+            (click)="sessionImportOpen.set(true)"
+          >
+            Upload a new session
+          </button>
+        </div>
+      </div>
+
+      <p class="text-sm opacity-70 mb-4">
+        Select models to run, then preview which steps will execute before starting.
+      </p>
+
+      @if (modelsLoading()) {
+        <div class="flex items-center gap-2 py-4">
+          <span class="loading loading-spinner loading-sm"></span>
+          <span class="text-sm">Loading models…</span>
+        </div>
+      } @else if (models().length === 0) {
+        <p class="text-sm opacity-60 py-4">No completed models found in this project.</p>
+      } @else {
+        <div class="overflow-y-auto grow min-h-0 border rounded-box mb-4">
+          @for (model of models(); track model.model_relative_path) {
+            <label
+              class="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-base-200"
+            >
+              <input
+                type="checkbox"
+                class="checkbox checkbox-sm"
+                [checked]="isSelected(model.model_relative_path)"
+                (change)="toggleModel(model.model_relative_path)"
+                [disabled]="inferenceActive()"
+              />
+              <span class="text-sm font-medium">{{ model.model_name }}</span>
+              <span class="badge badge-sm badge-ghost">{{ model.model_kind }}</span>
+            </label>
+          }
+        </div>
+      }
+
+      <!-- Resolve preview -->
+      @if (resolveLoading()) {
+        <div class="flex items-center gap-2 mb-4 text-sm opacity-70">
+          <span class="loading loading-spinner loading-xs"></span>
+          Calculating steps…
+        </div>
+      } @else if (resolveResult(); as r) {
+        <div class="text-sm mb-4">
+          <span class="font-semibold">{{ r.runs.length }}</span> step(s) will run
+          @if (r.skipped_count > 0) {
+            <span class="opacity-60"> · {{ r.skipped_count }} already done (skipped)</span>
+          }
+          @if (r.runs.length === 0) {
+            <span class="badge badge-success badge-sm ml-2">All up to date</span>
+          }
+        </div>
+      } @else if (resolveError()) {
+        <p class="text-sm text-warning mb-4">{{ resolveError() }}</p>
+      }
+
+      @if (eksValidationError()) {
+        <p class="text-sm text-error mb-4">{{ eksValidationError() }}</p>
+      }
+    }
+
+    <!-- Inference progress -->
+    @if (inferState().status === 'waiting') {
+      <div class="mb-2 flex items-center gap-2">
+        <span class="loading loading-spinner loading-sm"></span>
+        <span class="text-sm">Waiting for GPU — a training job is currently running.</span>
+      </div>
+    } @else if (inferState().status === 'running') {
+      <div class="mb-2">
+        <div class="flex items-center gap-3">
+          <span class="font-semibold text-sm">Running inference…</span>
+          <progress
+            class="progress progress-secondary w-40"
+            [value]="inferState().progress"
+            max="100"
+          ></progress>
+          <span class="text-sm">{{ inferState().progress }}%</span>
+        </div>
+        @if (inferState().message) {
+          <div class="text-xs opacity-70 mt-1">{{ inferState().message }}</div>
+        }
+      </div>
+    } @else if (inferState().status === 'done') {
+      <div class="mb-2 flex items-center gap-2">
+        <span class="badge badge-success">Inference completed</span>
+      </div>
+    } @else if (inferState().status === 'cancelled') {
+      <div class="mb-2 flex items-center gap-2">
+        <span class="badge badge-warning">Inference cancelled</span>
+      </div>
+    } @else if (inferState().status === 'error') {
+      <div class="text-error text-sm mb-2">{{ inferState().error ?? 'Inference failed' }}</div>
+    }
+
+    <!-- Terminal output -->
+    @if (showTerminal()) {
+      <div class="mb-4">
+        <app-terminal-output [lines]="logLines()" [staticHeight]="true" />
+        <p class="text-sm opacity-70 mt-2">
+          Streaming output of inference.
+          @if (inferenceRunning()) {
+            The task will continue to run in the background if this dialog is closed.
+          }
+        </p>
+      </div>
+    }
+
     <footer class="shrink-0 modal-action justify-between!">
-      <div class="text-error text-sm">
-        <!-- Validation error area -->
+      <div>
+        @if (inferenceActive()) {
+          <button class="btn btn-soft btn-error" (click)="cancelTask()">
+            Cancel task
+          </button>
+        }
       </div>
       <div class="flex gap-2">
-        <button class="btn btn-soft" (click)="handleCloseClick()">Cancel</button>
-        <button class="btn btn-soft btn-primary">Run</button>
+        <button class="btn btn-soft" (click)="handleCloseClick()">
+          {{ inferenceActive() ? 'Close' : 'Cancel' }}
+        </button>
+        @if (!inferenceActive()) {
+          <button
+            class="btn btn-soft btn-primary"
+            [disabled]="
+              selectedPaths().size === 0 ||
+              (resolveResult()?.runs?.length ?? 1) === 0 ||
+              !!eksValidationError()
+            "
+            (click)="startInference()"
+          >
+            Run
+          </button>
+        }
       </div>
     </footer>
   </div>
@@ -24,3 +160,7 @@
     <button (click)="handleCloseClick()">close</button>
   </form>
 </dialog>
+
+@if (sessionImportOpen()) {
+  <app-session-import (done)="onImportDone()"></app-session-import>
+}

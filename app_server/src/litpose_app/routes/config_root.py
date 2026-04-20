@@ -74,13 +74,13 @@ def get_root_config(
         is_editable["lightning-pose"] = False
 
     # Try to get eks version
-    version = get_package_version("eks")
+    version = get_package_version("ensemble-kalman-smoother")
     if version is not None:
-        versions["eks"] = version
-        is_editable["eks"] = is_editable_install("eks")
+        versions["ensemble-kalman-smoother"] = version
+        is_editable["ensemble-kalman-smoother"] = is_editable_install("ensemble-kalman-smoother")
     else:
-        versions["eks"] = None
-        is_editable["eks"] = False
+        versions["ensemble-kalman-smoother"] = None
+        is_editable["ensemble-kalman-smoother"] = False
 
     return {
         "uploadDir": str(rc.UPLOADS_DIR),

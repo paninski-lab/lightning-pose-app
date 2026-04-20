@@ -11,7 +11,6 @@ import { CreateEksModelDialogComponent } from '../create-eks-model-dialog/create
 import { ModelsListComponent } from '../models-list/models-list.component';
 import { ModelListResponseEntry } from '../modelconf';
 import { ModelDetailComponent } from './model-detail/model-detail.component';
-import { ModelInferenceDialogComponent } from '../model-inference-dialog/model-inference-dialog.component';
 import { RunModelInferenceDialogComponent } from '../run-model-inference-dialog/run-model-inference-dialog.component';
 import { SplitAreaComponent, SplitComponent } from 'angular-split';
 import {
@@ -29,7 +28,6 @@ import { ProjectInfoService } from '../project-info.service';
     CreateEksModelDialogComponent,
     ModelsListComponent,
     ModelDetailComponent,
-    ModelInferenceDialogComponent,
     RunModelInferenceDialogComponent,
     SplitComponent,
     SplitAreaComponent,
@@ -46,7 +44,6 @@ export class ModelsPageComponent {
   protected projectInfo = inject(ProjectInfoService);
   protected isCreateModelDialogOpen = signal(false);
   protected isCreateEksModelDialogOpen = signal(false);
-  protected isInferenceDialogOpen = signal(false);
   protected isRunModelInferenceDialogOpen = signal(false);
 
   private modelsListComponent = viewChild(ModelsListComponent);
@@ -82,17 +79,7 @@ export class ModelsPageComponent {
     }
   }
 
-  openInferenceDialog() {
-    if (!this.selectedModel()) return;
-    this.isInferenceDialogOpen.set(true);
-  }
-
-  handleInferenceDialogDone() {
-    this.isInferenceDialogOpen.set(false);
-  }
-
   openRunModelInferenceDialog() {
-    if (!this.selectedModel()) return;
     this.isRunModelInferenceDialogOpen.set(true);
   }
 

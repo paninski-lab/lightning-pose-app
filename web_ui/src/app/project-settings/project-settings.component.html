@@ -55,6 +55,7 @@
                   >description</span
                 >
                 <input
+                  data-testid="create-project-name"
                   formControlName="projectKey"
                   type="text"
                   class="grow"
@@ -100,6 +101,7 @@
               labeling order of the keypoints.
             </p>
             <textarea
+              data-testid="create-project-keypoints"
               class="textarea w-full"
               [rows]="keypointInitialRows()"
               formControlName="keypointNames"
@@ -163,6 +165,7 @@
 
       <ng-template #nextButtonTemplate>
         <button
+          data-testid="create-project-next"
           class="btn btn-soft btn-primary"
           (click)="handleNextClick()"
           [disabled]="
@@ -177,6 +180,7 @@
 
       <ng-template #saveButtonTemplate>
         <button
+          data-testid="create-project-save"
           class="btn btn-soft btn-primary"
           (click)="handleSaveClick()"
           [disabled]="!projectInfoForm.dirty"

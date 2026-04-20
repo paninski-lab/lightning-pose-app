@@ -13,47 +13,45 @@ import {
 
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
-import { SessionService } from '../session.service';
+import { SessionService, TaskStreamEvent } from '../session.service';
+import { TerminalOutputComponent } from '../terminal-output/terminal-output.component';
 import { VideoFileTableComponent } from '../video-import/video-file-table/video-file-table.component';
 import { VideoImportStore } from '../video-import/video-import.store';
 
 @Component({
   selector: 'app-model-inference-dialog',
-  imports: [FormsModule, VideoFileTableComponent],
+  imports: [FormsModule, VideoFileTableComponent, TerminalOutputComponent],
   templateUrl: './model-inference-dialog.component.html',
   styleUrl: './model-inference-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [VideoImportStore],
 })
 export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
-  // Inputs/outputs
   modelRelativePath = input<string>('');
-  modelKind = input<'normal' | 'eks'>('normal');
   done = output<void>();
 
   @ViewChild('dlg', { static: true })
   private dlg!: ElementRef<HTMLDialogElement>;
 
-  // Services/subscriptions
   private sessionService = inject(SessionService);
   private store = inject(VideoImportStore);
   private subs: Subscription[] = [];
+  private isDestroyed = false;
 
-  // Local state
-  protected uploading = this.store.uploading;
+  protected isProcessing = this.store.isProcessing;
   protected inferenceRunning = signal<boolean>(false);
 
   protected items = this.store.items;
   protected allValid = this.store.allValid;
   protected allTranscoded = this.store.allTranscoded;
+  protected isMultiview = this.store.isMultiview;
 
-  // Inference status
   protected inference = signal<InferenceUiState>({
     status: 'idle',
     progress: 0,
   });
+  protected logLines = signal<string[]>([]);
 
-  // Dialog lifecycle
   ngAfterViewInit(): void {
     queueMicrotask(() => {
       try {
@@ -63,6 +61,7 @@ export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.isDestroyed = true;
     this.subs.forEach((s) => s.unsubscribe());
   }
 
@@ -76,7 +75,6 @@ export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  // File selection
   protected addFiles(files: FileList | null) {
     this.store.addFiles(files);
   }
@@ -87,7 +85,6 @@ export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
     this.store.clearAll();
   }
 
-  // Import flow: upload and transcode sequentially
   protected async startImport() {
     await this.store.startImport();
   }
@@ -109,61 +106,84 @@ export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
     if (videos.length === 0) return;
 
     this.inferenceRunning.set(true);
+    this.logLines.set([]);
     this.inference.set({ status: 'running', progress: 0 });
-    const inferSse = this.modelKind() === 'eks'
-      ? this.sessionService.inferEksModelSse(modelRel, videos)
-      : this.sessionService.inferModelSse(modelRel, videos);
-    const sub = inferSse.subscribe({
-      next: (st) => {
-        const total = st.total ?? 0;
-        const completed = st.completed ?? 0;
-        const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-        // Map backend status to UI status keys
-        const backend = st.status ?? 'ACTIVE';
-        let uiStatus: InferenceUiState['status'];
-        switch (backend) {
-          case 'PENDING':
-          case 'ACTIVE':
-            uiStatus = 'running';
-            break;
-          case 'DONE':
-            uiStatus = 'done';
-            break;
-          case 'ERROR':
-            uiStatus = 'error';
-            break;
-          default:
-            uiStatus = 'running';
-        }
-        this.inference.set({
-          status: uiStatus,
-          progress,
-          message: st.message ?? undefined,
-          taskId: st.taskId,
+
+    this.sessionService
+      .inferTask([modelRel], [], videos)
+      .then(({ taskId }) => {
+        if (this.isDestroyed) return;
+        const sub = this.sessionService.streamTaskProgress(taskId).subscribe({
+          next: (event: TaskStreamEvent) => {
+            if (event.type === 'log') {
+              this.logLines.update((lines) => [...lines, ...event.lines]);
+              return;
+            }
+            const st = event;
+            const total = st.total ?? 0;
+            const completed = st.completed ?? 0;
+            const progress =
+              total > 0 ? Math.round((completed / total) * 100) : 0;
+            let uiStatus: InferenceUiState['status'];
+            switch (st.status) {
+              case 'RUNNING':
+              case 'PENDING':
+                uiStatus = 'running';
+                break;
+              case 'COMPLETED':
+                uiStatus = 'done';
+                break;
+              case 'FAILED':
+                uiStatus = 'error';
+                break;
+              default:
+                uiStatus = 'running';
+            }
+            this.inference.set({
+              status: uiStatus,
+              progress,
+              message: st.message ?? undefined,
+              error: st.error ?? undefined,
+              taskId: st.taskId,
+            });
+          },
+          error: (err) => {
+            this.inferenceRunning.set(false);
+            this.inference.set({
+              status: 'error',
+              progress: 0,
+              error: err?.message ?? 'Inference stream error',
+            });
+          },
+          complete: () => {
+            this.inferenceRunning.set(false);
+            const cur = this.inference();
+            if (cur.status !== 'error') {
+              this.inference.set({ ...cur, status: 'done', progress: 100 });
+            }
+          },
         });
-      },
-      error: (err) => {
+        if (this.isDestroyed) {
+          sub.unsubscribe();
+        } else {
+          this.subs.push(sub);
+        }
+      })
+      .catch((err) => {
+        if (this.isDestroyed) return;
         this.inferenceRunning.set(false);
         this.inference.set({
           status: 'error',
           progress: 0,
-          error: err?.message ?? 'Inference stream error',
+          error: err?.message ?? 'Failed to start inference',
         });
-      },
-      complete: () => {
-        this.inferenceRunning.set(false);
-        const cur = this.inference();
-        if (cur.status !== 'error') {
-          this.inference.set({ ...cur, status: 'done', progress: 100 });
-        }
-      },
-    });
-    this.subs.push(sub);
+      });
   }
 }
+
 interface InferenceUiState {
   status: 'idle' | 'running' | 'done' | 'error';
-  progress: number; // 0-100
+  progress: number;
   error?: string;
   message?: string;
   taskId?: string;

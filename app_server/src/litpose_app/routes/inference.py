@@ -1,5 +1,4 @@
 import copy
-import hashlib
 import json
 import logging
 import math
@@ -8,18 +7,21 @@ import subprocess
 import sys
 import threading
 import time
+import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Dict, Iterator, List, Optional
 
 import yaml
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 from ..datatypes import Project
 from .. import deps
 from ..deps import ProjectInfoGetter
+from ..utils.gpu_lock import gpu_lock_blocking, read_gpu_task
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -31,6 +33,8 @@ router = APIRouter()
 _executor: Optional[ThreadPoolExecutor] = None
 _status_lock = threading.RLock()
 _futures_by_task: Dict[str, Future] = {}
+_active_procs_by_task: Dict[str, subprocess.Popen] = {}
+_cancel_requests: set = set()
 
 
 def get_executor() -> ThreadPoolExecutor:
@@ -41,19 +45,20 @@ def get_executor() -> ThreadPoolExecutor:
         _executor = ThreadPoolExecutor(
             max_workers=workers, thread_name_prefix="model-infer"
         )
-    return _executor
+    return _executor  # type: ignore
 
 
 # -----------------------------
 # Status tracking
 # -----------------------------
 
-
 class InferenceStatus(str):
     PENDING = "PENDING"
-    ACTIVE = "ACTIVE"
-    DONE = "DONE"
-    ERROR = "ERROR"
+    WAITING = "WAITING"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
 
 
 @dataclass
@@ -64,9 +69,12 @@ class InferenceTaskStatus:
     total: int | None = None
     error: str | None = None
     message: str | None = None
+    logs: List[str] = field(default_factory=list)
 
 
 _status_by_task: Dict[str, InferenceTaskStatus] = {}
+# Ordered list of task IDs so we can find the most recent one
+_task_id_order: List[str] = []
 
 
 def _get_or_create_status_nolock(task_id: str) -> InferenceTaskStatus:
@@ -74,6 +82,7 @@ def _get_or_create_status_nolock(task_id: str) -> InferenceTaskStatus:
     if s is None:
         s = InferenceTaskStatus(taskId=task_id)
         _status_by_task[task_id] = s
+        _task_id_order.append(task_id)
     return s
 
 
@@ -92,7 +101,10 @@ def set_status(task_id: str, **kwargs):
 
 def _status_snapshot_dict(task_id: str) -> dict:
     st = get_or_create_status(task_id)
-    return asdict(st)
+    d = asdict(st)
+    # Hydrate logs from the log buffer (status object doesn't store them)
+    d["logs"] = _get_logs(task_id)
+    return d
 
 
 def _stream_sse_sync(gen: Iterator[dict]):
@@ -102,178 +114,83 @@ def _stream_sse_sync(gen: Iterator[dict]):
 
 
 # -----------------------------
-# Helpers
+# Log buffer
 # -----------------------------
-def _task_id_for(model_dir: Path, videos: list[Path]) -> str:
-    h = hashlib.sha1()
-    h.update(str(model_dir.resolve()).encode())
-    for v in sorted(videos, key=lambda p: str(p.resolve())):
-        h.update(b"\0")
-        h.update(str(v.resolve()).encode())
-    return h.hexdigest()[:16]
+
+_logs_by_task: Dict[str, List[str]] = {}
+_logs_lock = threading.RLock()
 
 
-def _start_inference_background(task_id: str, model_dir: Path, video_paths: list[Path]):
-    # If already running, return existing future
-    with _status_lock:
-        fut = _futures_by_task.get(task_id)
-        if fut is not None and not fut.done():
-            return fut
+def _append_log(task_id: str, line: str):
+    with _logs_lock:
+        _logs_by_task.setdefault(task_id, []).append(line)
 
-    run_dir = model_dir / "inference" / task_id
-    run_dir.mkdir(parents=True, exist_ok=True)
-    progress_path = run_dir / "progress.json"
 
-    # Initialize status (short duration so tests don't hang)
-    TOTAL_STEPS = 5
-    set_status(
-        task_id,
-        status=InferenceStatus.ACTIVE,
-        error=None,
-        completed=0,
-        total=TOTAL_STEPS,
+def _get_logs(task_id: str, from_offset: int = 0) -> List[str]:
+    with _logs_lock:
+        return list(_logs_by_task.get(task_id, [])[from_offset:])
+
+
+# -----------------------------
+# Subprocess helper
+# -----------------------------
+
+def _run_subprocess_with_logging(task_id: str, cmd: List[str]) -> int:
+    """Run a subprocess, capturing stdout/stderr into the task log buffer. Returns exit code."""
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,
     )
-
-    def _run():
-        try:
-            """
-            code = (
-                "import time, json, sys, pathlib;"
-                "p = pathlib.Path(sys.argv[1]);"
-                "total = 5;"
-                "\nfor i in range(total+1):\n"
-                "    p.write_text(json.dumps({'completed': i, 'total': total}));\n"
-                "    time.sleep(0.1)\n"
-            )
-            cmd = [sys.executable, "-c", code, str(progress_path)]
-            """
-            cmd = [
-                "litpose",
-                "predict",
-                model_dir,
-                *[str(p) for p in video_paths],
-                "--progress_file",
-                str(progress_path),
-                "--skip_viz",
-            ]
-            process = subprocess.Popen(cmd)
-
-            # Poll progress file periodically while process runs
-            last_completed = 0
-            while True:
-                # Update from file if present
-                try:
-                    if progress_path.exists():
-                        raw = progress_path.read_text()
-                        data = json.loads(raw)
-                        completed = int(data.get("completed", last_completed))
-                        total = int(data.get("total", TOTAL_STEPS))
-                        last_completed = completed
-                        set_status(
-                            task_id,
-                            completed=completed,
-                            total=total,
-                            message=f"{completed}/{total}",
-                        )
-                except Exception:
-                    # best-effort read; ignore malformed intermediate writes
-                    pass
-
-                # Check process state
-                ret = process.poll()
-                if ret is not None:
-                    if ret == 0:
-                        set_status(task_id, status=InferenceStatus.DONE)
-                    else:
-                        set_status(
-                            task_id,
-                            status=InferenceStatus.ERROR,
-                            error=f"Mock inference failed with code {ret}",
-                        )
-                    break
-
-                time.sleep(0.25)
-        except Exception as e:
-            set_status(task_id, status=InferenceStatus.ERROR, error=f"Exception: {e}")
-
-    future = get_executor().submit(_run)
     with _status_lock:
-        _futures_by_task[task_id] = future
-    return future
+        _active_procs_by_task[task_id] = proc
 
+    def _reader(pipe, prefix: str):
+        for line in iter(pipe.readline, ''):
+            stripped = line.rstrip('\n')
+            if stripped:
+                _append_log(task_id, f"{prefix}{stripped}")
+        pipe.close()
 
-# -----------------------------
-# Routes
-# -----------------------------
-@router.get("/app/v0/sse/InferModel")
-def infer_model(
-    projectKey: str,
-    modelRelativePath: str,
-    videoRelativePaths: list[str] = Query(default=[]),
-    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
-):
-    """Start or attach to a mock model inference and stream progress via SSE.
-
-    This mirrors the TranscodeVideo pattern: a GET request both triggers a
-    background task and subscribes to its status via Server-Sent Events (SSE).
-
-    Query Parameters
-    - projectKey: Project identifier used to resolve paths.
-    - modelRelativePath: directory name under project.paths.model_dir
-    - videoRelativePaths: list of paths under the project data directory
-      (provide multiple query params with the same name)
-    """
-    project: Project = project_info_getter(projectKey)
-
-    # Resolve and validate model directory
-    if project.paths.model_dir is None:
-        raise HTTPException(
-            status_code=400, detail="Project model_dir is not configured."
-        )
-    model_dir = (Path(project.paths.model_dir) / modelRelativePath).resolve()
+    t_out = threading.Thread(target=_reader, args=(proc.stdout, ''), daemon=True)
+    t_err = threading.Thread(target=_reader, args=(proc.stderr, '[stderr] '), daemon=True)
+    t_out.start()
+    t_err.start()
     try:
-        model_dir.relative_to(project.paths.model_dir)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid modelRelativePath.")
-    if not model_dir.exists():
-        raise HTTPException(status_code=404, detail="Model directory not found.")
-
-    # Resolve and validate video paths (best-effort; they may not need to exist)
-    data_base = Path(project.paths.data_dir)
-    resolved_videos: list[Path] = []
-    for rel in videoRelativePaths:
-        p = (data_base / rel).resolve()
-        try:
-            p.relative_to(data_base)
-        except Exception:
-            raise HTTPException(status_code=400, detail=f"Invalid video path: {rel}")
-        resolved_videos.append(p)
-
-    if not resolved_videos:
-        # Allow empty list, but warn in logs
-        logger.info("InferModel called with empty video list for %s", model_dir)
-
-    task_id = _task_id_for(model_dir, resolved_videos)
-
-    # Start background mock inference
-    _start_inference_background(task_id, model_dir, resolved_videos)
-
-    def poller_sync() -> Iterator[dict]:
-
-        while True:
-            payload = _status_snapshot_dict(task_id)
-            yield payload
-            if payload["status"] in (InferenceStatus.DONE, InferenceStatus.ERROR):
-                break
-            time.sleep(0.1)
-
-    return StreamingResponse(
-        _stream_sse_sync(poller_sync()), media_type="text/event-stream"
-    )
+        ret = proc.wait()
+    finally:
+        with _status_lock:
+            _active_procs_by_task.pop(task_id, None)
+    t_out.join()
+    t_err.join()
+    return ret
 
 
 # -----------------------------
-# EKS Inference
+# Plan data structures
+# -----------------------------
+
+@dataclass
+class InferStep:
+    kind: str  # 'normal', 'member', 'eks'
+    model_dir: Path
+    session: str
+    video_paths: List[Path]
+    member_of: Optional[Path] = None          # parent EKS model dir, for kind='member'
+    member_dirs: List[Path] = field(default_factory=list)   # for kind='eks'
+    ensemble_config: dict = field(default_factory=dict)     # for kind='member' and 'eks'
+
+
+@dataclass
+class InferPlan:
+    steps: List[InferStep]
+    skipped_count: int
+
+
+# -----------------------------
+# Session / video helpers
 # -----------------------------
 
 def _derive_sessions(video_paths: List[Path], view_names: List[str]) -> List[str]:
@@ -281,7 +198,7 @@ def _derive_sessions(video_paths: List[Path], view_names: List[str]) -> List[str
     sessions: List[str] = []
     seen: set = set()
     for vp in video_paths:
-        stem = vp.stem  # filename without extension
+        stem = vp.stem
         session = stem
         for cam in view_names:
             if stem.endswith(f"_{cam}"):
@@ -293,118 +210,239 @@ def _derive_sessions(video_paths: List[Path], view_names: List[str]) -> List[str
     return sessions
 
 
-def _run_member_inference(member_dir: Path, video_paths: List[Path]) -> bool:
-    """Run litpose predict on a single member model. Returns True on success."""
+def _session_to_videos(data_dir: Path, view_names: List[str]) -> Dict[str, List[Path]]:
+    """Map session name → list of video paths by globbing data_dir."""
+    result: Dict[str, List[Path]] = {}
+    for vp in data_dir.glob("videos*/**/*.mp4"):
+        stem = vp.stem
+        session = stem
+        for cam in view_names:
+            if stem.endswith(f"_{cam}"):
+                session = stem[: -len(f"_{cam}")]
+                break
+        result.setdefault(session, []).append(vp)
+    return result
+
+
+def _all_view_preds_exist(model_dir: Path, session: str, view_names: List[str]) -> bool:
+    """Return True if all expected prediction CSVs already exist for this model/session."""
+    preds_dir = model_dir / "video_preds"
+    if view_names:
+        return all((preds_dir / f"{session}_{cam}.csv").exists() for cam in view_names)
+    return (preds_dir / f"{session}.csv").exists()
+
+
+def _is_model_completed(model_dir: Path) -> bool:
+    """Return True if the model is marked as COMPLETED in its train_status.json."""
+    status_path = model_dir / "train_status.json"
+    if status_path.is_file():
+        try:
+            status = json.loads(status_path.read_text())
+            return status.get("status") == "COMPLETED"
+        except Exception:
+            return False
+    # EKS models don't have train_status.json, but they are considered "completed" if ensemble.yaml exists
+    if (model_dir / "ensemble.yaml").is_file():
+        return True
+    return False
+
+
+# -----------------------------
+# Plan builder
+# -----------------------------
+
+def _build_infer_plan(
+    project: Project,
+    model_relative_paths: List[str],
+    sessions: List[str],
+    video_relative_paths: Optional[List[str]] = None,
+    force: bool = False,
+) -> InferPlan:
+    """
+    Build an ordered, skip-filtered list of inference steps.
+
+    If video_relative_paths is provided, sessions are derived from those paths.
+    If sessions == ["all"], all videos in data_dir are discovered.
+    Otherwise sessions is treated as a list of session names.
+    """
+    view_names: List[str] = list(project.config.view_names or [])
+    model_base = Path(project.paths.model_dir)
+    data_base = Path(project.paths.data_dir)
+
+    # Resolve models into normal and EKS
+    normal_model_dirs: List[Path] = []
+    eks_models: List[tuple] = []  # (model_dir, ensemble_config)
+
+    for rel in model_relative_paths:
+        model_dir = (model_base / rel).resolve()
+        ensemble_path = model_dir / "ensemble.yaml"
+        if ensemble_path.is_file():
+            try:
+                ensemble_config = yaml.safe_load(ensemble_path.read_text()) or {}
+            except Exception:
+                ensemble_config = {}
+            eks_models.append((model_dir, ensemble_config))
+        else:
+            normal_model_dirs.append(model_dir)
+
+    # Compute session → video paths mapping
+    if video_relative_paths:
+        explicit_videos = [(data_base / rel).resolve() for rel in video_relative_paths]
+        target_sessions = _derive_sessions(explicit_videos, view_names)
+        sess_to_vids: Dict[str, List[Path]] = {}
+        for vp in explicit_videos:
+            stem = vp.stem
+            session = stem
+            for cam in view_names:
+                if stem.endswith(f"_{cam}"):
+                    session = stem[: -len(f"_{cam}")]
+                    break
+            sess_to_vids.setdefault(session, []).append(vp)
+    else:
+        sess_to_vids = _session_to_videos(data_base, view_names)
+        target_sessions = list(sess_to_vids.keys()) if sessions == ["all"] else sessions
+
+    steps: List[InferStep] = []
+    skipped_count = 0
+    seen_member_keys: set = set()
+
+    # Pass 1: normal models
+    for model_dir in normal_model_dirs:
+        if not _is_model_completed(model_dir):
+            continue
+        for session in target_sessions:
+            if (
+                not force
+                and _all_view_preds_exist(model_dir, session, view_names)
+            ):
+                skipped_count += 1
+            else:
+                steps.append(InferStep(
+                    kind="normal",
+                    model_dir=model_dir,
+                    session=session,
+                    video_paths=sess_to_vids.get(session, []),
+                ))
+
+    # Pass 1 (continued): member models required by EKS models
+    for eks_model_dir, ensemble_config in eks_models:
+        ens_views: List[str] = ensemble_config.get("view_names", view_names)
+        members = ensemble_config.get("members", [])
+        member_dirs = [(model_base / m["id"]).resolve() for m in members]
+
+        for session in target_sessions:
+            for member_dir in member_dirs:
+                if not _is_model_completed(member_dir):
+                    continue
+                key = (member_dir, session)
+                if key in seen_member_keys:
+                    continue
+                seen_member_keys.add(key)
+                if (
+                    not force
+                    and _all_view_preds_exist(member_dir, session, ens_views)
+                ):
+                    skipped_count += 1
+                else:
+                    steps.append(InferStep(
+                        kind="member",
+                        model_dir=member_dir,
+                        session=session,
+                        video_paths=sess_to_vids.get(session, []),
+                        member_of=eks_model_dir,
+                        ensemble_config=ensemble_config,
+                    ))
+
+    # Pass 2: EKS smoother steps
+    for eks_model_dir, ensemble_config in eks_models:
+        if not _is_model_completed(eks_model_dir):
+            continue
+        ens_views = ensemble_config.get("view_names", view_names)
+        members = ensemble_config.get("members", [])
+        member_dirs = [(model_base / m["id"]).resolve() for m in members]
+
+        for session in target_sessions:
+            if (
+                not force
+                and _all_view_preds_exist(eks_model_dir, session, ens_views)
+            ):
+                skipped_count += 1
+            else:
+                steps.append(InferStep(
+                    kind="eks",
+                    model_dir=eks_model_dir,
+                    session=session,
+                    video_paths=sess_to_vids.get(session, []),
+                    member_dirs=member_dirs,
+                    ensemble_config=ensemble_config,
+                ))
+
+    return InferPlan(steps=steps, skipped_count=skipped_count)
+
+
+# -----------------------------
+# Execution
+# -----------------------------
+
+def _run_eks_step(task_id: str, step: InferStep) -> bool:
+    """Run EKS smoother for a single (model, session) pair. Returns True on success."""
+    ensemble_config = step.ensemble_config
+    view_names: List[str] = ensemble_config.get("view_names", [])
+    smooth_param: float = ensemble_config.get("smooth_param", 1000.0)
+    quantile_keep_pca: float = ensemble_config.get("quantile_keep_pca", 50.0)
+
+    eks_video_preds_dir = step.model_dir / "video_preds"
+    eks_video_preds_dir.mkdir(parents=True, exist_ok=True)
+    eks_script = Path(__file__).parent.parent / "scripts" / "run_eks.py"
+
+    input_files: List[str] = []
+    for member_dir in step.member_dirs:
+        for cam in view_names:
+            pred_file = member_dir / "video_preds" / f"{step.session}_{cam}.csv"
+            if not pred_file.exists():
+                _append_log(task_id, f"[error] Missing prediction file: {pred_file}")
+                return False
+            input_files.append(str(pred_file))
+
     cmd = [
-        "litpose",
-        "predict",
-        str(member_dir),
-        *[str(p) for p in video_paths],
-        "--skip_viz",
+        sys.executable, str(eks_script),
+        "--save_dir", str(eks_video_preds_dir),
+        "--camera_names", *view_names,
+        "--smooth_param", str(smooth_param),
+        "--quantile_keep_pca", str(quantile_keep_pca),
+        "--input_files", *input_files,
     ]
-    process = subprocess.Popen(cmd)
-    ret = process.wait()
-    return ret == 0
+    ret = _run_subprocess_with_logging(task_id, cmd)
+    if ret != 0:
+        _append_log(task_id, f"[error] EKS smoother failed for {step.model_dir.name} on {step.session}")
+        return False
+    return True
 
 
-def _start_eks_inference_background(
-    task_id: str,
-    eks_model_dir: Path,
-    member_dirs: List[Path],
-    video_paths: List[Path],
-    ensemble_config: dict,
-):
+def _start_batch_inference_background(task_id: str, plan: InferPlan, project_key: str) -> Future:
     with _status_lock:
         fut = _futures_by_task.get(task_id)
         if fut is not None and not fut.done():
             return fut
 
-    n_members = len(member_dirs)
-    # total = one step per member + one EKS step per session
-    view_names: List[str] = ensemble_config.get("view_names", [])
-    sessions = _derive_sessions(video_paths, view_names)
-    n_sessions = max(len(sessions), 1)
-    total_steps = n_members + n_sessions
-
-    set_status(
-        task_id,
-        status=InferenceStatus.ACTIVE,
-        error=None,
-        completed=0,
-        total=total_steps,
-    )
+    steps = plan.steps
+    total = len(steps)
+    set_status(task_id, status=InferenceStatus.WAITING, completed=0, total=total, error=None)
 
     def _run():
         try:
-            # Step 1: run litpose predict on each member model
-            for i, member_dir in enumerate(member_dirs):
-                set_status(
-                    task_id,
-                    message=f"Running inference on member {i + 1}/{n_members}: {member_dir.name}",
-                )
-                ok = _run_member_inference(member_dir, video_paths)
-                if not ok:
-                    set_status(
-                        task_id,
-                        status=InferenceStatus.ERROR,
-                        error=f"litpose predict failed for member model: {member_dir.name}",
-                    )
-                    return
-                set_status(task_id, completed=i + 1)
-
-            # Step 2: run EKS smoother for each session
-            smooth_param: float = ensemble_config.get("smooth_param", 1000.0)
-            quantile_keep_pca: float = ensemble_config.get("quantile_keep_pca", 50.0)
-            eks_video_preds_dir = eks_model_dir / "video_preds"
-            eks_video_preds_dir.mkdir(parents=True, exist_ok=True)
-
-            eks_script = Path(__file__).parent.parent / "scripts" / "run_eks.py"
-
-            for s_idx, session in enumerate(sessions):
-                set_status(
-                    task_id,
-                    message=f"Running EKS smoother for session {s_idx + 1}/{n_sessions}: {session}",
-                )
-
-                # Gather input files: for each member, for each camera
-                input_files: List[str] = []
-                for member_dir in member_dirs:
-                    for cam in view_names:
-                        pred_file = member_dir / "video_preds" / f"{session}_{cam}.csv"
-                        if not pred_file.exists():
-                            set_status(
-                                task_id,
-                                status=InferenceStatus.ERROR,
-                                error=f"Missing prediction file: {pred_file}",
-                            )
-                            return
-                        input_files.append(str(pred_file))
-
-                cmd = [
-                    sys.executable,
-                    str(eks_script),
-                    "--save_dir", str(eks_video_preds_dir),
-                    "--camera_names", *view_names,
-                    "--smooth_param", str(smooth_param),
-                    "--quantile_keep_pca", str(quantile_keep_pca),
-                    "--input_files", *input_files,
-                ]
-                process = subprocess.Popen(cmd)
-                ret = process.wait()
-                if ret != 0:
-                    set_status(
-                        task_id,
-                        status=InferenceStatus.ERROR,
-                        error=f"EKS smoother failed with exit code {ret} for session: {session}",
-                    )
-                    return
-
-                set_status(task_id, completed=n_members + s_idx + 1)
-
-            set_status(task_id, status=InferenceStatus.DONE, completed=total_steps)
-
+            with gpu_lock_blocking("inference", task_id, project_key=project_key):
+                with _status_lock:
+                    if task_id in _cancel_requests:
+                        return
+                set_status(task_id, status=InferenceStatus.RUNNING)
+                _run_steps(task_id, steps, total)
         except Exception as e:
-            set_status(task_id, status=InferenceStatus.ERROR, error=f"Exception: {e}")
+            with _status_lock:
+                if task_id in _cancel_requests:
+                    return
+            set_status(task_id, status=InferenceStatus.FAILED, error=f"Exception: {e}")
+            _append_log(task_id, f"[error] Exception: {e}")
 
     future = get_executor().submit(_run)
     with _status_lock:
@@ -412,83 +450,252 @@ def _start_eks_inference_background(
     return future
 
 
-@router.get("/app/v0/sse/InferEksModel")
-def infer_eks_model(
-    projectKey: str,
-    modelRelativePath: str,
-    videoRelativePaths: list[str] = Query(default=[]),
-    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
-):
-    """Start or attach to EKS inference and stream progress via SSE.
+def _is_cancelled(task_id: str) -> bool:
+    with _status_lock:
+        return task_id in _cancel_requests
 
-    Runs litpose predict on each member model, then runs the EKS smoother
-    and saves smoothed predictions to the EKS model's video_preds/ directory.
-    """
-    project: Project = project_info_getter(projectKey)
 
+def _run_steps(task_id: str, steps: List[InferStep], total: int) -> None:
+    errors: List[str] = []
+    for i, step in enumerate(steps):
+        if _is_cancelled(task_id):
+            return
+
+        msg = (
+            f"Step {i + 1}/{total}: {step.kind} — "
+            f"{step.model_dir.name} on {step.session}"
+        )
+        set_status(task_id, message=msg)
+        _append_log(task_id, f"=== {msg} ===")
+
+        if step.kind in ("normal", "member"):
+            predict_wrapper = (
+                Path(__file__).parent.parent
+                / "utils" / "inference" / "predict_wrapper.py"
+            )
+            cmd = [
+                sys.executable, str(predict_wrapper),
+                str(step.model_dir),
+                *[str(p) for p in step.video_paths],
+                "--skip_viz",
+            ]
+            ret = _run_subprocess_with_logging(task_id, cmd)
+            if ret != 0:
+                if _is_cancelled(task_id):
+                    return
+                err_msg = (
+                    f"litpose predict failed for {step.model_dir.name} "
+                    f"on {step.session}"
+                )
+                _append_log(task_id, f"[error] {err_msg}")
+                errors.append(err_msg)
+        else:
+            if not _run_eks_step(task_id, step):
+                if _is_cancelled(task_id):
+                    return
+                err_msg = f"EKS smoother failed for {step.model_dir.name} on {step.session}"
+                errors.append(err_msg)
+
+        set_status(task_id, completed=i + 1)
+
+    if _is_cancelled(task_id):
+        return
+
+    if errors:
+        summary = f"{len(errors)} steps failed: " + "; ".join(errors[:3])
+        if len(errors) > 3:
+            summary += " ..."
+        set_status(
+            task_id,
+            status=InferenceStatus.COMPLETED,
+            completed=total,
+            error=summary
+        )
+        _append_log(task_id, f"=== Inference completed with {len(errors)} errors ===")
+    else:
+        set_status(task_id, status=InferenceStatus.COMPLETED, completed=total)
+        _append_log(task_id, "=== Inference completed ===")
+
+
+# -----------------------------
+# Request / response models
+# -----------------------------
+
+class InferTaskRequest(BaseModel):
+    projectKey: str
+    models: List[str]
+    sessions: List[str]
+    videoRelativePaths: List[str] = []
+    force: bool = False
+
+
+class ResolveRequest(BaseModel):
+    projectKey: str
+    models: List[str]
+    sessions: List[str]
+    videoRelativePaths: List[str] = []
+
+
+# -----------------------------
+# Validation helper
+# -----------------------------
+
+def _validate_model_paths(project: Project, model_relative_paths: List[str]):
     if project.paths.model_dir is None:
         raise HTTPException(status_code=400, detail="Project model_dir is not configured.")
-
-    # Resolve and validate EKS model directory
-    eks_model_dir = (Path(project.paths.model_dir) / modelRelativePath).resolve()
-    try:
-        eks_model_dir.relative_to(project.paths.model_dir)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid modelRelativePath.")
-    if not eks_model_dir.exists():
-        raise HTTPException(status_code=404, detail="EKS model directory not found.")
-
-    ensemble_path = eks_model_dir / "ensemble.yaml"
-    if not ensemble_path.is_file():
-        raise HTTPException(status_code=400, detail="Not an EKS model (ensemble.yaml missing).")
-
-    try:
-        ensemble_config = yaml.safe_load(ensemble_path.read_text())
-    except Exception:
-        raise HTTPException(status_code=500, detail="Failed to parse ensemble.yaml.")
-
-    # Resolve member model directories
-    members = ensemble_config.get("members", [])
-    member_dirs: List[Path] = []
-    for m in members:
-        member_dir = (Path(project.paths.model_dir) / m["id"]).resolve()
+    model_base = Path(project.paths.model_dir)
+    for rel in model_relative_paths:
+        model_dir = (model_base / rel).resolve()
         try:
-            member_dir.relative_to(project.paths.model_dir)
+            model_dir.relative_to(model_base)
         except Exception:
-            raise HTTPException(status_code=400, detail=f"Invalid member id: {m['id']}")
-        if not member_dir.exists():
-            raise HTTPException(status_code=404, detail=f"Member model directory not found: {m['id']}")
-        member_dirs.append(member_dir)
+            raise HTTPException(status_code=400, detail=f"Invalid model path: {rel}")
+        if not model_dir.exists():
+            raise HTTPException(status_code=404, detail=f"Model directory not found: {rel}")
 
-    if not member_dirs:
-        raise HTTPException(status_code=400, detail="EKS model has no members.")
 
-    # Resolve video paths
-    data_base = Path(project.paths.data_dir)
-    resolved_videos: List[Path] = []
-    for rel in videoRelativePaths:
-        p = (data_base / rel).resolve()
-        try:
-            p.relative_to(data_base)
-        except Exception:
-            raise HTTPException(status_code=400, detail=f"Invalid video path: {rel}")
-        resolved_videos.append(p)
+# -----------------------------
+# Routes
+# -----------------------------
 
-    if not resolved_videos:
-        logger.info("InferEksModel called with empty video list for %s", eks_model_dir)
+@router.post("/app/v0/inference/task")
+def start_inference_task(
+    req: InferTaskRequest,
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+):
+    """Start a background inference task and return its task ID."""
+    project: Project = project_info_getter(req.projectKey)
+    _validate_model_paths(project, req.models)
 
-    task_id = _task_id_for(eks_model_dir, resolved_videos)
-
-    _start_eks_inference_background(task_id, eks_model_dir, member_dirs, resolved_videos, ensemble_config)
-
-    def poller_sync() -> Iterator[dict]:
-        while True:
-            payload = _status_snapshot_dict(task_id)
-            yield payload
-            if payload["status"] in (InferenceStatus.DONE, InferenceStatus.ERROR):
-                break
-            time.sleep(0.1)
-
-    return StreamingResponse(
-        _stream_sse_sync(poller_sync()), media_type="text/event-stream"
+    plan = _build_infer_plan(
+        project,
+        req.models,
+        req.sessions,
+        video_relative_paths=req.videoRelativePaths or None,
+        force=req.force,
     )
+    task_id = str(uuid.uuid4())
+    _start_batch_inference_background(task_id, plan, req.projectKey)
+    return {"taskId": task_id, "status": "ACCEPTED"}
+
+
+@router.post("/app/v0/inference/task/{taskId}/cancel")
+def cancel_inference_task(taskId: str):
+    """Cancel a running or waiting inference task."""
+    with _status_lock:
+        st = _status_by_task.get(taskId)
+        terminal = {InferenceStatus.COMPLETED, InferenceStatus.FAILED, InferenceStatus.CANCELLED}
+        if st is None or st.status in terminal:
+            return {"ok": True}
+        _cancel_requests.add(taskId)
+        st.status = InferenceStatus.CANCELLED
+        proc = _active_procs_by_task.get(taskId)
+    if proc is not None:
+        try:
+            proc.kill()
+        except Exception:
+            pass
+    return {"ok": True}
+
+
+@router.get("/app/v0/inference/task/active")
+def get_active_inference_task():
+    """Return the taskId of the most recent non-terminal task, or null."""
+    terminal = {InferenceStatus.COMPLETED, InferenceStatus.FAILED, InferenceStatus.CANCELLED}
+    with _status_lock:
+        for task_id in reversed(_task_id_order):
+            st = _status_by_task.get(task_id)
+            if st is not None and st.status not in terminal:
+                return {"taskId": task_id}
+    return {"taskId": None}
+
+
+@router.get("/app/v0/task/active")
+def get_active_task():
+    """Return the task currently holding the GPU lock, or null."""
+    task = read_gpu_task()
+    if task:
+        return task
+    return {"taskId": None}
+
+
+@router.get("/app/v0/inference/task/{taskId}")
+def get_inference_task_status(taskId: str):
+    """Get the current status of an inference task, including all log lines so far."""
+    return _status_snapshot_dict(taskId)
+
+
+@router.get("/app/v0/inference/task/{taskId}/stream")
+def stream_inference_task(taskId: str):
+    """Stream real-time status updates and log lines for an inference task via SSE."""
+    terminal = {InferenceStatus.COMPLETED, InferenceStatus.FAILED, InferenceStatus.CANCELLED}
+
+    def poller() -> Iterator[dict]:
+        log_offset = 0
+        last_snapshot = None
+
+        # Replay all logs accumulated before the subscriber connected
+        initial_logs = _get_logs(taskId, 0)
+        if initial_logs:
+            yield {"type": "log", "lines": initial_logs}
+            log_offset = len(initial_logs)
+
+        while True:
+            snapshot = _status_snapshot_dict(taskId)
+            # Don't include the full logs list in SSE status events — too large
+            snapshot.pop("logs", None)
+            snapshot["type"] = "status"
+
+            # Only yield if status-related fields have changed
+            if snapshot != last_snapshot:
+                yield snapshot
+                last_snapshot = snapshot
+
+            new_lines = _get_logs(taskId, log_offset)
+            if new_lines:
+                yield {"type": "log", "lines": new_lines}
+                log_offset += len(new_lines)
+
+            if snapshot["status"] in terminal:
+                # Final flush in case lines arrived after the last poll
+                final_lines = _get_logs(taskId, log_offset)
+                if final_lines:
+                    yield {"type": "log", "lines": final_lines}
+                break
+
+            time.sleep(0.5)
+
+    return StreamingResponse(_stream_sse_sync(poller()), media_type="text/event-stream")
+
+
+@router.post("/app/v0/inference/resolve")
+def resolve_inference(
+    req: ResolveRequest,
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+):
+    """Preview which inference steps would execute for a given request."""
+    project: Project = project_info_getter(req.projectKey)
+    _validate_model_paths(project, req.models)
+
+    plan = _build_infer_plan(
+        project,
+        req.models,
+        req.sessions,
+        video_relative_paths=req.videoRelativePaths or None,
+        force=False,
+    )
+    model_base = Path(project.paths.model_dir)
+    runs = []
+    for step in plan.steps:
+        try:
+            model_rel = str(step.model_dir.relative_to(model_base))
+        except ValueError:
+            model_rel = str(step.model_dir)
+        run: dict = {"model": model_rel, "session": step.session, "kind": step.kind}
+        if step.member_of is not None:
+            try:
+                run["member_of"] = str(step.member_of.relative_to(model_base))
+            except ValueError:
+                run["member_of"] = str(step.member_of)
+        runs.append(run)
+    return {"runs": runs, "skipped_count": plan.skipped_count}

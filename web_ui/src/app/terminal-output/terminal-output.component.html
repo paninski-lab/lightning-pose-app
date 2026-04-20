@@ -1,0 +1,10 @@
+<div
+  #scroll
+  class="terminal-scroll"
+  [class.static-height]="staticHeight()"
+  (scroll)="onScroll($event)"
+>
+  <pre class="terminal-pre">@for (line of lines(); track $index) {
+<span [class.stderr]="line.startsWith('[stderr] ')">{{ line }}</span>
+}</pre>
+</div>

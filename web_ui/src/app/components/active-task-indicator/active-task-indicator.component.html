@@ -1,0 +1,5 @@
+@if (taskService.activeTask()) {
+  <div class="tooltip tooltip-bottom" [attr.data-tip]="tooltipText">
+    <span class="loading loading-bars loading-md"></span>
+  </div>
+}
