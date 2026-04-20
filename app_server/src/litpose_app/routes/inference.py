@@ -232,6 +232,21 @@ def _all_view_preds_exist(model_dir: Path, session: str, view_names: List[str]) 
     return (preds_dir / f"{session}.csv").exists()
 
 
+def _is_model_completed(model_dir: Path) -> bool:
+    """Return True if the model is marked as COMPLETED in its train_status.json."""
+    status_path = model_dir / "train_status.json"
+    if status_path.is_file():
+        try:
+            status = json.loads(status_path.read_text())
+            return status.get("status") == "COMPLETED"
+        except Exception:
+            return False
+    # EKS models don't have train_status.json, but they are considered "completed" if ensemble.yaml exists
+    if (model_dir / "ensemble.yaml").is_file():
+        return True
+    return False
+
+
 # -----------------------------
 # Plan builder
 # -----------------------------
@@ -293,8 +308,13 @@ def _build_infer_plan(
 
     # Pass 1: normal models
     for model_dir in normal_model_dirs:
+        if not _is_model_completed(model_dir):
+            continue
         for session in target_sessions:
-            if not force and _all_view_preds_exist(model_dir, session, view_names):
+            if (
+                not force
+                and _all_view_preds_exist(model_dir, session, view_names)
+            ):
                 skipped_count += 1
             else:
                 steps.append(InferStep(
@@ -312,11 +332,16 @@ def _build_infer_plan(
 
         for session in target_sessions:
             for member_dir in member_dirs:
+                if not _is_model_completed(member_dir):
+                    continue
                 key = (member_dir, session)
                 if key in seen_member_keys:
                     continue
                 seen_member_keys.add(key)
-                if not force and _all_view_preds_exist(member_dir, session, ens_views):
+                if (
+                    not force
+                    and _all_view_preds_exist(member_dir, session, ens_views)
+                ):
                     skipped_count += 1
                 else:
                     steps.append(InferStep(
@@ -330,12 +355,17 @@ def _build_infer_plan(
 
     # Pass 2: EKS smoother steps
     for eks_model_dir, ensemble_config in eks_models:
+        if not _is_model_completed(eks_model_dir):
+            continue
         ens_views = ensemble_config.get("view_names", view_names)
         members = ensemble_config.get("members", [])
         member_dirs = [(model_base / m["id"]).resolve() for m in members]
 
         for session in target_sessions:
-            if not force and _all_view_preds_exist(eks_model_dir, session, ens_views):
+            if (
+                not force
+                and _all_view_preds_exist(eks_model_dir, session, ens_views)
+            ):
                 skipped_count += 1
             else:
                 steps.append(InferStep(
