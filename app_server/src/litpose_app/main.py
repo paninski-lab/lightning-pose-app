@@ -41,11 +41,11 @@ class NoisyEndpointFilter(logging.Filter):
         if record.args and len(record.args) >= 5:
             path = record.args[2]
             status_code = record.args[4]
-            if status_code in (200,206):
+            if status_code == 200:
                 if path in ["/app/v0/rpc/listModels", "/app/v0/task/active"]:
                     return False
-                if str(path).startswith("/app/v0/files/"):
-                    return False
+            if str(path).startswith("/app/v0/files/"):
+                return False
         return True
 
 

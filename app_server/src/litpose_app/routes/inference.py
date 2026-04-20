@@ -400,11 +400,7 @@ def _run_eks_step(task_id: str, step: InferStep) -> bool:
         for cam in view_names:
             pred_file = member_dir / "video_preds" / f"{step.session}_{cam}.csv"
             if not pred_file.exists():
-                set_status(
-                    task_id,
-                    status=InferenceStatus.FAILED,
-                    error=f"Missing prediction file: {pred_file}",
-                )
+                _append_log(task_id, f"[error] Missing prediction file: {pred_file}")
                 return False
             input_files.append(str(pred_file))
 
@@ -418,11 +414,7 @@ def _run_eks_step(task_id: str, step: InferStep) -> bool:
     ]
     ret = _run_subprocess_with_logging(task_id, cmd)
     if ret != 0:
-        set_status(
-            task_id,
-            status=InferenceStatus.FAILED,
-            error=f"EKS smoother failed for {step.model_dir.name} on {step.session}",
-        )
+        _append_log(task_id, f"[error] EKS smoother failed for {step.model_dir.name} on {step.session}")
         return False
     return True
 
@@ -464,6 +456,7 @@ def _is_cancelled(task_id: str) -> bool:
 
 
 def _run_steps(task_id: str, steps: List[InferStep], total: int) -> None:
+    errors: List[str] = []
     for i, step in enumerate(steps):
         if _is_cancelled(task_id):
             return
@@ -490,24 +483,38 @@ def _run_steps(task_id: str, steps: List[InferStep], total: int) -> None:
             if ret != 0:
                 if _is_cancelled(task_id):
                     return
-                set_status(
-                    task_id,
-                    status=InferenceStatus.FAILED,
-                    error=(
-                        f"litpose predict failed for {step.model_dir.name} "
-                        f"on {step.session}"
-                    ),
+                err_msg = (
+                    f"litpose predict failed for {step.model_dir.name} "
+                    f"on {step.session}"
                 )
-                return
+                _append_log(task_id, f"[error] {err_msg}")
+                errors.append(err_msg)
         else:
             if not _run_eks_step(task_id, step):
-                return
+                if _is_cancelled(task_id):
+                    return
+                err_msg = f"EKS smoother failed for {step.model_dir.name} on {step.session}"
+                errors.append(err_msg)
+
         set_status(task_id, completed=i + 1)
 
     if _is_cancelled(task_id):
         return
-    set_status(task_id, status=InferenceStatus.COMPLETED, completed=total)
-    _append_log(task_id, "=== Inference completed ===")
+
+    if errors:
+        summary = f"{len(errors)} steps failed: " + "; ".join(errors[:3])
+        if len(errors) > 3:
+            summary += " ..."
+        set_status(
+            task_id,
+            status=InferenceStatus.COMPLETED,
+            completed=total,
+            error=summary
+        )
+        _append_log(task_id, f"=== Inference completed with {len(errors)} errors ===")
+    else:
+        set_status(task_id, status=InferenceStatus.COMPLETED, completed=total)
+        _append_log(task_id, "=== Inference completed ===")
 
 
 # -----------------------------
