@@ -42,7 +42,37 @@ export class VideoImportStore implements OnDestroy {
     const _u = this.uploadStates();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _t = this.transcodeStates();
-    return this.selectedFiles().map((f) => this.toItem(f));
+    const items = this.selectedFiles().map((f) => this.toItem(f));
+
+    if (this.isMultiview()) {
+      const views =
+        this.projectInfoService.projectContext()?.projectInfo?.views ?? [];
+      const sessionMap = new Map<string, Set<string>>();
+
+      // Group views by session
+      items.forEach((item) => {
+        if (item.valid && item.sessionKey && item.view) {
+          if (!sessionMap.has(item.sessionKey)) {
+            sessionMap.set(item.sessionKey, new Set());
+          }
+          sessionMap.get(item.sessionKey)!.add(item.view);
+        }
+      });
+
+      // Check completeness for each session
+      items.forEach((item) => {
+        if (item.valid && item.sessionKey) {
+          const sessionViews = sessionMap.get(item.sessionKey);
+          const missing = views.filter((v) => !sessionViews?.has(v));
+          if (missing.length > 0) {
+            item.valid = false;
+            item.error = `Missing views: ${missing.join(', ')}`;
+          }
+        }
+      });
+    }
+
+    return items;
   });
 
   readonly allValid = computed(
