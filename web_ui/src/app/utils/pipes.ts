@@ -24,7 +24,7 @@ export class ModelTypeLabelPipe implements PipeTransform {
     if (modelType === null || modelType === undefined) {
       return '';
     }
-    if (modelType === 'EKS') return 'EKS Ensemble';
+    if (modelType === 'EKS') return 'ensemble';
     return modelTypeLabels[modelType] || modelType.toString();
   }
 }

@@ -46,6 +46,11 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
   protected models = signal<ModelListResponseEntry[]>([]);
   protected sessionImportOpen = signal(false);
 
+  protected modelKindLabels: Record<string, string> = {
+    normal: 'single model',
+    eks: 'ensemble',
+  };
+
   protected eksValidationError = computed(() => {
     const ctx = this.projectInfoService.globalContext();
     const eksInstalled = ctx?.versions['ensemble-kalman-smoother'] != null;
@@ -69,7 +74,9 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
   protected logLines = signal<string[]>([]);
   protected currentTaskId = signal<string | null>(null);
 
-  protected inferenceRunning = computed(() => this.inferState().status === 'running');
+  protected inferenceRunning = computed(
+    () => this.inferState().status === 'running',
+  );
 
   protected inferenceActive = computed(() => {
     const s = this.inferState().status;
@@ -141,9 +148,13 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
     this.modelsLoading.set(true);
     try {
       const resp = await this.sessionService.listModels();
-      const completed = resp.models.filter((m) => new mc_util(m).status === 'COMPLETED');
+      const completed = resp.models.filter(
+        (m) => new mc_util(m).status === 'COMPLETED',
+      );
       this.models.set(completed);
-      this.selectedPaths.set(new Set(completed.map((m) => m.model_relative_path)));
+      this.selectedPaths.set(
+        new Set(completed.map((m) => m.model_relative_path)),
+      );
       await this.loadResolvePreview();
     } finally {
       this.modelsLoading.set(false);
@@ -175,7 +186,9 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
     this.resolveLoading.set(true);
     this.resolveError.set(null);
     try {
-      const result = await this.sessionService.resolveInference(selected, ['all']);
+      const result = await this.sessionService.resolveInference(selected, [
+        'all',
+      ]);
       this.resolveResult.set(result);
     } catch {
       this.resolveResult.set(null);
@@ -221,7 +234,8 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
           } else {
             const total = event.total ?? 0;
             const completed = event.completed ?? 0;
-            const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+            const progress =
+              total > 0 ? Math.round((completed / total) * 100) : 0;
             this.inferState.set({
               status: this.toUiStatus(event.status),
               progress,
