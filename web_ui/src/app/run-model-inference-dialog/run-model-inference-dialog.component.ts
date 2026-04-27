@@ -47,8 +47,8 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
   protected sessionImportOpen = signal(false);
 
   protected modelKindLabels: Record<string, string> = {
-    normal: 'single model',
-    eks: 'ensemble',
+    normal: 'Regular model',
+    eks: 'EKS Ensemble',
   };
 
   protected eksValidationError = computed(() => {
