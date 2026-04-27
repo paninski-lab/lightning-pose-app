@@ -252,9 +252,9 @@
             }
           </div>
         </app-dropdown-trigger>
-        @if (keypoint.hoverText) {
+        @if (keypoint.hoverText()) {
           <app-dropdown-content class="z-50">
-            <div class="p-2 text-sm">{{ keypoint.hoverText }}</div>
+            <div class="p-2 text-sm">{{ keypoint.hoverText() }}</div>
           </app-dropdown-content>
         }
       </app-dropdown>

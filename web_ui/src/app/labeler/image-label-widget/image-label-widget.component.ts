@@ -75,7 +75,7 @@ export class ImageLabelWidgetComponent {
   private buildViewModel(lkeypoint: LKeypoint): Keypoint {
     const val = {
       id: lkeypoint.keypointName,
-      hoverText: lkeypoint.keypointName,
+      hoverText: signal(lkeypoint.keypointName),
       position: signal({ x: lkeypoint.x, y: lkeypoint.y }),
       color: computed(() => this.colorService.defaultColor),
     };
