@@ -27,7 +27,8 @@
       </div>
 
       <p class="text-sm opacity-70 mb-4">
-        Select models to run, then preview which steps will execute before starting.
+        Select models to run, then preview which steps will execute before
+        starting.
       </p>
 
       @if (modelsLoading()) {
@@ -36,7 +37,9 @@
           <span class="text-sm">Loading models…</span>
         </div>
       } @else if (models().length === 0) {
-        <p class="text-sm opacity-60 py-4">No completed models found in this project.</p>
+        <p class="text-sm opacity-60 py-4">
+          No completed models found in this project.
+        </p>
       } @else {
         <div class="overflow-y-auto grow min-h-0 border rounded-box mb-4">
           @for (model of models(); track model.model_relative_path) {
@@ -51,7 +54,9 @@
                 [disabled]="inferenceActive()"
               />
               <span class="text-sm font-medium">{{ model.model_name }}</span>
-              <span class="badge badge-sm badge-ghost">{{ model.model_kind }}</span>
+              <span class="badge badge-sm badge-ghost">{{
+                modelKindLabels[model.model_kind]
+              }}</span>
             </label>
           }
         </div>
@@ -65,12 +70,17 @@
         </div>
       } @else if (resolveResult(); as r) {
         <div class="text-sm mb-4">
-          <span class="font-semibold">{{ r.runs.length }}</span> step(s) will run
+          <span class="font-semibold">{{ r.runs.length }}</span> step(s) will
+          run
           @if (r.skipped_count > 0) {
-            <span class="opacity-60"> · {{ r.skipped_count }} already done (skipped)</span>
+            <span class="opacity-60">
+              · {{ r.skipped_count }} already done (skipped)</span
+            >
           }
           @if (r.runs.length === 0) {
-            <span class="badge badge-success badge-sm ml-2">All up to date</span>
+            <span class="badge badge-success badge-sm ml-2"
+              >All up to date</span
+            >
           }
         </div>
       } @else if (resolveError()) {
@@ -83,12 +93,14 @@
     }
 
     <!-- Inference progress -->
-    @if (inferState().status === 'waiting') {
+    @if (inferState().status === "waiting") {
       <div class="mb-2 flex items-center gap-2">
         <span class="loading loading-spinner loading-sm"></span>
-        <span class="text-sm">Waiting for GPU — a training job is currently running.</span>
+        <span class="text-sm"
+          >Waiting for GPU — a training job is currently running.</span
+        >
       </div>
-    } @else if (inferState().status === 'running') {
+    } @else if (inferState().status === "running") {
       <div class="mb-2">
         <div class="flex items-center gap-3">
           <span class="font-semibold text-sm">Running inference…</span>
@@ -103,16 +115,18 @@
           <div class="text-xs opacity-70 mt-1">{{ inferState().message }}</div>
         }
       </div>
-    } @else if (inferState().status === 'done') {
+    } @else if (inferState().status === "done") {
       <div class="mb-2 flex items-center gap-2">
         <span class="badge badge-success">Inference completed</span>
       </div>
-    } @else if (inferState().status === 'cancelled') {
+    } @else if (inferState().status === "cancelled") {
       <div class="mb-2 flex items-center gap-2">
         <span class="badge badge-warning">Inference cancelled</span>
       </div>
-    } @else if (inferState().status === 'error') {
-      <div class="text-error text-sm mb-2">{{ inferState().error ?? 'Inference failed' }}</div>
+    } @else if (inferState().status === "error") {
+      <div class="text-error text-sm mb-2">
+        {{ inferState().error ?? "Inference failed" }}
+      </div>
     }
 
     <!-- Terminal output -->
@@ -122,7 +136,8 @@
         <p class="text-sm opacity-70 mt-2">
           Streaming output of inference.
           @if (inferenceRunning()) {
-            The task will continue to run in the background if this dialog is closed.
+            The task will continue to run in the background if this dialog is
+            closed.
           }
         </p>
       </div>
@@ -138,7 +153,7 @@
       </div>
       <div class="flex gap-2">
         <button class="btn btn-soft" (click)="handleCloseClick()">
-          {{ inferenceActive() ? 'Close' : 'Cancel' }}
+          {{ inferenceActive() ? "Close" : "Cancel" }}
         </button>
         @if (!inferenceActive()) {
           <button

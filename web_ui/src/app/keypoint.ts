@@ -6,7 +6,7 @@ import { Signal } from '@angular/core';
  */
 export interface Keypoint {
   id: string; // must be unique per widget
-  hoverText: string;
+  hoverText: Signal<string>;
   position: Signal<Point>;
   color: Signal<number[]>;
   isVisible?: Signal<boolean>;

@@ -92,7 +92,18 @@ export class ViewerCenterPanelComponent implements OnChanges {
     return {
       id: `${keypointName}-${modelKey}`,
       name: keypointName,
-      hoverText: keypointName,
+      hoverText: computed(() => {
+        const i = Math.min(
+          Math.max(this.currentFrame(), 0),
+          predictions.index.length - 1,
+        );
+        const likelihoodKey = new Pair(keypointName, 'likelihood').toMapKey();
+        if (predictions.columns.includes(likelihoodKey)) {
+          const likelihood = predictions.at(i.toString(), likelihoodKey) as number;
+          return `${keypointName}: ${parseFloat(likelihood.toFixed(3))}`;
+        }
+        return keypointName;
+      }),
       color: computed((): [number, number, number] => {
         const mi = this.enabledViewsKeypoints.modelsShown().indexOf(modelKey);
         if (mi == 0) return [248, 113, 113]; //bg-red-400;

@@ -40,6 +40,9 @@ export class VideoPlayerControlsComponent {
   get currentTime() {
     return this.videoPlayerState.currentTimeSignal;
   }
+  protected currentTimeFormatted = computed(() =>
+    this.videoPlayerState.currentTimeSignal().toFixed(5),
+  );
   get currentFrame() {
     return this.videoPlayerState.currentFrameSignal;
   }
