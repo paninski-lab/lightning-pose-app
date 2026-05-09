@@ -1,7 +1,8 @@
+import asyncio
 import logging
 
 import pandas as pd
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
@@ -20,6 +21,7 @@ from ..tasks.extract_frames import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+_lock = asyncio.Lock()
 
 
 class LabelFileCreationRequest(BaseModel):
@@ -59,44 +61,60 @@ async def extract_frames(
     config: Config = Depends(deps.config),
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ):
-    project: Project = project_info_getter(request.projectKey)
+    async with _lock:
+        project: Project = project_info_getter(request.projectKey)
 
-    def on_progress(x):
-        logger.info(f"extractFrames progress: {x}")
+        request_view_names = {sv.viewName for sv in request.session.views}
+        project_view_names = set(project.config.view_names)
+        if project_view_names:
+            if request_view_names != project_view_names:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Session views {sorted(request_view_names)} do not match project views {sorted(project_view_names)}",
+                )
+        else:
+            if len(request.session.views) != 1:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Single-view project requires exactly one session view, got {len(request.session.views)}",
+                )
 
-    if request.labelFileCreationRequest is not None:
-        assert request.labelFile is None
-        mvlabelfile = await run_in_threadpool(
-            init_label_file,
-            request.labelFileCreationRequest,
-            project,
-        )
-        request.labelFile = mvlabelfile
+        def on_progress(x):
+            logger.info(f"extractFrames progress: {x}")
 
-    if request.method == "manual":
-        assert request.manualFrameOptions is not None
-        # Ensure non-negative, unique, frame indices sorted ascending
-        request.manualFrameOptions.frame_index_list = list(
-            sorted(
-                set(
-                    idx
-                    for idx in request.manualFrameOptions.frame_index_list
-                    if idx >= 0
+        if request.labelFileCreationRequest is not None:
+            assert request.labelFile is None
+            mvlabelfile = await run_in_threadpool(
+                init_label_file,
+                request.labelFileCreationRequest,
+                project,
+            )
+            request.labelFile = mvlabelfile
+
+        if request.method == "manual":
+            assert request.manualFrameOptions is not None
+            # Ensure non-negative, unique, frame indices sorted ascending
+            request.manualFrameOptions.frame_index_list = list(
+                sorted(
+                    set(
+                        idx
+                        for idx in request.manualFrameOptions.frame_index_list
+                        if idx >= 0
+                    )
                 )
             )
-        )
 
-    await run_in_threadpool(
-        extract_frames_task,
-        config,
-        request.session,
-        project,
-        request.labelFile,
-        on_progress,
-        request.method,
-        request.options,
-        request.manualFrameOptions,
-    )
+        await run_in_threadpool(
+            extract_frames_task,
+            config,
+            request.session,
+            project,
+            request.labelFile,
+            on_progress,
+            request.method,
+            request.options,
+            request.manualFrameOptions,
+        )
 
     return "ok"
 
