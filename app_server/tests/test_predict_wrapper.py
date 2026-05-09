@@ -7,8 +7,8 @@ import json
 @pytest.fixture
 def wrapper_paths():
     return {
-        "wrapper": os.path.abspath("app_server/src/litpose_app/utils/inference/predict_wrapper.py"),
-        "fake": os.path.abspath("app_server/src/litpose_app/utils/inference/fake_predict.py")
+        "wrapper": os.path.abspath("src/litpose_app/utils/inference/predict_wrapper.py"),
+        "fake": os.path.abspath("src/litpose_app/utils/inference/fake_predict.py")
     }
 
 def create_model_dir(tmp_path, name, model_type, backbone="resnet50"):
@@ -37,14 +37,14 @@ def test_normal_model_flag(tmp_path, wrapper_paths):
     model_dir = create_model_dir(tmp_path, "normal_model", "heatmap")
     result = run_wrapper(wrapper_paths["wrapper"], model_dir)
     assert "Using standard flag dali.base.predict.sequence_length" in result.stdout
-    assert "dali.base.predict.sequence_length=64" in result.stdout
+    assert "dali.base.predict.sequence_length=96" in result.stdout
     assert result.returncode == 0
 
 def test_context_model_flag(tmp_path, wrapper_paths):
     model_dir = create_model_dir(tmp_path, "context_model", "heatmap_mhcrnn")
     result = run_wrapper(wrapper_paths["wrapper"], model_dir)
     assert "Detected context model, using dali.context.predict.sequence_length" in result.stdout
-    assert "dali.context.predict.sequence_length=64" in result.stdout
+    assert "dali.context.predict.sequence_length=96" in result.stdout
     assert result.returncode == 0
 
 def test_oom_retry_logic_with_context(tmp_path, wrapper_paths):
