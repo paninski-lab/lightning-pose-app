@@ -126,25 +126,6 @@
                 </p>
               </fieldset>
 
-              @if (isUnsupervised(generalForm.controls["modelType"].value)) {
-                <fieldset class="fieldset my-2" formArrayName="losses">
-                  <h3 class="text-md mt-0!">Semi-supervised losses</h3>
-                  @for (
-                    option of checkboxOptions;
-                    track option;
-                    let i = $index
-                  ) {
-                    <label class="flex gap-2 cursor-pointer mb-2">
-                      <input
-                        type="checkbox"
-                        class="checkbox"
-                        [formControlName]="i"
-                      />
-                      {{ checkboxOptionLabels[i] }}</label
-                    >
-                  }
-                </fieldset>
-              }
             </form>
           }
           @if (selectedTab() === "data") {
@@ -250,51 +231,38 @@
                   }
                 </div>
               </fieldset>
-              <fieldset class="fieldset my-2">
-                <h3 class="text-md mt-0!">Camera calibrations</h3>
-                <span
-                  class="tooltip tooltip-bottom"
-                  [attr.data-tip]="
-                    !projectHasCalibrations()
-                      ? 'Calibration files not detected'
-                      : null
-                  "
-                >
-                  <label class="flex gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      class="toggle toggle-primary"
-                      [checked]="useCameraCalibrations()"
-                      [disabled]="!projectHasCalibrations()"
-                      (change)="
-                        useCameraCalibrations.set($any($event.target).checked)
-                      "
-                    />
-                    Use camera calibrations for losses and augmentations?
-                  </label>
-                </span>
-              </fieldset>
-              <fieldset class="fieldset my-2">
-                <h3 class="text-md mt-0!">Augmentation</h3>
-                <app-select
-                  formControlName="augmentation"
-                  [options]="augmentationOptions"
-                ></app-select>
-              </fieldset>
-              @if (useCameraCalibrations()) {
+              @if (!isMultiviewProject() && isUnsupervised(generalForm.controls["modelType"].value)) {
                 <fieldset
                   class="fieldset my-2"
-                  formGroupName="multiviewLosses"
+                  formGroupName="unsupervisedLosses"
                 >
-                  <h3 class="text-md mt-0!">Multiview losses</h3>
-                  <div class="flex gap-4 items-center" formGroupName="supervised_reprojection_heatmap_mse">
+                  <h3 class="text-md mt-0!">Unsupervised losses</h3>
+                  <div class="flex gap-4 items-center mb-2" formGroupName="temporal">
                     <label class="flex gap-2 cursor-pointer shrink-0">
                       <input
                         type="checkbox"
                         class="checkbox"
                         formControlName="enabled"
                       />
-                      3D Reprojection Loss
+                      Temporal
+                    </label>
+                    <div class="grow">
+                      <p class="m-0!">Log weight</p>
+                      <input
+                        type="number"
+                        class="input w-full"
+                        formControlName="logWeight"
+                      />
+                    </div>
+                  </div>
+                  <div class="flex gap-4 items-center" formGroupName="pca_singleview">
+                    <label class="flex gap-2 cursor-pointer shrink-0">
+                      <input
+                        type="checkbox"
+                        class="checkbox"
+                        formControlName="enabled"
+                      />
+                      Pose PCA
                     </label>
                     <div class="grow">
                       <p class="m-0!">Log weight</p>
@@ -306,6 +274,67 @@
                     </div>
                   </div>
                 </fieldset>
+              }
+              @if (isMultiviewProject()) {
+                <fieldset class="fieldset my-2">
+                  <h3 class="text-md mt-0!">Camera calibrations</h3>
+                  <span
+                    class="tooltip tooltip-bottom"
+                    [attr.data-tip]="
+                      !projectHasCalibrations()
+                        ? 'Calibration files not detected'
+                        : null
+                    "
+                  >
+                    <label class="flex gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        class="toggle toggle-primary"
+                        [checked]="useCameraCalibrations()"
+                        [disabled]="!projectHasCalibrations()"
+                        (change)="
+                          useCameraCalibrations.set($any($event.target).checked)
+                        "
+                      />
+                      Use camera calibrations for losses and augmentations?
+                    </label>
+                  </span>
+                </fieldset>
+              }
+              <fieldset class="fieldset my-2">
+                <h3 class="text-md mt-0!">Augmentation</h3>
+                <app-select
+                  formControlName="augmentation"
+                  [options]="augmentationOptions()"
+                ></app-select>
+              </fieldset>
+              @if (isMultiviewProject()) {
+                @if (useCameraCalibrations()) {
+                  <fieldset
+                    class="fieldset my-2"
+                    formGroupName="multiviewLosses"
+                  >
+                    <h3 class="text-md mt-0!">Multiview losses</h3>
+                    <div class="flex gap-4 items-center" formGroupName="supervised_reprojection_heatmap_mse">
+                      <label class="flex gap-2 cursor-pointer shrink-0">
+                        <input
+                          type="checkbox"
+                          class="checkbox"
+                          formControlName="enabled"
+                        />
+                        3D Reprojection Loss
+                      </label>
+                      <div class="grow">
+                        <p class="m-0!">Log weight</p>
+                        <input
+                          type="number"
+                          class="input w-full"
+                          formControlName="logWeight"
+                        />
+                      </div>
+                    </div>
+                  </fieldset>
+                }
               }
             </form>
           }

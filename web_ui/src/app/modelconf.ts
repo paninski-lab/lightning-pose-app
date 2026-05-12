@@ -19,6 +19,7 @@ export interface DataConfig {
   keypoint_names: string[];
   mirrored_column_matches: number[][];
   columns_for_singleview_pca: number[];
+  camera_params_file?: string;
 }
 
 /**
