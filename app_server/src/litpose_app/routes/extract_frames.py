@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from litpose_app.config import Config
+from ..utils.calibrations import update_calibrations_csv
 from .. import deps
 from ..datatypes import Project
 from ..deps import ProjectInfoGetter
@@ -115,6 +116,8 @@ async def extract_frames(
             request.options,
             request.manualFrameOptions,
         )
+
+    update_calibrations_csv(project.paths.data_dir, project.config.view_names)
 
     return "ok"
 

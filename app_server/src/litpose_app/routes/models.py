@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from litpose_app import deps
 from litpose_app.deps import ProjectInfoGetter
 from litpose_app.datatypes import Project
+from litpose_app.utils.calibrations import update_calibrations_csv
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +125,8 @@ def create_train_task(
     # Prepare stdout/stderr files for future training
     (model_dir / "train_stdout.log").touch(exist_ok=True)
     (model_dir / "train_stderr.log").touch(exist_ok=True)
+
+    update_calibrations_csv(project.paths.data_dir, project.config.view_names)
 
     return CreateTrainTaskResponse(ok=True)
 
@@ -277,6 +280,8 @@ def create_eks_model(
         "creation_datetime": datetime.now().isoformat(),
     }
     (model_dir / "ensemble.yaml").write_text(yaml.dump(ensemble_data, default_flow_style=False))
+
+    update_calibrations_csv(project.paths.data_dir, project.config.view_names)
 
     return CreateEksModelResponse(ok=True)
 
