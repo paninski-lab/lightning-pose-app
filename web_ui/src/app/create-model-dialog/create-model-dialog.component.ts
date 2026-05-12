@@ -175,7 +175,7 @@ class CreateModelDialogComponent {
       ],
       augmentation: ['dlc', Validators.required],
       multiviewLosses: this.fb.group({
-        temporal: this.fb.group({
+        supervised_reprojection_heatmap_mse: this.fb.group({
           enabled: [true],
           logWeight: [3.0, Validators.required],
         }),
@@ -410,6 +410,9 @@ class CreateModelDialogComponent {
       labeledBatchSize: number;
       unlabeledBatchSize: number;
       augmentation: string;
+      multiviewLosses: Partial<{
+        supervised_reprojection_heatmap_mse: Partial<{ enabled: boolean; logWeight: number }>;
+      }>;
     }>,
   ): DeepPartial<ModelConfig> {
     const configPatchObject = {} as DeepPartial<ModelConfig>;
@@ -558,6 +561,14 @@ class CreateModelDialogComponent {
         imgaug_3d: this.useCameraCalibrations(),
       },
     });
+    const srphmse = formObject.multiviewLosses?.supervised_reprojection_heatmap_mse;
+    if (srphmse?.enabled && srphmse.logWeight != null) {
+      patches.push({
+        losses: {
+          supervised_reprojection_heatmap_mse: { log_weight: srphmse.logWeight },
+        },
+      });
+    }
 
     _.merge(configPatchObject, ...patches);
     return configPatchObject;

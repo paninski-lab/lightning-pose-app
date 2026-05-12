@@ -281,6 +281,32 @@
                   [options]="augmentationOptions"
                 ></app-select>
               </fieldset>
+              @if (useCameraCalibrations()) {
+                <fieldset
+                  class="fieldset my-2"
+                  formGroupName="multiviewLosses"
+                >
+                  <h3 class="text-md mt-0!">Multiview losses</h3>
+                  <div class="flex gap-4 items-center" formGroupName="supervised_reprojection_heatmap_mse">
+                    <label class="flex gap-2 cursor-pointer shrink-0">
+                      <input
+                        type="checkbox"
+                        class="checkbox"
+                        formControlName="enabled"
+                      />
+                      3D Reprojection Loss
+                    </label>
+                    <div class="grow">
+                      <p class="m-0!">Log weight</p>
+                      <input
+                        type="number"
+                        class="input w-full"
+                        formControlName="logWeight"
+                      />
+                    </div>
+                  </div>
+                </fieldset>
+              }
             </form>
           }
         </div>

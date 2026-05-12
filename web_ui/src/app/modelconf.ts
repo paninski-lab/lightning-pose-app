@@ -146,6 +146,10 @@ export interface TemporalLossConfig {
   prob_threshold: number;
 }
 
+export interface SupervisedReprojectionHeatmapMseLossConfig {
+  log_weight: number;
+}
+
 /**
  * Container for all loss function configurations.
  */
@@ -153,6 +157,7 @@ export interface LossesConfig {
   pca_multiview: PcaLossConfig;
   pca_singleview: PcaLossConfig;
   temporal: TemporalLossConfig;
+  supervised_reprojection_heatmap_mse: SupervisedReprojectionHeatmapMseLossConfig;
 }
 
 /**
