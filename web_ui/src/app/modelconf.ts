@@ -48,6 +48,7 @@ export interface LRSchedulerParams {
  */
 export interface TrainingConfig {
   imgaug: 'default' | 'dlc' | 'dlc-top-down';
+  imgaug_3d: boolean;
   train_batch_size: number;
   val_batch_size: number;
   test_batch_size: number;

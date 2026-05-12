@@ -591,39 +591,6 @@ export class SessionService {
     }) as Promise<GetMVAutoLabelsResponse>;
   }
 
-  async getCalibrationStatus(
-    sessionKey: string,
-  ): Promise<'session' | 'project' | 'none'> {
-    const projectInfo = this.projectInfoService.projectInfo;
-
-    // Search for session-level calibration file.
-    let response = (await this.rpc.call('rglob', {
-      baseDir: projectInfo.data_dir,
-      pattern: `calibrations/${sessionKey}.toml`,
-      noDirs: true,
-    })) as RGlobResponse;
-    if (response.entries.length > 0) {
-      return 'session';
-    }
-
-    // Search for project-level calibration file.
-    response = (await this.rpc.call('rglob', {
-      baseDir: projectInfo.data_dir,
-      pattern: `calibration.toml`,
-      noDirs: true,
-    })) as RGlobResponse;
-    if (response.entries.length > 0) {
-      return 'project';
-    }
-
-    return 'none';
-  }
-
-  async hasCameraCalibrationFiles(sessionKey: string): Promise<boolean> {
-    const status = await this.getCalibrationStatus(sessionKey);
-    return status !== 'none';
-  }
-
   async createTrainingTask(
     modelName: string,
     configYaml: string,

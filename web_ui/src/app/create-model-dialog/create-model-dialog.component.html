@@ -250,6 +250,37 @@
                   }
                 </div>
               </fieldset>
+              <fieldset class="fieldset my-2">
+                <h3 class="text-md mt-0!">Camera calibrations</h3>
+                <span
+                  class="tooltip tooltip-bottom"
+                  [attr.data-tip]="
+                    !projectHasCalibrations()
+                      ? 'Calibration files not detected'
+                      : null
+                  "
+                >
+                  <label class="flex gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      class="toggle toggle-primary"
+                      [checked]="useCameraCalibrations()"
+                      [disabled]="!projectHasCalibrations()"
+                      (change)="
+                        useCameraCalibrations.set($any($event.target).checked)
+                      "
+                    />
+                    Use camera calibrations for losses and augmentations?
+                  </label>
+                </span>
+              </fieldset>
+              <fieldset class="fieldset my-2">
+                <h3 class="text-md mt-0!">Augmentation</h3>
+                <app-select
+                  formControlName="augmentation"
+                  [options]="augmentationOptions"
+                ></app-select>
+              </fieldset>
             </form>
           }
         </div>

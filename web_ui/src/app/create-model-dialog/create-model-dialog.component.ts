@@ -22,6 +22,7 @@ import {
   isUnsupervised,
   ModelConfig,
   ModelType,
+  TrainingConfig,
   validMvBackbones,
   validMvModelTypes,
 } from '../modelconf';
@@ -44,6 +45,7 @@ import { LabelFilePickerComponent } from '../label-file-picker/label-file-picker
 import { SelectComponent } from '../components/dropdown/select.component';
 import { ToastService } from '../toast.service';
 import { PathDisplayComponent } from '../components/path-display/path-display.component';
+import { CameraCalibrationService } from '../camera-calibration.service';
 
 @Component({
   selector: 'app-create-model-dialog',
@@ -72,6 +74,7 @@ class CreateModelDialogComponent {
   private projectInfoService = inject(ProjectInfoService);
   private sessionService = inject(SessionService);
   private toastService = inject(ToastService);
+  private cameraCalibrationService = inject(CameraCalibrationService);
   private fb = inject(NonNullableFormBuilder);
   private cdr = inject(ChangeDetectorRef);
   private modelTypeLabelPipe = new ModelTypeLabelPipe();
@@ -170,6 +173,13 @@ class CreateModelDialogComponent {
           Validators.pattern('^[0-9]+$'),
         ],
       ],
+      augmentation: ['dlc', Validators.required],
+      multiviewLosses: this.fb.group({
+        temporal: this.fb.group({
+          enabled: [true],
+          logWeight: [3.0, Validators.required],
+        }),
+      }),
     }),
   });
 
@@ -178,6 +188,8 @@ class CreateModelDialogComponent {
   protected dataForm: FormGroup = this.form.get('data') as FormGroup;
   protected trainingForm: FormGroup = this.form.get('training') as FormGroup;
   protected baseConfigPath = signal<string | null>(null);
+  protected projectHasCalibrations = signal(false);
+  protected useCameraCalibrations = signal(false);
 
   private useTrueMultiviewModelAsSignal = toSignal(
     this.generalForm.controls['useTrueMultiviewModel'].valueChanges.pipe(
@@ -219,6 +231,11 @@ class CreateModelDialogComponent {
     { label: 'videos_labeled', value: 'videos_labeled' },
   ];
 
+  protected augmentationOptions = [
+    { label: 'DLC', value: 'dlc' },
+    { label: 'DLC-TopDown', value: 'dlc-top-down' },
+  ];
+
   constructor() {
     const setBaseConfigToDefault = () => {
       if (this.isMultiviewProject()) {
@@ -246,6 +263,11 @@ class CreateModelDialogComponent {
       .catch(() => {
         setBaseConfigToDefault();
       });
+
+    this.cameraCalibrationService.projectHasCalibrations().then((has) => {
+      this.projectHasCalibrations.set(has);
+      this.useCameraCalibrations.set(has);
+    });
 
     effect(() => {
       // Read the signal to track the dependency.
@@ -387,6 +409,7 @@ class CreateModelDialogComponent {
       epochs: number;
       labeledBatchSize: number;
       unlabeledBatchSize: number;
+      augmentation: string;
     }>,
   ): DeepPartial<ModelConfig> {
     const configPatchObject = {} as DeepPartial<ModelConfig>;
@@ -522,6 +545,19 @@ class CreateModelDialogComponent {
         },
       });
     }
+
+    if (formObject.augmentation) {
+      patches.push({
+        training: {
+          imgaug: formObject.augmentation as TrainingConfig['imgaug'],
+        },
+      });
+    }
+    patches.push({
+      training: {
+        imgaug_3d: this.useCameraCalibrations(),
+      },
+    });
 
     _.merge(configPatchObject, ...patches);
     return configPatchObject;

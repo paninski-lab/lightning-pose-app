@@ -21,6 +21,7 @@ import { ProjectInfoService } from '../../project-info.service';
 import { HorizontalScrollDirective } from '../../infra/horizontal-scroll.directive';
 import { Point } from '@angular/cdk/drag-drop';
 import { SessionService } from '../../session.service';
+import { CameraCalibrationService } from '../../camera-calibration.service';
 import { MVLabelFile } from '../../label-file.model';
 import { GetMVAutoLabelsResponse } from '../mv-autolabel';
 import { BundleAdjustDialogComponent } from '../../bundle-adjust-dialog/bundle-adjust-dialog.component';
@@ -129,7 +130,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
     const abortSignal = this.abortController.signal;
     const sessionKey = this.sessionKey();
     if (!sessionKey) return;
-    this.sessionService.getCalibrationStatus(sessionKey).then((status) => {
+    this.cameraCalibrationService.getCalibrationStatus(sessionKey).then((status) => {
       if (abortSignal.aborted) return;
       this.calibrationStatus.set(status);
     });
@@ -245,6 +246,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
   protected readonly mvf = mvf;
 
   private sessionService = inject(SessionService);
+  private cameraCalibrationService = inject(CameraCalibrationService);
   private abortController = new AbortController();
   protected isSaving = signal(false);
   private isMVAutoLabeling = signal(false);
