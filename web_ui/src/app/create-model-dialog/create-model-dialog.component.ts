@@ -224,7 +224,7 @@ class CreateModelDialogComponent {
 
   protected augmentationOptions = computed(() =>
     this.useCameraCalibrations()
-      ? [{ label: 'DLC Multiview', value: 'dlc-mv' }]
+      ? [{ label: 'DLC', value: 'dlc' }]
       : [
           { label: 'DLC', value: 'dlc' },
           { label: 'DLC-TopDown', value: 'dlc-top-down' },
@@ -272,13 +272,8 @@ class CreateModelDialogComponent {
       this.generalForm.controls['modelType'].updateValueAndValidity();
     });
     effect(() => {
-      const augCtrl = this.trainingForm.controls['augmentation'];
       if (this.useCameraCalibrations()) {
-        augCtrl.setValue('dlc-mv');
-      } else {
-        if (augCtrl.value === 'dlc-mv') {
-          augCtrl.setValue('dlc');
-        }
+        this.trainingForm.controls['augmentation'].setValue('dlc');
       }
     });
   }
@@ -567,9 +562,6 @@ class CreateModelDialogComponent {
       if (this.isMultiviewProject()) {
         const useCalib = this.useCameraCalibrations();
         patches.push({ training: { imgaug_3d: useCalib } });
-        if (useCalib) {
-          patches.push({ data: { camera_params_file: 'calibrations_appautogen.csv' } });
-        }
       }
     }
 
