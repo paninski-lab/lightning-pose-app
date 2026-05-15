@@ -261,7 +261,7 @@ class CreateModelDialogComponent {
 
     this.cameraCalibrationService.projectHasCalibrations().then((has) => {
       this.projectHasCalibrations.set(has);
-      this.useCameraCalibrations.set(has);
+      this.useCameraCalibrations.set(has && this.supports3dFeatures());
     });
 
     effect(() => {
@@ -636,6 +636,19 @@ class CreateModelDialogComponent {
   protected isMultiviewProject(): boolean {
     return this.projectInfoService.projectInfo.views.length > 1;
   }
+
+  protected supports3dFeatures = computed(() => {
+    const version =
+      this.projectInfoService.globalContext()?.versions['lightning-pose'];
+    if (!version) return false;
+    const parts = version.split('.').map(Number);
+    const [major = 0, minor = 0, patch = 0] = parts;
+    return (
+      major > 2 ||
+      (major === 2 && minor > 1) ||
+      (major === 2 && minor === 1 && patch >= 1)
+    );
+  });
 
   protected isUnsupervised = isUnsupervised;
 }

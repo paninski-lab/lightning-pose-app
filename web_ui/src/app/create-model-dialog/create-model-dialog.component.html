@@ -270,9 +270,11 @@
                   <span
                     class="tooltip tooltip-bottom"
                     [attr.data-tip]="
-                      !projectHasCalibrations()
-                        ? 'Calibration files not detected'
-                        : null
+                      !supports3dFeatures()
+                        ? 'Requires Lightning Pose >= 2.1.1'
+                        : !projectHasCalibrations()
+                          ? 'Calibration files not detected'
+                          : null
                     "
                   >
                     <label class="flex gap-2 cursor-pointer">
@@ -280,7 +282,7 @@
                         type="checkbox"
                         class="toggle toggle-primary"
                         [checked]="useCameraCalibrations()"
-                        [disabled]="!projectHasCalibrations()"
+                        [disabled]="!projectHasCalibrations() || !supports3dFeatures()"
                         (change)="
                           useCameraCalibrations.set($any($event.target).checked)
                         "
