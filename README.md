@@ -17,6 +17,22 @@ Our full documentation, including installation guides, API references, and advan
 
 ## 📝 Release Notes
 
+### [2.2.0.0] — 2026-05-20
+
+**Extract Frames Robustness**
+
+* Fixed a bug by adding data integrity checks to the extract frames process.
+
+**Camera Calibration Support in Models**
+
+* Models can now use camera calibration files to enable new 3D capabilities. Requires calibration files to be present.
+  * **3D image augmentation:** Apply augmentations in 3D space across calibrated camera views.
+  * **Multiview loss:** Add multiview geometric loss terms during training.
+
+**Tunable Loss Log-Weights**
+
+* Users can now tune the log weight of individual losses, including multiview loss and unsupervised losses.
+
 ### [2.0.8.4] — 2026-04-20
 
 **Multiview EKS Model Support**
