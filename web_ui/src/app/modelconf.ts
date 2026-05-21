@@ -19,6 +19,7 @@ export interface DataConfig {
   keypoint_names: string[];
   mirrored_column_matches: number[][];
   columns_for_singleview_pca: number[];
+  camera_params_file?: string;
 }
 
 /**
@@ -48,6 +49,7 @@ export interface LRSchedulerParams {
  */
 export interface TrainingConfig {
   imgaug: 'default' | 'dlc' | 'dlc-top-down';
+  imgaug_3d: boolean;
   train_batch_size: number;
   val_batch_size: number;
   test_batch_size: number;
@@ -145,6 +147,10 @@ export interface TemporalLossConfig {
   prob_threshold: number;
 }
 
+export interface SupervisedReprojectionHeatmapMseLossConfig {
+  log_weight: number;
+}
+
 /**
  * Container for all loss function configurations.
  */
@@ -152,6 +158,7 @@ export interface LossesConfig {
   pca_multiview: PcaLossConfig;
   pca_singleview: PcaLossConfig;
   temporal: TemporalLossConfig;
+  supervised_reprojection_heatmap_mse: SupervisedReprojectionHeatmapMseLossConfig;
 }
 
 /**

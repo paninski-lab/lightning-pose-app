@@ -44,9 +44,9 @@
           }
           @if (selectedTab() === "general") {
             <form class="prose px-4" [formGroup]="generalForm">
-              <fieldset class="fieldset my-2">
-                <h3 class="text-md mt-0">Default config file</h3>
-                <p>
+              <fieldset class="fieldset my-4">
+                <h3 class="text-md mt-0!">Default config file</h3>
+                <p class="m-0!">
                   The settings in this form will be applied on top of the LP
                   config file:
                   @if (baseConfigPath(); as configPath) {
@@ -59,7 +59,7 @@
                   }
                 </p>
               </fieldset>
-              <fieldset class="fieldset my-2">
+              <fieldset class="fieldset my-4">
                 <h3 class="text-md mt-0">Model name</h3>
                 <p class="m-0!">
                   The name of the model and the directory that will be created
@@ -74,17 +74,11 @@
                   spellcheck="false"
                   formControlName="modelName"
                 />
-                <p
-                  class="my-0! text-error invisible"
-                  [class.visible!]="
-                    generalForm.controls['modelName'].touched &&
-                    generalForm.controls['modelName'].invalid
-                  "
-                >
-                  Invalid name
-                </p>
+                @if (generalForm.controls['modelName'].touched && generalForm.controls['modelName'].invalid) {
+                  <p class="my-0! text-error">Invalid name</p>
+                }
               </fieldset>
-              <fieldset class="fieldset my-2">
+              <fieldset class="fieldset my-4">
                 <h3 class="text-md mt-0!">Model type</h3>
 
                 @if (isMultiviewProject()) {
@@ -114,7 +108,7 @@
                     ></app-select>
                   </div>
                 </div>
-                <p>
+                <p class="m-0!">
                   <span class="material-icons text-sm! align-middle"
                     >info_outline</span
                   >
@@ -126,31 +120,12 @@
                 </p>
               </fieldset>
 
-              @if (isUnsupervised(generalForm.controls["modelType"].value)) {
-                <fieldset class="fieldset my-2" formArrayName="losses">
-                  <h3 class="text-md mt-0!">Semi-supervised losses</h3>
-                  @for (
-                    option of checkboxOptions;
-                    track option;
-                    let i = $index
-                  ) {
-                    <label class="flex gap-2 cursor-pointer mb-2">
-                      <input
-                        type="checkbox"
-                        class="checkbox"
-                        [formControlName]="i"
-                      />
-                      {{ checkboxOptionLabels[i] }}</label
-                    >
-                  }
-                </fieldset>
-              }
             </form>
           }
           @if (selectedTab() === "data") {
             <form class="prose px-4" [formGroup]="dataForm">
-              <fieldset class="fieldset my-6">
-                <h3 class="text-md mt-0">Labeled frames</h3>
+              <fieldset class="fieldset my-4">
+                <h3 class="text-md mt-0!">Labeled frames</h3>
                 <p class="m-0!">
                   Select the label file for supervised training
                 </p>
@@ -159,7 +134,7 @@
                   formControlName="labelFile"
                 ></app-label-file-picker>
               </fieldset>
-              <fieldset class="fieldset my-2" formGroupName="trainValSplit">
+              <fieldset class="fieldset my-4" formGroupName="trainValSplit">
                 <h3 class="text-md mt-0!">Train / val split</h3>
                 <p class="m-0!">
                   Data is split accordingly. The values below must sum to 1.
@@ -182,10 +157,9 @@
                     />
                   </div>
                 </div>
-                <p class="m-0!">Random seed</p>
               </fieldset>
-              <!-- Random seed outside trainValSplit group -->
-              <fieldset class="fieldset my-2">
+              <fieldset class="fieldset my-4">
+                <h3 class="text-md mt-0!">Random seed</h3>
                 <input
                   type="number"
                   step="1"
@@ -196,7 +170,7 @@
               </fieldset>
 
               @if (isUnsupervised(generalForm.controls["modelType"].value)) {
-                <fieldset class="fieldset my-2">
+                <fieldset class="fieldset my-4">
                   <h3 class="text-md mt-0!">Semisupervised training</h3>
                   <p class="m-0!">
                     Select the directory containing videos to train on.
@@ -211,21 +185,17 @@
           }
           @if (selectedTab() === "training") {
             <form class="prose px-4" [formGroup]="trainingForm">
-              <fieldset class="fieldset my-6">
-                <h3 class="text-md mt-0">Duration</h3>
+              <fieldset class="fieldset my-4">
+                <h3 class="text-md mt-0!">Duration</h3>
                 <p class="m-0!">How many epochs to train for.</p>
                 <input type="number" class="input" formControlName="epochs" />
-                <p
-                  class="my-0! text-error invisible"
-                  [class.visible!]="
-                    trainingForm.controls['epochs'].touched &&
-                    trainingForm.controls['epochs'].invalid
-                  "
-                >
-                  {{ trainingForm.controls["epochs"].errors | json }}
-                </p>
+                @if (trainingForm.controls['epochs'].touched && trainingForm.controls['epochs'].invalid) {
+                  <p class="my-0! text-error">
+                    {{ trainingForm.controls["epochs"].errors | json }}
+                  </p>
+                }
               </fieldset>
-              <fieldset class="fieldset my-2">
+              <fieldset class="fieldset my-4">
                 <h3 class="text-md mt-0!">Batch size</h3>
                 <div class="flex gap-4 items-start">
                   <div class="grow">
@@ -250,6 +220,113 @@
                   }
                 </div>
               </fieldset>
+              @if (!isMultiviewProject() && isUnsupervised(generalForm.controls["modelType"].value)) {
+                <fieldset
+                  class="fieldset my-4"
+                  formGroupName="unsupervisedLosses"
+                >
+                  <h3 class="text-md mt-0!">Unsupervised losses</h3>
+                  <div class="flex gap-4 items-center mb-2" formGroupName="temporal">
+                    <label class="flex gap-2 cursor-pointer shrink-0">
+                      <input
+                        type="checkbox"
+                        class="checkbox"
+                        formControlName="enabled"
+                      />
+                      Temporal
+                    </label>
+                    <div class="grow">
+                      <p class="m-0!">Log weight</p>
+                      <input
+                        type="number"
+                        class="input w-full"
+                        formControlName="logWeight"
+                      />
+                    </div>
+                  </div>
+                  <div class="flex gap-4 items-center" formGroupName="pca_singleview">
+                    <label class="flex gap-2 cursor-pointer shrink-0">
+                      <input
+                        type="checkbox"
+                        class="checkbox"
+                        formControlName="enabled"
+                      />
+                      Pose PCA
+                    </label>
+                    <div class="grow">
+                      <p class="m-0!">Log weight</p>
+                      <input
+                        type="number"
+                        class="input w-full"
+                        formControlName="logWeight"
+                      />
+                    </div>
+                  </div>
+                </fieldset>
+              }
+              @if (isMultiviewProject()) {
+                <fieldset class="fieldset my-4">
+                  <h3 class="text-md mt-0!">Camera calibrations</h3>
+                  <span
+                    class="tooltip tooltip-bottom"
+                    [attr.data-tip]="
+                      !supports3dFeatures()
+                        ? 'Requires Lightning Pose >= 2.1.1'
+                        : !projectHasCalibrations()
+                          ? 'Calibration files not detected'
+                          : null
+                    "
+                  >
+                    <label class="flex gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        class="toggle toggle-primary"
+                        [checked]="useCameraCalibrations()"
+                        [disabled]="!projectHasCalibrations() || !supports3dFeatures()"
+                        (change)="
+                          useCameraCalibrations.set($any($event.target).checked)
+                        "
+                      />
+                      Use camera calibrations for losses and augmentations?
+                    </label>
+                  </span>
+                </fieldset>
+              }
+              <fieldset class="fieldset my-4">
+                <h3 class="text-md mt-0!">Augmentation</h3>
+                <app-select
+                  formControlName="augmentation"
+                  [options]="augmentationOptions()"
+                ></app-select>
+              </fieldset>
+              @if (isMultiviewProject()) {
+                @if (useCameraCalibrations()) {
+                  <fieldset
+                    class="fieldset my-4"
+                    formGroupName="multiviewLosses"
+                  >
+                    <h3 class="text-md mt-0!">Multiview losses</h3>
+                    <div class="flex gap-4 items-center" formGroupName="supervised_reprojection_heatmap_mse">
+                      <label class="flex gap-2 cursor-pointer shrink-0">
+                        <input
+                          type="checkbox"
+                          class="checkbox"
+                          formControlName="enabled"
+                        />
+                        3D Reprojection Loss
+                      </label>
+                      <div class="grow">
+                        <p class="m-0!">Log weight</p>
+                        <input
+                          type="number"
+                          class="input w-full"
+                          formControlName="logWeight"
+                        />
+                      </div>
+                    </div>
+                  </fieldset>
+                }
+              }
             </form>
           }
         </div>

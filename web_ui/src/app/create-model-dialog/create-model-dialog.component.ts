@@ -22,6 +22,7 @@ import {
   isUnsupervised,
   ModelConfig,
   ModelType,
+  TrainingConfig,
   validMvBackbones,
   validMvModelTypes,
 } from '../modelconf';
@@ -33,7 +34,6 @@ import { HighlightDirective } from '../highlight.directive';
 import { ProjectInfoService } from '../project-info.service';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
-  atLeastOneTrueValidator,
   fileNameValidator,
   mustBeInOptionsList,
   sumToOneValidator,
@@ -44,6 +44,7 @@ import { LabelFilePickerComponent } from '../label-file-picker/label-file-picker
 import { SelectComponent } from '../components/dropdown/select.component';
 import { ToastService } from '../toast.service';
 import { PathDisplayComponent } from '../components/path-display/path-display.component';
+import { CameraCalibrationService } from '../camera-calibration.service';
 
 @Component({
   selector: 'app-create-model-dialog',
@@ -72,13 +73,11 @@ class CreateModelDialogComponent {
   private projectInfoService = inject(ProjectInfoService);
   private sessionService = inject(SessionService);
   private toastService = inject(ToastService);
+  private cameraCalibrationService = inject(CameraCalibrationService);
   private fb = inject(NonNullableFormBuilder);
   private cdr = inject(ChangeDetectorRef);
   private modelTypeLabelPipe = new ModelTypeLabelPipe();
   private previewAbortController: AbortController = new AbortController();
-  checkboxOptions = ['temporal', 'pca_singleview'];
-  checkboxOptionLabels = ['Temporal', 'Pose PCA'];
-
   protected readonly tabs = [
     { id: 'general', text: 'General' },
     { id: 'data', text: 'Data' },
@@ -104,14 +103,6 @@ class CreateModelDialogComponent {
           : 'resnet50',
         [Validators.required, mustBeInOptionsList(() => this.backboneOptions)],
       ],
-      losses: this.fb.array(
-        this.checkboxOptions.map(() => true),
-        atLeastOneTrueValidator(() =>
-          isUnsupervised(
-            this.generalForm?.controls['modelType']?.value as ModelType,
-          ),
-        ),
-      ),
     }),
     data: this.fb.group({
       labelFile: [null, Validators.required],
@@ -170,6 +161,23 @@ class CreateModelDialogComponent {
           Validators.pattern('^[0-9]+$'),
         ],
       ],
+      augmentation: ['dlc', Validators.required],
+      unsupervisedLosses: this.fb.group({
+        temporal: this.fb.group({
+          enabled: [true],
+          logWeight: [5.0, Validators.required],
+        }),
+        pca_singleview: this.fb.group({
+          enabled: [true],
+          logWeight: [5.0, Validators.required],
+        }),
+      }),
+      multiviewLosses: this.fb.group({
+        supervised_reprojection_heatmap_mse: this.fb.group({
+          enabled: [true],
+          logWeight: [3.0, Validators.required],
+        }),
+      }),
     }),
   });
 
@@ -178,19 +186,14 @@ class CreateModelDialogComponent {
   protected dataForm: FormGroup = this.form.get('data') as FormGroup;
   protected trainingForm: FormGroup = this.form.get('training') as FormGroup;
   protected baseConfigPath = signal<string | null>(null);
+  protected projectHasCalibrations = signal(false);
+  protected useCameraCalibrations = signal(false);
 
   private useTrueMultiviewModelAsSignal = toSignal(
     this.generalForm.controls['useTrueMultiviewModel'].valueChanges.pipe(
       takeUntilDestroyed(),
     ),
     { initialValue: this.generalForm.controls['useTrueMultiviewModel'].value },
-  );
-
-  private useModelTypeAsSignal = toSignal(
-    this.generalForm.controls['modelType'].valueChanges.pipe(
-      takeUntilDestroyed(),
-    ),
-    { initialValue: this.generalForm.controls['modelType'].value },
   );
 
   // expose to the template
@@ -218,6 +221,15 @@ class CreateModelDialogComponent {
     { label: 'videos', value: 'videos' },
     { label: 'videos_labeled', value: 'videos_labeled' },
   ];
+
+  protected augmentationOptions = computed(() =>
+    this.useCameraCalibrations()
+      ? [{ label: 'DLC', value: 'dlc' }]
+      : [
+          { label: 'DLC', value: 'dlc' },
+          { label: 'DLC-TopDown', value: 'dlc-top-down' },
+        ],
+  );
 
   constructor() {
     const setBaseConfigToDefault = () => {
@@ -247,6 +259,11 @@ class CreateModelDialogComponent {
         setBaseConfigToDefault();
       });
 
+    this.cameraCalibrationService.projectHasCalibrations().then((has) => {
+      this.projectHasCalibrations.set(has);
+      this.useCameraCalibrations.set(has && this.supports3dFeatures());
+    });
+
     effect(() => {
       // Read the signal to track the dependency.
       this.useTrueMultiviewModelAsSignal();
@@ -255,10 +272,9 @@ class CreateModelDialogComponent {
       this.generalForm.controls['modelType'].updateValueAndValidity();
     });
     effect(() => {
-      // Read the signal to track the dependency.
-      this.useModelTypeAsSignal();
-      // On change, update the form controls validity.
-      this.generalForm.controls['losses'].updateValueAndValidity();
+      if (this.useCameraCalibrations()) {
+        this.trainingForm.controls['augmentation'].setValue('dlc');
+      }
     });
   }
 
@@ -379,7 +395,10 @@ class CreateModelDialogComponent {
       useTrueMultiviewModel: boolean;
       modelType: ModelType;
       backbone: string;
-      losses: boolean[];
+      unsupervisedLosses: Partial<{
+        temporal: Partial<{ enabled: boolean; logWeight: number }>;
+        pca_singleview: Partial<{ enabled: boolean; logWeight: number }>;
+      }>;
       labelFile: string;
       trainValSplit: Partial<{ trainProb: number; valProb: number }>;
       randomSeed: number;
@@ -387,6 +406,13 @@ class CreateModelDialogComponent {
       epochs: number;
       labeledBatchSize: number;
       unlabeledBatchSize: number;
+      augmentation: string;
+      multiviewLosses: Partial<{
+        supervised_reprojection_heatmap_mse: Partial<{
+          enabled: boolean;
+          logWeight: number;
+        }>;
+      }>;
     }>,
   ): DeepPartial<ModelConfig> {
     const configPatchObject = {} as DeepPartial<ModelConfig>;
@@ -421,26 +447,30 @@ class CreateModelDialogComponent {
         },
       });
       if (isUnsupervised(formObject.modelType)) {
+        const ul = formObject.unsupervisedLosses;
         patches.push({
           model: {
-            losses_to_use: this.checkboxOptions.filter((x, i) => {
-              return formObject.losses?.[i] ?? false;
-            }),
+            losses_to_use: [
+              ul?.temporal?.enabled ? 'temporal' : null,
+              ul?.pca_singleview?.enabled ? 'pca_singleview' : null,
+            ].filter(Boolean) as string[],
           },
         });
 
-        // TODO allow user to choose which columns to use for Pose PCA
-        patches.push({
-          data: {
-            columns_for_singleview_pca: Array.from(
-              {
-                length:
-                  this.projectInfoService.projectInfo.keypoint_names.length,
-              },
-              (_, i) => i,
-            ),
-          },
-        });
+        if (ul?.pca_singleview?.enabled) {
+          // TODO allow user to choose which columns to use for Pose PCA
+          patches.push({
+            data: {
+              columns_for_singleview_pca: Array.from(
+                {
+                  length:
+                    this.projectInfoService.projectInfo.keypoint_names.length,
+                },
+                (_, i) => i,
+              ),
+            },
+          });
+        }
       } else {
         patches.push({
           model: {
@@ -523,6 +553,46 @@ class CreateModelDialogComponent {
       });
     }
 
+    if (formObject.augmentation) {
+      patches.push({
+        training: {
+          imgaug: formObject.augmentation as TrainingConfig['imgaug'],
+        },
+      });
+      if (this.isMultiviewProject()) {
+        const useCalib = this.useCameraCalibrations();
+        patches.push({ training: { imgaug_3d: useCalib } });
+      }
+    }
+
+    if (!this.isMultiviewProject()) {
+      const temporal = formObject.unsupervisedLosses?.temporal;
+      if (temporal?.enabled && temporal.logWeight != null) {
+        patches.push({
+          losses: { temporal: { log_weight: temporal.logWeight } },
+        });
+      }
+      const pcaSingleview = formObject.unsupervisedLosses?.pca_singleview;
+      if (pcaSingleview?.enabled && pcaSingleview.logWeight != null) {
+        patches.push({
+          losses: { pca_singleview: { log_weight: pcaSingleview.logWeight } },
+        });
+      }
+    }
+    if (this.isMultiviewProject()) {
+      const srphmse =
+        formObject.multiviewLosses?.supervised_reprojection_heatmap_mse;
+      if (srphmse?.enabled && srphmse.logWeight != null) {
+        patches.push({
+          losses: {
+            supervised_reprojection_heatmap_mse: {
+              log_weight: srphmse.logWeight,
+            },
+          },
+        });
+      }
+    }
+
     _.merge(configPatchObject, ...patches);
     return configPatchObject;
   }
@@ -566,6 +636,19 @@ class CreateModelDialogComponent {
   protected isMultiviewProject(): boolean {
     return this.projectInfoService.projectInfo.views.length > 1;
   }
+
+  protected supports3dFeatures = computed(() => {
+    const version =
+      this.projectInfoService.globalContext()?.versions['lightning-pose'];
+    if (!version) return false;
+    const parts = version.split('.').map(Number);
+    const [major = 0, minor = 0, patch = 0] = parts;
+    return (
+      major > 2 ||
+      (major === 2 && minor > 1) ||
+      (major === 2 && minor === 1 && patch >= 1)
+    );
+  });
 
   protected isUnsupervised = isUnsupervised;
 }
