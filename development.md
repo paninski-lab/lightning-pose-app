@@ -53,9 +53,6 @@ use the relevant command inside `Procfile.dev`. If you're only starting the back
 you can directly use the uvicorn command inside Procfile.dev instead of honcho.
 
 ```bash
-# Installs a tool that's useful for running multiple servers at once
-pip install honcho
-
 # Runs services defined in the Procfile.dev 
 honcho -f Procfile.dev start
 ```
@@ -65,6 +62,39 @@ This is a dev-only setup: in production, static assets including the compiled an
 
 The use of angular's dev server is for hot module reloading, meaning when you change an angular source file, the UI automatically updates without even a page reload.
 Uvicorn is also run with reload=True, so when you change a python file, the uvicorn server reloads.
+
+### Linting and code quality
+
+**Python — ruff (via pre-commit)**
+
+Install the pre-commit hooks once after cloning:
+
+```bash
+conda activate poseapp
+pre-commit install
+```
+
+After that, ruff runs automatically on every `git commit`. To run manually:
+
+```bash
+cd app_server
+ruff check src/litpose_app tests/          # check
+ruff check --fix src/litpose_app tests/    # auto-fix
+```
+
+Ruff is configured in `app_server/pyproject.toml` under `[tool.ruff]`.
+
+**Frontend — ESLint**
+
+```bash
+cd web_ui
+npx ng lint          # check
+npx ng lint --fix    # auto-fix
+```
+
+ESLint is configured in `web_ui/eslint.config.js`.
+
+Both linters also run in CI on every pull request (`.github/workflows/lint.yml`).
 
 ### Building and running a production release
 
@@ -77,7 +107,7 @@ This calls `ng build` to compile the app as static files, and puts them inside t
 
 The python server is configured to serve the app out of that directory. You can run the app normally:
 ```bash
-litpose app
+litpose run_app
 ```
 
 And when you build a release of `litpose_app`, the package will include the compiled angular app files,

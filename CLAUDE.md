@@ -119,8 +119,17 @@ Services expose data as both a `BehaviorSubject` (for reactive pipelines) and `t
 ### Service scoping
 `EnabledViewsKeypointsService` is provided at `ViewerPageComponent` level, not root. This creates a fresh instance per viewer page. Watch for this pattern if adding scoped services.
 
+## Known gotchas
+
+### `rglob.py` — intentional `is_dir == False`
+`routes/rglob.py` line 83 uses `is_dir == False` (not `not is_dir`) intentionally. `is_dir` is a three-state value: `True` (directory), `False` (file), `None` (stat not collected). `not None` is `True`, which would mislabel unknown entries as files. The `# noqa: E712` suppresses ruff's E712 on that line — do not remove it or "fix" it.
+
+### Angular template `== null` for optional inputs
+For inputs typed `T | null | undefined`, use `== null` in templates (not `=== null`). Angular router supplies `undefined` (not `null`) when a query param is absent from the URL. The ESLint rule is configured with `{ allowNullOrUndefined: true }` to permit this pattern. Example: `labelFileKey() == null ? 'labelFile' : 'session'` in `labeler-page.component.html`.
+
 ## Testing conventions
 
 - Backend: `app.dependency_overrides[deps.root_config]` redirects `~/.lightning-pose` to `tmp_path` in all tests
 - Frontend: Components that use `ProjectInfoService` must mock it. Use `jasmine.createSpyObj('ProjectInfoService', ['projectContext'], { projectInfo: { views: [], ... } })` with `mockService.projectContext.and.returnValue(null)`
 - Specs that test methods which have moved to child components should be deleted, not fixed
+- For parent components with heavy child dependencies, use `TestBed.overrideComponent` to swap child imports with lightweight stubs. Example: `labeler-page.component.spec.ts`
