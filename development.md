@@ -1,5 +1,29 @@
 ## Development
 
+### Python setup
+
+Create and activate the conda environment (Python 3.10–3.12):
+
+```bash
+conda create -n poseapp python=3.12
+conda activate poseapp
+```
+
+Install lightning-pose in editable mode from its local clone:
+
+```bash
+cd /path/to/lightning-pose
+pip install -e .
+```
+
+Then install this package in editable mode with dev dependencies:
+
+```bash
+conda activate poseapp
+cd app_server
+pip install -e ".[dev]"
+```
+
 ### UI Development required tools 
 
 To compile the app (only necessary for UI development) you will need to install Node.js and angular devtools.
@@ -13,7 +37,8 @@ Reload the shell to initialize `nvm` related environment variables.
 Then:
 
 ```bash
-nvm install node
+nvm install 26
+nvm use 26
 npm install -g @angular/cli
 
 # Install project dependencies from web_ui/package.json.
