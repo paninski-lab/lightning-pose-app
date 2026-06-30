@@ -7,16 +7,17 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from litpose_app.config import Config
+
 from .. import deps
 from ..datatypes import Project
 from ..deps import ProjectInfoGetter
 from ..tasks.extract_frames import (
-    extract_frames_task,
-    Session,
-    MVLabelFile,
-    RandomMethodOptions,
     LabelFileView,
     ManualMethodOptions,
+    MVLabelFile,
+    RandomMethodOptions,
+    Session,
+    extract_frames_task,
 )
 
 logger = logging.getLogger(__name__)

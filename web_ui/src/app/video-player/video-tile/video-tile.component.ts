@@ -15,7 +15,7 @@ import {
 } from '@angular/core';
 import { VideoPlayerState } from '../video-player-state';
 import { VideoMetadata } from '../../video-metadata';
-import { BehaviorSubject, combineLatest } from 'rxjs';
+import { combineLatest } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 const videoErrorMessages: Record<number, string> = {

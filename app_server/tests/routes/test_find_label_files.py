@@ -1,11 +1,10 @@
-import pytest
 from fastapi.testclient import TestClient
-from pathlib import Path
+
 
 def test_find_label_files_logic(client: TestClient, register_project):
     project_key = "test_project"
     data_dir = register_project(project_key)
-    
+
     # 1. Valid label file: 3 levels of headers, has x and y for a bodypart
     # Pandas multi-index CSV format (first 3 rows are headers)
     valid_csv_content = (
@@ -46,10 +45,10 @@ def test_find_label_files_logic(client: TestClient, register_project):
         "/app/v0/rpc/findLabelFiles",
         json={"projectKey": project_key}
     )
-    
+
     assert response.status_code == 200
     label_files = response.json()["labelFiles"]
-    
+
     # Should only contain the valid one. The paths are relative to data_dir.
     assert "valid_labels.csv" in label_files
     assert "invalid_labels_1.csv" not in label_files

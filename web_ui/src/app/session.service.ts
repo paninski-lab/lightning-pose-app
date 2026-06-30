@@ -101,7 +101,7 @@ export class SessionService {
             es.close();
             subscriber.complete();
           }
-        } catch (e) {
+        } catch {
           // Ignore malformed events
         }
       };
@@ -109,7 +109,7 @@ export class SessionService {
         // Network/SSE error – close and error out
         try {
           es.close();
-        } catch {}
+        } catch { /* ignore */ }
         subscriber.error(new Error('Transcode stream error'));
       };
       es.onmessage = onMessage;
@@ -117,7 +117,7 @@ export class SessionService {
       return () => {
         try {
           es.close();
-        } catch {}
+        } catch { /* ignore */ }
       };
     });
   }
@@ -136,7 +136,7 @@ export class SessionService {
         noDirs: true,
       })) as RGlobResponse;
       return response.entries.some((e) => this._basename(e.path) === filename);
-    } catch (e) {
+    } catch {
       // On error, assume it does not exist to allow uploads to proceed
       return false;
     }
@@ -660,7 +660,7 @@ export class SessionService {
       const onError = () => {
         try {
           es.close();
-        } catch {}
+        } catch { /* ignore */ }
         subscriber.error(new Error('Inference stream error'));
       };
       es.onmessage = onMessage;
@@ -668,7 +668,7 @@ export class SessionService {
       return () => {
         try {
           es.close();
-        } catch {}
+        } catch { /* ignore */ }
       };
     });
   }

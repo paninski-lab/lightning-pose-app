@@ -1,8 +1,10 @@
 from pathlib import Path
 
-import tomli, tomli_w
-from litpose_app.rootconfig import RootConfig
+import tomli
+import tomli_w
+
 from litpose_app.datatypes import ProjectPaths
+from litpose_app.rootconfig import RootConfig
 
 
 class ProjectUtil:
@@ -34,7 +36,7 @@ class ProjectUtil:
     def get_project_paths_for_model(self, model_dir: Path) -> ProjectPaths:
         """Finds the project paths for a given model directory by searching through
         all project paths in projects.toml."""
-        for key, project_paths in self.get_all_project_paths().items():
+        for _, project_paths in self.get_all_project_paths().items():
             if model_dir.is_relative_to(project_paths.model_dir):
                 return project_paths
         raise RuntimeError(

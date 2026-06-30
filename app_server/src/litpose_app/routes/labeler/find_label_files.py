@@ -5,8 +5,8 @@ import pandas as pd
 from fastapi import APIRouter, Depends
 
 from litpose_app import deps
-from litpose_app.deps import ProjectInfoGetter
 from litpose_app.datatypes import Project
+from litpose_app.deps import ProjectInfoGetter
 from litpose_app.routes.rglob import RGlobRequest, rglob
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
 

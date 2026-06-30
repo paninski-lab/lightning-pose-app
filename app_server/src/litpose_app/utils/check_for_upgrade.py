@@ -8,13 +8,14 @@ logger = logging.getLogger(__name__)
 
 def check_for_upgrade():
     if os.environ.get("LP_IGNORE_UPGRADE") == "1":
-        logger.info(f"LP_IGNORE_UPGRADE=1 present, Skipping upgrade check ")
+        logger.info("LP_IGNORE_UPGRADE=1 present, Skipping upgrade check ")
         return
 
+    import importlib.metadata
     import json
     import urllib.request
+
     from packaging import version
-    import importlib.metadata
 
     package_name = "lightning-pose-app"
     try:
@@ -32,13 +33,13 @@ def check_for_upgrade():
                     f"""
                 {'-' * 80}
                 🚀 A new version of {package_name} is available: {latest_version} (current: {current_version})
-                
+
                 To upgrade, run:
                     pip install --upgrade {package_name}
 
                 To skip this check in the future, use the LP_IGNORE_UPGRADE env variable:
                     LP_IGNORE_UPGRADE=1 litpose run_app
-                
+
                 📝 For details on what's new, see the release notes:
                     https://github.com/paninski-lab/lightning-pose-app/?tab=readme-ov-file#-release-notes
                 {'-' * 80}

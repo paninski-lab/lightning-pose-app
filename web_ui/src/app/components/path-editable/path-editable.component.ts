@@ -7,8 +7,6 @@ import {
   model,
   signal,
   effect,
-  viewChild,
-  ElementRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PathBarComponent } from '../path-bar/path-bar.component';

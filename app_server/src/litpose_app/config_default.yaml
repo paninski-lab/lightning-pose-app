@@ -130,7 +130,7 @@ losses:
   # loss = projection onto the discarded eigenvectors
   pca_multiview:
     # weight in front of PCA loss
-    log_weight: 5.0
+    log_weight: 10.7
     # predictions should lie within the low-d subspace spanned by these components
     components_to_keep: 3
     # absolute error (in pixels) below which pca loss is zeroed out; if null, an empirical
@@ -139,7 +139,7 @@ losses:
   # loss = projection onto the discarded eigenvectors
   pca_singleview:
     # weight in front of PCA loss
-    log_weight: 5.0
+    log_weight: 10.7
     # predictions should lie within the low-d subspace spanned by components that describe this fraction of variance
     components_to_keep: 0.99
     # absolute error (in pixels) below which pca loss is zeroed out; if null, an empirical
@@ -148,7 +148,7 @@ losses:
   # loss = norm of distance between successive timepoints
   temporal:
     # weight in front of temporal loss
-    log_weight: 5.0
+    log_weight: 10.7
     # for epsilon insensitive rectification
     # (in pixels; diffs below this are not penalized)
     epsilon: 20.0
@@ -169,9 +169,6 @@ eval:
   colormap: "cool"
   # confidence threshold for plotting a vid
   confidence_thresh_for_vid: 0.90
-  # paths to the hydra config files in the output folder, OR absolute paths to such folders.
-  # used in scripts/predict_new_vids.py
-  hydra_paths: [" "]
 
 callbacks:
   anneal_weight:
@@ -179,4 +176,4 @@ callbacks:
     init_val: 0.0
     increase_factor: 0.01
     final_val: 1.0
-    freeze_until_epoch: 0
+    freeze_until_epoch: 60

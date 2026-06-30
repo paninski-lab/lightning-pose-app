@@ -55,8 +55,8 @@
   #containerDiv
   class="w-full h-full relative overflow-hidden"
   [class.cursor-none]="showCrosshair()"
-  (mouseover)="handleMouseOver($event)"
-  (mouseout)="handleMouseOut($event)"
+  (mouseover)="handleMouseOver()"
+  (mouseout)="handleMouseOut()"
   (pointermove)="handlePointerMove($event)"
   (pointerup)="handlePointerUp($event)"
   (pointerdown)="handleKeypointPointerDown($event, null)"

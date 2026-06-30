@@ -1,8 +1,7 @@
-from pathlib import Path
 import logging
 import shutil
 import subprocess
-
+from pathlib import Path
 
 logger = logging.getLogger("apscheduler")
 

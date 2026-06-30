@@ -137,11 +137,11 @@ export class KeypointContainerComponent {
 
   // --- Mouse event handlers for the entire container ---
 
-  handleMouseOver(event: MouseEvent) {
+  handleMouseOver() {
     this.mouseIsOverContainer.set(true);
   }
 
-  handleMouseOut(event: MouseEvent) {
+  handleMouseOut() {
     this.mouseIsOverContainer.set(false);
   }
 

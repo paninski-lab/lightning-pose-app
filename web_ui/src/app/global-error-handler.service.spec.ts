@@ -6,8 +6,6 @@ import { ErrorDialogService } from './error-dialog.service';
 
 describe('GlobalErrorHandler', () => {
   let service: GlobalErrorHandler;
-  let loadingService: LoadingService;
-  let errorDialogService: ErrorDialogService;
 
   beforeEach(() => {
     const loadingServiceSpy = {
@@ -27,8 +25,6 @@ describe('GlobalErrorHandler', () => {
       ],
     });
     service = TestBed.inject(GlobalErrorHandler);
-    loadingService = TestBed.inject(LoadingService);
-    errorDialogService = TestBed.inject(ErrorDialogService);
   });
 
   it('should be created', () => {
@@ -42,7 +38,7 @@ describe('GlobalErrorHandler', () => {
       identify: jasmine.createSpy('identify'),
     };
 
-    const consoleSpy = spyOn(console, 'error');
+    spyOn(console, 'error');
     service.handleError(error);
 
     expect(window.umami.track).toHaveBeenCalledWith('error', {
@@ -55,7 +51,7 @@ describe('GlobalErrorHandler', () => {
     const error = new Error('Test error');
     delete window.umami;
 
-    const consoleSpy = spyOn(console, 'error');
+    spyOn(console, 'error');
     expect(() => service.handleError(error)).not.toThrow();
   });
 });

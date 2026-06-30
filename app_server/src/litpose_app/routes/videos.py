@@ -1,24 +1,24 @@
+import copy
 import json
 import logging
-import re
-import threading
 import math
 import os
-from concurrent.futures import ThreadPoolExecutor, Future
-from dataclasses import dataclass, asdict
+import re
+import threading
+from collections.abc import Iterator
+from concurrent.futures import Future, ThreadPoolExecutor
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Optional, Iterator
-import copy
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from ..datatypes import Project
 from litpose_app.rootconfig import RootConfig
 
 from .. import deps
+from ..datatypes import Project
 from ..deps import ProjectInfoGetter
 from ..tasks import transcode_fine
 
@@ -34,7 +34,7 @@ ALLOWED_FILENAME_RE = re.compile(r"^[A-Za-z0-9_.\-]+$")
 
 def parse_session_view(
     filename: str, is_multiview: bool = True
-) -> tuple[str, Optional[str], str]:
+) -> tuple[str, str | None, str]:
     """Parse filename and validate rules.
 
     Returns (session, view, ext)
@@ -83,9 +83,9 @@ def videos_dir_for_project(project: Project) -> Path:
     return d
 
 
-_executor: Optional[ThreadPoolExecutor] = None
+_executor: ThreadPoolExecutor | None = None
 _status_lock = threading.RLock()
-_futures_by_file: Dict[str, Future] = {}
+_futures_by_file: dict[str, Future] = {}
 
 
 def get_executor() -> ThreadPoolExecutor:
@@ -121,7 +121,7 @@ class VideoTaskStatus:
     error: str | None = None
 
 
-_status_by_file: Dict[str, VideoTaskStatus] = {}
+_status_by_file: dict[str, VideoTaskStatus] = {}
 
 
 def _get_or_create_status_nolock(filename: str) -> VideoTaskStatus:
@@ -193,7 +193,7 @@ def _atomic_save(dst: Path, src_file: UploadFile):
     tmp.replace(dst)
 
 
-def _ffprobe_total_frames(path: Path) -> Optional[int]:
+def _ffprobe_total_frames(path: Path) -> int | None:
     try:
         import subprocess
 
@@ -211,7 +211,7 @@ def _ffprobe_total_frames(path: Path) -> Optional[int]:
             str(path),
         ]
         res = subprocess.run(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            cmd, capture_output=True, text=True
         )
         if res.returncode != 0:
             return None

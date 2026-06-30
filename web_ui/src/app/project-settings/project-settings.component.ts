@@ -266,7 +266,7 @@ export class ProjectSettingsComponent implements OnInit {
 
   protected parseTextAsList(text: string): string[] {
     return text
-      .replace(/[^\w\-]/g, ' ')
+      .replace(/[^\w-]/g, ' ')
       .split(/\s+/)
       .filter(Boolean);
   }

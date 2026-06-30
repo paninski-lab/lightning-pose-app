@@ -31,6 +31,8 @@ export default tseslint.config(
           style: "kebab-case",
         },
       ],
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-empty-function": "off",
     },
   },
   {
@@ -39,6 +41,11 @@ export default tseslint.config(
       ...angular.configs.templateRecommended,
       ...angular.configs.templateAccessibility,
     ],
-    rules: {},
+    rules: {
+      "@angular-eslint/template/click-events-have-key-events": "off",
+      "@angular-eslint/template/interactive-supports-focus": "off",
+      "@angular-eslint/template/mouse-events-have-key-events": "off",
+      "@angular-eslint/template/eqeqeq": ["error", { "allowNullOrUndefined": true }],
+    },
   },
 );

@@ -1,26 +1,26 @@
 import logging
 import os
 import shutil
-from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
-import yaml
 import pandas as pd
+import yaml
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ValidationError
 
-from litpose_app.datatypes import ProjectPaths
-from litpose_app.project import ProjectUtil
 from litpose_app import deps
+from litpose_app.datatypes import ProjectPaths
 from litpose_app.deps import (
-    ProjectInfoGetter,
     ApplicationError,
+    ProjectInfoGetter,
 )
-from litpose_app.routes.rglob import _rglob
+from litpose_app.migrations import run_migrations_for_project
+from litpose_app.project import ProjectUtil
 from litpose_app.routes.labeler.find_label_files import _check_label_file_headers
 from litpose_app.routes.models import read_models_l1_from_base
+from litpose_app.routes.rglob import _rglob
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
-from litpose_app.migrations import run_migrations_for_project
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +116,7 @@ def _get_label_file_stats(csv_path: Path) -> LabelFileStats | None:
         unlabeled_frames = 0
         if unlabeled_sidecar.exists():
             try:
-                with open(unlabeled_sidecar, "r") as f:
+                with open(unlabeled_sidecar) as f:
                     # Count non-empty lines
                     unlabeled_frames = sum(1 for line in f if line.strip())
             except Exception as e:
@@ -447,7 +447,7 @@ def update_project_config(
     existing_yaml_dict: dict | None = None
     try:
         if project_yaml_path.exists():
-            with open(project_yaml_path, "r") as f:
+            with open(project_yaml_path) as f:
                 existing_yaml_dict = yaml.safe_load(f) or {}
     except Exception as e:
         # If we cannot read/parse, force a rewrite to ensure correctness

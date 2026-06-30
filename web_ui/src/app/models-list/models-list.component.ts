@@ -121,7 +121,7 @@ export class ModelsListComponent implements OnInit, OnDestroy {
         ) ?? null;
       this.models.set(resp);
       this.selectedModel.set(newSelectedModelReference);
-    } catch (e) {
+    } catch {
       this.toast.showToast({
         content: 'Failed to refresh models list',
         variant: 'error',

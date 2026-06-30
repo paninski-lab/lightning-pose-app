@@ -31,17 +31,17 @@ export class AlertFooterComponent {}
         <ng-content select="app-alert-footer" />
       </div>
       <form method="dialog" class="modal-backdrop">
-        <button (click)="close.emit()">close</button>
+        <button (click)="dismiss.emit()">close</button>
       </form>
     </dialog>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AlertDialogComponent {
-  close = output<void>();
+  dismiss = output<void>();
 
   @HostListener('window:keydown.escape')
   onEscape() {
-    this.close.emit();
+    this.dismiss.emit();
   }
 }

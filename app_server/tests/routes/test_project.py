@@ -55,7 +55,7 @@ def test_update_project_paths_adds_to_projects_toml(
     assert resp.json() is None
 
     # Verify the TOML file contents updated
-    with open(override_config.PROJECTS_TOML_PATH, "r") as f:
+    with open(override_config.PROJECTS_TOML_PATH) as f:
         data = toml.load(f)
         assert data == {"demo-project": {"data_dir": str(data_dir)}}
 
@@ -80,7 +80,7 @@ def test_register_existing_project_adds_to_projects_toml(
     assert resp.json() is None
 
     # Verify the TOML file contents updated
-    with open(override_config.PROJECTS_TOML_PATH, "r") as f:
+    with open(override_config.PROJECTS_TOML_PATH) as f:
         data = toml.load(f)
         assert data == {"demo-project": {"data_dir": str(data_dir)}}
 
@@ -108,7 +108,7 @@ def test_register_existing_project_with_model_dir_adds_to_projects_toml(
     assert resp.json() is None
 
     # Verify the TOML file contents updated
-    with open(override_config.PROJECTS_TOML_PATH, "r") as f:
+    with open(override_config.PROJECTS_TOML_PATH) as f:
         data = toml.load(f)
         assert data == {
             "demo-project-with-model": {
@@ -137,7 +137,7 @@ def test_update_project_config_patches_yaml(
 
     # Verify the YAML file contents
     project_info_yaml = data_dir / "project.yaml"
-    with open(project_info_yaml, "r") as f:
+    with open(project_info_yaml) as f:
         data = yaml.safe_load(f)
 
     assert data == {
@@ -180,7 +180,7 @@ def test_create_new_project_requires_info_and_writes_yaml(
     assert (data_dir / "configs" / "config_default_multiview.yaml").exists()
 
     # Verify project.yaml created with merged info and schema_version 1
-    with open(data_dir / "project.yaml", "r") as f:
+    with open(data_dir / "project.yaml") as f:
         y = yaml.safe_load(f)
     assert y == {
         "schema_version": 1,
@@ -191,7 +191,7 @@ def test_create_new_project_requires_info_and_writes_yaml(
     # Verify projects.toml updated
     import toml
 
-    with open(override_config.LP_SYSTEM_DIR / "projects.toml", "r") as f:
+    with open(override_config.LP_SYSTEM_DIR / "projects.toml") as f:
         data = toml.load(f)
     assert data == {"new-project": {"data_dir": str(data_dir)}}
 
@@ -222,7 +222,7 @@ def test_update_project_config_errors_if_missing_yaml_on_path_change(
     assert "Project configuration file not found" in resp.json()["detail"]
 
     # Verify projects.toml NOT updated to new path due to early error
-    with open(override_config.PROJECTS_TOML_PATH, "r") as f:
+    with open(override_config.PROJECTS_TOML_PATH) as f:
         data = toml.load(f)
     assert data == {project_key: {"data_dir": str(old_data_dir)}}
 
@@ -232,7 +232,7 @@ def test_update_project_config_updates_paths_and_metadata_when_yaml_exists(
 ):
     # setup the projects TOML file contents with initial path
     project_key = "demo-project"
-    old_data_dir = register_project(project_key, views=["camA"], keypoints=["paw"])
+    _ = register_project(project_key, views=["camA"], keypoints=["paw"])
 
     # choose a new data dir and ensure it exists for writing
     new_data_dir = tmp_path / "moved_project"
@@ -258,11 +258,11 @@ def test_update_project_config_updates_paths_and_metadata_when_yaml_exists(
     assert resp.json() is None
 
     # Verify projects.toml updated to new path
-    with open(override_config.PROJECTS_TOML_PATH, "r") as f:
+    with open(override_config.PROJECTS_TOML_PATH) as f:
         data = toml.load(f)
     assert data == {project_key: {"data_dir": str(new_data_dir)}}
 
     # Verify new project.yaml updated
-    with open(new_project_yaml, "r") as f:
+    with open(new_project_yaml) as f:
         updated_data = yaml.safe_load(f)
     assert updated_data["keypoint_names"] == ["nose"]

@@ -5,7 +5,6 @@ from litpose_app.rootconfig import RootConfig
 
 from .. import deps
 
-
 router = APIRouter()
 
 

@@ -13,7 +13,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import {
-  InferenceTaskStatus,
   ResolveInferenceResponse,
   SessionService,
   TaskStreamEvent,
@@ -34,7 +33,7 @@ import { SessionImportComponent } from '../session-import/session-import.compone
   },
 })
 export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
-  close = output<void>();
+  dismiss = output<void>();
 
   private sessionService = inject(SessionService);
   private projectInfoService = inject(ProjectInfoService);
@@ -280,12 +279,12 @@ export class RunModelInferenceDialogComponent implements OnInit, OnDestroy {
 
   onEscape() {
     if (!this.inferenceActive()) {
-      this.close.emit();
+      this.dismiss.emit();
     }
   }
 
   protected handleCloseClick() {
-    this.close.emit();
+    this.dismiss.emit();
   }
 
   protected async cancelTask() {

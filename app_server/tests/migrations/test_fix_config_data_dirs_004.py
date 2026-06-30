@@ -1,8 +1,9 @@
-import yaml
-import pytest
 from pathlib import Path
+
+import yaml
+
 from litpose_app.datatypes import ProjectPaths
-from litpose_app.migrations.fix_config_data_dirs_004 import needs_migration, migrate
+from litpose_app.migrations.fix_config_data_dirs_004 import migrate, needs_migration
 
 
 def _write_config(path: Path, data_dir: str, video_dir: str | None = None) -> None:

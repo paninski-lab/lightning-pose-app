@@ -1,6 +1,7 @@
 import argparse
 import sys
 
+
 def main():
     # Setup parser to handle litpose predict-like arguments
     parser = argparse.ArgumentParser(description="Fake litpose predict for testing OOM handling.")

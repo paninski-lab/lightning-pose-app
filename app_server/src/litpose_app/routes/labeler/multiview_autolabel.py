@@ -5,9 +5,9 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from litpose_app import deps
-from litpose_app.routes.labeler import find_calibration_file
-from litpose_app.deps import ProjectInfoGetter
 from litpose_app.datatypes import Project
+from litpose_app.deps import ProjectInfoGetter
+from litpose_app.routes.labeler import find_calibration_file
 
 router = APIRouter()
 
@@ -116,7 +116,7 @@ def warm_up_anipose():
         )
         logger.debug("Successfully warmed up anipose.")
     except Exception as e:
-        logger.error("Failed to warm up anipose: {}".format(e))
+        logger.error(f"Failed to warm up anipose: {e}")
 
 
 def _get_mv_auto_labels_for_keypoint(
@@ -165,7 +165,7 @@ def _get_mv_auto_labels_for_keypoint(
                 ),
             )
             for view, proj in zip(
-                (cam.name for cam in global_cg.cameras), reprojections
+                (cam.name for cam in global_cg.cameras), reprojections, strict=False
             )
         ],
     )

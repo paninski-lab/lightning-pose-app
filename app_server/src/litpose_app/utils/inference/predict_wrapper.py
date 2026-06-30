@@ -1,15 +1,15 @@
 import argparse
+import json
 import os
 import subprocess
 import sys
-import json
 
 CACHE_FILE = "/tmp/litpose_predict_batch_size_cache.json"
 
 def load_cache():
     if os.path.exists(CACHE_FILE):
         try:
-            with open(CACHE_FILE, "r") as f:
+            with open(CACHE_FILE) as f:
                 return json.load(f)
         except Exception:
             return {}
@@ -29,19 +29,19 @@ def main():
     parser = argparse.ArgumentParser(description="Wrapper for litpose predict to handle CUDA OOM.")
     parser.add_argument("--fake", action="store_true", help="Use fake_predict.py instead of litpose")
     parser.add_argument("--initial_batch_size", type=int, help="Initial batch size")
-    
+
     # The rest of the arguments will be passed to litpose predict
     args, litpose_args = parser.parse_known_args()
 
     fake = args.fake
-    
+
     # Identify model_dir to determine the correct override flag and cache key
     model_dir_path = None
     for arg in litpose_args:
         if not arg.startswith("-"):
             model_dir_path = arg
             break
-    
+
     override_flag = "dali.base.predict.sequence_length"
     backbone = "unknown"
     is_context = False
@@ -51,12 +51,12 @@ def main():
         if os.path.exists(config_path):
             try:
                 import yaml
-                with open(config_path, "r") as f:
+                with open(config_path) as f:
                     config = yaml.safe_load(f)
-                
+
                 # Check for backbone
                 backbone = config.get("model", {}).get("backbone", "unknown")
-                
+
                 # Check for context model
                 model_type = config.get("model", {}).get("model_type", "")
                 if isinstance(model_type, str) and model_type.endswith("_mhcrnn"):
@@ -69,9 +69,9 @@ def main():
                 print("Warning: 'yaml' module not found. Defaulting to dali.base.predict.sequence_length.")
             except Exception as e:
                 print(f"Warning: Could not read config.yaml at {config_path}: {e}")
-    
+
     cache_key = f"{backbone}_context_{is_context}"
-    
+
     # Starting batch size
     if args.initial_batch_size is not None:
         batch_size = args.initial_batch_size
@@ -82,7 +82,7 @@ def main():
             print(f"--- Using cached batch size {batch_size} for {cache_key} ---")
         else:
             batch_size = 96
-    
+
     while batch_size >= 1:
         # Construct the command
         if fake:
@@ -90,16 +90,16 @@ def main():
             cmd = [sys.executable, fake_path]
         else:
             cmd = ["litpose", "predict"]
-        
+
         # Add litpose-specific arguments
         cmd.extend(litpose_args)
-        
+
         # Add batch size override
         cmd.append(f"--overrides={override_flag}={batch_size}")
-        
+
         print(f"--- Running prediction with batch size {batch_size} ---")
         print(f"Command: {' '.join(cmd)}")
-        
+
         # Execute and capture output
         process = subprocess.Popen(
             cmd,
@@ -117,15 +117,15 @@ def main():
             output_log.append(line)
             if "CUDA out of memory" in line:
                 oom_detected = True
-        
+
         process.wait()
         ret_code = process.returncode
-        
+
         if ret_code == 0:
             print(f"--- Success with batch size {batch_size} ---")
             save_to_cache(cache_key, batch_size)
             sys.exit(0)
-        
+
         if oom_detected:
             print(f"\n!!! Detected CUDA out of memory with batch size {batch_size} !!!")
             batch_size //= 2

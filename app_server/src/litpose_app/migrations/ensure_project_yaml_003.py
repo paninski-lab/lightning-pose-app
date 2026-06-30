@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 import yaml
 
@@ -39,7 +38,7 @@ def migrate(paths: ProjectPaths) -> None:
             break
 
         try:
-            with open(yf, "r") as f:
+            with open(yf) as f:
                 candidate_data = yaml.safe_load(f)
             if candidate_data and "data" in candidate_data:
                 data_part = candidate_data["data"]

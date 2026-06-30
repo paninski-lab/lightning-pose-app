@@ -1,22 +1,21 @@
-import asyncio
 import json
 import logging
+import os
 import shutil
 import time
+from collections.abc import Iterator
 from datetime import datetime
-from typing import Iterator, Literal
 from pathlib import Path
-import os
+from typing import Literal
 
 import yaml
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from litpose_app import deps
-from litpose_app.deps import ProjectInfoGetter
 from litpose_app.datatypes import Project
+from litpose_app.deps import ProjectInfoGetter
 
 logger = logging.getLogger(__name__)
 
@@ -305,7 +304,7 @@ def _tail_log_file(path: Path, offset: int) -> tuple[list[str], int]:
             f.seek(offset)
             chunk = f.read()
         new_offset = offset + len(chunk)
-        lines = [l for l in chunk.decode("utf-8", errors="replace").splitlines() if l]
+        lines = [ln for ln in chunk.decode("utf-8", errors="replace").splitlines() if ln]
         return lines, new_offset
     except FileNotFoundError:
         return [], offset
@@ -348,7 +347,7 @@ def stream_train_task(
             # Emit any new log lines
             stdout_lines, stdout_offset = _tail_log_file(stdout_path, stdout_offset)
             stderr_lines, stderr_offset = _tail_log_file(stderr_path, stderr_offset)
-            all_lines = stdout_lines + [f"[stderr] {l}" for l in stderr_lines]
+            all_lines = stdout_lines + [f"[stderr] {ln}" for ln in stderr_lines]
             if all_lines:
                 yield {"type": "log", "lines": all_lines}
 
@@ -365,7 +364,7 @@ def stream_train_task(
                 # Final drain
                 stdout_lines, _ = _tail_log_file(stdout_path, stdout_offset)
                 stderr_lines, _ = _tail_log_file(stderr_path, stderr_offset)
-                final_lines = stdout_lines + [f"[stderr] {l}" for l in stderr_lines]
+                final_lines = stdout_lines + [f"[stderr] {ln}" for ln in stderr_lines]
                 if final_lines:
                     yield {"type": "log", "lines": final_lines}
                 break
