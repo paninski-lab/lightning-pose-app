@@ -30,3 +30,23 @@ jobs:
         working-directory: app_server
         run: |
           pytest --ignore=tests/test_predict_wrapper.py
+
+  test-frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        working-directory: web_ui
+        run: npm ci
+
+      - name: Run frontend unit tests
+        working-directory: web_ui
+        run: ng test --no-watch --browsers=ChromeHeadless
