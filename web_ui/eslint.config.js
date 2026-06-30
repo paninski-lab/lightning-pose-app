@@ -45,6 +45,7 @@ export default tseslint.config(
       "@angular-eslint/template/click-events-have-key-events": "off",
       "@angular-eslint/template/interactive-supports-focus": "off",
       "@angular-eslint/template/mouse-events-have-key-events": "off",
+      "@angular-eslint/template/eqeqeq": ["error", { "allowNullOrUndefined": true }],
     },
   },
 );

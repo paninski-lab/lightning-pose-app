@@ -166,9 +166,9 @@
   </as-split>
   @if (extractFramesDialogOpen()) {
     <app-extract-frames-dialog
-      [initialStep]="labelFileKey() === null ? 'labelFile' : 'session'"
+      [initialStep]="labelFileKey() == null ? 'labelFile' : 'session'"
       [initialLabelFileSelectionType]="
-        labelFileKey() === null ? 'createNew' : 'useExisting'
+        labelFileKey() == null ? 'createNew' : 'useExisting'
       "
       [initialSelectedLabelFileKey]="labelFileKey() ?? null"
       (exit)="extractFramesDialogOpen.set(false)"

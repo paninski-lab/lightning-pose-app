@@ -17,10 +17,10 @@ const meta: Meta<AlertDialogComponent> = {
     }),
   ],
   argTypes: {
-    close: { action: 'close' },
+    dismiss: { action: 'dismiss' },
   },
   args: {
-    close: fn(),
+    dismiss: fn(),
   },
 };
 
@@ -31,12 +31,12 @@ export const Default: Story = {
   render: (args) => ({
     props: args,
     template: `
-      <app-alert-dialog (close)="close()">
+      <app-alert-dialog (dismiss)="dismiss()">
         <app-alert-header>Alert Title</app-alert-header>
         <p>This is the main content of the alert dialog. You can put any HTML content here.</p>
         <app-alert-footer>
-          <button class="btn" (click)="close()">Cancel</button>
-          <button class="btn btn-primary" (click)="close()">Confirm</button>
+          <button class="btn" (click)="dismiss()">Cancel</button>
+          <button class="btn btn-primary" (click)="dismiss()">Confirm</button>
         </app-alert-footer>
       </app-alert-dialog>
     `,
@@ -47,7 +47,7 @@ export const LongContent: Story = {
   render: (args) => ({
     props: args,
     template: `
-      <app-alert-dialog (close)="close()">
+      <app-alert-dialog (dismiss)="dismiss()">
         <app-alert-header>Terms and Conditions</app-alert-header>
         <div class="space-y-4">
           <p>This is a long text to test the scroll behavior and how the dialog handles large amounts of content.</p>
@@ -57,7 +57,7 @@ export const LongContent: Story = {
           <p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.</p>
         </div>
         <app-alert-footer>
-          <button class="btn btn-primary" (click)="close()">Accept</button>
+          <button class="btn btn-primary" (click)="dismiss()">Accept</button>
         </app-alert-footer>
       </app-alert-dialog>
     `,
