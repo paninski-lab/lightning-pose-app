@@ -5,7 +5,15 @@ build-backend = "poetry.core.masonry.api"
 [project]
 name = "lightning-pose-app"
 version = "2.3.0.0"
+description = "Lightning Pose user interface for labeling, training, and visualization"
+license = "MIT"
+readme = "README.md"
 requires-python = ">=3.10"
+authors = [
+    { name = "Karan Sikka" },
+    { name = "Matt Whiteaway" },
+]
+
 dependencies = [
     "aiofiles~=24.1.0",
     "aniposelib~=0.7.2",
@@ -30,10 +38,44 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "httpx~=0.28.0",
+    "pre-commit",
     "pytest~=8.4.0",
     "pytest-mock~=3.14.0",
     "pytest-asyncio~=1.0.0"
 ]
+
+[project.urls]
+repository = "https://github.com/paninski-lab/lightning-pose-app"
+documentation = "https://lightning-pose.readthedocs.io/"
+
+[tool.ruff]
+line-length = 99
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes (undefined names, unused imports/variables)
+    "I",   # isort
+    "UP",  # pyupgrade (modernize syntax)
+    "B",   # flake8-bugbear (real bugs: mutable defaults, broad excepts)
+]
+ignore = [
+    "B006",  # mutable default arguments used intentionally in some places
+    "E203",  # whitespace before ':' conflicts with black-style slice formatting
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["litpose_app"]
 
 [tool.poetry]
 packages = [

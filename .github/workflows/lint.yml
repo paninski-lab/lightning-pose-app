@@ -1,0 +1,63 @@
+name: Lint
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        working-directory: app_server
+        run: pip install -e ".[dev]" ruff
+
+      - name: Lint with ruff
+        id: ruff
+        working-directory: app_server
+        run: ruff check src/litpose_app tests/
+        # Reads config from [tool.ruff.lint] in pyproject.toml
+
+      - name: Show fix instructions if linting failed
+        if: failure() && steps.ruff.outcome == 'failure'
+        run: |
+          echo "To auto-fix issues locally, run:"
+          echo "  cd app_server && ruff check --fix src/litpose_app tests/"
+
+  lint-frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: 'web_ui/.nvmrc'
+
+      - name: Install dependencies
+        working-directory: web_ui
+        run: npm ci
+
+      - name: Lint with ESLint
+        id: eslint
+        working-directory: web_ui
+        run: npx ng lint
+
+      - name: Show fix instructions if linting failed
+        if: failure() && steps.eslint.outcome == 'failure'
+        run: |
+          echo "To auto-fix issues locally, run:"
+          echo "  cd web_ui && npx ng lint --fix"
