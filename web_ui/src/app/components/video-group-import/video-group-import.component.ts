@@ -5,7 +5,6 @@ import {
   inject,
   input,
   model,
-  signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ProjectInfoService } from '../../project-info.service';

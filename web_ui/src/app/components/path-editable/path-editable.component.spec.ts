@@ -1,7 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { PathEditableComponent } from './path-editable.component';
 import { RpcService } from '../../rpc.service';
-import { signal } from '@angular/core';
 
 class MockRpcService {
   async call(method: string, params?: any): Promise<any> {

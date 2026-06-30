@@ -10,7 +10,7 @@ class MockFile {
   constructor(
     public name: string,
     public size: number = 1024 * 1024,
-    public type: string = 'video/mp4',
+    public type = 'video/mp4',
   ) {}
 }
 

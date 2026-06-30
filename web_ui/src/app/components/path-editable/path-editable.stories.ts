@@ -2,7 +2,6 @@ import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
 import { CommonModule } from '@angular/common';
 import { PathEditableComponent } from './path-editable.component';
 import { RpcService } from '../../rpc.service';
-import { signal } from '@angular/core';
 
 const mockDirectories: Record<string, string[]> = {
   '/': ['home', 'var', 'etc', 'tmp'],

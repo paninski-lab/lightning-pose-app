@@ -114,6 +114,6 @@ export class SessionImportComponent implements AfterViewInit, OnDestroy {
       if (this.dlg?.nativeElement.open) {
         this.dlg.nativeElement.close();
       }
-    } catch {}
+    } catch { /* ignore */ }
   }
 }

@@ -56,7 +56,7 @@ export class ModelInferenceDialogComponent implements AfterViewInit, OnDestroy {
     queueMicrotask(() => {
       try {
         this.dlg?.nativeElement.showModal();
-      } catch {}
+      } catch { /* ignore */ }
     });
   }
 

@@ -173,7 +173,6 @@ export class BundleAdjustDialogComponent {
       });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   open() {
     (
       document.getElementById('bundle_adjustment') as HTMLDialogElement

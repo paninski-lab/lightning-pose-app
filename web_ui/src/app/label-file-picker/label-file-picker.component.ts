@@ -53,7 +53,6 @@ export class LabelFilePickerComponent implements OnInit, ControlValueAccessor {
 
   // ControlValueAccessor callbacks
   onChange: (value: string | null) => void = () => {};
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
   onTouched: () => void = () => {};
   disabled = model(false);
 

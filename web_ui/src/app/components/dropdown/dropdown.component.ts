@@ -9,7 +9,6 @@ import {
   input,
   model,
   Renderer2,
-  signal,
   viewChild,
 } from '@angular/core';
 
