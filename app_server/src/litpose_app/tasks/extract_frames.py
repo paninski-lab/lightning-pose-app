@@ -1,8 +1,8 @@
 import logging
 from collections import defaultdict
+from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import Callable
 
 import cv2
 import numpy as np
@@ -13,9 +13,9 @@ from litpose_app.config import Config
 from litpose_app.datatypes import Project
 from litpose_app.utils.mv_label_file import (
     AddToUnlabeledFileView,
-    add_to_unlabeled_sidecar_files,
     ExtractedFramePredictionList,
     LabelingQueueEntry,
+    add_to_unlabeled_sidecar_files,
 )
 from litpose_app.utils.video import video_capture
 from litpose_app.utils.video.export_frames import export_frames_singleview_impl
@@ -81,7 +81,7 @@ def extract_frames_task(
     ) as process_pool:
         if method == "random":
             frame_idxs = _frame_selection_kmeans(config, session, options, process_pool)
-            progress_callback(f"Frame selection complete.")
+            progress_callback("Frame selection complete.")
         elif method == "manual":
             frame_idxs = np.array(manual_frame_options.frame_index_list, dtype=int)
         else:
@@ -90,7 +90,7 @@ def extract_frames_task(
         view_to_frame_index_to_path = _export_frames(
             config, session, project, frame_idxs, process_pool
         )
-        progress_callback(f"Frame extraction complete.")
+        progress_callback("Frame extraction complete.")
         logger.debug(view_to_frame_index_to_path)
         _update_unlabeled_files(
             project.paths.data_dir,
@@ -98,7 +98,7 @@ def extract_frames_task(
             mv_label_file,
             manual_frame_options.predictions if manual_frame_options else None,
         )
-        progress_callback(f"Update unlabeled files complete.")
+        progress_callback("Update unlabeled files complete.")
 
 
 def _frame_selection_kmeans(
@@ -182,7 +182,7 @@ def _export_frames(
         futures[sv.viewName] = future
 
     # Wait for all completion
-    for view_name, future in futures.items():
+    for _, future in futures.items():
         future.result()
 
     return retval

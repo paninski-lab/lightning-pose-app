@@ -2,15 +2,13 @@ from __future__ import annotations
 
 import io
 import json
+import os
 from datetime import datetime, timedelta
 from pathlib import Path
-import os
 
 from fastapi.testclient import TestClient
 
-from litpose_app.datatypes import ProjectConfig, ProjectPaths, Project
-
-from litpose_app import deps
+from litpose_app.datatypes import Project, ProjectConfig, ProjectPaths
 
 
 def _collect_sse_data_lines(
@@ -211,7 +209,7 @@ def test_transcode_sse_failure_flow(
     from litpose_app.routes import videos as videos_mod
 
     project_key = "demo"
-    data_dir = register_project(project_key)
+    _ = register_project(project_key)
 
     filename = "bad_camA.mp4"
     # Create an uploaded file manually and mark upload DONE (avoid multipart dep)

@@ -1,11 +1,9 @@
 from __future__ import annotations
-import os
-import shutil
+
 import tomli
 import tomli_w
-from pathlib import Path
 from fastapi.testclient import TestClient
-from litpose_app.datatypes import ProjectPaths
+
 
 def test_delete_project_unregister_only(client: TestClient, register_project, tmp_path):
     """Test that deleting a project without removeFiles only unregisters it."""
@@ -19,14 +17,13 @@ def test_delete_project_unregister_only(client: TestClient, register_project, tm
     register_project(project_key, data_dir)
 
     # Manually add model_dir to projects.toml for this test since fixture doesn't support it
-    from litpose_app.rootconfig import RootConfig
     from litpose_app import deps
-    
+
     # Get the config from dependency override
     from litpose_app.main import app
     config = app.dependency_overrides[deps.root_config]()
     projects_toml = config.PROJECTS_TOML_PATH
-    
+
     with open(projects_toml, "rb") as f:
         projects = tomli.load(f)
     projects[project_key]["model_dir"] = str(model_dir)
@@ -65,7 +62,7 @@ def test_delete_project_with_files(client: TestClient, register_project, tmp_pat
 
     # Register the project
     register_project(project_key, data_dir)
-    
+
     from litpose_app import deps
     from litpose_app.main import app
     config = app.dependency_overrides[deps.root_config]()

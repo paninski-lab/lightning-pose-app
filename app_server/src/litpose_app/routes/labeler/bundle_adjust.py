@@ -162,7 +162,7 @@ def save_calibration_for_session(
     with tempfile.NamedTemporaryFile(mode="w", suffix=".toml") as f:
         f.write(request.newCgToml)
         f.flush()
-        cg = CameraGroup.load(f.name)
+        CameraGroup.load(f.name)
 
     session_level_calibration_path = get_session_level_calibration_path(request.sessionKey, project, config)
 

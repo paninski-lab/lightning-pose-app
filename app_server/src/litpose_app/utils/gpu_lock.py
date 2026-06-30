@@ -1,7 +1,8 @@
+import contextlib
 import json
 import logging
-import contextlib
 from pathlib import Path
+
 import portalocker
 
 GPU_LOCK_PATH = "/tmp/litpose_gpu.lock"
@@ -73,7 +74,7 @@ def gpu_lock_blocking(task_type: str, task_id: str, project_key: str | None = No
     lock = portalocker.Lock(GPU_LOCK_PATH, mode="a", timeout=None, flags=flags)
     try:
         lock.acquire()
-    except Exception as e:
+    except Exception:
         logger.exception(f"Failed to acquire GPU lock for {task_id}")
         raise
     try:

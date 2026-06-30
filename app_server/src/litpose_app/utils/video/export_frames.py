@@ -15,7 +15,7 @@ def export_frames_singleview_impl(
 ):
     with video_capture(video_path) as cap:
         frames = get_frames_from_idxs(cap, frame_idxs)
-    for frame, dest_path in zip(frames, dest_paths):
+    for frame, dest_path in zip(frames, dest_paths, strict=False):
         dest_path.parent.mkdir(parents=True, exist_ok=True)
         cv2.imwrite(
             filename=str(dest_path),

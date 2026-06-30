@@ -1,14 +1,8 @@
-import os
-import shutil
-from pathlib import Path
 import pytest
-import yaml
-import tomli_w
-from litpose_app import deps
-from litpose_app.rootconfig import RootConfig
-from litpose_app.project import ProjectUtil
-from litpose_app.config import Config
 
+from litpose_app import deps
+from litpose_app.config import Config
+from litpose_app.rootconfig import RootConfig
 
 
 def test_project_info_getter_fails_when_no_template_found(

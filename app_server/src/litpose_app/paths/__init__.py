@@ -1,19 +1,17 @@
-from pathlib import Path, PurePath, PureWindowsPath, PurePosixPath
-from enum import Enum
-from dataclasses import dataclass
-from typing import (
-    Callable,
-    Any,
-    TypeVar,
-    Generic,
-    Union,
-    Mapping,
-    Optional,
-    Iterator,
-    Literal,
-)
-from abc import ABC
 import re
+from abc import ABC
+from collections.abc import Callable, Iterator, Mapping
+from dataclasses import dataclass
+from enum import Enum
+from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
+from typing import (
+    Any,
+    Generic,
+    Literal,
+    Optional,
+    TypeVar,
+    Union,
+)
 
 
 class PathParseException(Exception):
@@ -42,7 +40,7 @@ class ResourceUtil(Generic[KeyType], ABC):
         """Return the path for a resource."""
         raise NotImplementedError()
 
-    def parse_path(self, path: Union[Path, str]) -> KeyType:
+    def parse_path(self, path: Path | str) -> KeyType:
         """
         Return the resource key for a path, or raise `PathParseException` if the
         path is not valid for this resource type.

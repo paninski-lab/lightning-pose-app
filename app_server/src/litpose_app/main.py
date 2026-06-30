@@ -1,3 +1,23 @@
+"""
+All our methods are RPC style (http url corresponds to method name).
+They should be POST requests, /rpc/<method_name>.
+Request body is some object (pydantic model).
+Response body is some object pydantic model.
+
+The client expects all RPC methods to succeed. If any RPC doesn't
+return the expected response object, it will be shown as an
+error in a dialog to the user. So if the client is supposed to
+handle the error in any way, for example, special form validation UX
+like underlining the invalid field,
+then the information about the error should be included in a valid
+response object rather than raised as a python error.
+
+File server to serve csv and video files.
+FileResponse supports range requests for video buffering.
+For security - only supports reading out of data_dir and model_dir
+If we need to read out of other directories, they should be added to Project Info.
+"""
+
 import asyncio
 import functools
 import logging
@@ -9,7 +29,7 @@ from textwrap import dedent
 
 import anyio
 import uvicorn
-from fastapi import FastAPI, HTTPException, APIRouter, Request, Depends
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from starlette import status
 from starlette.responses import Response
@@ -23,7 +43,7 @@ from .routes.videos import cleanup_old_uploads
 from .train_scheduler import _train_scheduler_process_target
 from .utils.check_for_upgrade import check_for_upgrade
 from .utils.file_response import file_response
-from .utils.gpu_lock import read_gpu_task, clear_gpu_task, clear_stale_gpu_task
+from .utils.gpu_lock import clear_stale_gpu_task
 
 ## Setup logging
 logging.basicConfig(
@@ -91,16 +111,16 @@ app = FastAPI(lifespan=lifespan)
 
 router = APIRouter()
 from .routes import (
-    ffprobe,
-    rglob,
-    project,
-    labeler,
-    extract_frames,
-    configs,
     config_root,
-    models,
-    videos,
+    configs,
+    extract_frames,
+    ffprobe,
     inference,
+    labeler,
+    models,
+    project,
+    rglob,
+    videos,
 )
 
 router.include_router(ffprobe.router)
@@ -134,29 +154,6 @@ async def debug_exception_handler(request: Request, exc: Exception):
         ),
         headers={"Content-Type": "text/plain"},
     )
-
-
-"""
-All our methods are RPC style (http url corresponds to method name).
-They should be POST requests, /rpc/<method_name>.
-Request body is some object (pydantic model).
-Response body is some object pydantic model.
-
-The client expects all RPC methods to succeed. If any RPC doesn't
-return the expected response object, it will be shown as an
-error in a dialog to the user. So if the client is supposed to
-handle the error in any way, for example, special form validation UX
-like underlining the invalid field,
-then the information about the error should be included in a valid
-response object rather than raised as a python error.
-"""
-
-"""
-File server to serve csv and video files.
-FileResponse supports range requests for video buffering.
-For security - only supports reading out of data_dir and model_dir
-If we need to read out of other directories, they should be added to Project Info.
-"""
 
 
 @app.get("/app/v0/files/{file_path:path}")
@@ -251,10 +248,10 @@ def run_app(host: str, port: int):
         usage_message = dedent("""
             ================================================================================
             📊  Lightning Pose App Usage Tracking
-            
+
             To help us improve this tool and secure future grant funding, launching the app
             in your browser will initiate web event tracking via analytics provider Umami.
-            
+
             To opt out, please restart the app with the environment variable DO_NOT_TRACK=1
             For example: DO_NOT_TRACK=1 litpose run_app
             ================================================================================

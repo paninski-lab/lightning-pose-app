@@ -1,7 +1,8 @@
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from fastapi.testclient import TestClient
-from pathlib import Path
+
 
 def test_run_ffprobe_unit():
     from litpose_app.routes.ffprobe import run_ffprobe
@@ -58,11 +59,11 @@ def test_run_ffprobe_unit():
 def test_ffprobe_endpoint(client: TestClient, register_project, tmp_path):
     project_key = "test_proj"
     register_project(project_key)
-    
+
     # Create a dummy mp4 file
     video_path = tmp_path / "test_video.mp4"
     video_path.write_text("dummy video content")
-    
+
     with patch("litpose_app.routes.ffprobe.run_ffprobe") as mock_run:
         mock_run.return_value = {
             "file_path": str(video_path),
@@ -80,7 +81,7 @@ def test_ffprobe_endpoint(client: TestClient, register_project, tmp_path):
             "color_space": "bt709",
             "is_all_intra": True,
         }
-        
+
         response = client.post(
             "/app/v0/rpc/ffprobe",
             json={
@@ -88,7 +89,7 @@ def test_ffprobe_endpoint(client: TestClient, register_project, tmp_path):
                 "path": str(video_path),
             }
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["is_all_intra"] is True
@@ -97,7 +98,7 @@ def test_ffprobe_endpoint(client: TestClient, register_project, tmp_path):
 def test_ffprobe_not_mp4(client: TestClient, register_project):
     project_key = "test_proj"
     register_project(project_key)
-    
+
     response = client.post(
         "/app/v0/rpc/ffprobe",
         json={

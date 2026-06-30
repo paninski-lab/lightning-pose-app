@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 
 from litpose_app.datatypes import ProjectPaths
 
@@ -30,7 +29,7 @@ def migrate(paths: ProjectPaths) -> None:
 
         # Only generate jsonl if it doesn't already exist.
         if jsonl_path.exists():
-            assert False
+            raise AssertionError
 
         lines = [
             ln.strip() for ln in legacy_path.read_text().splitlines() if ln.strip()

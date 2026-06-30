@@ -7,17 +7,16 @@ See FastAPI Dependency Injection docs: https://fastapi.tiangolo.com/tutorial/dep
 from __future__ import annotations
 
 import logging
-import os
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import yaml
 from fastapi import Depends
-from litpose_app.datatypes import ProjectConfig, Project
-from litpose_app.rootconfig import RootConfig
-from litpose_app.project import ProjectUtil
 
 from litpose_app.config import Config
+from litpose_app.datatypes import Project, ProjectConfig
+from litpose_app.project import ProjectUtil
+from litpose_app.rootconfig import RootConfig
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +78,7 @@ def project_info_getter(
                 project_path.data_dir
             )
             # Load YAML data into a Python dictionary
-            with open(project_yaml_path, "r") as f:
+            with open(project_yaml_path) as f:
                 yaml_data = yaml.safe_load(f)
         except PermissionError:
             raise ApplicationError(
@@ -87,7 +86,7 @@ def project_info_getter(
             )
         except FileNotFoundError:
             raise ApplicationError(
-                f"Could not find a project.yaml file in data directory."
+                "Could not find a project.yaml file in data directory."
             )
         except yaml.YAMLError as e:
             raise ApplicationError(

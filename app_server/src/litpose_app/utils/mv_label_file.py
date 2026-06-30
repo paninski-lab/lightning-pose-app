@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import time
-from concurrent.futures import ThreadPoolExecutor, Future
+from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -96,7 +96,7 @@ def add_to_unlabeled_sidecar_files(views: list[AddToUnlabeledFileView]):
     # replace fails, leaving all views in their original state.
     replaced: list[tuple[Path, str | None]] = []
     try:
-        for vr, temp_file in zip(views, temp_files):
+        for vr, temp_file in zip(views, temp_files, strict=False):
             if temp_file is not None:
                 final_path = vr.csvPath.with_suffix(".unlabeled.jsonl")
                 old_content = final_path.read_text() if final_path.exists() else None

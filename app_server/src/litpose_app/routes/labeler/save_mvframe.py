@@ -11,8 +11,8 @@ from pydantic import BaseModel, field_validator
 from starlette.concurrency import run_in_threadpool
 
 from litpose_app import deps
-from litpose_app.deps import ProjectInfoGetter
 from litpose_app.datatypes import Project
+from litpose_app.deps import ProjectInfoGetter
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
 
 router = APIRouter()
@@ -151,7 +151,7 @@ async def write_df_tmp_mvframe(
         d.to_csv(tmp_file)
         return tmp_file
 
-    for vr, df in zip(request.views, read_df_results):
+    for vr, df in zip(request.views, read_df_results, strict=False):
         r = run_in_threadpool(write_df_to_tmp_file, vr, df)
         result.append(r)
 
@@ -164,7 +164,7 @@ async def commit_mvframe(
     """Renames temp files to their original names (atomic per file)."""
 
     def commit_changes():
-        for vr, tmp_file_name in zip(request.views, tmp_file_names):
+        for vr, tmp_file_name in zip(request.views, tmp_file_names, strict=False):
             os.replace(tmp_file_name, vr.csvPath)
 
     return await run_in_threadpool(commit_changes)
@@ -211,6 +211,6 @@ async def remove_from_unlabeled_sidecar_files(
 
     results = await asyncio.gather(*tasks)
 
-    for vr, temp_file_path in zip(request.views, results):
+    for vr, temp_file_path in zip(request.views, results, strict=False):
         if temp_file_path is not None:
             os.replace(temp_file_path, vr.csvPath.with_suffix(".unlabeled.jsonl"))

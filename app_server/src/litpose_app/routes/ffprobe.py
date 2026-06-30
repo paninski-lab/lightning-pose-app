@@ -2,7 +2,7 @@ import json
 import subprocess
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 router = APIRouter()

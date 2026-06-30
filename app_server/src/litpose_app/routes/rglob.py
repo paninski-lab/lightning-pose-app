@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -80,7 +80,7 @@ def _rglob(base_path, pattern=None, no_dirs=False, stat=False):
         entry_relative_path = r.relative_to(base_path)
         d = {
             "path": entry_relative_path,
-            "type": "dir" if is_dir else "file" if is_dir == False else None,
+            "type": "dir" if is_dir else "file" if not is_dir else None,
             "size": stat_info.st_size if stat_info else None,
             # Note: st_birthtime is more reliable for creation time on some systems
             "cTime": (

@@ -116,7 +116,7 @@ def _read_nth_frames(
                         frame_gray = cv2.cvtColor(frame_resize, cv2.COLOR_BGR2RGB)
                         frames.append(frame_gray.astype(np.float16))
                     frame_counter += 1
-                    progress = frame_counter / frame_total * 100.0
+                    _ = frame_counter / frame_total * 100.0
                     # TODO progress update
                     pbar.update(1)
                 else:

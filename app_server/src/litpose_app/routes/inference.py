@@ -8,18 +8,18 @@ import sys
 import threading
 import time
 import uuid
+from collections.abc import Iterator
 from concurrent.futures import Future, ThreadPoolExecutor
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Dict, Iterator, List, Optional
 
 import yaml
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from ..datatypes import Project
 from .. import deps
+from ..datatypes import Project
 from ..deps import ProjectInfoGetter
 from ..utils.gpu_lock import gpu_lock_blocking, read_gpu_task
 
@@ -30,10 +30,10 @@ router = APIRouter()
 # -----------------------------
 # Singletons
 # -----------------------------
-_executor: Optional[ThreadPoolExecutor] = None
+_executor: ThreadPoolExecutor | None = None
 _status_lock = threading.RLock()
-_futures_by_task: Dict[str, Future] = {}
-_active_procs_by_task: Dict[str, subprocess.Popen] = {}
+_futures_by_task: dict[str, Future] = {}
+_active_procs_by_task: dict[str, subprocess.Popen] = {}
 _cancel_requests: set = set()
 
 
@@ -69,12 +69,12 @@ class InferenceTaskStatus:
     total: int | None = None
     error: str | None = None
     message: str | None = None
-    logs: List[str] = field(default_factory=list)
+    logs: list[str] = field(default_factory=list)
 
 
-_status_by_task: Dict[str, InferenceTaskStatus] = {}
+_status_by_task: dict[str, InferenceTaskStatus] = {}
 # Ordered list of task IDs so we can find the most recent one
-_task_id_order: List[str] = []
+_task_id_order: list[str] = []
 
 
 def _get_or_create_status_nolock(task_id: str) -> InferenceTaskStatus:
@@ -117,7 +117,7 @@ def _stream_sse_sync(gen: Iterator[dict]):
 # Log buffer
 # -----------------------------
 
-_logs_by_task: Dict[str, List[str]] = {}
+_logs_by_task: dict[str, list[str]] = {}
 _logs_lock = threading.RLock()
 
 
@@ -126,7 +126,7 @@ def _append_log(task_id: str, line: str):
         _logs_by_task.setdefault(task_id, []).append(line)
 
 
-def _get_logs(task_id: str, from_offset: int = 0) -> List[str]:
+def _get_logs(task_id: str, from_offset: int = 0) -> list[str]:
     with _logs_lock:
         return list(_logs_by_task.get(task_id, [])[from_offset:])
 
@@ -135,7 +135,7 @@ def _get_logs(task_id: str, from_offset: int = 0) -> List[str]:
 # Subprocess helper
 # -----------------------------
 
-def _run_subprocess_with_logging(task_id: str, cmd: List[str]) -> int:
+def _run_subprocess_with_logging(task_id: str, cmd: list[str]) -> int:
     """Run a subprocess, capturing stdout/stderr into the task log buffer. Returns exit code."""
     proc = subprocess.Popen(
         cmd,
@@ -177,15 +177,15 @@ class InferStep:
     kind: str  # 'normal', 'member', 'eks'
     model_dir: Path
     session: str
-    video_paths: List[Path]
-    member_of: Optional[Path] = None          # parent EKS model dir, for kind='member'
-    member_dirs: List[Path] = field(default_factory=list)   # for kind='eks'
+    video_paths: list[Path]
+    member_of: Path | None = None          # parent EKS model dir, for kind='member'
+    member_dirs: list[Path] = field(default_factory=list)   # for kind='eks'
     ensemble_config: dict = field(default_factory=dict)     # for kind='member' and 'eks'
 
 
 @dataclass
 class InferPlan:
-    steps: List[InferStep]
+    steps: list[InferStep]
     skipped_count: int
 
 
@@ -193,9 +193,9 @@ class InferPlan:
 # Session / video helpers
 # -----------------------------
 
-def _derive_sessions(video_paths: List[Path], view_names: List[str]) -> List[str]:
+def _derive_sessions(video_paths: list[Path], view_names: list[str]) -> list[str]:
     """Derive unique session keys from video paths by stripping camera name suffixes."""
-    sessions: List[str] = []
+    sessions: list[str] = []
     seen: set = set()
     for vp in video_paths:
         stem = vp.stem
@@ -210,9 +210,9 @@ def _derive_sessions(video_paths: List[Path], view_names: List[str]) -> List[str
     return sessions
 
 
-def _session_to_videos(data_dir: Path, view_names: List[str]) -> Dict[str, List[Path]]:
+def _session_to_videos(data_dir: Path, view_names: list[str]) -> dict[str, list[Path]]:
     """Map session name → list of video paths by globbing data_dir."""
-    result: Dict[str, List[Path]] = {}
+    result: dict[str, list[Path]] = {}
     for vp in data_dir.glob("videos*/**/*.mp4"):
         stem = vp.stem
         session = stem
@@ -224,7 +224,7 @@ def _session_to_videos(data_dir: Path, view_names: List[str]) -> Dict[str, List[
     return result
 
 
-def _all_view_preds_exist(model_dir: Path, session: str, view_names: List[str]) -> bool:
+def _all_view_preds_exist(model_dir: Path, session: str, view_names: list[str]) -> bool:
     """Return True if all expected prediction CSVs already exist for this model/session."""
     preds_dir = model_dir / "video_preds"
     if view_names:
@@ -253,9 +253,9 @@ def _is_model_completed(model_dir: Path) -> bool:
 
 def _build_infer_plan(
     project: Project,
-    model_relative_paths: List[str],
-    sessions: List[str],
-    video_relative_paths: Optional[List[str]] = None,
+    model_relative_paths: list[str],
+    sessions: list[str],
+    video_relative_paths: list[str] | None = None,
     force: bool = False,
 ) -> InferPlan:
     """
@@ -265,13 +265,13 @@ def _build_infer_plan(
     If sessions == ["all"], all videos in data_dir are discovered.
     Otherwise sessions is treated as a list of session names.
     """
-    view_names: List[str] = list(project.config.view_names or [])
+    view_names: list[str] = list(project.config.view_names or [])
     model_base = Path(project.paths.model_dir)
     data_base = Path(project.paths.data_dir)
 
     # Resolve models into normal and EKS
-    normal_model_dirs: List[Path] = []
-    eks_models: List[tuple] = []  # (model_dir, ensemble_config)
+    normal_model_dirs: list[Path] = []
+    eks_models: list[tuple] = []  # (model_dir, ensemble_config)
 
     for rel in model_relative_paths:
         model_dir = (model_base / rel).resolve()
@@ -289,7 +289,7 @@ def _build_infer_plan(
     if video_relative_paths:
         explicit_videos = [(data_base / rel).resolve() for rel in video_relative_paths]
         target_sessions = _derive_sessions(explicit_videos, view_names)
-        sess_to_vids: Dict[str, List[Path]] = {}
+        sess_to_vids: dict[str, list[Path]] = {}
         for vp in explicit_videos:
             stem = vp.stem
             session = stem
@@ -302,7 +302,7 @@ def _build_infer_plan(
         sess_to_vids = _session_to_videos(data_base, view_names)
         target_sessions = list(sess_to_vids.keys()) if sessions == ["all"] else sessions
 
-    steps: List[InferStep] = []
+    steps: list[InferStep] = []
     skipped_count = 0
     seen_member_keys: set = set()
 
@@ -326,7 +326,7 @@ def _build_infer_plan(
 
     # Pass 1 (continued): member models required by EKS models
     for eks_model_dir, ensemble_config in eks_models:
-        ens_views: List[str] = ensemble_config.get("view_names", view_names)
+        ens_views: list[str] = ensemble_config.get("view_names", view_names)
         members = ensemble_config.get("members", [])
         member_dirs = [(model_base / m["id"]).resolve() for m in members]
 
@@ -387,7 +387,7 @@ def _build_infer_plan(
 def _run_eks_step(task_id: str, step: InferStep) -> bool:
     """Run EKS smoother for a single (model, session) pair. Returns True on success."""
     ensemble_config = step.ensemble_config
-    view_names: List[str] = ensemble_config.get("view_names", [])
+    view_names: list[str] = ensemble_config.get("view_names", [])
     smooth_param: float = ensemble_config.get("smooth_param", 1000.0)
     quantile_keep_pca: float = ensemble_config.get("quantile_keep_pca", 50.0)
 
@@ -395,7 +395,7 @@ def _run_eks_step(task_id: str, step: InferStep) -> bool:
     eks_video_preds_dir.mkdir(parents=True, exist_ok=True)
     eks_script = Path(__file__).parent.parent / "scripts" / "run_eks.py"
 
-    input_files: List[str] = []
+    input_files: list[str] = []
     for member_dir in step.member_dirs:
         for cam in view_names:
             pred_file = member_dir / "video_preds" / f"{step.session}_{cam}.csv"
@@ -455,8 +455,8 @@ def _is_cancelled(task_id: str) -> bool:
         return task_id in _cancel_requests
 
 
-def _run_steps(task_id: str, steps: List[InferStep], total: int) -> None:
-    errors: List[str] = []
+def _run_steps(task_id: str, steps: list[InferStep], total: int) -> None:
+    errors: list[str] = []
     for i, step in enumerate(steps):
         if _is_cancelled(task_id):
             return
@@ -523,24 +523,24 @@ def _run_steps(task_id: str, steps: List[InferStep], total: int) -> None:
 
 class InferTaskRequest(BaseModel):
     projectKey: str
-    models: List[str]
-    sessions: List[str]
-    videoRelativePaths: List[str] = []
+    models: list[str]
+    sessions: list[str]
+    videoRelativePaths: list[str] = []
     force: bool = False
 
 
 class ResolveRequest(BaseModel):
     projectKey: str
-    models: List[str]
-    sessions: List[str]
-    videoRelativePaths: List[str] = []
+    models: list[str]
+    sessions: list[str]
+    videoRelativePaths: list[str] = []
 
 
 # -----------------------------
 # Validation helper
 # -----------------------------
 
-def _validate_model_paths(project: Project, model_relative_paths: List[str]):
+def _validate_model_paths(project: Project, model_relative_paths: list[str]):
     if project.paths.model_dir is None:
         raise HTTPException(status_code=400, detail="Project model_dir is not configured.")
     model_base = Path(project.paths.model_dir)

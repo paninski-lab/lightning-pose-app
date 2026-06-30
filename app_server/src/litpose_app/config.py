@@ -4,7 +4,6 @@ Instead, prefer to inject `config: deps.config into the route using FastAPI's de
 See https://fastapi.tiangolo.com/tutorial/dependencies/."""
 
 import os
-from pathlib import Path
 
 from pydantic import BaseModel
 

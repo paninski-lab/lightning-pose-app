@@ -2,13 +2,14 @@ import re
 from pathlib import Path
 
 from lightning_pose.data.datatypes import (
-    VideoFileKey,
     FrameKey,
-    SessionKey,
-    ViewName,
     LabelFileKey,
+    SessionKey,
+    VideoFileKey,
+    ViewName,
 )
-from litpose_app.paths import _check_relative_and_normalize, PathParseException
+
+from litpose_app.paths import PathParseException, _check_relative_and_normalize
 from litpose_app.paths.path_util import PathUtil
 
 
@@ -34,7 +35,7 @@ class PathUtilLegacy(PathUtil):
         self.calibration_backups = _LegacyCalibrationBackupUtil(self)
 
         # Lazy import to avoid circulars at module import time
-        from litpose_app.paths import ResourceType, ResourceUtil  # type: ignore
+        from litpose_app.paths import ResourceUtil  # type: ignore
 
         self._resource_map: dict[ResourceType, ResourceUtil] = {
             ResourceType.VIDEO: self.videos,
@@ -85,7 +86,7 @@ class PathUtilLegacy(PathUtil):
 # ---------------------------------------------------------------------------
 # Resource util classes implementing get()/reverse()
 # ---------------------------------------------------------------------------
-from litpose_app.paths import ResourceUtil, ResourceType  # type: ignore
+from litpose_app.paths import ResourceUtil  # type: ignore
 
 
 class _LegacyVideoUtil(ResourceUtil[VideoFileKey]):

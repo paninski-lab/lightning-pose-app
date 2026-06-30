@@ -2,16 +2,16 @@ import json
 import logging
 import os
 import subprocess
+import sys
 import time
 from pathlib import Path
-from typing import Optional
-import sys
+
 import portalocker
 import psutil
 
 from . import deps
 from .routes.models import TrainStatus
-from .utils.gpu_lock import gpu_lock_nonblocking, clear_gpu_task, read_gpu_task
+from .utils.gpu_lock import clear_gpu_task, gpu_lock_nonblocking, read_gpu_task
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +83,7 @@ def _is_pid_alive(pid: int) -> bool:
         return False
 
 
-def _read_status(path: Path) -> Optional[TrainStatus]:
+def _read_status(path: Path) -> TrainStatus | None:
     try:
         data = path.read_text()
         return TrainStatus.model_validate(json.loads(data))
@@ -135,8 +135,8 @@ def train_scheduler_loop(poll_interval_seconds: float = 2.0) -> None:
     """
     # GPU lock held across iterations while a training subprocess is alive.
     _gpu_lock_ctx = None
-    _active_proc: Optional[subprocess.Popen] = None
-    _active_model_dir: Optional[Path] = None
+    _active_proc: subprocess.Popen | None = None
+    _active_model_dir: Path | None = None
 
     while True:
         scheduler_lock_file = None
@@ -261,7 +261,7 @@ def _train_scheduler_process_target():
         child_logger.info(
             "Train scheduler subprocess received KeyboardInterrupt, shutting down."
         )
-    except Exception as e:
+    except Exception:
         child_logger.exception(
             "Train scheduler subprocess encountered an unhandled exception and is exiting."
         )

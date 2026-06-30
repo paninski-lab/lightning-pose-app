@@ -1,7 +1,7 @@
 import importlib.resources
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query, status, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from omegaconf import OmegaConf
 
 from litpose_app import deps
