@@ -37,7 +37,8 @@ Reload the shell to initialize `nvm` related environment variables.
 Then:
 
 ```bash
-nvm install node
+nvm install 26
+nvm use 26
 npm install -g @angular/cli
 
 # Install project dependencies from web_ui/package.json.
