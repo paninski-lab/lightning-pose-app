@@ -1,0 +1,49 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write  # required for PyPI trusted publishing
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: 'web_ui/.nvmrc'
+
+      - name: Install frontend dependencies
+        working-directory: web_ui
+        run: npm ci
+
+      - name: Build Angular app
+        working-directory: web_ui
+        run: |
+          npx ng build \
+            --output-path="../app_server/src/litpose_app/ngdist/ng_app" \
+            --deploy-url="/static/"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install build tool
+        run: pip install build
+
+      - name: Build Python wheel
+        working-directory: app_server
+        run: python -m build .
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: app_server/dist/
