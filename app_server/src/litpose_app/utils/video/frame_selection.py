@@ -1,3 +1,5 @@
+"""K-means based frame selection for diverse frame extraction from videos."""
+
 from __future__ import annotations
 
 import logging
@@ -87,6 +89,7 @@ def frame_selection_kmeans_impl(
 
 
 def _read_all_frames(config: Config, video_file: Path) -> np.ndarray:
+    """Read every frame from video_file, resized to config.FRAME_EXTRACT_RESIZE_DIMS."""
     return _read_nth_frames(config=config, video_file=video_file, n=1)
 
 
@@ -95,7 +98,7 @@ def _read_nth_frames(
     video_file: Path,
     n: int = 1,
 ) -> np.ndarray:
-
+    """Read every nth frame from video_file, resized and returned as a float16 array."""
     # Open the video file
     with video_capture(video_file) as cap:
         frames = []
@@ -127,6 +130,7 @@ def _read_nth_frames(
 
 
 def _run_kmeans(x: np.ndarray, n_clusters: int) -> tuple[np.ndarray, np.ndarray]:
+    """Fit k-means on x and return (cluster_labels, cluster_centers)."""
     kmeans_obj = KMeans(n_clusters, n_init="auto")
     kmeans_obj.fit(x)
     cluster_labels = kmeans_obj.labels_

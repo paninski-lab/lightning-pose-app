@@ -1,3 +1,5 @@
+"""Frame export utilities: write individual video frames as PNG/JPEG files."""
+
 from __future__ import annotations
 
 import logging
@@ -15,6 +17,7 @@ logger = logging.getLogger(__name__)
 def export_frames_singleview_impl(
     config: Config, video_path: Path, frame_idxs: np.ndarray, dest_paths: list[Path]
 ) -> None:
+    """Extract frames at the given indices from video_path and write them to dest_paths."""
     with video_capture(video_path) as cap:
         frames = get_frames_from_idxs(cap, frame_idxs)
     for frame, dest_path in zip(frames, dest_paths, strict=False):

@@ -1,3 +1,5 @@
+"""Wrapper around litpose predict that retries with a smaller batch size on CUDA OOM."""
+
 from __future__ import annotations
 
 import argparse
@@ -9,6 +11,7 @@ import sys
 CACHE_FILE = "/tmp/litpose_predict_batch_size_cache.json"
 
 def load_cache() -> dict:
+    """Load the batch-size cache from disk, returning an empty dict on any error."""
     if os.path.exists(CACHE_FILE):
         try:
             with open(CACHE_FILE) as f:
@@ -18,6 +21,7 @@ def load_cache() -> dict:
     return {}
 
 def save_to_cache(key: str, value: int) -> None:
+    """Persist a key/value pair to the batch-size cache on disk."""
     cache = load_cache()
     cache[key] = value
     try:
@@ -27,6 +31,7 @@ def save_to_cache(key: str, value: int) -> None:
         print(f"Warning: Could not save cache to {CACHE_FILE}: {e}")
 
 def main() -> None:
+    """Run litpose predict, halving the batch size and retrying on CUDA OOM until success."""
     # Use parse_known_args to separate wrapper-specific args from litpose args
     parser = argparse.ArgumentParser(description="Wrapper for litpose predict to handle CUDA OOM.")
     parser.add_argument("--fake", action="store_true", help="Use fake_predict.py instead of litpose")

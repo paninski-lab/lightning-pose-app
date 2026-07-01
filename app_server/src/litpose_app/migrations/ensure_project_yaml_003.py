@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def needs_migration(paths: ProjectPaths) -> bool:
+    """Return True if project.yaml does not yet exist in the project data directory."""
     project_yaml_path = paths.data_dir / "project.yaml"
     return not project_yaml_path.exists()
 

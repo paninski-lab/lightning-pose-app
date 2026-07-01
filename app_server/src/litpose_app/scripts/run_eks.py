@@ -24,6 +24,7 @@ from pathlib import Path
 
 
 def _plot_one(args: tuple) -> None:
+    """Generate and save a per-keypoint debug plot for one camera using EKS results."""
     import matplotlib
     matplotlib.use('Agg')
     from eks.utils import plot_results
@@ -41,6 +42,7 @@ def _plot_one(args: tuple) -> None:
 
 
 def main() -> None:
+    """Parse CLI arguments and run the EKS multicam smoother, saving smoothed CSVs to save_dir."""
     parser = argparse.ArgumentParser(description="Run EKS multicam smoother")
     parser.add_argument("--save_dir", required=True, help="Directory to save smoothed outputs")
     parser.add_argument("--camera_names", nargs="+", required=True, help="Ordered list of camera names")

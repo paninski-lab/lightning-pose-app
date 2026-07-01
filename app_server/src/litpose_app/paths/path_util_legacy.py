@@ -1,3 +1,5 @@
+"""Legacy path parser for projects using the pre-V1 unstructured directory layout."""
+
 from __future__ import annotations
 
 import re
@@ -23,6 +25,7 @@ class PathUtilLegacy(PathUtil):
     view_names: list[str]
 
     def __init__(self, view_names: list[str], *args: Any, **kwargs: Any) -> None:
+        """Initialize with view names and wire up all legacy resource utils."""
         self.view_names = view_names
         super().__init__(is_multiview=len(view_names) > 0, *args, **kwargs)
 
@@ -49,8 +52,8 @@ class PathUtilLegacy(PathUtil):
             ResourceType.CALIBRATION_BACKUP: self.calibration_backups,
         }
 
-    # Inline for_ returning resource utils
     def for_(self, resource_type: ResourceType) -> ResourceUtil:
+        """Return the resource util for the given resource type."""
         return self._resource_map[resource_type]
 
     def _parse_session_name_and_view(
@@ -89,13 +92,18 @@ class PathUtilLegacy(PathUtil):
 
 
 class _LegacyVideoUtil(ResourceUtil[VideoFileKey]):
+    """Legacy resource util for top-level .mp4 video files."""
+
     def __init__(self, schema: PathUtilLegacy) -> None:
+        """Initialize with the parent schema for session/view parsing."""
         self._schema = schema
 
     def get_path(self, key: VideoFileKey) -> Path:
+        """Not implemented for legacy layout."""
         raise NotImplementedError()
 
     def parse_path(self, path: Path | str) -> VideoFileKey:
+        """Parse a top-level .mp4 path into a VideoFileKey."""
         path = _check_relative_and_normalize(path)
         if not path.suffix == ".mp4":
             raise PathParseException()
@@ -106,13 +114,18 @@ class _LegacyVideoUtil(ResourceUtil[VideoFileKey]):
 
 
 class _LegacyVideoBBoxUtil(ResourceUtil[VideoFileKey]):
+    """Legacy resource util for video bounding-box CSV files."""
+
     def __init__(self, schema: PathUtilLegacy) -> None:
+        """Initialize with the parent schema for session/view parsing."""
         self._schema = schema
 
     def get_path(self, key: VideoFileKey) -> Path:
+        """Not implemented for legacy layout."""
         raise NotImplementedError()
 
     def parse_path(self, path: Path | str) -> VideoFileKey:
+        """Parse a _bbox.csv path into a VideoFileKey."""
         path = _check_relative_and_normalize(path)
         if not path.suffix == ".csv":
             raise PathParseException()
@@ -123,13 +136,18 @@ class _LegacyVideoBBoxUtil(ResourceUtil[VideoFileKey]):
 
 
 class _LegacyFrameUtil(ResourceUtil[FrameKey]):
+    """Legacy resource util for labeled-data frame image paths."""
+
     def __init__(self, schema: PathUtilLegacy) -> None:
+        """Initialize with the parent schema for session/view parsing."""
         self._schema = schema
 
     def get_path(self, key: FrameKey) -> Path:
+        """Not implemented for legacy layout."""
         raise NotImplementedError()
 
     def parse_path(self, path: Path | str) -> FrameKey:
+        """Parse a labeled-data frame image path into a FrameKey."""
         path = _check_relative_and_normalize(path)
         # Regex to capture the directory segment containing session and view
         # e.g., "labeled-data/sessionkey_view/" or "labeled-data/sessionkey/"
@@ -150,13 +168,18 @@ class _LegacyFrameUtil(ResourceUtil[FrameKey]):
 
 
 class _LegacyLabelFileUtil(ResourceUtil[tuple[LabelFileKey, ViewName | None]]):
+    """Legacy resource util for CollectedData CSV label files."""
+
     def __init__(self, schema: PathUtilLegacy) -> None:
+        """Initialize with the parent schema for session/view parsing."""
         self._schema = schema
 
     def get_path(self, key_view: tuple[LabelFileKey, ViewName | None]) -> Path:
+        """Not implemented for legacy layout."""
         raise NotImplementedError()
 
     def parse_path(self, path: Path | str) -> tuple[LabelFileKey, ViewName | None]:
+        """Parse a label CSV path into a (LabelFileKey, view) tuple."""
         path = _check_relative_and_normalize(path)
         if path.suffix != ".csv":
             raise PathParseException()
@@ -173,16 +196,21 @@ class _LegacyLabelFileUtil(ResourceUtil[tuple[LabelFileKey, ViewName | None]]):
 
 
 class _LegacyLabelFileBBoxUtil(ResourceUtil[tuple[LabelFileKey, ViewName | None]]):
+    """Legacy resource util for bboxes_ CSV files paired with label files."""
+
     def __init__(self, schema: PathUtilLegacy) -> None:
+        """Initialize with the parent schema for session/view parsing."""
         self._schema = schema
 
     def get_path(self, key_view: tuple[LabelFileKey, ViewName | None]) -> Path:
+        """Return the bboxes CSV path for the given label file key and view."""
         label_file_key, view = key_view
         # bboxes_lTop.csv, bboxes_new.csv
         tokens = ("bboxes", label_file_key.replace("CollectedData", ""), view)
         return Path("_".join(tokens) + ".csv")
 
     def parse_path(self, path: Path | str) -> tuple[LabelFileKey, ViewName | None]:
+        """Parse a bboxes_ CSV path into a (LabelFileKey, view) tuple."""
         path = _check_relative_and_normalize(path)
         if not Path(path.as_posix()).name.startswith("bboxes_"):
             raise PathParseException()
@@ -196,13 +224,18 @@ class _LegacyLabelFileBBoxUtil(ResourceUtil[tuple[LabelFileKey, ViewName | None]
 
 
 class _LegacyCenterFramesUtil(ResourceUtil[VideoFileKey]):
+    """Legacy resource util for center_frames.txt files inside labeled-data dirs."""
+
     def __init__(self, schema: PathUtilLegacy) -> None:
+        """Initialize with the parent schema for session/view parsing."""
         self._schema = schema
 
     def get_path(self, key: VideoFileKey) -> Path:
+        """Not implemented for legacy layout."""
         raise NotImplementedError()
 
     def parse_path(self, path: Path | str) -> VideoFileKey:
+        """Parse a center_frames.txt path into a VideoFileKey."""
         path = _check_relative_and_normalize(path)
         pattern = r"labeled-data/(?P<session_view_str>[^/]+)/center_frames\.txt"
         m = re.search(pattern, path.as_posix())
@@ -215,13 +248,18 @@ class _LegacyCenterFramesUtil(ResourceUtil[VideoFileKey]):
 
 
 class _LegacyCalibrationUtil(ResourceUtil[SessionKey]):
+    """Legacy resource util for per-session calibration TOML files."""
+
     def __init__(self, schema: PathUtilLegacy) -> None:
+        """Initialize with the parent schema."""
         self._schema = schema
 
     def get_path(self, key: SessionKey) -> Path:
+        """Return calibrations/<session>.toml."""
         return Path("calibrations") / f"{key}.toml"
 
     def parse_path(self, path: Path | str) -> SessionKey:
+        """Parse a calibrations/<session>.toml path into a SessionKey."""
         path = _check_relative_and_normalize(path)
         pattern = r"calibrations/(?P<session>[^/]+)\.toml"
         m = re.match(pattern, path.as_posix())
@@ -233,13 +271,18 @@ class _LegacyCalibrationUtil(ResourceUtil[SessionKey]):
 
 
 class _LegacyProjectCalibrationUtil(ResourceUtil[None]):
+    """Legacy resource util for the single project-level calibration.toml."""
+
     def __init__(self, schema: PathUtilLegacy) -> None:
+        """Initialize with the parent schema."""
         self._schema = schema
 
     def get_path(self) -> Path:  # type: ignore[override]
+        """Not implemented for legacy layout."""
         raise NotImplementedError()
 
     def parse_path(self, path: Path | str) -> None:
+        """Parse calibration.toml; raises PathParseException for any other path."""
         path = _check_relative_and_normalize(path)
         pattern = r"calibration\.toml"
         m = re.match(pattern, path.as_posix())
@@ -249,13 +292,18 @@ class _LegacyProjectCalibrationUtil(ResourceUtil[None]):
 
 
 class _LegacyCalibrationBackupUtil(ResourceUtil[tuple[SessionKey, int]]):
+    """Legacy resource util for timestamped calibration backup TOML files."""
+
     def __init__(self, schema: PathUtilLegacy) -> None:
+        """Initialize with the parent schema."""
         self._schema = schema
 
     def get_path(self, key: tuple[SessionKey, int]) -> Path:
+        """Not implemented for legacy layout."""
         raise NotImplementedError()
 
     def parse_path(self, path: Path | str) -> tuple[SessionKey, int]:
+        """Parse a calibration_backups/<session>.<timestamp>.toml path."""
         path = _check_relative_and_normalize(path)
         pattern = r"calibration_backups/(?P<session>[^/]+)\.(?P<time>\d+)\.toml"
         m = re.match(pattern, path.as_posix())

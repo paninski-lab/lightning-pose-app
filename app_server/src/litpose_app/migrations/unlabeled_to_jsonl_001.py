@@ -12,7 +12,7 @@ DESCRIPTION = "Convert *.unlabeled sidecar files to *.unlabeled.jsonl"
 
 
 def needs_migration(paths: ProjectPaths) -> bool:
-    # Needed if any legacy .unlabeled exists.
+    """Return True if any legacy *.unlabeled sidecar files still exist."""
     return any(p.is_file() for p in paths.data_dir.rglob("*.unlabeled"))
 
 

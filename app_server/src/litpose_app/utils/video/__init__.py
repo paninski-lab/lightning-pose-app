@@ -1,3 +1,5 @@
+"""Video utility helpers: context-managed VideoCapture and frame export."""
+
 from __future__ import annotations
 
 from collections.abc import Generator

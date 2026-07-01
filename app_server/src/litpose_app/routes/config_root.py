@@ -1,3 +1,5 @@
+"""RPC endpoint returning global app context: upload paths and installed package versions."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
@@ -47,6 +49,7 @@ def is_editable_install(package_name: str) -> bool:
 def get_root_config(
     rc: RootConfig = Depends(deps.root_config),
 ) -> GlobalContextResponse:
+    """Return upload directory, home directory, and installed package version info."""
     from pathlib import Path
 
     # Get home directory using cross-platform library

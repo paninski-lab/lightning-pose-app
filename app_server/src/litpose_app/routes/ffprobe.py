@@ -1,3 +1,5 @@
+"""RPC endpoint wrapping ffprobe to return video metadata for a project's video file."""
+
 from __future__ import annotations
 
 import json
@@ -15,6 +17,8 @@ from litpose_app.deps import ProjectInfoGetter
 
 
 class FFProbeRequest(BaseModel):
+    """Request to probe a video file's metadata within a project."""
+
     # Project scoping (required by new API contract). The value is validated via
     # the dependency below; the route itself doesn't use the Project object.
     projectKey: str
@@ -22,6 +26,8 @@ class FFProbeRequest(BaseModel):
 
 
 class FFProbeResponse(BaseModel):
+    """Video metadata returned by the ffprobe endpoint."""
+
     file_path: str  # Path to the video file
     duration: float  # Duration of the video in seconds
     width: int  # Width of the video in pixels
@@ -43,6 +49,7 @@ def ffprobe(
     request: FFProbeRequest,
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> FFProbeResponse:
+    """Probe request.path with ffprobe and return video metadata after validating project scope."""
     # Validate projectKey and obtain Project (not used further here)
     _ = project_info_getter(request.projectKey)
     if request.path.suffix != ".mp4":

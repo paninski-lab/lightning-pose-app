@@ -47,6 +47,7 @@ def _infer_creation_datetime(config_path: Path) -> str:
 
 
 def needs_migration(paths: ProjectPaths) -> bool:
+    """Return True if any model config.yaml is missing a creation_datetime field."""
     for cfg in _find_model_configs(paths.model_dir):
         try:
             data = yaml.safe_load(cfg.read_text())
@@ -58,6 +59,7 @@ def needs_migration(paths: ProjectPaths) -> bool:
 
 
 def migrate(paths: ProjectPaths) -> None:
+    """Write a creation_datetime field into every model config.yaml that lacks one."""
     for cfg in _find_model_configs(paths.model_dir):
         try:
             text = cfg.read_text()

@@ -1,3 +1,5 @@
+"""Fake litpose predict script used in tests to simulate OOM and other failure modes."""
+
 from __future__ import annotations
 
 import argparse
@@ -5,6 +7,7 @@ import sys
 
 
 def main() -> None:
+    """Parse litpose predict-style args and exit with OOM or success based on batch size."""
     # Setup parser to handle litpose predict-like arguments
     parser = argparse.ArgumentParser(description="Fake litpose predict for testing OOM handling.")
     parser.add_argument("model_dir", help="Path to the model directory")

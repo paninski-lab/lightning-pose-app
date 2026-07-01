@@ -1,3 +1,5 @@
+"""FFmpeg transcoding task: re-encodes videos with an intra frame per frame for seeking."""
+
 from __future__ import annotations
 
 import logging

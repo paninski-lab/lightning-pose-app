@@ -1,3 +1,5 @@
+"""RPC endpoint for frame extraction: selects and exports frames from project videos."""
+
 from __future__ import annotations
 
 import asyncio
@@ -39,6 +41,8 @@ class LabelFileCreationRequest(BaseModel):
 
 
 class ExtractFramesRequest(BaseModel):
+    """Request to extract frames from a session's videos into the project's labeled-data dir."""
+
     projectKey: str
     labelFileCreationRequest: LabelFileCreationRequest | None = None
     session: Session
@@ -64,6 +68,7 @@ async def extract_frames(
     config: Config = Depends(deps.config),
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> str:
+    """Run frame extraction for the given session, creating label files if requested."""
     async with _lock:
         project: Project = project_info_getter(request.projectKey)
 
@@ -83,6 +88,7 @@ async def extract_frames(
                 )
 
         def on_progress(x: str) -> None:
+            """Log a progress message from the extraction task."""
             logger.info(f"extractFrames progress: {x}")
 
         if request.labelFileCreationRequest is not None:
@@ -126,6 +132,7 @@ def init_label_file(
     labelFileCreationRequest: LabelFileCreationRequest,
     project: Project,
 ) -> MVLabelFile:
+    """Create empty label CSV files for each view according to the template, returning an MVLabelFile."""
     # Map of view to label file path
     files_to_create = []
     if "*" in labelFileCreationRequest.labelFileTemplate:

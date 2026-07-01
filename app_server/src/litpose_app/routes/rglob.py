@@ -1,3 +1,5 @@
+"""RPC endpoint for glob-style filesystem listing with optional file metadata."""
+
 from __future__ import annotations
 
 import datetime
@@ -11,6 +13,8 @@ router = APIRouter()
 
 
 class RGlobRequest(BaseModel):
+    """Parameters for a recursive glob over a base directory."""
+
     baseDir: Path
     pattern: str
     noDirs: bool = False
@@ -18,6 +22,8 @@ class RGlobRequest(BaseModel):
 
 
 class RGlobResponseEntry(BaseModel):
+    """Metadata for one entry returned by the rglob endpoint."""
+
     path: Path
 
     # Present only if request had stat=True or noDirs=True
@@ -33,12 +39,15 @@ class RGlobResponseEntry(BaseModel):
 
 
 class RGlobResponse(BaseModel):
+    """Result of an rglob call: a list of entries relative to the base directory."""
+
     entries: list[RGlobResponseEntry]
     relativeTo: Path  # this is going to be the same base_dir that was in the request.
 
 
 @router.post("/app/v0/rpc/rglob")
 def rglob(request: RGlobRequest) -> RGlobResponse:
+    """Recursively glob base_dir with the given pattern and return sorted entries."""
     response = RGlobResponse(entries=[], relativeTo=request.baseDir)
 
     results = _rglob(

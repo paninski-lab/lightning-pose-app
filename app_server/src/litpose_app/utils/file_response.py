@@ -21,6 +21,7 @@ from starlette.staticfiles import NotModifiedResponse
 
 
 def file_response(request: Request, path: Path, **kwargs) -> Response:
+    """Return a FileResponse for path, sending 304 Not Modified when the client's cache is fresh."""
     # Follow symlinks
     path = path.resolve()
 

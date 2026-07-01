@@ -1,3 +1,5 @@
+"""System-level configuration loaded from environment variables at startup."""
+
 from __future__ import annotations
 
 from pathlib import Path

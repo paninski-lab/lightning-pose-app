@@ -1,3 +1,5 @@
+"""RPC endpoint for atomically saving multi-view keypoint labels to CSV files."""
+
 from __future__ import annotations
 
 import asyncio
@@ -25,6 +27,8 @@ logger = logging.getLogger(__name__)
 
 
 class Keypoint(BaseModel):
+    """A keypoint with name and pixel coordinates; None over the wire becomes NaN."""
+
     name: str
 
     # null over the wire. Converts to float("nan") due to field validator below
@@ -40,6 +44,8 @@ class Keypoint(BaseModel):
 
 
 class SaveFrameViewRequest(BaseModel):
+    """Keypoint edits for one view's label CSV: which frame to update and how."""
+
     csvPath: Path  # /home/user/.../CollectedData_lTop.csv
     indexToChange: str  # labeled-data/session01_left/img001.png
     changedKeypoints: list[Keypoint]
@@ -50,6 +56,8 @@ class SaveFrameViewRequest(BaseModel):
 
 
 class SaveMvFrameRequest(BaseModel):
+    """Request to save keypoint changes across all views for a single multi-view frame."""
+
     projectKey: str
     views: list[SaveFrameViewRequest]
     unlabeledQueueDeletionOnly: bool = False
@@ -124,7 +132,9 @@ def _modify_df(df: pd.DataFrame, changes: SaveFrameViewRequest) -> None:
 
 
 async def read_df_mvframe(request: SaveMvFrameRequest) -> list[pd.DataFrame]:
+    """Read each view's CSV into a DataFrame and apply the requested keypoint changes."""
     def read_df_file_task(vr: SaveFrameViewRequest) -> pd.DataFrame:
+        """Read one view's CSV, apply modifications, and return the updated DataFrame."""
         df = pd.read_csv(vr.csvPath, header=[0, 1, 2], index_col=0)
         df = fix_empty_first_row(df)
         _modify_df(df, vr)
@@ -149,6 +159,7 @@ async def write_df_tmp_mvframe(
     result = []
 
     def write_df_to_tmp_file(v: SaveFrameViewRequest, d: pd.DataFrame) -> Path:
+        """Write DataFrame d to a timestamped temp file alongside the target CSV."""
         tmp_file = v.csvPath.with_name(f"{v.csvPath.name}.{timestamp}.tmp")
         d.to_csv(tmp_file)
         return tmp_file
@@ -166,6 +177,7 @@ async def commit_mvframe(
     """Renames temp files to their original names (atomic per file)."""
 
     def commit_changes() -> None:
+        """Replace each view's CSV with its temp file using os.replace (atomic per file)."""
         for vr, tmp_file_name in zip(request.views, tmp_file_names, strict=False):
             os.replace(tmp_file_name, vr.csvPath)
 
@@ -181,6 +193,7 @@ async def remove_from_unlabeled_sidecar_files(
     timestamp = time.time_ns()
 
     def remove_task(vr: SaveFrameViewRequest) -> Path | None:
+        """Remove the labeled frame from one view's unlabeled sidecar and return the temp file path."""
         unlabeled_sidecar_file = vr.csvPath.with_suffix(".unlabeled.jsonl")
         if not unlabeled_sidecar_file.exists():
             return

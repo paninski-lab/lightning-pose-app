@@ -1,3 +1,5 @@
+"""Utilities for reading and writing the projects.toml project registry."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -10,9 +12,12 @@ from litpose_app.rootconfig import RootConfig
 
 
 class ProjectUtil:
+    """Read/write access to the projects.toml registry and per-project YAML configs."""
+
     config: RootConfig
 
     def __init__(self, config: RootConfig) -> None:
+        """Initialize with the system root config that provides the TOML path."""
         self.config = config
 
     def _read_projects_toml(self) -> dict:

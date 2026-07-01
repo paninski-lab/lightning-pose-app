@@ -35,6 +35,7 @@ def _find_model_configs(model_dir: Path) -> list[Path]:
 
 
 def needs_migration(paths: ProjectPaths) -> bool:
+    """Return True if any model config.yaml has a stale data_dir that doesn't match the project."""
     for cfg in _find_model_configs(paths.model_dir):
         try:
             data = yaml.safe_load(cfg.read_text())
@@ -51,6 +52,7 @@ def needs_migration(paths: ProjectPaths) -> bool:
 
 
 def migrate(paths: ProjectPaths) -> None:
+    """Update data_dir and video_dir in each model config.yaml to match the current project data_dir."""
     for cfg in _find_model_configs(paths.model_dir):
         try:
             text = cfg.read_text()

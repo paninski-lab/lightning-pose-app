@@ -1,3 +1,5 @@
+"""Helpers for atomically updating per-view unlabeled-frame JSONL sidecar files."""
+
 from __future__ import annotations
 
 import json
@@ -13,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class ExtractedFramePredictionEntry(BaseModel):
+    """A single keypoint prediction for one extracted frame."""
     keypoint_name: str
     x: float
     y: float
@@ -20,17 +23,21 @@ class ExtractedFramePredictionEntry(BaseModel):
 
 # When changing this struct, be aware that it's used in ExtractFramesRequest.
 class ExtractedFramePredictionList(BaseModel):
+    """Predictions from one model for a set of extracted frames."""
+
     model_name: str
     date_time: int
     predictions: list[ExtractedFramePredictionEntry]
 
 
 class LabelingQueueEntry(BaseModel):
+    """One entry in the unlabeled-frame JSONL sidecar queue."""
     frame_path: str
     predictions: ExtractedFramePredictionList | None = None
 
 
 class AddToUnlabeledFileView(BaseModel):
+    """Specifies which entries to append to one view's unlabeled sidecar file."""
     # Path of the CSV file who's unlabeled sidecar file needs to be updated
     csvPath: Path
 
@@ -42,6 +49,7 @@ def add_to_unlabeled_sidecar_files(views: list[AddToUnlabeledFileView]) -> None:
     timestamp = time.time_ns()
 
     def add_task(vr: AddToUnlabeledFileView) -> Path | None:
+        """Append entries to one view's sidecar and return the temp file path, or None if no change."""
         unlabeled_sidecar_file = vr.csvPath.with_suffix(".unlabeled.jsonl")
         if not unlabeled_sidecar_file.exists():
             entries: list[LabelingQueueEntry] = []
