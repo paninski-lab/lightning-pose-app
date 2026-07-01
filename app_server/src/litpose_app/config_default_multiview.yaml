@@ -176,7 +176,7 @@ losses:
   supervised_reprojection_heatmap_mse:
     # actual weight = 1 / (2 * exp(log_weight)); higher values reduce the loss contribution
     # e.g., log_weight=0.0 → weight=0.5, log_weight=3.0 → weight≈0.025
-    log_weight: 3.0
+    log_weight: null  # null disables this loss; only active when camera calibrations are used
 
 eval:
   # predict? used in scripts/train_hydra.py
