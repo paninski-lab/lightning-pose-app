@@ -31,10 +31,10 @@
 
       <fieldset class="fieldset my-2">
         <h3 class="text-md mt-0">Member models</h3>
-        <p class="m-0!">Select two or more trained models to ensemble.</p>
+        <p class="m-0!">Select one or more trained models to ensemble.</p>
         @if (availableModels().length === 0) {
           <p class="text-base-content/60 text-sm">
-            No trained models found. Train at least two models first.
+            No trained models found. Train at least one model first.
           </p>
         } @else {
           <div class="flex flex-col gap-1 mt-2">
@@ -55,10 +55,10 @@
           class="my-1! text-error invisible"
           [class.visible!]="
             form.controls.memberIds.touched &&
-            form.controls.memberIds.value.length < 2
+            form.controls.memberIds.value.length < 1
           "
         >
-          Select at least two models
+          Select at least one model
         </p>
       </fieldset>
 
@@ -94,7 +94,7 @@
         class="btn btn-primary"
         (click)="onCreateClick()"
         [class.btn-disabled]="
-          form.invalid || form.controls.memberIds.value.length < 2
+          form.invalid || form.controls.memberIds.value.length < 1
         "
       >
         Create
