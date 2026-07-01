@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import json
 import logging
@@ -145,7 +147,7 @@ def get_or_create_status(filename: str) -> VideoTaskStatus:
     return copy.deepcopy(s)
 
 
-def set_status(filename: str, **kwargs):
+def set_status(filename: str, **kwargs) -> None:
     with _status_lock:
         st = _get_or_create_status_nolock(filename)
         for k, v in kwargs.items():
@@ -176,7 +178,7 @@ class GetVideoStatusResponse(BaseModel):
 # -----------------------------
 # Helpers
 # -----------------------------
-def _atomic_save(dst: Path, src_file: UploadFile):
+def _atomic_save(dst: Path, src_file: UploadFile) -> None:
     """Atomically save an uploaded file to destination path.
 
     Writes to a temporary file alongside the destination and then moves it into
@@ -221,7 +223,7 @@ def _ffprobe_total_frames(path: Path) -> int | None:
         return None
 
 
-def _stream_sse_sync(gen: Iterator[dict]):
+def _stream_sse_sync(gen: Iterator[dict]) -> Iterator[str]:
     """Wrap a sync iterator of dict payloads into SSE text events.
 
     Yields lines formatted as Server-Sent Events where each payload is JSON
@@ -232,7 +234,7 @@ def _stream_sse_sync(gen: Iterator[dict]):
         yield f"data: {data}\n\n"
 
 
-def _start_transcode_background(filename: str, input_path: Path, output_path: Path, delete_on_success: bool = False):
+def _start_transcode_background(filename: str, input_path: Path, output_path: Path, delete_on_success: bool = False) -> Future:
     # If already running, return existing future
     with _status_lock:
         fut = _futures_by_file.get(filename)
@@ -245,7 +247,7 @@ def _start_transcode_background(filename: str, input_path: Path, output_path: Pa
         filename, totalFrames=total, transcodeStatus=TranscodeStatus.ACTIVE, error=None
     )
 
-    def _run():
+    def _run() -> None:
         try:
             import subprocess
 
@@ -322,7 +324,7 @@ def upload_video(
     file: UploadFile = File(...),
     root_config: RootConfig = Depends(deps.root_config),
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
-):
+) -> dict:
     """Upload a single video file to the server's uploads directory.
 
     This endpoint accepts a browser-style multipart/form-data upload. The file
@@ -417,7 +419,7 @@ def transcode_video(
     should_overwrite: bool = False,
     root_config: RootConfig = Depends(deps.root_config),
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
-):
+) -> StreamingResponse:
     """Start or attach to a background transcode and stream progress via SSE.
 
     This endpoint starts a background ffmpeg transcode of an input file into
@@ -479,7 +481,6 @@ def transcode_video(
     _start_transcode_background(filename, in_path, out_path, delete_on_success=is_upload)
 
     def poller_sync() -> Iterator[dict]:
-        # Periodically emit current status until terminal
         import time
 
         while True:
@@ -500,7 +501,7 @@ def transcode_video(
 # -----------------------------
 # Startup cleanup
 # -----------------------------
-def cleanup_old_uploads(rc: RootConfig):
+def cleanup_old_uploads(rc: RootConfig) -> None:
     """Delete uploads older than 24 hours in the system uploads directory.
 
     Runs at application startup as a best-effort maintenance task. Any

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import shutil
 import subprocess
@@ -37,7 +39,7 @@ FFMPEG_OPTIONS = [
 ]
 
 
-def check_dependencies():
+def check_dependencies() -> bool:
     """Checks if ffmpeg and ffprobe are installed and in PATH."""
     if shutil.which("ffmpeg") is None:
         logger.error("ffmpeg is not installed or not found in PATH.")

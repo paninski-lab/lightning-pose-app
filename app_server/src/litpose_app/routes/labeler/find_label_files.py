@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import concurrent.futures
 from pathlib import Path
 
@@ -28,7 +30,7 @@ class FindLabelFilesRequest(BaseModel):
 def find_label_files(
     request: FindLabelFilesRequest,
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
-):
+) -> dict:
     """
     A separate RPC for finding label files is needed because while the client
     has access to the RGlob RPC, RGlobbing for CSVs results in too broad of a search.

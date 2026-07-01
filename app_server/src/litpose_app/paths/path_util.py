@@ -36,7 +36,7 @@ class PathUtil(ABC):
     is_multiview: bool
     base_dir: Path | None
 
-    def __init__(self, is_multiview: bool, base_dir: Path | None = None):
+    def __init__(self, is_multiview: bool, base_dir: Path | None = None) -> None:
         self.is_multiview = is_multiview
         self.base_dir = base_dir
 

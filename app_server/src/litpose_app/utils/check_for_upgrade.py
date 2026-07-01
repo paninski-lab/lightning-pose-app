@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import os
 import sys
@@ -6,7 +8,7 @@ from textwrap import dedent
 logger = logging.getLogger(__name__)
 
 
-def check_for_upgrade():
+def check_for_upgrade() -> None:
     if os.environ.get("LP_IGNORE_UPGRADE") == "1":
         logger.info("LP_IGNORE_UPGRADE=1 present, Skipping upgrade check ")
         return

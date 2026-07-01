@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import re
 from pathlib import Path
+from typing import Any
 
 from lightning_pose.data.datatypes import (
     FrameKey,
@@ -9,7 +12,7 @@ from lightning_pose.data.datatypes import (
     ViewName,
 )
 
-from litpose_app.paths import PathParseException, _check_relative_and_normalize
+from litpose_app.paths import PathParseException, ResourceUtil, ResourceType, _check_relative_and_normalize
 from litpose_app.paths.path_util import PathUtil
 
 
@@ -19,7 +22,7 @@ class PathUtilLegacy(PathUtil):
     # Legacy parser needs access to view names for parsing.
     view_names: list[str]
 
-    def __init__(self, view_names, *args, **kwargs):
+    def __init__(self, view_names: list[str], *args: Any, **kwargs: Any) -> None:
         self.view_names = view_names
         super().__init__(is_multiview=len(view_names) > 0, *args, **kwargs)
 
@@ -34,9 +37,6 @@ class PathUtilLegacy(PathUtil):
         self.project_calibration = _LegacyProjectCalibrationUtil(self)
         self.calibration_backups = _LegacyCalibrationBackupUtil(self)
 
-        # Lazy import to avoid circulars at module import time
-        from litpose_app.paths import ResourceUtil  # type: ignore
-
         self._resource_map: dict[ResourceType, ResourceUtil] = {
             ResourceType.VIDEO: self.videos,
             ResourceType.VIDEO_BBOX: self.video_boxes,
@@ -50,7 +50,7 @@ class PathUtilLegacy(PathUtil):
         }
 
     # Inline for_ returning resource utils
-    def for_(self, resource_type):
+    def for_(self, resource_type: ResourceType) -> ResourceUtil:
         return self._resource_map[resource_type]
 
     def _parse_session_name_and_view(
@@ -86,11 +86,10 @@ class PathUtilLegacy(PathUtil):
 # ---------------------------------------------------------------------------
 # Resource util classes implementing get()/reverse()
 # ---------------------------------------------------------------------------
-from litpose_app.paths import ResourceUtil  # type: ignore
 
 
 class _LegacyVideoUtil(ResourceUtil[VideoFileKey]):
-    def __init__(self, schema: "PathUtilLegacy"):
+    def __init__(self, schema: PathUtilLegacy) -> None:
         self._schema = schema
 
     def get_path(self, key: VideoFileKey) -> Path:
@@ -107,7 +106,7 @@ class _LegacyVideoUtil(ResourceUtil[VideoFileKey]):
 
 
 class _LegacyVideoBBoxUtil(ResourceUtil[VideoFileKey]):
-    def __init__(self, schema: "PathUtilLegacy"):
+    def __init__(self, schema: PathUtilLegacy) -> None:
         self._schema = schema
 
     def get_path(self, key: VideoFileKey) -> Path:
@@ -124,7 +123,7 @@ class _LegacyVideoBBoxUtil(ResourceUtil[VideoFileKey]):
 
 
 class _LegacyFrameUtil(ResourceUtil[FrameKey]):
-    def __init__(self, schema: "PathUtilLegacy"):
+    def __init__(self, schema: PathUtilLegacy) -> None:
         self._schema = schema
 
     def get_path(self, key: FrameKey) -> Path:
@@ -151,7 +150,7 @@ class _LegacyFrameUtil(ResourceUtil[FrameKey]):
 
 
 class _LegacyLabelFileUtil(ResourceUtil[tuple[LabelFileKey, ViewName | None]]):
-    def __init__(self, schema: "PathUtilLegacy"):
+    def __init__(self, schema: PathUtilLegacy) -> None:
         self._schema = schema
 
     def get_path(self, key_view: tuple[LabelFileKey, ViewName | None]) -> Path:
@@ -174,7 +173,7 @@ class _LegacyLabelFileUtil(ResourceUtil[tuple[LabelFileKey, ViewName | None]]):
 
 
 class _LegacyLabelFileBBoxUtil(ResourceUtil[tuple[LabelFileKey, ViewName | None]]):
-    def __init__(self, schema: "PathUtilLegacy"):
+    def __init__(self, schema: PathUtilLegacy) -> None:
         self._schema = schema
 
     def get_path(self, key_view: tuple[LabelFileKey, ViewName | None]) -> Path:
@@ -197,7 +196,7 @@ class _LegacyLabelFileBBoxUtil(ResourceUtil[tuple[LabelFileKey, ViewName | None]
 
 
 class _LegacyCenterFramesUtil(ResourceUtil[VideoFileKey]):
-    def __init__(self, schema: "PathUtilLegacy"):
+    def __init__(self, schema: PathUtilLegacy) -> None:
         self._schema = schema
 
     def get_path(self, key: VideoFileKey) -> Path:
@@ -216,7 +215,7 @@ class _LegacyCenterFramesUtil(ResourceUtil[VideoFileKey]):
 
 
 class _LegacyCalibrationUtil(ResourceUtil[SessionKey]):
-    def __init__(self, schema: "PathUtilLegacy"):
+    def __init__(self, schema: PathUtilLegacy) -> None:
         self._schema = schema
 
     def get_path(self, key: SessionKey) -> Path:
@@ -234,7 +233,7 @@ class _LegacyCalibrationUtil(ResourceUtil[SessionKey]):
 
 
 class _LegacyProjectCalibrationUtil(ResourceUtil[None]):
-    def __init__(self, schema: "PathUtilLegacy"):
+    def __init__(self, schema: PathUtilLegacy) -> None:
         self._schema = schema
 
     def get_path(self) -> Path:  # type: ignore[override]
@@ -250,7 +249,7 @@ class _LegacyProjectCalibrationUtil(ResourceUtil[None]):
 
 
 class _LegacyCalibrationBackupUtil(ResourceUtil[tuple[SessionKey, int]]):
-    def __init__(self, schema: "PathUtilLegacy"):
+    def __init__(self, schema: PathUtilLegacy) -> None:
         self._schema = schema
 
     def get_path(self, key: tuple[SessionKey, int]) -> Path:

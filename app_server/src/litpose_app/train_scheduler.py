@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 import os
@@ -243,7 +245,7 @@ def train_scheduler_loop(poll_interval_seconds: float = 2.0) -> None:
             time.sleep(poll_interval_seconds)
 
 
-def _train_scheduler_process_target():
+def _train_scheduler_process_target() -> None:
     """Wrapper function to run train_scheduler_loop in a separate process."""
     # Configure logging for the child process.
     # This ensures logs from the child process are properly handled,

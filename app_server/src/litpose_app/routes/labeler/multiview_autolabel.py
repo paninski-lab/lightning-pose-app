@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import aniposelib.cameras
 import numpy as np
 from aniposelib.cameras import CameraGroup
@@ -92,7 +94,7 @@ def get_mv_auto_labels(
     return GetMVAutoLabelsResponse(keypoints=results)
 
 
-def warm_up_anipose():
+def warm_up_anipose() -> None:
     """
     Invokes `aniposelib.cameras.triangulate_simple` once, because first invocation is
     slow (probably due to its use of @numba.jit).
@@ -121,7 +123,7 @@ def warm_up_anipose():
 
 def _get_mv_auto_labels_for_keypoint(
     keypoint: KeypointForRequest, global_cg: CameraGroup
-):
+) -> KeypointForResponse:
     # Anipose triangulate for each keypoint
     labeled_views = [label.view for label in keypoint.labels]
     kp_cg = global_cg.subset_cameras_names(labeled_views)

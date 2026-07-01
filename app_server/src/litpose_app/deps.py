@@ -44,13 +44,13 @@ def project_util(root_config: RootConfig = Depends(root_config)) -> ProjectUtil:
 class ApplicationError(Exception):
     user_facing_message: str
 
-    def __init__(self, message: str):
+    def __init__(self, message: str) -> None:
         super().__init__(message)
         self.user_facing_message = message
 
 
 class ProjectNotInProjectsToml(ApplicationError):
-    def __init__(self, project_key: str):
+    def __init__(self, project_key: str) -> None:
         super().__init__(f"Project {project_key} not found in projects.toml file")
 
 

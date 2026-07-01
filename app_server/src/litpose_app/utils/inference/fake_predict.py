@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import argparse
 import sys
 
 
-def main():
+def main() -> None:
     # Setup parser to handle litpose predict-like arguments
     parser = argparse.ArgumentParser(description="Fake litpose predict for testing OOM handling.")
     parser.add_argument("model_dir", help="Path to the model directory")

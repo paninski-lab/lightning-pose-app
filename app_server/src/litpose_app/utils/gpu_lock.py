@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import contextlib
 import json
 import logging
+from collections.abc import Generator
 from pathlib import Path
 
 import portalocker
@@ -66,7 +69,9 @@ def clear_stale_gpu_task() -> bool:
 
 
 @contextlib.contextmanager
-def gpu_lock_blocking(task_type: str, task_id: str, project_key: str | None = None):
+def gpu_lock_blocking(
+    task_type: str, task_id: str, project_key: str | None = None
+) -> Generator[None, None, None]:
     """Blocking GPU lock. Waits until acquired."""
     # portalocker.Lock by default includes NON_BLOCKING flag in LOCK_METHOD.
     # We explicitly remove it to ensure we use the OS-level blocking lock.
@@ -89,7 +94,9 @@ def gpu_lock_blocking(task_type: str, task_id: str, project_key: str | None = No
 
 
 @contextlib.contextmanager
-def gpu_lock_nonblocking(task_type: str, task_id: str, project_key: str | None = None):
+def gpu_lock_nonblocking(
+    task_type: str, task_id: str, project_key: str | None = None
+) -> Generator[portalocker.Lock, None, None]:
     """Non-blocking GPU lock. Raises portalocker.LockException if busy."""
     lock = portalocker.Lock(GPU_LOCK_PATH, mode="a", timeout=0)
     lock.acquire()  # raises LockException if busy; no cleanup needed since lock wasn't held

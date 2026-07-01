@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import json
 import logging
@@ -92,7 +94,7 @@ def get_or_create_status(task_id: str) -> InferenceTaskStatus:
     return copy.deepcopy(s)
 
 
-def set_status(task_id: str, **kwargs):
+def set_status(task_id: str, **kwargs) -> None:
     with _status_lock:
         st = _get_or_create_status_nolock(task_id)
         for k, v in kwargs.items():
@@ -107,7 +109,7 @@ def _status_snapshot_dict(task_id: str) -> dict:
     return d
 
 
-def _stream_sse_sync(gen: Iterator[dict]):
+def _stream_sse_sync(gen: Iterator[dict]) -> Iterator[str]:
     for payload in gen:
         data = json.dumps(payload)
         yield f"data: {data}\n\n"
@@ -121,7 +123,7 @@ _logs_by_task: dict[str, list[str]] = {}
 _logs_lock = threading.RLock()
 
 
-def _append_log(task_id: str, line: str):
+def _append_log(task_id: str, line: str) -> None:
     with _logs_lock:
         _logs_by_task.setdefault(task_id, []).append(line)
 
@@ -147,7 +149,7 @@ def _run_subprocess_with_logging(task_id: str, cmd: list[str]) -> int:
     with _status_lock:
         _active_procs_by_task[task_id] = proc
 
-    def _reader(pipe, prefix: str):
+    def _reader(pipe, prefix: str) -> None:
         for line in iter(pipe.readline, ''):
             stripped = line.rstrip('\n')
             if stripped:
@@ -429,7 +431,7 @@ def _start_batch_inference_background(task_id: str, plan: InferPlan, project_key
     total = len(steps)
     set_status(task_id, status=InferenceStatus.WAITING, completed=0, total=total, error=None)
 
-    def _run():
+    def _run() -> None:
         try:
             with gpu_lock_blocking("inference", task_id, project_key=project_key):
                 with _status_lock:
@@ -540,7 +542,7 @@ class ResolveRequest(BaseModel):
 # Validation helper
 # -----------------------------
 
-def _validate_model_paths(project: Project, model_relative_paths: list[str]):
+def _validate_model_paths(project: Project, model_relative_paths: list[str]) -> None:
     if project.paths.model_dir is None:
         raise HTTPException(status_code=400, detail="Project model_dir is not configured.")
     model_base = Path(project.paths.model_dir)
@@ -562,7 +564,7 @@ def _validate_model_paths(project: Project, model_relative_paths: list[str]):
 def start_inference_task(
     req: InferTaskRequest,
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
-):
+) -> dict:
     """Start a background inference task and return its task ID."""
     project: Project = project_info_getter(req.projectKey)
     _validate_model_paths(project, req.models)
@@ -580,7 +582,7 @@ def start_inference_task(
 
 
 @router.post("/app/v0/inference/task/{taskId}/cancel")
-def cancel_inference_task(taskId: str):
+def cancel_inference_task(taskId: str) -> dict:
     """Cancel a running or waiting inference task."""
     with _status_lock:
         st = _status_by_task.get(taskId)
@@ -599,7 +601,7 @@ def cancel_inference_task(taskId: str):
 
 
 @router.get("/app/v0/inference/task/active")
-def get_active_inference_task():
+def get_active_inference_task() -> dict:
     """Return the taskId of the most recent non-terminal task, or null."""
     terminal = {InferenceStatus.COMPLETED, InferenceStatus.FAILED, InferenceStatus.CANCELLED}
     with _status_lock:
@@ -611,7 +613,7 @@ def get_active_inference_task():
 
 
 @router.get("/app/v0/task/active")
-def get_active_task():
+def get_active_task() -> dict:
     """Return the task currently holding the GPU lock, or null."""
     task = read_gpu_task()
     if task:
@@ -620,13 +622,13 @@ def get_active_task():
 
 
 @router.get("/app/v0/inference/task/{taskId}")
-def get_inference_task_status(taskId: str):
+def get_inference_task_status(taskId: str) -> dict:
     """Get the current status of an inference task, including all log lines so far."""
     return _status_snapshot_dict(taskId)
 
 
 @router.get("/app/v0/inference/task/{taskId}/stream")
-def stream_inference_task(taskId: str):
+def stream_inference_task(taskId: str) -> StreamingResponse:
     """Stream real-time status updates and log lines for an inference task via SSE."""
     terminal = {InferenceStatus.COMPLETED, InferenceStatus.FAILED, InferenceStatus.CANCELLED}
 
@@ -672,7 +674,7 @@ def stream_inference_task(taskId: str):
 def resolve_inference(
     req: ResolveRequest,
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
-):
+) -> dict:
     """Preview which inference steps would execute for a given request."""
     project: Project = project_info_getter(req.projectKey)
     _validate_model_paths(project, req.models)

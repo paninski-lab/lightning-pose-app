@@ -14,6 +14,8 @@ with cameras in the same order as --camera_names.
 Each input file must follow the naming convention {session}_{view}.csv
 (e.g., "session_Cam-A.csv").
 """
+from __future__ import annotations
+
 import argparse
 import multiprocessing
 import os
@@ -21,7 +23,7 @@ import sys
 from pathlib import Path
 
 
-def _plot_one(args):
+def _plot_one(args: tuple) -> None:
     import matplotlib
     matplotlib.use('Agg')
     from eks.utils import plot_results
@@ -38,7 +40,7 @@ def _plot_one(args):
     )
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Run EKS multicam smoother")
     parser.add_argument("--save_dir", required=True, help="Directory to save smoothed outputs")
     parser.add_argument("--camera_names", nargs="+", required=True, help="Ordered list of camera names")
