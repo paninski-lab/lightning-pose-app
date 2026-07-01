@@ -559,10 +559,9 @@ class CreateModelDialogComponent {
           imgaug: formObject.augmentation as TrainingConfig['imgaug'],
         },
       });
-      if (this.isMultiviewProject()) {
-        const useCalib = this.useCameraCalibrations();
-        patches.push({ training: { imgaug_3d: useCalib } });
-      }
+    }
+    if (this.isMultiviewProject()) {
+      patches.push({ training: { imgaug_3d: this.useCameraCalibrations() } });
     }
 
     if (!this.isMultiviewProject()) {
