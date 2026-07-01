@@ -18,11 +18,13 @@ import {
 @Injectable({
   providedIn: 'root',
 })
+/** Fetches and parses multi-view label CSV and unlabeled JSONL sidecar files into MVFrame arrays. */
 class LabelFileFetcherService {
   private projectInfoService = inject(ProjectInfoService);
   private httpClient = inject(HttpClient);
   private csvParser = inject(CsvParserService);
 
+  /** Fetch all view CSVs and unlabeled sidecars for labelFile and return the merged MVFrame list. */
   async loadLabelFileData(labelFile: MVLabelFile): Promise<MVFrame[]> {
     // For each view, fetch and process CSV files.
     // Every file is processed once it loads, independently of other files,

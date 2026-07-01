@@ -6,6 +6,7 @@ import * as dfd from 'danfojs';
 @Injectable({
   providedIn: 'root',
 })
+/** Parses pose-estimation CSV files into body-part lists and danfo DataFrames. */
 export class CsvParserService {
   /**
    * Parses a CSV string from pose estimation into a 3D array (ndarray-like structure)
@@ -40,6 +41,7 @@ export class CsvParserService {
     return [...new Set(allRows[1].slice(1))];
   }
 
+  /** Parse a full prediction CSV string into a danfo DataFrame keyed by bodypart×coordinate. */
   parsePredictionFile(csvString: string): dfd.DataFrame {
     const parseOutput: ParseResult<string[]> = Papa.parse(csvString.trim(), {
       dynamicTyping: false,

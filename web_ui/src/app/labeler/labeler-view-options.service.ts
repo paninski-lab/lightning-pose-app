@@ -15,6 +15,7 @@ const DEFAULT_CONTRAST = 1;
 const UMAMI_DEBOUNCE_TIME_MS = 10000;
 
 @Injectable()
+/** Scoped service holding per-session labeler display options, persisted to localStorage. */
 export class LabelerViewOptionsService {
   private colorService = inject(ColorService);
   private destroyRef = inject(DestroyRef);
@@ -104,27 +105,33 @@ export class LabelerViewOptionsService {
     });
   }
 
+  /** Reset keypoint size to the ColorService default. */
   resetKeypointSize() {
     this.keypointSize.set(this.colorService.defaultSize);
   }
 
+  /** Reset keypoint label font size to 8px. */
   resetLabelFontSize() {
     this.keypointLabelFontSize.set(8);
   }
 
+  /** Reset image brightness to 1 (no adjustment). */
   resetBrightness() {
     this.imgBrightnessScalar.set(DEFAULT_BRIGHTNESS);
   }
 
+  /** Reset image contrast to 1 (no adjustment). */
   resetContrast() {
     this.imgContrastScalar.set(DEFAULT_CONTRAST);
   }
 
+  /** Reset keypoint opacity to the ColorService default. */
   resetOpacity() {
     this.keypointOpacity.set(this.colorService.defaultOpacity);
   }
 
   private temporalContextAbortController: AbortController | undefined;
+  /** Start the temporal context animation loop, cycling through nearby frames. */
   handleShowTemporalContextClick() {
     this.temporalContextAbortController = new AbortController();
 
@@ -132,6 +139,7 @@ export class LabelerViewOptionsService {
     this.beginTemporalContextLoop(this.temporalContextAbortController.signal);
   }
 
+  /** Abort the temporal context animation loop and reset the visible index. */
   handleStopTemporalContextClick() {
     this.temporalContextAbortController?.abort();
     this.isShowingTemporalContext.set(false);
