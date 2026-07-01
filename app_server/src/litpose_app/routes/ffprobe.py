@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import subprocess
 from pathlib import Path
@@ -67,15 +69,15 @@ def format_bitrate(bitrate_bps: int) -> str:
     return f"{bitrate_bps:.1f} Tbps"
 
 
-def run_ffprobe(video_path):
+def run_ffprobe(video_path: str) -> dict:
     """
     Executes ffprobe to get video metadata and parses the JSON output.
 
     Args:
-        video_path (str): The path to the video file.
+        video_path: The path to the video file.
 
     Returns:
-        dict: A dictionary containing the parsed metadata, or None if an error occurs.
+        A dictionary containing the parsed metadata.
     """
     command = [
         "ffprobe",
@@ -93,7 +95,7 @@ def run_ffprobe(video_path):
     ]
 
     # Initialize extracted_info with default/None values and an error key
-    extracted_info = {
+    extracted_info: dict = {
         "file_path": video_path,
         "duration": 0.0,
         "width": 0,

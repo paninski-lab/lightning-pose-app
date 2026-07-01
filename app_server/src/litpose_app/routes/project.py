@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import os
 import shutil
@@ -132,7 +134,11 @@ def _get_label_file_stats(csv_path: Path) -> LabelFileStats | None:
         return None
 
 
-def _fetch_all_stats(project_key, project_util, project_info_getter) -> ProjectStats:
+def _fetch_all_stats(
+    project_key: str,
+    project_util: ProjectUtil,
+    project_info_getter: ProjectInfoGetter,
+) -> ProjectStats:
     try:
         project = project_info_getter(project_key)
     except ApplicationError as e:

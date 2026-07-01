@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 from pydantic import Field, model_validator
@@ -22,7 +24,7 @@ class RootConfig(BaseSettings):
     )
 
     @model_validator(mode="after")
-    def init_dirs_and_files(self):
+    def init_dirs_and_files(self) -> RootConfig:
         """Creates directories as needed on application startup"""
         # Create system directory if needed
         self.LP_SYSTEM_DIR.mkdir(exist_ok=True)

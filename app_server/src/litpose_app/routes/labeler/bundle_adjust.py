@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import re
 import shutil
 import tempfile
+from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
 from typing import Any
@@ -83,7 +86,7 @@ def bundle_adjust(
     return BundleAdjustResponse.model_validate(result)
 
 
-def _bundle_adjust_impl(request: BundleAdjustRequest, project: Project, config: Config):
+def _bundle_adjust_impl(request: BundleAdjustRequest, project: Project, config: Config) -> dict:
     camera_group_toml_path = find_calibration_file(request.sessionKey, project, config)
     if camera_group_toml_path is None:
         raise FileNotFoundError(
@@ -192,14 +195,14 @@ def dump_as_string(cg: CameraGroup) -> str:
         return f.read()
 
 
-def get_is_of_current_session(sessionKey):
-    def is_of_current_session(imgpath: str):
+def get_is_of_current_session(sessionKey: str) -> Callable[[str], bool]:
+    def is_of_current_session(imgpath: str) -> bool:
         return re.search(f"^labeled-data/{re.escape(sessionKey)}_/", imgpath) is not None
 
     return is_of_current_session
 
 
-def get_p2ds(dfs_by_view: dict[str, pd.DataFrame], sessionKey: str) -> list[np.ndarray]:
+def get_p2ds(dfs_by_view: dict[str, pd.DataFrame], sessionKey: str) -> np.ndarray:
     # 1. Normalize Indices (Remove view-specific prefixes/suffixes)
     views = list(dfs_by_view.keys())
     for view in views:

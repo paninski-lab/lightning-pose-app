@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 
@@ -84,7 +86,7 @@ def frame_selection_kmeans_impl(
     return idxs_prototypes
 
 
-def _read_all_frames(config, video_file):
+def _read_all_frames(config: Config, video_file: Path) -> np.ndarray:
     return _read_nth_frames(config=config, video_file=video_file, n=1)
 
 
@@ -124,7 +126,7 @@ def _read_nth_frames(
         return np.array(frames)
 
 
-def _run_kmeans(x: np.ndarray, n_clusters: int) -> tuple:
+def _run_kmeans(x: np.ndarray, n_clusters: int) -> tuple[np.ndarray, np.ndarray]:
     kmeans_obj = KMeans(n_clusters, n_init="auto")
     kmeans_obj.fit(x)
     cluster_labels = kmeans_obj.labels_

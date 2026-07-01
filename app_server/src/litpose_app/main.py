@@ -18,11 +18,14 @@ For security - only supports reading out of data_dir and model_dir
 If we need to read out of other directories, they should be added to Project Info.
 """
 
+from __future__ import annotations
+
 import asyncio
 import functools
 import logging
 import multiprocessing
 import sys
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from textwrap import dedent
@@ -75,7 +78,7 @@ logging.getLogger("uvicorn.access").addFilter(NoisyEndpointFilter())
 
 ## Configure additional things to happen on server startup and shutdown.
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Start apscheduler, which is responsible for executing background tasks
     cleanup_old_uploads(deps.root_config())
 
@@ -137,7 +140,7 @@ app.include_router(router)
 
 
 @app.exception_handler(Exception)
-async def debug_exception_handler(request: Request, exc: Exception):
+async def debug_exception_handler(request: Request, exc: Exception) -> Response:
     """Puts error stack trace in response when any server exception occurs.
 
     By default, FastAPI returns 500 "internal server error" on any Exception
@@ -157,7 +160,7 @@ async def debug_exception_handler(request: Request, exc: Exception):
 
 
 @app.get("/app/v0/files/{file_path:path}")
-async def read_file(request: Request, file_path: Path):
+async def read_file(request: Request, file_path: Path) -> Response:
     # Prevent secrets like /etc/passwd and ~/.ssh/ from being leaked.
     if file_path.suffix not in (
         ".csv",
@@ -218,7 +221,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR, check_dir=False), name="s
 
 
 @app.get("/favicon.ico")
-async def favicon():
+async def favicon() -> FileResponse:
     return FileResponse(
         Path(__file__).parent / "ngdist" / "ng_app" / "browser" / "favicon.ico"
     )
@@ -226,7 +229,7 @@ async def favicon():
 
 # Catch-all route. serve index.html.
 @app.get("/{full_path:path}")
-def index(rc: RootConfig = Depends(deps.root_config)):
+def index(rc: RootConfig = Depends(deps.root_config)) -> HTMLResponse:
     index_path = Path(__file__).parent / "ngdist" / "ng_app" / "browser" / "index.html"
     content = index_path.read_text(encoding="utf-8")
     analytics_tag_placeholder = "<!-- ANALYTICS_TAG_PLACEHOLDER -->"
@@ -241,7 +244,7 @@ def index(rc: RootConfig = Depends(deps.root_config)):
     return HTMLResponse(content=content)
 
 
-def run_app(host: str, port: int):
+def run_app(host: str, port: int) -> None:
     import os
 
     if os.environ.get("DO_NOT_TRACK") != "1":

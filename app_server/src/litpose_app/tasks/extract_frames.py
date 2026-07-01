@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from collections import defaultdict
 from collections.abc import Callable
@@ -64,12 +66,12 @@ def extract_frames_task(
     config: Config,
     session: Session,
     project: Project,
-    mv_label_file,
+    mv_label_file: MVLabelFile,
     progress_callback: Callable[[str], None],
-    method="random",
+    method: str = "random",
     options: RandomMethodOptions = DEFAULT_RANDOM_OPTIONS,
     manual_frame_options: ManualMethodOptions = ManualMethodOptions(),
-):
+) -> None:
     """
     session: dict (serialized Session model)
     method: random (kmeans) | active (NYI)
@@ -102,7 +104,10 @@ def extract_frames_task(
 
 
 def _frame_selection_kmeans(
-    config, session, options, process_pool
+    config: Config,
+    session: Session,
+    options: RandomMethodOptions,
+    process_pool: ProcessPoolExecutor,
 ) -> NDArray[np.integer]:
     """
     Select `options.n_frames` frames using just the first video in the session.
@@ -124,7 +129,7 @@ def _export_frames(
     session: Session,
     project: Project,
     frame_idxs: NDArray[np.integer],
-    process_pool,
+    process_pool: ProcessPoolExecutor,
 ) -> dict[str, dict[int, Path]]:
     """
     Extracts frames (frame_idxs) from each view.
@@ -193,7 +198,7 @@ def _update_unlabeled_files(
     result: dict[str, dict[int, Path]],
     mv_label_file: MVLabelFile,
     predictions: dict[str, ExtractedFramePredictionList] | None = None,
-):
+) -> None:
     """
     Appends the new frames in `result` to the `mv_label_file` as atomically as possible.
     """

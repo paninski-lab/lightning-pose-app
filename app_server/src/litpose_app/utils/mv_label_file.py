@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 import os
@@ -35,7 +37,7 @@ class AddToUnlabeledFileView(BaseModel):
     entriesToAdd: list[LabelingQueueEntry]
 
 
-def add_to_unlabeled_sidecar_files(views: list[AddToUnlabeledFileView]):
+def add_to_unlabeled_sidecar_files(views: list[AddToUnlabeledFileView]) -> None:
     """Add frames to the unlabeled sidecar files."""
     timestamp = time.time_ns()
 

@@ -6,17 +6,21 @@ This module takes some of the logic from StaticFiles() that supports 304 if unch
 implement static file serving without the directory restriction of StaticFiles().
 """
 
+from __future__ import annotations
+
 import os
 from email.utils import parsedate
 from pathlib import Path
 
 from starlette import status
+from starlette.datastructures import Headers
 from starlette.exceptions import HTTPException
-from starlette.responses import FileResponse
+from starlette.requests import Request
+from starlette.responses import FileResponse, Response
 from starlette.staticfiles import NotModifiedResponse
 
 
-def file_response(request, path: Path, **kwargs):
+def file_response(request: Request, path: Path, **kwargs) -> Response:
     # Follow symlinks
     path = path.resolve()
 
@@ -31,7 +35,7 @@ def file_response(request, path: Path, **kwargs):
     return response
 
 
-def _is_not_modified(response_headers: dict, request_headers: dict) -> bool:
+def _is_not_modified(response_headers: Headers, request_headers: Headers) -> bool:
     """
     Given the request and response headers, return `True` if an HTTP
     "Not Modified" response could be returned instead.

@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -5,7 +8,7 @@ import cv2
 
 
 @contextmanager
-def video_capture(video_path: Path):
+def video_capture(video_path: Path) -> Generator[cv2.VideoCapture, None, None]:
     """
     Automates checking for file existence and releasing the video capture object.
     """

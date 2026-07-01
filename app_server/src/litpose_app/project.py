@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 import tomli
@@ -10,7 +12,7 @@ from litpose_app.rootconfig import RootConfig
 class ProjectUtil:
     config: RootConfig
 
-    def __init__(self, config: RootConfig):
+    def __init__(self, config: RootConfig) -> None:
         self.config = config
 
     def _read_projects_toml(self) -> dict:
@@ -20,7 +22,7 @@ class ProjectUtil:
         with open(self.config.PROJECTS_TOML_PATH, "rb") as f:
             return tomli.load(f)
 
-    def _write_projects_toml(self, data: dict):
+    def _write_projects_toml(self, data: dict) -> None:
         """Write data to the projects.toml file."""
         with open(self.config.PROJECTS_TOML_PATH, "wb") as f:
             tomli_w.dump(data, f)
@@ -47,7 +49,7 @@ class ProjectUtil:
         self,
         project_key: str,
         projectpaths: ProjectPaths | None,
-    ):
+    ) -> None:
         """Update a project's entry in projects.toml.
 
         Args:

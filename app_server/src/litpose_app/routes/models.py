@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 import os
@@ -310,7 +312,7 @@ def _tail_log_file(path: Path, offset: int) -> tuple[list[str], int]:
         return [], offset
 
 
-def _stream_sse_sync(gen: Iterator[dict]):
+def _stream_sse_sync(gen: Iterator[dict]) -> Iterator[str]:
     for payload in gen:
         data = json.dumps(payload)
         yield f"data: {data}\n\n"
@@ -321,7 +323,7 @@ def stream_train_task(
     projectKey: str,
     modelRelativePath: str,
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
-):
+) -> StreamingResponse:
     """Stream training logs and status updates via SSE for a given model."""
     project: Project = project_info_getter(projectKey)
     if project.paths.model_dir is None:

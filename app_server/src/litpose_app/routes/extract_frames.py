@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 
@@ -61,7 +63,7 @@ async def extract_frames(
     request: ExtractFramesRequest,
     config: Config = Depends(deps.config),
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
-):
+) -> str:
     async with _lock:
         project: Project = project_info_getter(request.projectKey)
 
@@ -80,7 +82,7 @@ async def extract_frames(
                     detail=f"Single-view project requires exactly one session view, got {len(request.session.views)}",
                 )
 
-        def on_progress(x):
+        def on_progress(x: str) -> None:
             logger.info(f"extractFrames progress: {x}")
 
         if request.labelFileCreationRequest is not None:

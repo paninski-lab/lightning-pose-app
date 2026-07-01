@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import json
 import logging
@@ -30,7 +32,7 @@ class Keypoint(BaseModel):
     y: float
 
     @field_validator("x", "y", mode="before")
-    def _normalize_to_nan(cls, v):
+    def _normalize_to_nan(cls, v: float | None) -> float:
         """Convert None to NaN before validation."""
         if v is None:
             return float("nan")
@@ -122,7 +124,7 @@ def _modify_df(df: pd.DataFrame, changes: SaveFrameViewRequest) -> None:
 
 
 async def read_df_mvframe(request: SaveMvFrameRequest) -> list[pd.DataFrame]:
-    def read_df_file_task(vr: SaveFrameViewRequest):
+    def read_df_file_task(vr: SaveFrameViewRequest) -> pd.DataFrame:
         df = pd.read_csv(vr.csvPath, header=[0, 1, 2], index_col=0)
         df = fix_empty_first_row(df)
         _modify_df(df, vr)
@@ -146,7 +148,7 @@ async def write_df_tmp_mvframe(
     timestamp = time.time_ns()
     result = []
 
-    def write_df_to_tmp_file(v: SaveFrameViewRequest, d: pd.DataFrame):
+    def write_df_to_tmp_file(v: SaveFrameViewRequest, d: pd.DataFrame) -> Path:
         tmp_file = v.csvPath.with_name(f"{v.csvPath.name}.{timestamp}.tmp")
         d.to_csv(tmp_file)
         return tmp_file
@@ -163,7 +165,7 @@ async def commit_mvframe(
 ) -> None:
     """Renames temp files to their original names (atomic per file)."""
 
-    def commit_changes():
+    def commit_changes() -> None:
         for vr, tmp_file_name in zip(request.views, tmp_file_names, strict=False):
             os.replace(tmp_file_name, vr.csvPath)
 
@@ -172,13 +174,13 @@ async def commit_mvframe(
 
 async def remove_from_unlabeled_sidecar_files(
     data_dir: Path, request: SaveMvFrameRequest
-):
+) -> None:
     """Remove the frames from the unlabeled sidecar files.
 
     See also: utils.mv_label_file.py for the add version of this."""
     timestamp = time.time_ns()
 
-    def remove_task(vr: SaveFrameViewRequest):
+    def remove_task(vr: SaveFrameViewRequest) -> Path | None:
         unlabeled_sidecar_file = vr.csvPath.with_suffix(".unlabeled.jsonl")
         if not unlabeled_sidecar_file.exists():
             return

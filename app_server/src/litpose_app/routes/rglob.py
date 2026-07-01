@@ -1,7 +1,11 @@
+from __future__ import annotations
+
+import datetime
 from pathlib import Path
 
 from fastapi import APIRouter
 from pydantic import BaseModel
+from wcmatch import pathlib as w
 
 router = APIRouter()
 
@@ -51,12 +55,12 @@ def rglob(request: RGlobRequest) -> RGlobResponse:
     return response
 
 
-import datetime
-
-from wcmatch import pathlib as w
-
-
-def _rglob(base_path, pattern=None, no_dirs=False, stat=False):
+def _rglob(
+    base_path: str,
+    pattern: str | None = None,
+    no_dirs: bool = False,
+    stat: bool = False,
+) -> list[dict]:
     """
     Needs to be performant when searching over large model directory.
     Uses wcmatch to exclude directories with extra calls to Path.is_dir.
