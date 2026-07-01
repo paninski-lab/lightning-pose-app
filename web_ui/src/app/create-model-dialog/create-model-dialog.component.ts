@@ -560,6 +560,7 @@ class CreateModelDialogComponent {
         },
       });
     }
+    // imgaug_3d is a 3D augmentation that requires calibration — patch independently of imgaug
     if (this.isMultiviewProject()) {
       patches.push({ training: { imgaug_3d: this.useCameraCalibrations() } });
     }
@@ -578,7 +579,7 @@ class CreateModelDialogComponent {
         });
       }
     }
-    if (this.isMultiviewProject()) {
+    if (this.isMultiviewProject() && this.useCameraCalibrations()) {
       const srphmse =
         formObject.multiviewLosses?.supervised_reprojection_heatmap_mse;
       if (srphmse?.enabled && srphmse.logWeight != null) {

@@ -74,6 +74,12 @@ describe('CreateModelDialogComponent', () => {
   });
 });
 
+const MULTIVIEW_LOSSES_ON = {
+  multiviewLosses: {
+    supervised_reprojection_heatmap_mse: { enabled: true, logWeight: 3.0 },
+  },
+};
+
 describe('CreateModelDialogComponent — imgaug_3d in config patch', () => {
   describe('multiview project', () => {
     let component: CreateModelDialogComponent;
@@ -111,6 +117,51 @@ describe('CreateModelDialogComponent — imgaug_3d in config patch', () => {
     it('does not set imgaug_3d', () => {
       const patch = component['computeConfigPatch']({ augmentation: 'dlc' });
       expect(patch.training?.imgaug_3d).toBeUndefined();
+    });
+  });
+});
+
+describe('CreateModelDialogComponent — reprojection loss in config patch', () => {
+  describe('multiview project', () => {
+    let component: CreateModelDialogComponent;
+
+    beforeEach(async () => {
+      component = (await createComponent(['top', 'bot'])).componentInstance;
+    });
+
+    it('includes reprojection log_weight when calibrations are on and loss is enabled', () => {
+      component['useCameraCalibrations'].set(true);
+      const patch = component['computeConfigPatch'](MULTIVIEW_LOSSES_ON);
+      expect(patch.losses?.supervised_reprojection_heatmap_mse?.log_weight).toBe(3.0);
+    });
+
+    it('omits reprojection log_weight when calibrations are off', () => {
+      component['useCameraCalibrations'].set(false);
+      const patch = component['computeConfigPatch'](MULTIVIEW_LOSSES_ON);
+      expect(patch.losses?.supervised_reprojection_heatmap_mse).toBeUndefined();
+    });
+
+    it('omits reprojection log_weight when loss is disabled', () => {
+      component['useCameraCalibrations'].set(true);
+      const patch = component['computeConfigPatch']({
+        multiviewLosses: {
+          supervised_reprojection_heatmap_mse: { enabled: false, logWeight: 3.0 },
+        },
+      });
+      expect(patch.losses?.supervised_reprojection_heatmap_mse).toBeUndefined();
+    });
+  });
+
+  describe('singleview project', () => {
+    let component: CreateModelDialogComponent;
+
+    beforeEach(async () => {
+      component = (await createComponent(['top'])).componentInstance;
+    });
+
+    it('omits reprojection log_weight regardless of loss form values', () => {
+      const patch = component['computeConfigPatch'](MULTIVIEW_LOSSES_ON);
+      expect(patch.losses?.supervised_reprojection_heatmap_mse).toBeUndefined();
     });
   });
 });
