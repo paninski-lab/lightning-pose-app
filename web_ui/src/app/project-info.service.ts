@@ -16,6 +16,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 @Injectable({
   providedIn: 'root',
 })
+/** Singleton service that loads and caches global and per-project context for the current session. */
 export class ProjectInfoService {
   rpc = inject(RpcService);
 
@@ -47,6 +48,7 @@ export class ProjectInfoService {
     requireSync: true,
   });
 
+  /** Fetch global and optional per-project context in parallel, updating both BehaviorSubjects. */
   fetchContext(projectKey: string | null): Observable<{
     globalContext: GlobalContext;
     projectContext: ProjectContext | null;
@@ -115,6 +117,7 @@ export class ProjectInfoService {
   // ---------------------
   public projects = signal<ListProjectItem[] | undefined>(undefined);
 
+  /** Fetch the full project list from the backend and update the projects signal. */
   async fetchProjects(): Promise<void> {
     try {
       const resp = (await this.rpc.call(
@@ -134,6 +137,7 @@ export class ProjectInfoService {
     }
   }
 
+  /** Return the currently loaded ProjectInfo (legacy getter; prefer projectContext signal). */
   // Legacy getter retained for settings component
   get projectInfo(): ProjectInfo {
     return this._projectInfo as ProjectInfo;
@@ -147,6 +151,7 @@ export class ProjectInfoService {
     return ctx.key;
   }
 
+  /** Patch a project's project.yaml metadata and refresh the project list. */
   async updateProjectConfig(payload: {
     projectKey: string;
     projectInfo: Partial<ProjectInfo>;
@@ -163,6 +168,7 @@ export class ProjectInfoService {
     await this.fetchProjects();
   }
 
+  /** Create a new project directory, register it, and refresh the project list. */
   async createNewProject(payload: {
     projectKey: string;
     data_dir: string;
@@ -181,6 +187,7 @@ export class ProjectInfoService {
     await this.fetchProjects();
   }
 
+  /** Update data_dir/model_dir for a project and refresh the project list. */
   async updateProjectPaths(
     data_dir: string,
     model_dir?: string | null,
@@ -194,6 +201,7 @@ export class ProjectInfoService {
     await this.fetchProjects();
   }
 
+  /** Register an existing project directory and refresh the project list. */
   async registerExistingProject(payload: {
     projectKey: string;
     data_dir: string;
@@ -203,6 +211,7 @@ export class ProjectInfoService {
     await this.fetchProjects();
   }
 
+  /** Unregister (and optionally delete) a project, then refresh the project list. */
   async deleteProject(projectKey: string, removeFiles: boolean) {
     await this.rpc.call('deleteProject', {
       projectKey,
@@ -215,6 +224,7 @@ export class ProjectInfoService {
   _allViews = new BehaviorSubject<string[]>([]);
   allViews$ = this._allViews.asObservable().pipe(distinctUntilChanged());
   allViews = toSignal(this.allViews$, { requireSync: true });
+  /** Push a new set of view names (with 'unknown' appended) into the allViews stream. */
   setAllViews(views: string[]) {
     this._allViews.next(views.concat(['unknown']));
   }
@@ -224,6 +234,7 @@ export class ProjectInfoService {
     .asObservable()
     .pipe(distinctUntilChanged());
   allKeypoints = toSignal(this.allKeypoints$, { requireSync: true });
+  /** Push a new set of keypoint names into the allKeypoints stream. */
   setAllKeypoints(keypoints: string[]) {
     this._allKeypoints.next(keypoints);
   }
@@ -231,27 +242,32 @@ export class ProjectInfoService {
   _allModels = new BehaviorSubject<string[]>([]);
   allModels$ = this._allModels.asObservable().pipe(distinctUntilChanged());
   allModels = toSignal(this.allModels$, { requireSync: true });
+  /** Push a new set of model keys into the allModels stream. */
   setAllModels(models: string[]) {
     this._allModels.next(models);
   }
 }
+/** App-wide context fetched at startup: upload paths, home dir, and installed package versions. */
 export interface GlobalContext {
   uploadDir: string;
   homeDir: string;
   versions: Record<string, string | null>;
   isEditable: Record<string, boolean>;
 }
+/** Per-project context available to all project-scoped pages after the route resolver runs. */
 export interface ProjectContext {
   key: string;
   projectInfo: ProjectInfo | null;
 }
 
+/** Frame counts for one label CSV (total and labeled). */
 export interface LabelFileStats {
   name: string;
   total_frames: number;
   labeled_frames: number;
 }
 
+/** Aggregated project statistics shown on the project list card. */
 export interface ProjectStats {
   session_count: number;
   label_file_count: number;
@@ -263,6 +279,7 @@ export interface ProjectStats {
   error?: string;
 }
 
+/** One entry in the project list, including paths and optional stats. */
 export interface ListProjectItem {
   project_key: string;
   data_dir: string;
@@ -270,6 +287,7 @@ export interface ListProjectItem {
   stats?: ProjectStats;
 }
 
+/** Response from the listProjects RPC. */
 export interface ListProjectInfoResponse {
   projects: ListProjectItem[];
 }

@@ -9,6 +9,7 @@ const DEFAULT_LIKELIHOOD_THRESHOLD = 0.9;
 const UMAMI_DEBOUNCE_TIME_MS = 10000;
 
 @Injectable()
+/** Scoped service holding per-session viewer display options, persisted to localStorage. */
 export class ViewerViewOptionsService {
   colorService = inject(ColorService);
 
@@ -89,22 +90,27 @@ export class ViewerViewOptionsService {
       });
   }
 
+  /** Reset video tile size to 250px. */
   resetVideoTileSize() {
     this.videoTileSizePx.set(DEFAULT_VIDEO_TILE_SIZE);
   }
 
+  /** Reset keypoint opacity to 1.0 (fully opaque). */
   resetOpacity() {
     this.keypointOpacity.set(DEFAULT_OPACITY);
   }
 
+  /** Reset keypoint size to the ColorService default. */
   resetKeypointSize() {
     this.keypointSize.set(this.colorService.defaultSize);
   }
 
+  /** Reset keypoint label font size to 8px. */
   resetLabelFontSize() {
     this.keypointLabelFontSize.set(8);
   }
 
+  /** Reset likelihood threshold to 0.9. */
   resetLikelihoodThreshold() {
     this.likelihoodThreshold.set(DEFAULT_LIKELIHOOD_THRESHOLD);
   }

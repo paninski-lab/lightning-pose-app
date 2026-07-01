@@ -10,10 +10,12 @@ interface RGlobResponse {
 @Injectable({
   providedIn: 'root',
 })
+/** Queries the project data directory for camera calibration TOML files. */
 export class CameraCalibrationService {
   private rpc = inject(RpcService);
   private projectInfoService = inject(ProjectInfoService);
 
+  /** Return whether a session has a session-level, project-level, or no calibration file. */
   async getCalibrationStatus(
     sessionKey: string,
   ): Promise<'session' | 'project' | 'none'> {
@@ -42,6 +44,7 @@ export class CameraCalibrationService {
     return 'none';
   }
 
+  /** Return true if any project-level or session-level calibration TOML file exists. */
   async projectHasCalibrations(): Promise<boolean> {
     const projectInfo = this.projectInfoService.projectInfo;
 

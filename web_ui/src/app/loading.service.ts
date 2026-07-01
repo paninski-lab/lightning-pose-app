@@ -4,6 +4,7 @@ import { ResolveEnd, ResolveStart, Router } from '@angular/router';
 @Injectable({
   providedIn: 'root',
 })
+/** Tracks full-page loading state and Angular route resolver activity for the loading overlay. */
 export class LoadingService {
   isLoading = signal(false);
   loadingText = signal('Loading');

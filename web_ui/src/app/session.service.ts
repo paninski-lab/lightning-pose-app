@@ -35,6 +35,7 @@ interface RGlobResponse {
 @Injectable({
   providedIn: 'root',
 })
+/** Manages sessions, label files, prediction files, and all model/inference operations for the current project. */
 export class SessionService {
   private rpc = inject(RpcService);
   private httpClient = inject(HttpClient);
@@ -163,6 +164,7 @@ export class SessionService {
     return ctx.key;
   }
 
+  /** Fetch and parse all session video files, updating the allSessions signal. */
   async loadSessions() {
     try {
       this.sessionsLoading.set(true);
@@ -173,6 +175,7 @@ export class SessionService {
       this.sessionsLoading.set(false);
     }
   }
+  /** Internal: fetch MP4 paths via rglob and group them into Session objects. */
   async _loadSessions() {
     const projectInfo = this.projectInfoService.projectInfo;
 
@@ -256,6 +259,7 @@ export class SessionService {
   allLabelFiles$ = this._allLabelFiles.asObservable();
   allLabelFiles = toSignal(this.allLabelFiles$, { requireSync: true });
 
+  /** Fetch valid label CSV files and update the allLabelFiles signal. */
   async loadLabelFiles() {
     try {
       this.labelFilesLoading.set(true);
@@ -264,6 +268,7 @@ export class SessionService {
       this.labelFilesLoading.set(false);
     }
   }
+  /** Internal: fetch CSV paths via findLabelFiles RPC and group them into MVLabelFile objects. */
   async _loadLabelFiles() {
     const response = (await this.rpc.call('findLabelFiles', {
       projectKey: this.getProjectKeyOrThrow(),
@@ -292,6 +297,7 @@ export class SessionService {
 
     return this._allLabelFiles.next(files);
   }
+  /** Return the key of the default CollectedData label file, or null if none exists. */
   getDefaultLabelFile(): string | null {
     const allFiles = this.allLabelFiles();
     // Try to find "CollectedData_*.csv" or "CollectedData.csv"
@@ -302,6 +308,7 @@ export class SessionService {
     return defaultFile?.key ?? null;
   }
 
+  /** Scan model_dir for prediction CSVs and initialize the model, keypoint, and session-model state. */
   async loadPredictionIndex() {
     /* Finds all prediction files in model directory to update
     application's state: available prediction files and their metadata. */
@@ -398,6 +405,7 @@ export class SessionService {
     this.projectInfoService.setAllKeypoints(allKeypoints);
   }
 
+  /** Return all prediction files that belong to the given session key. */
   getPredictionFilesForSession(sessionKey: string): PredictionFile[] {
     const predictionFiles = this.predictionFiles.filter(
       (p) => p.sessionKey === sessionKey,
@@ -405,6 +413,7 @@ export class SessionService {
     return predictionFiles;
   }
 
+  /** Fetch the raw CSV text for a prediction file, returning null if it does not exist. */
   async getPredictionFile(pfile: PredictionFile): Promise<string | null> {
     const modelDir = this.projectInfoService.projectInfo?.model_dir as string;
     // returns null if the prediction file did not exist.
@@ -422,6 +431,7 @@ export class SessionService {
     );
   }
 
+  /** Run ffprobe on a project-scoped video file and return its metadata. */
   async ffprobe(file: string): Promise<FFProbeInfo> {
     const response = (await this.rpc.call('ffprobe', {
       projectKey: this.getProjectKeyOrThrow(),
@@ -431,6 +441,7 @@ export class SessionService {
     return response;
   }
 
+  /** Fetch and parse a YAML config file by absolute path, returning null if not found (404). */
   async getYamlFile(filePath: string): Promise<any | null> {
     // GET /app/v0/getYamlFile?file_path=...
     const url = `/app/v0/getYamlFile`;
@@ -453,12 +464,14 @@ export class SessionService {
     );
   }
 
+  /** Fetch the bundled default single-view training config YAML. */
   async getDefaultYamlFile(): Promise<Record<string, unknown>> {
     return firstValueFrom(
       this.httpClient.get<Record<string, unknown>>('/app/v0/configs/default'),
     );
   }
 
+  /** Fetch the bundled default multiview training config YAML. */
   async getDefaultMultiviewYamlFile(): Promise<Record<string, unknown>> {
     return firstValueFrom(
       this.httpClient.get<Record<string, unknown>>(
@@ -467,10 +480,12 @@ export class SessionService {
     );
   }
 
+  /** Return model keys that have predictions for the given session key. */
   getAvailableModelsForSession(sessionKey: string): string[] {
     return this.sessionModelMap[sessionKey] || [];
   }
 
+  /** Glob baseDir for video files and return grouped sessions plus ungrouped dirs and videos. */
   async getSessions(
     baseDir: string,
   ): Promise<{
@@ -526,6 +541,7 @@ export class SessionService {
     return { sessions, ungroupedDirs, ungroupedVideos };
   }
 
+  /** Save keypoint edits for one multi-view frame to all view CSVs, optionally marking it deleted. */
   async saveMVFrame(
     labelFile: MVLabelFile,
     frame: MVFrame,
@@ -556,6 +572,7 @@ export class SessionService {
     });
   }
 
+  /** Triangulate the current frame's labeled keypoints and return per-view reprojections. */
   async mvAutoLabel(
     frame: MVFrame,
     sessionKey: string,
@@ -591,6 +608,7 @@ export class SessionService {
     }) as Promise<GetMVAutoLabelsResponse>;
   }
 
+  /** Submit a training task for modelName; the scheduler picks it up and sets status to PENDING. */
   async createTrainingTask(
     modelName: string,
     configYaml: string,
@@ -602,6 +620,7 @@ export class SessionService {
     });
   }
 
+  /** Create an EKS ensemble model from the given member models. */
   async createEksModel(params: {
     modelName: string;
     members: { id: string }[];
@@ -615,6 +634,7 @@ export class SessionService {
     });
   }
 
+  /** Return all model entries for the current project. */
   async listModels(): Promise<ModelListResponse> {
     const resp = (await this.rpc.call('listModels', {
       projectKey: this.getProjectKeyOrThrow(),
@@ -622,6 +642,7 @@ export class SessionService {
     return resp;
   }
 
+  /** Start a background inference task for the given models and sessions, returning the task ID. */
   async inferTask(
     models: string[],
     sessions: string[],
@@ -638,6 +659,7 @@ export class SessionService {
     );
   }
 
+  /** Return an Observable of SSE events for taskId, completing when the task reaches a terminal state. */
   streamTaskProgress(taskId: string): Observable<TaskStreamEvent> {
     const url = `/app/v0/inference/task/${taskId}/stream`;
     return new Observable<TaskStreamEvent>((subscriber) => {
@@ -673,24 +695,28 @@ export class SessionService {
     });
   }
 
+  /** Fetch the current status snapshot for an inference task by ID. */
   async getInferenceTaskStatus(taskId: string): Promise<InferenceTaskStatus> {
     return firstValueFrom(
       this.httpClient.get<InferenceTaskStatus>(`/app/v0/inference/task/${taskId}`),
     );
   }
 
+  /** Return the task ID of the currently running inference task, or null if none is active. */
   async getActiveInferenceTask(): Promise<{ taskId: string | null }> {
     return firstValueFrom(
       this.httpClient.get<{ taskId: string | null }>('/app/v0/inference/task/active'),
     );
   }
 
+  /** Request cancellation of the inference task with the given ID. */
   async cancelInferenceTask(taskId: string): Promise<void> {
     await firstValueFrom(
       this.httpClient.post<{ ok: boolean }>(`/app/v0/inference/task/${taskId}/cancel`, {}),
     );
   }
 
+  /** Preview which inference steps would run for the given models/sessions without executing them. */
   async resolveInference(
     models: string[],
     sessions: string[],
@@ -707,6 +733,7 @@ export class SessionService {
     );
   }
 
+  /** Delete a model directory by its project-relative path. */
   deleteModel(modelRelativePath: string) {
     return this.rpc.call('deleteModel', {
       projectKey: this.getProjectKeyOrThrow(),
@@ -714,6 +741,7 @@ export class SessionService {
     });
   }
 
+  /** Rename a model directory to newModelName within the project's model dir. */
   renameModel(modelRelativePath: string, newModelName: string) {
     return this.rpc.call('renameModel', {
       projectKey: this.getProjectKeyOrThrow(),
@@ -724,6 +752,7 @@ export class SessionService {
 }
 
 export type TranscodeStatus = 'PENDING' | 'ACTIVE' | 'DONE' | 'ERROR';
+/** Transcode task progress received from the SSE stream. */
 export interface VideoTaskStatus {
   transcodeStatus: TranscodeStatus;
   framesDone: number | null;
@@ -738,6 +767,7 @@ export type InferenceStatus =
   | 'FAILED'
   | 'CANCELLED';
 
+/** Snapshot of an inference task's current progress and result. */
 export interface InferenceTaskStatus {
   taskId: string;
   status: InferenceStatus;
@@ -748,10 +778,12 @@ export interface InferenceTaskStatus {
   logs?: string[];
 }
 
+/** Union of status-update and log-line events emitted by the inference SSE stream. */
 export type TaskStreamEvent =
   | ({ type: 'status' } & InferenceTaskStatus)
   | { type: 'log'; lines: string[] };
 
+/** One (model, session) step in an inference plan. */
 export interface InferRun {
   model: string;
   session: string;
@@ -759,6 +791,7 @@ export interface InferRun {
   member_of?: string;
 }
 
+/** Preview of which inference steps would run and how many pairs are already cached. */
 export interface ResolveInferenceResponse {
   runs: InferRun[];
   skipped_count: number;

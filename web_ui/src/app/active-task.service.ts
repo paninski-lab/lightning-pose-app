@@ -14,6 +14,7 @@ export interface ActiveTaskResponse {
 @Injectable({
   providedIn: 'root',
 })
+/** Polls /app/v0/task/active every 5 s and exposes the result as the activeTask signal. */
 export class ActiveTaskService {
   private http = inject(HttpClient);
 
