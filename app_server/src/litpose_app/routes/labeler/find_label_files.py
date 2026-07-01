@@ -1,3 +1,5 @@
+"""RPC endpoint for discovering valid label CSV files within a project's data directory."""
+
 from __future__ import annotations
 
 import concurrent.futures
@@ -23,6 +25,8 @@ from pydantic import BaseModel
 
 
 class FindLabelFilesRequest(BaseModel):
+    """Request to find all valid label CSV files in a project's data directory."""
+
     projectKey: str
 
 

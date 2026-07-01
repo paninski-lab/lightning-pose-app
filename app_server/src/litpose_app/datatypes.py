@@ -1,3 +1,5 @@
+"""Core Pydantic data models shared across the backend."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,6 +16,8 @@ class ProjectConfig(BaseModel):
 
 
 class ProjectPaths(BaseModel):
+    """Filesystem paths for a project's data and model directories."""
+
     data_dir: Path
     # Rather than passing None for omitted user value, you must omit the key
     # This allows serialization via
@@ -21,6 +25,8 @@ class ProjectPaths(BaseModel):
 
 
 class Project(BaseModel):
+    """A fully resolved project combining its registry key, paths, and config."""
+
     project_key: str
 
     paths: ProjectPaths

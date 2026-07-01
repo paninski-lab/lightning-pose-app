@@ -1,3 +1,5 @@
+"""Frame extraction task: selects and exports frames from videos into labeled-data directories."""
+
 from __future__ import annotations
 
 import logging
@@ -27,28 +29,39 @@ logger = logging.getLogger(__name__)
 
 
 class SessionView(BaseModel):
+    """A single camera view within a recording session."""
+
     videoPath: Path
     viewName: str
 
 
 class Session(BaseModel):
+    """A recording session consisting of one or more camera views."""
+
     views: list[SessionView]
 
 
 class LabelFileView(BaseModel):
+    """Path to the label CSV for one view in a multi-view label file."""
+
     csvPath: Path
     viewName: str
 
 
 class MVLabelFile(BaseModel):
+    """Collection of per-view label file paths for a multi-view project."""
+
     views: list[LabelFileView]
 
 
 class RandomMethodOptions(BaseModel):
+    """Options for k-means random frame selection."""
+
     nFrames: int = 10
 
 
 class ManualMethodOptions(BaseModel):
+    """Options for manual frame selection by explicit index list."""
     frame_index_list: list[int] = []
 
     # Optional predictions to store in the unlabeled queue.
@@ -142,6 +155,7 @@ def _export_frames(
     """
 
     def dest_path(video_path: Path, frame_idx: int) -> Path:
+        """Return the output JPEG path for a single frame from video_path."""
         return (
             project.paths.data_dir
             / config.LABELED_DATA_DIRNAME
@@ -158,6 +172,7 @@ def _export_frames(
     }
 
     def get_frame_count(video_path: Path) -> int:
+        """Return the total number of frames in video_path."""
         with video_capture(video_path) as cap:
             return int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 

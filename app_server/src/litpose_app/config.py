@@ -10,6 +10,8 @@ from pydantic import BaseModel
 
 # Consider `pydantic_settings.BaseSettings` for potential future needs.
 class Config(BaseModel):
+    """In-process application constants for frame extraction and video handling."""
+
     ## Video transcoding settings
 
     # Name of the directory in data_dir where extract frames will output to

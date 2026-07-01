@@ -1,3 +1,5 @@
+"""Abstract base class for project path utilities."""
+
 from __future__ import annotations
 
 from abc import ABC
@@ -24,6 +26,7 @@ class PathUtil(ABC):
     def for_version(
         schema_version: int, is_multiview: bool, base_dir: Path | str | None = None
     ) -> PathUtil:
+        """Return the appropriate PathUtil subclass for the given schema version."""
         if schema_version == 1:
             raise NotImplementedError("Not yet implemented")
         elif schema_version == 0:
@@ -37,6 +40,7 @@ class PathUtil(ABC):
     base_dir: Path | None
 
     def __init__(self, is_multiview: bool, base_dir: Path | None = None) -> None:
+        """Initialize with multiview flag and optional base directory."""
         self.is_multiview = is_multiview
         self.base_dir = base_dir
 

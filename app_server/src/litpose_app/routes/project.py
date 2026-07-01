@@ -1,3 +1,5 @@
+"""RPC endpoints for project lifecycle: create, register, list, update, and delete projects."""
+
 from __future__ import annotations
 
 import logging
@@ -39,12 +41,16 @@ class ProjectInfo(BaseModel):
 
 
 class LabelFileStats(BaseModel):
+    """Frame counts for a single label CSV file (labeled and unlabeled combined)."""
+
     name: str
     total_frames: int
     labeled_frames: int
 
 
 class ProjectStats(BaseModel):
+    """Aggregated stats for a project: sessions, label files, models, and keypoints."""
+
     session_count: int
     label_file_count: int
     label_files_stats: list[LabelFileStats]
@@ -56,6 +62,8 @@ class ProjectStats(BaseModel):
 
 
 class ListProjectItem(BaseModel):
+    """One project entry in the listProjects response."""
+
     project_key: str
     data_dir: Path
     model_dir: Path | None = None
@@ -63,24 +71,34 @@ class ListProjectItem(BaseModel):
 
 
 class ListProjectInfoResponse(BaseModel):
+    """Response from listProjects: the full list of registered projects."""
+
     projects: list[ListProjectItem]
 
 
 class GetProjectInfoRequest(BaseModel):
+    """Request to fetch config and path info for a single project."""
+
     projectKey: str
 
 
 class GetProjectInfoResponse(BaseModel):
+    """Response containing project config; projectInfo is None if not yet initialized."""
+
     projectInfo: ProjectInfo | None  # None if project info not yet initialized
 
 
 class UpdateProjectPathsRequest(BaseModel):
+    """Request to update the data_dir/model_dir of an existing project in projects.toml."""
+
     projectKey: str
     data_dir: Path
     model_dir: Path | None = None
 
 
 class UpdateProjectConfigRequest(BaseModel):
+    """Request to update a project's project.yaml metadata (keypoints, views, etc.)."""
+
     projectKey: str
 
     # Exclude data_dir and model_dir from the request, they are not relevant.
@@ -88,6 +106,8 @@ class UpdateProjectConfigRequest(BaseModel):
 
 
 class CreateNewProjectRequest(BaseModel):
+    """Request to create a brand-new project directory and register it in projects.toml."""
+
     projectKey: str
     data_dir: Path
     model_dir: Path | None = None
@@ -96,17 +116,22 @@ class CreateNewProjectRequest(BaseModel):
 
 
 class RegisterExistingProjectRequest(BaseModel):
+    """Request to register an existing project directory into projects.toml."""
+
     projectKey: str
     data_dir: Path
     model_dir: Path | None = None
 
 
 class DeleteProjectRequest(BaseModel):
+    """Request to unregister a project, optionally deleting its files from disk."""
+
     projectKey: str
     removeFiles: bool = False
 
 
 def _get_label_file_stats(csv_path: Path) -> LabelFileStats | None:
+    """Return frame counts for csv_path by reading the CSV and its unlabeled sidecar."""
     try:
         # We need the full data to count labeled vs unlabeled
         df = pd.read_csv(csv_path, header=[0, 1, 2])
@@ -139,6 +164,7 @@ def _fetch_all_stats(
     project_util: ProjectUtil,
     project_info_getter: ProjectInfoGetter,
 ) -> ProjectStats:
+    """Collect sessions, label files, and model counts for project_key, returning a ProjectStats."""
     try:
         project = project_info_getter(project_key)
     except ApplicationError as e:
@@ -331,6 +357,7 @@ def get_project_info(
     request: GetProjectInfoRequest,
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> GetProjectInfoResponse:
+    """Return merged path and config info for a single project."""
     project = project_info_getter(request.projectKey)
 
     try:
@@ -358,6 +385,7 @@ def update_project_paths_rpc(
     request: UpdateProjectPathsRequest,
     project_util: ProjectUtil = Depends(deps.project_util),
 ) -> None:
+    """Update data_dir/model_dir for an existing project, running migrations before saving."""
     pp_dict = {"data_dir": request.data_dir}
     if request.model_dir is not None:
         pp_dict["model_dir"] = request.model_dir
@@ -574,6 +602,7 @@ def delete_project(
     request: DeleteProjectRequest,
     project_util: ProjectUtil = Depends(deps.project_util),
 ) -> None:
+    """Unregister a project from projects.toml, optionally removing its files from disk."""
     # 1. Get project paths before unregistering if we need to remove files
     if request.removeFiles:
         paths = project_util.get_all_project_paths().get(request.projectKey)

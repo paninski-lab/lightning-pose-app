@@ -1,3 +1,5 @@
+"""GPU lock management using portalocker to serialise training and inference tasks."""
+
 from __future__ import annotations
 
 import contextlib
@@ -15,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def _write_gpu_task(task_type: str, task_id: str, project_key: str | None = None) -> None:
+    """Atomically write current GPU task metadata to disk."""
     tmp = Path(GPU_TASK_PATH + ".tmp")
     data = {"type": task_type, "taskId": task_id}
     if project_key:
@@ -24,6 +27,7 @@ def _write_gpu_task(task_type: str, task_id: str, project_key: str | None = None
 
 
 def clear_gpu_task() -> None:
+    """Remove the GPU task metadata file, ignoring errors if it doesn't exist."""
     try:
         Path(GPU_TASK_PATH).unlink(missing_ok=True)
     except Exception:
@@ -31,6 +35,7 @@ def clear_gpu_task() -> None:
 
 
 def read_gpu_task() -> dict | None:
+    """Return the current GPU task metadata dict, or None if no task is active."""
     try:
         return json.loads(Path(GPU_TASK_PATH).read_text())
     except Exception:

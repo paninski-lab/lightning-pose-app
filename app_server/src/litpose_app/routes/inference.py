@@ -1,3 +1,5 @@
+"""RPC endpoints for model inference: start, cancel, stream, and resolve inference tasks."""
+
 from __future__ import annotations
 
 import copy
@@ -40,6 +42,7 @@ _cancel_requests: set = set()
 
 
 def get_executor() -> ThreadPoolExecutor:
+    """Return (creating if needed) the module-level thread pool for inference tasks."""
     global _executor
     if _executor is None:
         cpu = os.cpu_count() or 2
@@ -55,6 +58,8 @@ def get_executor() -> ThreadPoolExecutor:
 # -----------------------------
 
 class InferenceStatus(str):
+    """String constants for inference task lifecycle states."""
+
     PENDING = "PENDING"
     WAITING = "WAITING"
     RUNNING = "RUNNING"
@@ -65,6 +70,7 @@ class InferenceStatus(str):
 
 @dataclass
 class InferenceTaskStatus:
+    """Mutable in-memory state for one inference task."""
     taskId: str
     status: str = InferenceStatus.PENDING
     completed: int | None = None
@@ -80,6 +86,7 @@ _task_id_order: list[str] = []
 
 
 def _get_or_create_status_nolock(task_id: str) -> InferenceTaskStatus:
+    """Return the live status object for task_id, creating it if absent. Caller must hold _status_lock."""
     s = _status_by_task.get(task_id)
     if s is None:
         s = InferenceTaskStatus(taskId=task_id)
@@ -89,12 +96,14 @@ def _get_or_create_status_nolock(task_id: str) -> InferenceTaskStatus:
 
 
 def get_or_create_status(task_id: str) -> InferenceTaskStatus:
+    """Return a deep-copy snapshot of the status for task_id (thread-safe)."""
     with _status_lock:
         s = _get_or_create_status_nolock(task_id)
     return copy.deepcopy(s)
 
 
 def set_status(task_id: str, **kwargs) -> None:
+    """Update fields on the task's InferenceTaskStatus in-place (thread-safe)."""
     with _status_lock:
         st = _get_or_create_status_nolock(task_id)
         for k, v in kwargs.items():
@@ -102,6 +111,7 @@ def set_status(task_id: str, **kwargs) -> None:
 
 
 def _status_snapshot_dict(task_id: str) -> dict:
+    """Return a JSON-serializable dict of the current status plus all accumulated log lines."""
     st = get_or_create_status(task_id)
     d = asdict(st)
     # Hydrate logs from the log buffer (status object doesn't store them)
@@ -110,6 +120,7 @@ def _status_snapshot_dict(task_id: str) -> dict:
 
 
 def _stream_sse_sync(gen: Iterator[dict]) -> Iterator[str]:
+    """Wrap a dict generator as SSE-formatted text/event-stream chunks."""
     for payload in gen:
         data = json.dumps(payload)
         yield f"data: {data}\n\n"
@@ -124,11 +135,13 @@ _logs_lock = threading.RLock()
 
 
 def _append_log(task_id: str, line: str) -> None:
+    """Append one log line to the in-memory log buffer for task_id (thread-safe)."""
     with _logs_lock:
         _logs_by_task.setdefault(task_id, []).append(line)
 
 
 def _get_logs(task_id: str, from_offset: int = 0) -> list[str]:
+    """Return log lines for task_id starting at from_offset (thread-safe)."""
     with _logs_lock:
         return list(_logs_by_task.get(task_id, [])[from_offset:])
 
@@ -150,6 +163,7 @@ def _run_subprocess_with_logging(task_id: str, cmd: list[str]) -> int:
         _active_procs_by_task[task_id] = proc
 
     def _reader(pipe, prefix: str) -> None:
+        """Read lines from pipe and append each to the task log buffer."""
         for line in iter(pipe.readline, ''):
             stripped = line.rstrip('\n')
             if stripped:
@@ -176,6 +190,8 @@ def _run_subprocess_with_logging(task_id: str, cmd: list[str]) -> int:
 
 @dataclass
 class InferStep:
+    """One (model, session) inference step in an ordered execution plan."""
+
     kind: str  # 'normal', 'member', 'eks'
     model_dir: Path
     session: str
@@ -187,6 +203,7 @@ class InferStep:
 
 @dataclass
 class InferPlan:
+    """The full ordered list of inference steps and a count of already-done skipped pairs."""
     steps: list[InferStep]
     skipped_count: int
 
@@ -422,6 +439,7 @@ def _run_eks_step(task_id: str, step: InferStep) -> bool:
 
 
 def _start_batch_inference_background(task_id: str, plan: InferPlan, project_key: str) -> Future:
+    """Submit the inference plan to the thread pool, acquiring the GPU lock before each run."""
     with _status_lock:
         fut = _futures_by_task.get(task_id)
         if fut is not None and not fut.done():
@@ -432,6 +450,7 @@ def _start_batch_inference_background(task_id: str, plan: InferPlan, project_key
     set_status(task_id, status=InferenceStatus.WAITING, completed=0, total=total, error=None)
 
     def _run() -> None:
+        """Acquire the GPU lock and execute all inference steps for this task."""
         try:
             with gpu_lock_blocking("inference", task_id, project_key=project_key):
                 with _status_lock:
@@ -453,11 +472,13 @@ def _start_batch_inference_background(task_id: str, plan: InferPlan, project_key
 
 
 def _is_cancelled(task_id: str) -> bool:
+    """Return True if a cancel request has been registered for task_id."""
     with _status_lock:
         return task_id in _cancel_requests
 
 
 def _run_steps(task_id: str, steps: list[InferStep], total: int) -> None:
+    """Execute each inference step in order, logging progress and collecting errors."""
     errors: list[str] = []
     for i, step in enumerate(steps):
         if _is_cancelled(task_id):
@@ -524,6 +545,8 @@ def _run_steps(task_id: str, steps: list[InferStep], total: int) -> None:
 # -----------------------------
 
 class InferTaskRequest(BaseModel):
+    """Request to start a background inference task over one or more models and sessions."""
+
     projectKey: str
     models: list[str]
     sessions: list[str]
@@ -532,6 +555,8 @@ class InferTaskRequest(BaseModel):
 
 
 class ResolveRequest(BaseModel):
+    """Request to preview which inference steps would be executed without running them."""
+
     projectKey: str
     models: list[str]
     sessions: list[str]
@@ -543,6 +568,7 @@ class ResolveRequest(BaseModel):
 # -----------------------------
 
 def _validate_model_paths(project: Project, model_relative_paths: list[str]) -> None:
+    """Raise HTTP 400/404 if any relative model path is invalid or its directory is missing."""
     if project.paths.model_dir is None:
         raise HTTPException(status_code=400, detail="Project model_dir is not configured.")
     model_base = Path(project.paths.model_dir)
@@ -633,6 +659,7 @@ def stream_inference_task(taskId: str) -> StreamingResponse:
     terminal = {InferenceStatus.COMPLETED, InferenceStatus.FAILED, InferenceStatus.CANCELLED}
 
     def poller() -> Iterator[dict]:
+        """Yield status and log SSE events until the task reaches a terminal state."""
         log_offset = 0
         last_snapshot = None
 

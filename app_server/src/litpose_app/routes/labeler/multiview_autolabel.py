@@ -1,3 +1,5 @@
+"""RPC endpoint for triangulation-based auto-labeling of keypoints across camera views."""
+
 from __future__ import annotations
 
 import aniposelib.cameras
@@ -19,22 +21,30 @@ logger = logging.getLogger(__name__)
 
 
 class Point2D(BaseModel):
+    """A 2-D point in pixel coordinates."""
+
     x: float
     y: float
 
 
 class Point3D(BaseModel):
+    """A 3-D point in world coordinates."""
+
     x: float
     y: float
     z: float
 
 
 class KPLabel(BaseModel):
+    """A labeled 2-D position for one keypoint in one camera view."""
+
     view: str
     point: Point2D
 
 
 class KPProjectedLabel(BaseModel):
+    """Triangulated projection result for one keypoint in one camera view."""
+
     view: str
     # None if there were not enough labeled views to triangulate.
     originalPoint: Point2D | None = None
@@ -44,11 +54,15 @@ class KPProjectedLabel(BaseModel):
 
 
 class KeypointForRequest(BaseModel):
+    """One keypoint with its known 2-D labels across views, used as input to triangulation."""
+
     keypointName: str
     labels: list[KPLabel]
 
 
 class KeypointForResponse(BaseModel):
+    """Triangulation result for one keypoint: 3-D point and per-view reprojections."""
+
     keypointName: str
     # none if there were not enough labeled views to triangulate.
     triangulatedPt: Point3D | None = None
@@ -56,12 +70,16 @@ class KeypointForResponse(BaseModel):
 
 
 class GetMVAutoLabelsRequest(BaseModel):
+    """Request for triangulation-based auto-label predictions across all keypoints."""
+
     projectKey: str
     sessionKey: str  # name of the session with the view stripped out, used to lookup calibration files.
     keypoints: list[KeypointForRequest]
 
 
 class GetMVAutoLabelsResponse(BaseModel):
+    """Response containing per-keypoint triangulation and reprojection results."""
+
     # New keypoints obtained from triangulation + reprojection.
     # Client should patch their state with these.
     keypoints: list[KeypointForResponse]
@@ -73,6 +91,7 @@ def get_mv_auto_labels(
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
     config: deps.Config = Depends(deps.config),
 ) -> GetMVAutoLabelsResponse:
+    """Triangulate each keypoint across camera views and return reprojected 2-D positions."""
     # Read the toml files for this session.
     project: Project = project_info_getter(request.projectKey)
     camera_group_toml_path = find_calibration_file(request.sessionKey, project, config)
@@ -124,6 +143,7 @@ def warm_up_anipose() -> None:
 def _get_mv_auto_labels_for_keypoint(
     keypoint: KeypointForRequest, global_cg: CameraGroup
 ) -> KeypointForResponse:
+    """Triangulate one keypoint from its labeled views and return projections across all cameras."""
     # Anipose triangulate for each keypoint
     labeled_views = [label.view for label in keypoint.labels]
     kp_cg = global_cg.subset_cameras_names(labeled_views)

@@ -1,3 +1,5 @@
+"""Background process that polls for PENDING training tasks and launches litpose train."""
+
 from __future__ import annotations
 
 import json
@@ -86,6 +88,7 @@ def _is_pid_alive(pid: int) -> bool:
 
 
 def _read_status(path: Path) -> TrainStatus | None:
+    """Read and parse a train_status.json file, returning None on any error."""
     try:
         data = path.read_text()
         return TrainStatus.model_validate(json.loads(data))
@@ -94,6 +97,7 @@ def _read_status(path: Path) -> TrainStatus | None:
 
 
 def _write_status(path: Path, status: TrainStatus) -> None:
+    """Atomically write a TrainStatus to the given path via a temp file."""
     tmp = path.with_suffix(".tmp")
     with open(tmp, "x") as f:
         json.dump(status.model_dump(), f, indent=2)
@@ -101,6 +105,7 @@ def _write_status(path: Path, status: TrainStatus) -> None:
 
 
 def _launch_training(model_dir: Path) -> subprocess.Popen:
+    """Spawn a litpose train subprocess for model_dir, updating train_status.json to STARTED."""
     config_path = model_dir / "config.yaml"
     status_path = model_dir / "train_status.json"
     stdout_path = model_dir / "train_stdout.log"

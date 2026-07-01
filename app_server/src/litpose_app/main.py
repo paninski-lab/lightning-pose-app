@@ -59,6 +59,7 @@ class NoisyEndpointFilter(logging.Filter):
     """Filter out 200 OK logs for noisy polling endpoints."""
 
     def filter(self, record: logging.LogRecord) -> bool:
+        """Return False to suppress 200 OK logs for high-frequency polling paths."""
         # uvicorn access logs have the following format for record.args:
         # (client_addr, method, path, http_version, status_code)
         if record.args and len(record.args) >= 5:
@@ -79,6 +80,7 @@ logging.getLogger("uvicorn.access").addFilter(NoisyEndpointFilter())
 ## Configure additional things to happen on server startup and shutdown.
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Run startup tasks (migrations, scheduler, GPU cleanup) and yield for request serving."""
     # Start apscheduler, which is responsible for executing background tasks
     cleanup_old_uploads(deps.root_config())
 
@@ -161,6 +163,7 @@ async def debug_exception_handler(request: Request, exc: Exception) -> Response:
 
 @app.get("/app/v0/files/{file_path:path}")
 async def read_file(request: Request, file_path: Path) -> Response:
+    """Serve project data files (CSV, video, images) with allowlist extension enforcement."""
     # Prevent secrets like /etc/passwd and ~/.ssh/ from being leaked.
     if file_path.suffix not in (
         ".csv",
@@ -222,6 +225,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR, check_dir=False), name="s
 
 @app.get("/favicon.ico")
 async def favicon() -> FileResponse:
+    """Serve the app favicon."""
     return FileResponse(
         Path(__file__).parent / "ngdist" / "ng_app" / "browser" / "favicon.ico"
     )
@@ -230,6 +234,7 @@ async def favicon() -> FileResponse:
 # Catch-all route. serve index.html.
 @app.get("/{full_path:path}")
 def index(rc: RootConfig = Depends(deps.root_config)) -> HTMLResponse:
+    """Serve the Angular SPA index.html for all non-API routes."""
     index_path = Path(__file__).parent / "ngdist" / "ng_app" / "browser" / "index.html"
     content = index_path.read_text(encoding="utf-8")
     analytics_tag_placeholder = "<!-- ANALYTICS_TAG_PLACEHOLDER -->"
@@ -245,6 +250,7 @@ def index(rc: RootConfig = Depends(deps.root_config)) -> HTMLResponse:
 
 
 def run_app(host: str, port: int) -> None:
+    """Start the uvicorn server after printing usage-tracking notice and checking for upgrades."""
     import os
 
     if os.environ.get("DO_NOT_TRACK") != "1":

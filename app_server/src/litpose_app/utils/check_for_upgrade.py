@@ -1,3 +1,5 @@
+"""Startup check that warns the user when a newer package version is available on PyPI."""
+
 from __future__ import annotations
 
 import logging
@@ -9,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def check_for_upgrade() -> None:
+    """Check PyPI for a newer version and print an upgrade prompt, then exit if one exists."""
     if os.environ.get("LP_IGNORE_UPGRADE") == "1":
         logger.info("LP_IGNORE_UPGRADE=1 present, Skipping upgrade check ")
         return

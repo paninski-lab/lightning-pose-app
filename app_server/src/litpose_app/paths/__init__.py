@@ -1,3 +1,5 @@
+"""Path parsing and resource-key utilities for project file layouts."""
+
 from __future__ import annotations
 
 import re
@@ -17,10 +19,11 @@ from typing import (
 
 
 class PathParseException(Exception):
-    pass
+    """Raised when a path cannot be parsed into the expected resource key."""
 
 
 def _check_relative_and_normalize(path: Path | str) -> PurePath:
+    """Assert path is relative and normalise backslashes to forward slashes."""
     path = PureWindowsPath(path) if "\\" in str(path) else PurePosixPath(path)
     if path.is_absolute():
         raise ValueError("Argument must be relative path: " + str(path))
@@ -85,6 +88,8 @@ class ResourceUtil(Generic[KeyType], ABC):
 # Resource type enum (new name), with temporary alias for PathType
 # ---------------------------------------------------------------------------
 class ResourceType(str, Enum):
+    """Enum of supported project resource types used to dispatch path utilities."""
+
     VIDEO = "videos"
     VIDEO_BBOX = "video-bboxes"
     LABEL_FILE = "label-files"

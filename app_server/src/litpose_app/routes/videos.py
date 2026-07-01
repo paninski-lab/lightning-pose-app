@@ -1,3 +1,5 @@
+"""RPC endpoints for video upload, transcoding, and status streaming."""
+
 from __future__ import annotations
 
 import copy
@@ -74,12 +76,14 @@ def parse_session_view(
 # Paths and singletons
 # -----------------------------
 def uploads_dir(root_config: RootConfig) -> Path:
+    """Return (creating if needed) the system-level uploads directory."""
     d = root_config.LP_SYSTEM_DIR / "uploads"
     d.mkdir(parents=True, exist_ok=True)
     return d
 
 
 def videos_dir_for_project(project: Project) -> Path:
+    """Return (creating if needed) the videos directory within the project's data dir."""
     d = project.paths.data_dir / "videos"
     d.mkdir(parents=True, exist_ok=True)
     return d
@@ -91,6 +95,7 @@ _futures_by_file: dict[str, Future] = {}
 
 
 def get_executor() -> ThreadPoolExecutor:
+    """Return (creating if needed) the module-level thread pool for transcoding tasks."""
     global _executor
     if _executor is None:
         # Modest default; ffmpeg itself is multi-core. Keep pool small.
@@ -108,6 +113,8 @@ def get_executor() -> ThreadPoolExecutor:
 
 
 class TranscodeStatus(str):
+    """String constants for transcode task lifecycle states."""
+
     PENDING = "PENDING"
     ACTIVE = "ACTIVE"
     DONE = "DONE"
@@ -116,6 +123,8 @@ class TranscodeStatus(str):
 
 @dataclass
 class VideoTaskStatus:
+    """Mutable in-memory state for one video transcode task."""
+
     filename: str
     transcodeStatus: str = TranscodeStatus.PENDING
     framesDone: int | None = None
@@ -148,6 +157,7 @@ def get_or_create_status(filename: str) -> VideoTaskStatus:
 
 
 def set_status(filename: str, **kwargs) -> None:
+    """Update fields on the file's VideoTaskStatus in-place (thread-safe)."""
     with _status_lock:
         st = _get_or_create_status_nolock(filename)
         for k, v in kwargs.items():
@@ -165,10 +175,14 @@ def _status_snapshot_dict(filename: str) -> dict:
 # Models
 # -----------------------------
 class GetVideoStatusRequest(BaseModel):
+    """Request to poll the transcode status for a specific filename."""
+
     filename: str
 
 
 class GetVideoStatusResponse(BaseModel):
+    """Current transcode progress for a single video file."""
+
     transcodeStatus: str
     framesDone: int | None = None
     totalFrames: int | None = None
@@ -196,6 +210,7 @@ def _atomic_save(dst: Path, src_file: UploadFile) -> None:
 
 
 def _ffprobe_total_frames(path: Path) -> int | None:
+    """Return the total frame count of path via ffprobe, or None on any error."""
     try:
         import subprocess
 
@@ -235,6 +250,7 @@ def _stream_sse_sync(gen: Iterator[dict]) -> Iterator[str]:
 
 
 def _start_transcode_background(filename: str, input_path: Path, output_path: Path, delete_on_success: bool = False) -> Future:
+    """Start an ffmpeg transcode of input_path → output_path in the background, returning the Future."""
     # If already running, return existing future
     with _status_lock:
         fut = _futures_by_file.get(filename)
@@ -248,6 +264,7 @@ def _start_transcode_background(filename: str, input_path: Path, output_path: Pa
     )
 
     def _run() -> None:
+        """Run ffmpeg in a subprocess, streaming frame progress into the status store."""
         try:
             import subprocess
 
@@ -467,6 +484,7 @@ def transcode_video(
         )
 
         def _single_sync() -> Iterator[dict]:
+            """Yield one DONE status event for an output file that already exists."""
             # Ensure upload status reflects disk state, then return a snapshot
             yield _status_snapshot_dict(filename)
 
@@ -481,6 +499,7 @@ def transcode_video(
     _start_transcode_background(filename, in_path, out_path, delete_on_success=is_upload)
 
     def poller_sync() -> Iterator[dict]:
+        """Poll transcode status every 250 ms and yield events until DONE or ERROR."""
         import time
 
         while True:

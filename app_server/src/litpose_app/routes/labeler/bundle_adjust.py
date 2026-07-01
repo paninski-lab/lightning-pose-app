@@ -1,3 +1,5 @@
+"""RPC endpoints for camera calibration bundle adjustment and session-level calibration saves."""
+
 from __future__ import annotations
 
 import re
@@ -30,6 +32,8 @@ logger = logging.getLogger(__name__)
 
 
 class BundleAdjustRequest(BaseModel):
+    """Request to run bundle adjustment on a session's label data against a CameraGroup TOML."""
+
     projectKey: str
     mvlabelfile: MVLabelFile
     sessionKey: str  # name of the session with the view stripped out
@@ -39,6 +43,8 @@ class BundleAdjustRequest(BaseModel):
 
 
 class BundleAdjustResponse(BaseModel):
+    """Bundle adjustment results: reprojection errors and CameraGroup data before and after."""
+
     camList: list[str]
     """List of camera view names in order of the reprojection errors below."""
 
@@ -62,6 +68,8 @@ class BundleAdjustResponse(BaseModel):
 
 
 class SaveCalibrationForSessionRequest(BaseModel):
+    """Request to persist an updated CameraGroup TOML as the session-level calibration file."""
+
     projectKey: str
     sessionKey: str  # name of the session with the view stripped out
     newCgToml: str
@@ -73,6 +81,7 @@ def bundle_adjust(
         project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
         config: Config = Depends(deps.config),
 ) -> BundleAdjustResponse:
+    """Run bundle adjustment in an isolated subprocess and return before/after reprojection errors."""
     with ProcessPoolExecutor(max_workers=1) as executor:
         project: Project = project_info_getter(request.projectKey)
         fut = executor.submit(
@@ -87,6 +96,7 @@ def bundle_adjust(
 
 
 def _bundle_adjust_impl(request: BundleAdjustRequest, project: Project, config: Config) -> dict:
+    """Load calibration, read label CSVs, run bundle adjustment, and return a result dict."""
     camera_group_toml_path = find_calibration_file(request.sessionKey, project, config)
     if camera_group_toml_path is None:
         raise FileNotFoundError(
@@ -160,6 +170,7 @@ def save_calibration_for_session(
         project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
         config: Config = Depends(deps.config),
 ) -> None:
+    """Validate and save a CameraGroup TOML as the session calibration, backing up the old one."""
     project = project_info_getter(request.projectKey)
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".toml") as f:
@@ -186,6 +197,7 @@ def save_calibration_for_session(
 
 
 def dump_as_string(cg: CameraGroup) -> str:
+    """Serialize a CameraGroup to a TOML string via a temporary file."""
     with tempfile.NamedTemporaryFile(
             mode="w+", suffix=".toml"
     ) as f:
@@ -196,13 +208,16 @@ def dump_as_string(cg: CameraGroup) -> str:
 
 
 def get_is_of_current_session(sessionKey: str) -> Callable[[str], bool]:
+    """Return a predicate that matches image paths belonging to sessionKey."""
     def is_of_current_session(imgpath: str) -> bool:
+        """Return True if imgpath is from the current session."""
         return re.search(f"^labeled-data/{re.escape(sessionKey)}_/", imgpath) is not None
 
     return is_of_current_session
 
 
 def get_p2ds(dfs_by_view: dict[str, pd.DataFrame], sessionKey: str) -> np.ndarray:
+    """Build a (C, N, 2) array of shared valid 2-D points across cameras for bundle adjustment."""
     # 1. Normalize Indices (Remove view-specific prefixes/suffixes)
     views = list(dfs_by_view.keys())
     for view in views:

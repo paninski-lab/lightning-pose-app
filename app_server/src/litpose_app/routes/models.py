@@ -1,3 +1,5 @@
+"""RPC endpoints for model management: create, list, delete, rename, and stream training."""
+
 from __future__ import annotations
 
 import json
@@ -38,17 +40,23 @@ StatusLiteral = Literal[
 
 
 class DetailedTrainStatus(BaseModel):
+    """Per-epoch progress counts from the training process."""
+
     completed: int | None = None
     total: int | None = None
 
 
 class TrainStatus(BaseModel):
+    """Current state of a training task as persisted in train_status.json."""
+
     status: StatusLiteral
     pid: int | None = None
     progress: DetailedTrainStatus | None = None
 
 
 class CreateTrainTaskRequest(BaseModel):
+    """Request to create a new training task for a named model."""
+
     projectKey: str
     modelName: str = Field(..., min_length=1)
     # YAML as string, but we store it verbatim; client may send object -> we will stringify if needed
@@ -56,10 +64,14 @@ class CreateTrainTaskRequest(BaseModel):
 
 
 class CreateTrainTaskResponse(BaseModel):
+    """Response confirming that the training task was created."""
+
     ok: bool
 
 
 class ModelListResponseEntry(BaseModel):
+    """Metadata for one model entry returned by listModels."""
+
     model_name: str
     model_relative_path: str
     model_kind: Literal['normal', 'eks'] = 'normal'
@@ -69,15 +81,21 @@ class ModelListResponseEntry(BaseModel):
 
 
 class ListModelsResponse(BaseModel):
+    """Response containing all model entries for a project."""
+
     models: list[ModelListResponseEntry]
 
 
 class DeleteModelRequest(BaseModel):
+    """Request to delete a model directory from disk."""
+
     projectKey: str
     modelRelativePath: str
 
 
 class RenameModelRequest(BaseModel):
+    """Request to rename a model directory within the project's model dir."""
+
     projectKey: str
     modelRelativePath: str
     newModelName: str
@@ -88,6 +106,7 @@ def create_train_task(
     request: CreateTrainTaskRequest,
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> CreateTrainTaskResponse:
+    """Write config.yaml and train_status.json (PENDING) for a new model, ready for the scheduler."""
     project: Project = project_info_getter(request.projectKey)
     if project.paths.model_dir is None:
         raise HTTPException(
@@ -130,6 +149,8 @@ def create_train_task(
 
 
 class ListModelsRequest(BaseModel):
+    """Request to list all models in a project."""
+
     projectKey: str
 
 
@@ -138,6 +159,7 @@ def list_models(
     request: ListModelsRequest,
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> ListModelsResponse:
+    """Return all model entries found in the project's model directory (up to 2 levels deep)."""
     models: list[ModelListResponseEntry] = []
     project: Project = project_info_getter(request.projectKey)
     if project.paths.model_dir is None:
@@ -159,10 +181,12 @@ def list_models(
 def read_models_l1_from_base(
     model_dir: Path, iter_base: Path
 ) -> list[ModelListResponseEntry]:
+    """Return one ModelListResponseEntry per immediate child directory of iter_base."""
     if not iter_base.exists():
         return []
 
     def read_model_config(child_path: Path) -> ModelListResponseEntry:
+        """Read config/ensemble/status from child_path and return a ModelListResponseEntry."""
         ensemble_path = child_path / "ensemble.yaml"
         config_path = child_path / "config.yaml"
         status_path = child_path / "train_status.json"
@@ -213,6 +237,7 @@ def delete_model(
     request: DeleteModelRequest,
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> None:
+    """Delete the model directory for the given model relative path."""
     project: Project = project_info_getter(request.projectKey)
     model_dir = project.paths.model_dir / request.modelRelativePath
 
@@ -224,10 +249,14 @@ def delete_model(
 
 
 class EnsembleMember(BaseModel):
+    """Reference to a member model within an EKS ensemble."""
+
     id: str
 
 
 class CreateEksModelRequest(BaseModel):
+    """Request to create an Ensemble Kalman Smoother model from existing member models."""
+
     projectKey: str
     modelName: str = Field(..., min_length=1)
     members: list[EnsembleMember]
@@ -237,6 +266,8 @@ class CreateEksModelRequest(BaseModel):
 
 
 class CreateEksModelResponse(BaseModel):
+    """Response confirming that the EKS model was created."""
+
     ok: bool
 
 
@@ -245,6 +276,7 @@ def create_eks_model(
     request: CreateEksModelRequest,
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> CreateEksModelResponse:
+    """Create a new EKS model directory with ensemble.yaml referencing the given member models."""
     project: Project = project_info_getter(request.projectKey)
     if project.paths.model_dir is None:
         raise HTTPException(
@@ -287,6 +319,7 @@ def rename_model(
     request: RenameModelRequest,
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> None:
+    """Rename (move) a model directory to a new name within the project's model dir."""
     project: Project = project_info_getter(request.projectKey)
     model_dir = project.paths.model_dir / request.modelRelativePath
 
@@ -313,6 +346,7 @@ def _tail_log_file(path: Path, offset: int) -> tuple[list[str], int]:
 
 
 def _stream_sse_sync(gen: Iterator[dict]) -> Iterator[str]:
+    """Wrap a dict generator as SSE-formatted text/event-stream chunks."""
     for payload in gen:
         data = json.dumps(payload)
         yield f"data: {data}\n\n"
@@ -341,6 +375,7 @@ def stream_train_task(
     status_path = model_dir / "train_status.json"
 
     def poller() -> Iterator[dict]:
+        """Poll log files and train_status.json, yielding SSE events until training terminates."""
         stdout_offset = 0
         stderr_offset = 0
         last_status: str | None = None

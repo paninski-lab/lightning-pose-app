@@ -34,23 +34,31 @@ ProjectInfoGetter = Callable[[str], Project]
 
 
 def root_config() -> RootConfig:
+    """Dependency that provides the system-level root configuration."""
     return RootConfig()
 
 
 def project_util(root_config: RootConfig = Depends(root_config)) -> ProjectUtil:
+    """Dependency that provides a ProjectUtil bound to the current root config."""
     return ProjectUtil(root_config)
 
 
 class ApplicationError(Exception):
+    """User-facing error surfaced to the frontend as a modal dialog."""
+
     user_facing_message: str
 
     def __init__(self, message: str) -> None:
+        """Initialize with a message shown directly to the user."""
         super().__init__(message)
         self.user_facing_message = message
 
 
 class ProjectNotInProjectsToml(ApplicationError):
+    """Raised when a project key is not found in projects.toml."""
+
     def __init__(self, project_key: str) -> None:
+        """Initialize for the given missing project key."""
         super().__init__(f"Project {project_key} not found in projects.toml file")
 
 
@@ -60,7 +68,9 @@ def project_info_getter(
     project_util: ProjectUtil = Depends(project_util),
     config: Config = Depends(config),
 ) -> ProjectInfoGetter:
+    """Dependency that returns a callable for loading a Project by key."""
     def get_project_info(project_key: str) -> Project:
+        """Load and validate a project by key, raising ApplicationError on failure."""
         project_paths = project_util.get_all_project_paths()
         try:
             project_path = project_paths[project_key]

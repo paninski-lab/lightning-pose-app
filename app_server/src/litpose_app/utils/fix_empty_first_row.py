@@ -1,3 +1,5 @@
+"""Workaround for a pandas bug where a leading NaN row is dropped on CSV read."""
+
 from __future__ import annotations
 
 import numpy as np

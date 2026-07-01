@@ -1,3 +1,5 @@
+"""RPC and REST endpoints for reading YAML config files (project configs and bundled defaults)."""
+
 from __future__ import annotations
 
 import importlib.resources
@@ -53,6 +55,7 @@ def get_default_multiview_config() -> dict:
 
 
 def _load_yaml_file(path: Path, display_name: str | None = None) -> dict:
+    """Load and parse a YAML file via OmegaConf, raising HTTP 404/400 on failure."""
     if not path.is_file():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
