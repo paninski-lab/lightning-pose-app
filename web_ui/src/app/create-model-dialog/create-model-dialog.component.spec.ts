@@ -121,6 +121,44 @@ describe('CreateModelDialogComponent — imgaug_3d in config patch', () => {
   });
 });
 
+describe('CreateModelDialogComponent — learning rate override for ViT backbones', () => {
+  describe('singleview project', () => {
+    let component: CreateModelDialogComponent;
+
+    beforeEach(async () => {
+      component = (await createComponent(['top'])).componentInstance;
+    });
+
+    it('overrides learning_rate to 5e-5 when a vit backbone is selected', () => {
+      const patch = component['computeConfigPatch']({ backbone: 'vits_dino' });
+      expect(patch.training?.optimizer_params?.learning_rate).toBe(5e-5);
+    });
+
+    it('does not override learning_rate for a non-vit backbone', () => {
+      const patch = component['computeConfigPatch']({ backbone: 'resnet50' });
+      expect(patch.training?.optimizer_params?.learning_rate).toBeUndefined();
+    });
+
+    it('does not set learning_rate when backbone is absent', () => {
+      const patch = component['computeConfigPatch']({});
+      expect(patch.training?.optimizer_params?.learning_rate).toBeUndefined();
+    });
+  });
+
+  describe('multiview project', () => {
+    let component: CreateModelDialogComponent;
+
+    beforeEach(async () => {
+      component = (await createComponent(['top', 'bot'])).componentInstance;
+    });
+
+    it('does not override learning_rate since the multiview default already uses 5e-5', () => {
+      const patch = component['computeConfigPatch']({ backbone: 'vits_dino' });
+      expect(patch.training?.optimizer_params?.learning_rate).toBeUndefined();
+    });
+  });
+});
+
 describe('CreateModelDialogComponent — reprojection loss in config patch', () => {
   describe('multiview project', () => {
     let component: CreateModelDialogComponent;

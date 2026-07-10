@@ -482,6 +482,13 @@ class CreateModelDialogComponent {
 
     if (formObject.backbone) {
       patches.push({ model: { backbone: formObject.backbone } });
+      // ViT backbones need a lower learning rate than the single-view default (1e-3).
+      // Multiview projects already default to 5e-5, so only patch for single-view models.
+      if (!this.isMultiviewProject() && formObject.backbone.startsWith('vit')) {
+        patches.push({
+          training: { optimizer_params: { learning_rate: 5e-5 } },
+        });
+      }
     }
     if (formObject.labelFile) {
       if (this.projectInfoService.projectInfo.views.length > 1) {
