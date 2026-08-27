@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "lightning-pose-app"
-version = "2.3.0.2"
+version = "2.3.0.3"
 description = "Lightning Pose user interface for labeling, training, and visualization"
 license = "MIT"
 readme = "README.md"
@@ -17,6 +17,7 @@ authors = [
 dependencies = [
     "aiofiles~=24.1.0",
     "aniposelib~=0.7.2",
+    "ensemble-kalman-smoother==4.6.0",
     "fastapi~=0.116.0",
     "honcho~=2.0",
     "omegaconf~=2.3.0",
