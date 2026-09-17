@@ -1,5 +1,9 @@
 ## Development
 
+### Lightning Studio note
+
+On Lightning Studio you cannot create extra conda envs. Use the default **`cloudspace`** environment instead of `poseapp` below. Lightning Pose and this app should already be installed there in editable mode.
+
 ### Python setup
 
 Create and activate the conda environment (Python 3.10–3.12):
@@ -96,6 +100,27 @@ ESLint is configured in `web_ui/eslint.config.js`.
 
 Both linters also run in CI on every pull request (`.github/workflows/lint.yml`).
 
+### Branches and pull requests
+
+Do not push commits to `main`. Daily work goes on a long-lived personal branch (for example `jmrfox/dev`) on this repo. When a batch is ready, open a pull request into `main`:
+
+```bash
+git push origin jmrfox/dev
+gh pr create --base main --head jmrfox/dev
+```
+
+After the PR is merged, sync the personal branch (especially if the merge was a squash):
+
+```bash
+git checkout main
+git pull origin main
+git checkout jmrfox/dev
+git merge main
+git push origin jmrfox/dev
+```
+
+If the PR was squash-merged and the personal branch has no extra commits, `git reset --hard origin/main` on `jmrfox/dev` is simpler than merging. The next batch is a new PR from the same branch.
+
 ### Building and running a production release
 
 With the development setup above (no need for honcho), run
@@ -121,3 +146,28 @@ pip install build
 ./build_release.sh # Invokes build_ui.sh under the hood.
 # Outputs dist/*.whl. Distributions contain the compiled angular app from build.sh.
 ```
+
+### Publishing a GitHub Release and PyPI
+
+**Version convention `X.Y.Z.W`:** `X.Y.Z` is the lightning-pose version this app release is built for; `W` is this app's increment for that LP version, starting at `0`.
+
+Canonical version lives in `app_server/pyproject.toml` (`[project].version`). Tags are `vX.Y.Z.W`.
+
+1. On your personal branch, set `[project].version` in `app_server/pyproject.toml`.
+2. Add a matching notes heading at the top of the Release Notes in `README.md`:
+
+   `### [X.Y.Z.W] — YYYY-MM-DD`
+
+3. Commit, push, and open a PR into `main`. Merge the PR.
+4. From the repo root on **`main`**, after `git pull`, with a clean tree matching `origin/main`:
+
+   ```bash
+   git checkout main && git pull origin main
+   ./scripts/create_github_release.sh
+   ```
+
+Do not run the release script from a personal branch. The version bump must already be on `origin/main`.
+
+That tags `vX.Y.Z.W` (if needed), pushes the tag, and creates a GitHub Release using the README section. Publishing a GitHub Release is what triggers `.github/workflows/publish.yml` which updates PyPI. If you only push a tag and skip this script, nothing is published until a GitHub Release exists.
+
+Requires the `gh` CLI, logged in with permission to create releases on this repo.
