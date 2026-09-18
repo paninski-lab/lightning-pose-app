@@ -1,0 +1,13 @@
+---
+description: FastAPI / RPC conventions for the LPA backend
+globs: app_server/**/*.py
+alwaysApply: false
+---
+
+# LPA backend
+
+- Frontend talks to the backend only via `POST /app/v0/rpc/<MethodName>`. Method names must match the Python route decorator exactly (camelCase / TitleCase).
+- New capability: handler in `app_server/src/litpose_app/routes/` → include the router in `main.py` if new → Angular `RpcService.call('MethodName', payload)`. Do not add a parallel REST client.
+- Unhandled exceptions return the Python traceback as HTTP 500; that is intentional for a local tool.
+- Lint with ruff as configured in `app_server/pyproject.toml`. In `routes/rglob.py`, `is_dir == False` is intentional (`is_dir` is three-state). Do not “fix” it or drop `# noqa: E712`.
+- Tests override `deps.root_config` so `~/.lightning-pose` lands under `tmp_path`. CI runs `pytest --ignore=tests/test_predict_wrapper.py`.

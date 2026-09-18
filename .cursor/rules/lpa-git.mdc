@@ -1,0 +1,13 @@
+---
+description: Git, PRs, and releases for Lightning Pose App
+alwaysApply: true
+---
+
+# LPA git
+
+- Daily work is on a personal branch (e.g. `jmrfox/dev`). Do not `git push origin main`.
+- Commit only when asked. Do not open, merge, or close GitHub PRs unless asked.
+- Do not force-push. Do not `--amend` commits you did not just create locally, and never amend after push.
+- After a PR is merged, sync the personal branch with `main` before the next batch (`git merge main`, or `git reset --hard origin/main` if the PR was squash-merged and the branch has no extra commits).
+- Releases: bump `app_server/pyproject.toml` and README notes on the personal branch, PR into `main`, merge, then from a clean `main` run `./scripts/create_github_release.sh`. Do not tag or `gh release create` from a personal branch.
+- Version scheme is `X.Y.Z.W` (LP version `X.Y.Z`, LPA increment `W` starting at 0). The script does not bump the version.
