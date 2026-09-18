@@ -1,5 +1,7 @@
 # Lightning Pose App — Developer Guide for Claude
 
+Workflow, safety, and git: see [AGENTS.md](AGENTS.md). This file is the stack and patterns cheat sheet.
+
 ## What this app does
 
 Full-stack web UI for the `lightning-pose` pose-estimation library. Researchers use it to:

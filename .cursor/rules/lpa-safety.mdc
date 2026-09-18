@@ -1,0 +1,14 @@
+---
+description: Safety bar for Lightning Pose App — do not corrupt user projects
+alwaysApply: true
+---
+
+# LPA safety
+
+There are 100+ active users. Treat on-disk project data as production.
+
+- Do not silently rewrite `project.yaml`, label CSVs (`CollectedData*.csv`), unlabeled queues, or model directories.
+- New on-disk formats need a numbered migration (`app_server/src/litpose_app/migrations/`).
+- Label CSV and train-status updates must write to `<file>.tmp` then `os.replace()`. Never overwrite in place.
+- Single-view **fused** datasets (e.g. mirror-mouse-fused) are not two-camera projects. Keypoint names ending in `_top` / `_bot` are labels on one image; they are not `view_names`. Do not create `heatmap_multiview_transformer` models or duplicate `CollectedData.csv` per view for those projects.
+- If a change could lose labels, videos, or trained weights, stop and explain before editing.
