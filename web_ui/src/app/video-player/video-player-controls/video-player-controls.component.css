@@ -1,8 +1,42 @@
+:host {
+  display: block;
+  position: relative;
+  z-index: 40;
+}
+
 .video-controls-container {
   display: flex;
   align-items: center;
   background-color: var(--color-base-100);
   gap: 10px;
+  overflow: visible;
+}
+
+/* DaisyUI tooltips default to z-index 2 and lose to the sessions pane. */
+.tooltip[data-tip]::before,
+.tooltip::after,
+.tooltip-content {
+  z-index: 50;
+}
+.shortcut-help {
+  text-align: left;
+  padding-block: 0.5rem;
+  padding-inline: 0.75rem;
+}
+.shortcut-help table {
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+.shortcut-help th {
+  font-family: ui-monospace, monospace;
+  font-weight: 600;
+  padding-right: 1rem;
+  white-space: nowrap;
+  text-align: left;
+}
+.shortcut-help td {
+  white-space: nowrap;
 }
 .timestamp-slider {
   flex-grow: 1;
@@ -11,10 +45,16 @@
 .time-display {
   font-family: monospace;
   font-size: 0.9em;
-  min-width: 50px;
   text-align: center;
+  white-space: nowrap;
+}
+.frame-display {
+  min-width: 7ch;
+}
+.time-range {
+  min-width: 16ch;
+  text-align: right;
 }
 .video-controls-container button {
-  padding: 5px 10px;
-  cursor: pointer;
+  user-select: none;
 }
