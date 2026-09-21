@@ -129,6 +129,9 @@ export class VideoTileComponent implements OnDestroy, OnInit {
 
   protected onLoadedMetadata() {
     this.showProjectedContent.set(true);
+    this.videoPlayerState.applyPlaybackRateToElement(
+      this.videoElement?.nativeElement,
+    );
   }
 
   private updateScaleFactorSignal() {

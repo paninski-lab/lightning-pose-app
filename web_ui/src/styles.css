@@ -74,6 +74,14 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   --as-gutter-background-color: var(--color-base-200) !important;
 }
 
+/* as-split-area uses overflow-x: hidden and overflow-y: auto. Setting only
+   overflow-x: visible is computed back to auto (CSS spec). Both must be
+   visible so Viewer transport tooltips can paint over the sessions pane.
+   Inner panels still scroll on their own. */
+app-viewer as-split-area:last-of-type {
+  overflow: visible;
+}
+
 /* Fix for popover layer in app-dropdown
  This "forces" the popover to acknowledge the daisyUI variables
    defined at the root, overriding the browser's 'canvastext' default. */
