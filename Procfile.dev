@@ -1,7 +1,10 @@
 # Procfile for development environment
 
 # Starts the Angular frontend development server
-frontend: cd web_ui && ng serve --host 0.0.0.0
+# Use the local CLI from web_ui/node_modules so honcho's /bin/sh does not
+# depend on a global `ng` being on PATH. Node 26 still must be on PATH
+# (nvm use 26) because ng.js is run with `#!/usr/bin/env node`.
+frontend: cd web_ui && ./node_modules/.bin/ng serve --host 0.0.0.0
 
 # Starts the Uvicorn backend server with auto-reloading enabled
 backend: uvicorn litpose_app.main:app --port 8080 --reload --reload-dir app_server/
