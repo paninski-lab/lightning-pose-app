@@ -211,7 +211,7 @@ if not STATIC_DIR.is_dir():
         This usually happens if you've cloned the source code directly.
         To fix this and get the full application working, you'll need to either:
 
-        - Build the application: Refer to development.md in the repository for steps.
+        - Build the application: see CONTRIBUTING.md (dev servers) or DEV.md (`scripts/build/build_ui.sh`).
         - Copy static files: Obtain these files from a PyPI source distribution of a released
         version and place them in:
 

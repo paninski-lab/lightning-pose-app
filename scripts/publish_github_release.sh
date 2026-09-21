@@ -4,7 +4,7 @@
 # (see scripts/build/build_wheel.sh).
 #
 # Prerequisites:
-#   - Version + README notes committed and pushed to origin/main
+#   - Version + CHANGELOG.md notes committed and pushed to origin/main
 #   - gh authenticated with permission to create releases
 #
 # Usage (from anywhere):
@@ -78,7 +78,7 @@ import sys
 from pathlib import Path
 
 version, out_path = sys.argv[1], sys.argv[2]
-text = Path("README.md").read_text()
+text = Path("CHANGELOG.md").read_text()
 # Headings look like: ### [2.3.0.3] — 2026-08-27
 heading = re.compile(
     rf"^### \[{re.escape(version)}\](?:\s+[—–-].*)?\s*$",
@@ -87,7 +87,7 @@ heading = re.compile(
 match = heading.search(text)
 if not match:
     sys.exit(
-        f"ERROR: README.md has no notes heading '### [{version}]'. "
+        f"ERROR: CHANGELOG.md has no notes heading '### [{version}]'. "
         "Add that section before releasing."
     )
 start = match.end()
@@ -97,7 +97,7 @@ body = text[start : start + nxt.start() if nxt else None]
 notes = text[match.start() : match.end()] + body
 notes = notes.strip() + "\n"
 Path(out_path).write_text(notes)
-print(f"Found README notes ({len(notes.splitlines())} lines).")
+print(f"Found CHANGELOG notes ({len(notes.splitlines())} lines).")
 PY
 
 if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
