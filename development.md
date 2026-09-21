@@ -102,24 +102,22 @@ Both linters also run in CI on every pull request (`.github/workflows/lint.yml`)
 
 ### Branches and pull requests
 
-Do not push commits to `main`. Daily work goes on a long-lived personal branch (for example `jmrfox/dev`) on this repo. When a batch is ready, open a pull request into `main`:
+Do not push commits to `main`. For each feature or bugfix, create a short-lived branch from up-to-date `origin/main`, then open a pull request into `main`:
 
 ```bash
-git push origin jmrfox/dev
-gh pr create --base main --head jmrfox/dev
+git fetch origin
+git checkout -b feature/short-name origin/main
+# ... commit your work ...
+git push -u origin HEAD
+gh pr create --base main
 ```
 
-After the PR is merged, sync the personal branch (especially if the merge was a squash):
+Use a descriptive name (`feature/…`, `fix/…`). After the PR is merged, delete the branch. Sync local `main` before starting the next one:
 
 ```bash
 git checkout main
 git pull origin main
-git checkout jmrfox/dev
-git merge main
-git push origin jmrfox/dev
 ```
-
-If the PR was squash-merged and the personal branch has no extra commits, `git reset --hard origin/main` on `jmrfox/dev` is simpler than merging. The next batch is a new PR from the same branch.
 
 ### Building and running a production release
 
@@ -153,7 +151,7 @@ pip install build
 
 Canonical version lives in `app_server/pyproject.toml` (`[project].version`). Tags are `vX.Y.Z.W`.
 
-1. On your personal branch, set `[project].version` in `app_server/pyproject.toml`.
+1. On a feature branch from `main`, set `[project].version` in `app_server/pyproject.toml`.
 2. Add a matching notes heading at the top of the Release Notes in `README.md`:
 
    `### [X.Y.Z.W] — YYYY-MM-DD`
@@ -166,7 +164,7 @@ Canonical version lives in `app_server/pyproject.toml` (`[project].version`). Ta
    ./scripts/create_github_release.sh
    ```
 
-Do not run the release script from a personal branch. The version bump must already be on `origin/main`.
+Do not run the release script from a feature branch. The version bump must already be on `origin/main`.
 
 That tags `vX.Y.Z.W` (if needed), pushes the tag, and creates a GitHub Release using the README section. Publishing a GitHub Release is what triggers `.github/workflows/publish.yml` which updates PyPI. If you only push a tag and skip this script, nothing is published until a GitHub Release exists.
 
