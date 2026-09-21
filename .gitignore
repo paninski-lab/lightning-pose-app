@@ -30,8 +30,8 @@ share/python-wheels/
 MANIFEST
 
 # PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+#   Usually these files are written by a python script from a template
+#   before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
 
@@ -57,17 +57,17 @@ coverage.xml
 *.mo
 *.pot
 
-# Django stuff:
+# Django
 *.log
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
-# Flask stuff:
+# Flask
 instance/
 .webassets-cache
 
-# Scrapy stuff:
+# Scrapy
 .scrapy
 
 # Sphinx documentation
@@ -96,7 +96,7 @@ ipython_config.py
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow
 __pypackages__/
 
-# Celery stuff
+# Celery
 celerybeat-schedule
 celerybeat.pid
 
@@ -112,47 +112,40 @@ ENV/
 env.bak/
 venv.bak/
 
-# Spyder project settings
+# Editors / IDEs
+.idea/
+.vscode/
+.cursor/
 .spyderproject
 .spyproject
-
-# Rope project settings
 .ropeproject
+**/.DS_Store
 
 # mkdocs documentation
 /site
 
-# mypy
+# Type checkers
 .mypy_cache/
 .dmypy.json
 dmypy.json
-
-# Pyre type checker
 .pyre/
 
-# PyCharm
-.idea/
-
-# DS_Store
-**/.DS_Store
-
-# specific stuff like csv predictions on test_vid.mp4
+# Example / local datasets (csv predictions on test_vid.mp4, extra copies)
 data/mirror-mouse-example/videos/*.csv
 data/mirror-mouse-example/videos/test_vid_*.mp4
-
-# other datasets
 data/mirror-mouse-example_split/
 data/Chickadee
 
-# random other outputs that might end up in the repo
+# Local training / Hydra / TensorBoard outputs
 lightning_logs/
 grid_artifacts/
-.vscode/
 outputs/
 multirun/
 preds/
-scripts/.ipynb_checkpoints
 tb_logs
+scripts/.ipynb_checkpoints
+
+# Generated test fixtures
 app_server/tests/utils/test_cropzoom_data/
 app_server/tests/api/test_model_mirror_mouse/
 app_server/tests/api/test_model_mirror_mouse_multiview/
