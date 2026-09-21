@@ -12,9 +12,9 @@ The filesystem is the database (`~/.lightning-pose/projects.toml`, `project.yaml
 
 ## Git
 
-- Work on a personal branch (for example `jmrfox/dev`). Do not push `main`.
+- Work on a short-lived branch from `main` (see [development.md](development.md)). Do not push `main`.
 - Commit, open, merge, or close PRs **only when asked**.
-- Version bump + README notes land via PR. After merge, release from `main` with `./scripts/create_github_release.sh`. Do not tag or release from a personal branch.
+- Version bump + README notes land via PR. After merge, release from `main` with `./scripts/create_github_release.sh`. Do not tag or release from a feature branch.
 
 ## Dev loop
 
