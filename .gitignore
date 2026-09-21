@@ -9,6 +9,9 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+# Keep repo tooling (this ignore pattern matches any directory named build/).
+!scripts/build/
+!scripts/build/**
 develop-eggs/
 dist/
 downloads/
