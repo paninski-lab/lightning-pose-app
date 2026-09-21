@@ -158,6 +158,7 @@
         class="grow z-30"
         [labelFile]="loadedLabelFile()"
         [frame]="selectedFrame()"
+        [hasNextFrame]="hasNextFrame()"
         [numLabeledFramesGetter]="getNumLabeledFramesGetter"
         (saved)="handleSaved($event)"
         (newLabelFile)="extractFramesDialogOpen.set(true)"

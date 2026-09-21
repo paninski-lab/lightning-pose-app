@@ -59,6 +59,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
 
   labelFile = input<MVLabelFile | null>(null);
   frame = input<MVFrame | null>(null);
+  hasNextFrame = input(false);
   numLabeledFramesGetter = input.required<() => number>();
 
   primaryZoomableElement =
@@ -237,9 +238,9 @@ export class LabelerCenterPanelComponent implements OnChanges {
   }
 
   protected get saveAndContinueTooltip(): string {
-    if (!this.isSaveDisabled())
-      return 'Save and advance to next frame or view.';
-    return 'No changes to save.';
+    if (this.isSaveDisabled()) return 'No changes to save.';
+    if (this.isSaveAndNextDisabled()) return 'Already on last frame.';
+    return 'Save and advance to next frame or view.';
   }
 
   // export to template
@@ -266,6 +267,19 @@ export class LabelerCenterPanelComponent implements OnChanges {
       !this.frame() ||
       this.disableInteractions() ||
       !mvf(this.frame()!).hasChanges
+    );
+  });
+
+  protected hasNextView = computed(() => {
+    const frame = this.frame();
+    const frameView = this.selectedFrameView();
+    if (!frame || !frameView) return false;
+    return frame.views[frame.views.indexOf(frameView) + 1] !== undefined;
+  });
+
+  protected isSaveAndNextDisabled = computed(() => {
+    return (
+      this.isSaveDisabled() || (!this.hasNextView() && !this.hasNextFrame())
     );
   });
 

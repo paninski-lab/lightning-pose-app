@@ -121,6 +121,14 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     return selectedFrame;
   });
 
+  protected hasNextFrame = computed(() => {
+    const frames = this.labelFileData();
+    const frameKey = this.frameKey();
+    if (!frames || frameKey == null) return false;
+    const index = frames.findIndex((f) => f.key === frameKey);
+    return index >= 0 && index < frames.length - 1;
+  });
+
   ngOnChanges(changes: SimpleChanges) {
     if (changes['labelFileKey']) {
       this.loadLabelFileData(this.selectedLabelFile()).catch((error) => {
@@ -165,10 +173,6 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     const currentFrameIndex = this.labelFileData()!.findIndex(
       (mvf) => mvf.key === data.frame.key,
     );
-    const nextFrameIndex = Math.min(
-      data.deletion ? currentFrameIndex : currentFrameIndex + 1,
-      this.labelFileData()!.length - 2,
-    );
     // Updates local state without re-fetching the label file data.
     this.labelFileData.update((mvFrames) => {
       if (mvFrames === null) {
@@ -187,8 +191,15 @@ export class LabelerPageComponent implements OnInit, OnChanges {
       }
     });
     if (data.shouldAdvanceFrame || data.deletion) {
-      const nextFrameKey: string | undefined =
-        this.labelFileData()![nextFrameIndex]?.key;
+      const frames = this.labelFileData()!;
+      let nextFrameKey: string | undefined;
+      if (data.deletion) {
+        // After remove, same index is the old next; clamp when deleting the last frame.
+        nextFrameKey =
+          frames[Math.min(currentFrameIndex, frames.length - 1)]?.key;
+      } else {
+        nextFrameKey = frames[currentFrameIndex + 1]?.key;
+      }
       if (nextFrameKey) {
         this.router.navigate([], {
           queryParams: {
