@@ -504,7 +504,7 @@
         >
           <button
             class="btn bg-sky-700 w-full mt-2"
-            [class.btn-disabled]="isSaveDisabled()"
+            [class.btn-disabled]="isSaveAndNextDisabled()"
             (click)="handleSaveClick(lbfl, frame2, true)"
             (keydown.enter)="handleSaveClick(lbfl, frame2, true)"
           >
