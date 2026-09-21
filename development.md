@@ -100,7 +100,7 @@ Both linters also run in CI on every pull request (`.github/workflows/lint.yml`)
 
 With the development setup above (no need for honcho), run
 ```bash
-sh build_ui.sh
+./scripts/build/build_ui.sh
 ```
 
 This calls `ng build` to compile the app as static files, and puts them inside the `app_server` directory. Specifically, `app_server/src/litpose_app/ngdist`. It's gitignored so you won't check it in by accident.
@@ -118,6 +118,6 @@ as this is the default behavior of the build backend.
 # If needed:
 pip install build
 
-./build_release.sh # Invokes build_ui.sh under the hood.
-# Outputs dist/*.whl. Distributions contain the compiled angular app from build.sh.
+./scripts/build/build_wheel.sh # Invokes build_ui.sh under the hood.
+# Outputs app_server/dist/*.whl. The wheel includes the compiled Angular app.
 ```
