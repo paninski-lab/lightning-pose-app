@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # Create a GitHub Release for the version already recorded in
-# app_server/pyproject.toml. Does not bump the version.
+# app_server/pyproject.toml. Does not bump the version or build the wheel
+# (see scripts/build/build_wheel.sh).
 #
 # Prerequisites:
 #   - Version + README notes committed and pushed to origin/main
 #   - gh authenticated with permission to create releases
 #
 # Usage (from anywhere):
-#   ./scripts/create_github_release.sh
+#   ./scripts/publish_github_release.sh
 
 set -euo pipefail
 
