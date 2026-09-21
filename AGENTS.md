@@ -1,10 +1,10 @@
 # Agent instructions — Lightning Pose App
 
-This is the Cursor/agent entry point. Stack and code patterns: [CLAUDE.md](CLAUDE.md). Setup, lint, and releases: [development.md](development.md).
+This is the Cursor/agent entry point. Stack and code patterns: [CLAUDE.md](CLAUDE.md). Human setup: [CONTRIBUTING.md](CONTRIBUTING.md). Releases: [DEV.md](DEV.md).
 
 ## Product
 
-Lightning Pose App (LPA) is research software used by 100+ labs for labeling, training, and reviewing pose estimation. Goals: **powerful, easy to use, robust**. Prefer boring, reversible changes. Do not ship cleverness that can corrupt a user’s project.
+Lightning Pose App (LPA) is research software used by 100+ labs for labeling, training, and reviewing pose estimation. 
 
 ## Safety
 
@@ -12,9 +12,10 @@ The filesystem is the database (`~/.lightning-pose/projects.toml`, `project.yaml
 
 ## Git
 
-- Work on a short-lived branch from `main` (see [development.md](development.md)). Do not push `main`.
-- Commit, open, merge, or close PRs **only when asked**.
-- Version bump + README notes land via PR. After merge, release from `main` with `./scripts/publish_github_release.sh`. Do not tag or release from a feature branch.
+- Commit, push, open, merge, or close PRs **only when asked**.
+- Typical code changes like new features and bug fixes should happen on devoted branches, not `main`. (See [CONTRIBUTING.md](CONTRIBUTING.md)).
+- Simple docs-only edits (README, CHANGELOG, CONTRIBUTING, DEV) may be made on `main`.
+- Version bump + CHANGELOG.md notes: after they are on `main`, release with `./scripts/publish_github_release.sh`. Do not tag or release from a feature branch.
 
 ## Dev loop
 
@@ -30,4 +31,4 @@ Before calling work done: backend `cd app_server && pytest --ignore=tests/test_p
 
 ## Tools
 
-Propose extra tools (CI, bots, git config, e2e in Actions). Do not install or enable them unless asked.
+Do not install or enable additional tools unless asked.

@@ -46,7 +46,7 @@ def check_for_upgrade() -> None:
                     LP_IGNORE_UPGRADE=1 litpose run_app
 
                 📝 For details on what's new, see the release notes:
-                    https://github.com/paninski-lab/lightning-pose-app/?tab=readme-ov-file#-release-notes
+                    https://github.com/paninski-lab/lightning-pose-app/blob/main/CHANGELOG.md
                 {'-' * 80}
             """
                 )

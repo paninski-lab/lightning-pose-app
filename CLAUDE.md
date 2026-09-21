@@ -1,6 +1,6 @@
 # Lightning Pose App — Developer Guide for Claude
 
-Workflow, safety, and git: see [AGENTS.md](AGENTS.md). This file is the stack and patterns cheat sheet.
+Workflow, safety, and git: see [AGENTS.md](AGENTS.md). Contributor setup: [CONTRIBUTING.md](CONTRIBUTING.md). This file is the stack and patterns cheat sheet.
 
 ## What this app does
 
