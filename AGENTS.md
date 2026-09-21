@@ -14,7 +14,7 @@ The filesystem is the database (`~/.lightning-pose/projects.toml`, `project.yaml
 
 - Work on a short-lived branch from `main` (see [development.md](development.md)). Do not push `main`.
 - Commit, open, merge, or close PRs **only when asked**.
-- Version bump + README notes land via PR. After merge, release from `main` with `./scripts/create_github_release.sh`. Do not tag or release from a feature branch.
+- Version bump + README notes land via PR. After merge, release from `main` with `./scripts/publish_github_release.sh`. Do not tag or release from a feature branch.
 
 ## Dev loop
 
@@ -22,7 +22,7 @@ The filesystem is the database (`~/.lightning-pose/projects.toml`, `project.yaml
 honcho -f Procfile.dev start   # UI at http://localhost:4200, hot reload
 ```
 
-`litpose run_app` is production-shaped (compiled UI). Use `--host 0.0.0.0` on cloud machines; run `./build_ui.sh` first.
+`litpose run_app` is production-shaped (compiled UI). Use `--host 0.0.0.0` on cloud machines; run `./scripts/build/build_ui.sh` first.
 
 ## Tests
 
