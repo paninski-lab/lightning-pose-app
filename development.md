@@ -1,5 +1,9 @@
 ## Development
 
+### Lightning Studio note
+
+On Lightning Studio you cannot create extra conda envs. Use the default **`cloudspace`** environment instead of `poseapp` below. Lightning Pose and this app should already be installed there in editable mode.
+
 ### Python setup
 
 Create and activate the conda environment (Python 3.10–3.12):
@@ -96,6 +100,25 @@ ESLint is configured in `web_ui/eslint.config.js`.
 
 Both linters also run in CI on every pull request (`.github/workflows/lint.yml`).
 
+### Branches and pull requests
+
+Do not push commits to `main`. For each feature or bugfix, create a short-lived branch from up-to-date `origin/main`, then open a pull request into `main`:
+
+```bash
+git fetch origin
+git checkout -b feature/short-name origin/main
+# ... commit your work ...
+git push -u origin HEAD
+gh pr create --base main
+```
+
+Use a descriptive name (`feature/…`, `fix/…`). After the PR is merged, delete the branch. Sync local `main` before starting the next one:
+
+```bash
+git checkout main
+git pull origin main
+```
+
 ### Building and running a production release
 
 With the development setup above (no need for honcho), run
@@ -121,3 +144,28 @@ pip install build
 ./scripts/build/build_wheel.sh # Invokes build_ui.sh under the hood.
 # Outputs app_server/dist/*.whl. The wheel includes the compiled Angular app.
 ```
+
+### Publishing a GitHub Release and PyPI
+
+**Version convention `X.Y.Z.W`:** `X.Y.Z` is the lightning-pose version this app release is built for; `W` is this app's increment for that LP version, starting at `0`.
+
+Canonical version lives in `app_server/pyproject.toml` (`[project].version`). Tags are `vX.Y.Z.W`.
+
+1. On a feature branch from `main`, set `[project].version` in `app_server/pyproject.toml`.
+2. Add a matching notes heading at the top of the Release Notes in `README.md`:
+
+   `### [X.Y.Z.W] — YYYY-MM-DD`
+
+3. Commit, push, and open a PR into `main`. Merge the PR.
+4. From the repo root on **`main`**, after `git pull`, with a clean tree matching `origin/main`:
+
+   ```bash
+   git checkout main && git pull origin main
+   ./scripts/publish_github_release.sh
+   ```
+
+Do not run the release script from a feature branch. The version bump must already be on `origin/main`.
+
+That tags `vX.Y.Z.W` (if needed), pushes the tag, and creates a GitHub Release using the README section. Publishing a GitHub Release is what triggers `.github/workflows/publish.yml` which updates PyPI. If you only push a tag and skip this script, nothing is published until a GitHub Release exists.
+
+Requires the `gh` CLI, logged in with permission to create releases on this repo.
