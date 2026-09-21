@@ -17,6 +17,12 @@ Our full documentation, including installation guides, API references, and advan
 
 ## 📝 Release Notes
 
+### [2.4.2.0] — 2026-09-21
+
+**Version alignment**
+
+* Align the app version with lightning-pose 2.4.2 (first app increment for this LP version).
+
 ### [2.2.0.0] — 2026-05-20
 
 **Extract Frames Robustness**
