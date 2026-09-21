@@ -1,4 +1,4 @@
-![](https://github.com/paninski-lab/lightning-pose-app/raw/main/docs/images/lpa.png)
+![](docs/images/lpa.png)
 
 ![PyPI](https://img.shields.io/pypi/v/lightning-pose-app)
 ![GitHub](https://img.shields.io/github/license/paninski-lab/lightning-pose-app)
