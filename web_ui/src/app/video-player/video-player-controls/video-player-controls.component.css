@@ -10,6 +10,7 @@
   background-color: var(--color-base-100);
   gap: 10px;
   overflow: visible;
+  font-size: 1rem;
 }
 
 /* DaisyUI tooltips default to z-index 2 and lose to the sessions pane. */
@@ -25,7 +26,7 @@
 }
 .shortcut-help table {
   border-collapse: collapse;
-  font-size: 0.75rem;
+  font-size: 1rem;
   line-height: 1.45;
 }
 .shortcut-help th {
@@ -44,17 +45,39 @@
 }
 .time-display {
   font-family: monospace;
-  font-size: 0.9em;
+  font-size: 1rem;
   text-align: center;
   white-space: nowrap;
 }
 .frame-display {
-  min-width: 7ch;
+  min-width: 13ch;
 }
 .time-range {
   min-width: 16ch;
   text-align: right;
 }
+.jump-field {
+  font-family: inherit;
+  font-size: inherit;
+  text-align: right;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+  padding: 0 0.15rem;
+  color: inherit;
+}
+.jump-field:focus {
+  outline: none;
+  border-color: var(--color-base-content);
+  background: var(--color-base-200);
+}
+.frame-jump {
+  width: 6ch;
+}
+.time-jump {
+  width: 7ch;
+}
 .video-controls-container button {
   user-select: none;
+  font-size: 1rem;
 }

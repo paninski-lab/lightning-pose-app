@@ -109,11 +109,11 @@ describe('viewerPlaybackActionFromKeyboard', () => {
     expect(viewerPlaybackActionFromKeyboard(keydown('-', {}, input))).toBeNull();
   });
 
-  it('does not steal Space from a focused button', () => {
+  it('toggles play with Space even when a button is focused', () => {
     const button = document.createElement('button');
     expect(
       viewerPlaybackActionFromKeyboard(keydown(' ', {}, button)),
-    ).toBeNull();
+    ).toEqual({ type: 'togglePlay' });
     expect(
       viewerPlaybackActionFromKeyboard(keydown('ArrowRight', {}, button)),
     ).toEqual({ type: 'stepFrame', delta: 1 });
@@ -131,5 +131,25 @@ describe('viewerPlaybackActionFromKeyboard', () => {
     expect(
       viewerPlaybackActionFromKeyboard(keydown(' ', {}, range)),
     ).toEqual({ type: 'togglePlay' });
+  });
+
+  it('maps a to extractFrame', () => {
+    expect(viewerPlaybackActionFromKeyboard(keydown('a'))).toEqual({
+      type: 'extractFrame',
+    });
+    expect(viewerPlaybackActionFromKeyboard(keydown('A'))).toEqual({
+      type: 'extractFrame',
+    });
+  });
+
+  it('ignores a in a text input and while a dialog is open', () => {
+    const input = document.createElement('input');
+    input.type = 'text';
+    expect(viewerPlaybackActionFromKeyboard(keydown('a', {}, input))).toBeNull();
+
+    const dialog = document.createElement('dialog');
+    document.body.appendChild(dialog);
+    dialog.show();
+    expect(viewerPlaybackActionFromKeyboard(keydown('a'))).toBeNull();
   });
 });

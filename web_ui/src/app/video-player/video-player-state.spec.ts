@@ -65,6 +65,13 @@ describe('VideoPlayerState', () => {
     expect(state.isPlaying.value).toBeFalse();
   });
 
+  it('seekToFrame clamps below 0 and above the last frame', () => {
+    state.seekToFrame(10000);
+    expect(state.currentFrameSignal()).toBe(299);
+    state.seekToFrame(-3);
+    expect(state.currentFrameSignal()).toBe(0);
+  });
+
   it('pauses when stepping while playing', () => {
     state.isPlaying.next(true);
     state.stepFrame(1);

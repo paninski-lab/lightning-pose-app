@@ -5,7 +5,9 @@
       class="btn btn-ghost btn-sm tooltip tooltip-top"
       data-tip="Go to start"
       aria-label="Go to start"
+      tabindex="-1"
       [disabled]="!hasVideo()"
+      (mousedown)="$event.preventDefault()"
       (click)="videoPlayerState.seekToStart()"
     >
       <span class="material-icons">skip_previous</span>
@@ -15,7 +17,9 @@
       class="btn btn-ghost btn-sm tooltip tooltip-top"
       data-tip="Previous frame"
       aria-label="Previous frame"
+      tabindex="-1"
       [disabled]="!hasVideo()"
+      (mousedown)="$event.preventDefault()"
       (click)="onStepFrameClick($event, -1)"
     >
       <span class="material-icons">chevron_left</span>
@@ -25,7 +29,9 @@
       class="btn btn-ghost btn-sm tooltip tooltip-top"
       [attr.data-tip]="isPlaying() ? 'Pause' : 'Play'"
       [attr.aria-label]="isPlaying() ? 'Pause' : 'Play'"
+      tabindex="-1"
       [disabled]="!hasVideo()"
+      (mousedown)="$event.preventDefault()"
       (click)="videoPlayerState.toggleIsPlaying()"
     >
       @if (isPlaying()) {
@@ -39,7 +45,9 @@
       class="btn btn-ghost btn-sm tooltip tooltip-top"
       data-tip="Next frame"
       aria-label="Next frame"
+      tabindex="-1"
       [disabled]="!hasVideo()"
+      (mousedown)="$event.preventDefault()"
       (click)="onStepFrameClick($event, 1)"
     >
       <span class="material-icons">chevron_right</span>
@@ -54,7 +62,9 @@
         class="btn btn-ghost btn-sm min-w-16 tooltip tooltip-top"
         data-tip="Playback speed"
         aria-label="Playback speed"
+        tabindex="-1"
         [disabled]="!hasVideo()"
+        (mousedown)="$event.preventDefault()"
       >
         {{ playbackRateLabel() }}
       </button>
@@ -83,19 +93,50 @@
     type="range"
     class="timestamp-slider"
     min="0"
-    max="{{ duration() }}"
+    max="{{ sliderMax() }}"
     [value]="currentTime()"
     [disabled]="!hasVideo()"
     (input)="onSliderInput(rangeInput.value)"
+    (change)="onSliderChange(rangeInput.value)"
     step="{{ step() }}"
     aria-label="Seek"
   />
-  <span class="time-display frame-display tooltip tooltip-top" data-tip="Frame"
-    >f {{ currentFrame() }}</span
-  >
-  <span class="time-display time-range"
-    >{{ currentTimeFormatted() }} / {{ durationFormatted() }} s</span
-  >
+  <label class="time-display frame-display tooltip tooltip-top" data-tip="Frame">
+    Frame
+    <input
+      class="jump-field frame-jump"
+      type="text"
+      inputmode="numeric"
+      autocomplete="off"
+      aria-label="Frame"
+      [disabled]="!hasVideo()"
+      [value]="frameFieldValue()"
+      (focus)="onFrameFocus($event)"
+      (input)="onFrameInput($any($event.target).value)"
+      (keydown.enter)="onFrameEnter($event)"
+      (keydown.escape)="onFrameEscape($event)"
+      (blur)="onFrameBlur($event)"
+    />
+  </label>
+  <span class="time-display time-range">
+    <span class="tooltip tooltip-top" data-tip="Time">
+      <input
+        class="jump-field time-jump"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        aria-label="Time"
+        [disabled]="!hasVideo()"
+        [value]="timeFieldValue()"
+        (focus)="onTimeFocus($event)"
+        (input)="onTimeInput($any($event.target).value)"
+        (keydown.enter)="onTimeEnter($event)"
+        (keydown.escape)="onTimeEscape($event)"
+        (blur)="onTimeBlur($event)"
+      />
+    </span>
+    / {{ durationFormatted() }} s
+  </span>
 
   <div class="tooltip tooltip-top tooltip-end shortcut-help-tooltip">
     <div class="tooltip-content shortcut-help">
@@ -125,6 +166,10 @@
             <th>- / =</th>
             <td>Slower / faster</td>
           </tr>
+          <tr>
+            <th>a</th>
+            <td>Add current frame</td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -132,6 +177,8 @@
       type="button"
       class="btn btn-ghost btn-sm btn-circle"
       aria-label="Keyboard shortcuts"
+      tabindex="-1"
+      (mousedown)="$event.preventDefault()"
     >
       <span class="material-icons">keyboard</span>
     </button>

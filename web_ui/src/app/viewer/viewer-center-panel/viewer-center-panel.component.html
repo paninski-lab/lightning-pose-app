@@ -65,5 +65,7 @@
     }
   </div>
 
-  <app-video-player-controls></app-video-player-controls>
+  <app-video-player-controls
+    (extractFrame)="extractFrame.emit()"
+  ></app-video-player-controls>
 </div>

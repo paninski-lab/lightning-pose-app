@@ -181,24 +181,27 @@ export class VideoPlayerState {
   }
 
   /**
-   * Seek the videos first, then publish `currentTime` (keypoints, frame
-   * readout) on `seeked` so the overlay does not race ahead of the picture.
+   * Pause and seek to a frame index, clamped to `[0, lastFrame]`.
+   * Videos seek first; `currentTime` (keypoints, frame readout) publishes on
+   * `seeked` so the overlay does not race ahead of the picture.
    * Key-hold steps coalesce the next seek target; each completed seek still
    * publishes so keypoints do not lag on an old frame.
    */
-  private seekToFrame(frame: number) {
-    this.pendingFrame = frame;
+  seekToFrame(frame: number) {
+    if (!this.canSeek()) return;
+    const clamped = Math.min(Math.max(frame, 0), this.lastFrameSignal());
+    this.pendingFrame = clamped;
     this.videoPlayers.forEach((videoPlayer) => {
       videoPlayer.videoElement?.nativeElement.pause();
     });
     this.isPlaying.next(false);
     const el = this.primaryVideo();
     if (!el) {
-      this.commitDisplayedFrame(frame);
+      this.commitDisplayedFrame(clamped);
       return;
     }
     if (this.seeking) return;
-    this.beginSeek(el, frame);
+    this.beginSeek(el, clamped);
   }
 
   private beginSeek(el: HTMLVideoElement, frame: number) {

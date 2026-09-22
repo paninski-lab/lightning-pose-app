@@ -262,6 +262,15 @@ export class ViewerPageComponent implements OnInit {
   protected showPartialModelsError() {
     this.partialModelsErrorsDialog()?.nativeElement.showModal();
   }
+  protected onExtractFrameShortcut() {
+    if (
+      this.isExtractFramesInteractionDisabled() ||
+      !this.extractFramesLabelFileKey()
+    ) {
+      return;
+    }
+    this.handleExtractFramesClick();
+  }
   protected handleExtractFramesClick() {
     if (this.enabledViewsKeypoints.modelsShown().length > 1) {
       this.showPartialModelsError();

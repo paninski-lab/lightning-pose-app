@@ -5,6 +5,7 @@ import {
   inject,
   input,
   OnChanges,
+  output,
   signal,
   SimpleChanges,
 } from '@angular/core';
@@ -62,6 +63,7 @@ import { ToastService } from '../../toast.service';
 })
 export class ViewerCenterPanelComponent implements OnChanges {
   sessionKey = input<string | null>(null);
+  extractFrame = output<void>();
 
   _loadedSessionKey = signal<string | null>(null);
   private csvParser = inject(CsvParserService);
