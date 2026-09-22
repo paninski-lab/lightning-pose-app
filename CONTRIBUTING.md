@@ -116,6 +116,6 @@ git push -u origin HEAD
 gh pr create --base main
 ```
 
-Names like `feature/…` or `fix/…` work well. After merge, delete the branch and `git pull` on `main` before starting the next change.
+Names like `feature/…` or `fix/…` work well. Use one short-lived branch per feature or per bugfix bundle. Combining is fine when the changes touch the same part of the code. Do not mix unrelated areas into one PR. After merge, delete the branch and `git pull` on `main` before starting the next change.
 
 Org members can push a branch on this repo. External contributors should [fork](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks) and open a PR from the fork.

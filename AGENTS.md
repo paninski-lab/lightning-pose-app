@@ -13,7 +13,7 @@ The filesystem is the database (`~/.lightning-pose/projects.toml`, `project.yaml
 ## Git
 
 - Commit, push, open, merge, or close PRs **only when asked**.
-- Typical code changes like new features and bug fixes should happen on devoted branches, not `main`. (See [CONTRIBUTING.md](CONTRIBUTING.md)).
+- Typical code changes like new features and bug fixes should happen on devoted branches, not `main`. One branch per feature or bugfix bundle; combining is fine when the changes touch the same part of the code. (See [CONTRIBUTING.md](CONTRIBUTING.md)).
 - Simple docs-only edits (README, CHANGELOG, CONTRIBUTING, DEV) may be made on `main`.
 - Version bump + CHANGELOG.md notes: after they are on `main`, release with `./scripts/publish_github_release.sh`. Do not tag or release from a feature branch.
 

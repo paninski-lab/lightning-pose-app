@@ -3,7 +3,8 @@ export type ViewerPlaybackAction =
   | { type: 'stepFrame'; delta: number }
   | { type: 'seekToStart' }
   | { type: 'seekToEnd' }
-  | { type: 'nudgeRate'; direction: -1 | 1 };
+  | { type: 'nudgeRate'; direction: -1 | 1 }
+  | { type: 'extractFrame' };
 
 /**
  * Map a keydown event to a Viewer playback action, or null if the event
@@ -22,12 +23,15 @@ export function viewerPlaybackActionFromKeyboard(
   const code = event.code;
 
   if (key === ' ' || key === 'Spacebar' || code === 'Space') {
-    if (shouldIgnoreSpace(target)) return null;
     return { type: 'togglePlay' };
   }
 
   if (isPopoverTarget(target) && isTransportNavKey(key)) {
     return null;
+  }
+
+  if (key === 'a' || key === 'A') {
+    return { type: 'extractFrame' };
   }
 
   if (key === 'ArrowLeft') {
@@ -79,9 +83,7 @@ function isTransportNavKey(key: string) {
     key === 'ArrowLeft' ||
     key === 'ArrowRight' ||
     key === 'Home' ||
-    key === 'End' ||
-    key === ' ' ||
-    key === 'Spacebar'
+    key === 'End'
   );
 }
 
@@ -111,28 +113,6 @@ const NON_TEXT_INPUT_TYPES = new Set([
   'file',
   'color',
 ]);
-
-function isButtonLike(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName;
-  if (tag === 'BUTTON' || tag === 'SUMMARY' || tag === 'A') return true;
-  return target.getAttribute('role') === 'button';
-}
-
-function shouldIgnoreSpace(target: EventTarget | null) {
-  if (isButtonLike(target) || isPopoverTarget(target)) return true;
-  if (target instanceof HTMLInputElement) {
-    return (
-      target.type === 'checkbox' ||
-      target.type === 'radio' ||
-      target.type === 'button' ||
-      target.type === 'submit' ||
-      target.type === 'reset' ||
-      target.type === 'file'
-    );
-  }
-  return false;
-}
 
 function isRangeTarget(target: EventTarget | null) {
   return target instanceof HTMLInputElement && target.type === 'range';

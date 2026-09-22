@@ -65,6 +65,7 @@
         <app-viewer-center-panel
           class="grow z-30"
           [sessionKey]="_sessionKey()"
+          (extractFrame)="onExtractFrameShortcut()"
         ></app-viewer-center-panel>
 
         <!-- Right pane -->
