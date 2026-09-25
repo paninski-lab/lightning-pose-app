@@ -24,7 +24,7 @@
 
   <div class="flex gap-2 w-full grow shrink min-h-0">
     <ul class="menu min-w-40">
-      @for (tab of tabs; track tab.key; let i = $index) {
+      @for (tab of tabs(); track tab.key; let i = $index) {
         <li>
           <a
             [class.menu-active]="selectedTab() === tab.key"
@@ -152,6 +152,8 @@
             </p>
           </fieldset>
         </form>
+      } @else if (selectedTab() === 'videos') {
+        <app-project-videos />
       }
     </div>
   </div>
@@ -194,7 +196,7 @@
           <ng-container *ngTemplateOutlet="backButtonTemplate"></ng-container>
         }
         <!-- Create: next until the last tab, then save -->
-        @if (selectedTabIndex() < tabs.length - 1) {
+        @if (selectedTabIndex() < tabs().length - 1) {
           <ng-container *ngTemplateOutlet="nextButtonTemplate"></ng-container>
         } @else {
           <ng-container *ngTemplateOutlet="saveButtonTemplate"></ng-container>

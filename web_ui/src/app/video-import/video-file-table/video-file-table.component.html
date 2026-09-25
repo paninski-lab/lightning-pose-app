@@ -15,9 +15,14 @@
       </tr>
     </thead>
     <tbody>
-      @for (it of items; track it.name) {
+      @for (it of items; track it.id) {
         <tr>
-          <td class="break-all">{{ it.name }}</td>
+          <td class="break-all">
+            {{ it.name }}
+            @if (it.kind === 'server') {
+              <span class="badge badge-ghost badge-xs ml-1">server</span>
+            }
+          </td>
           <td>{{ formatBytes(it.size) }}</td>
           <td>{{ it.sessionKey ?? '—' }}</td>
           @if (isMultiview()) {
@@ -25,7 +30,7 @@
           }
           <td>
             <!-- Upload phase -->
-            @if (it.upload) {
+            @if (it.upload && it.kind !== 'server') {
               @if (it.upload.status === 'uploading') {
                 <div class="flex items-center gap-2">
                   <progress class="progress progress-primary w-40" [value]="it.upload.progress" max="100"></progress>

@@ -81,14 +81,43 @@ export class SessionService {
     inputPath: string,
     shouldOverwrite = false,
   ): Observable<VideoTaskStatus> {
-    const projectKey = this.getProjectKeyOrThrow();
     const params = new URLSearchParams({
-      projectKey,
+      projectKey: this.getProjectKeyOrThrow(),
       inputPath,
       should_overwrite: String(shouldOverwrite),
     });
-    const url = `/app/v0/sse/TranscodeVideo?${params.toString()}`;
+    return this.openTranscodeSse(
+      `/app/v0/sse/TranscodeVideo?${params.toString()}`,
+    );
+  }
 
+  /**
+   * Transcode a file already in videos/ or videos_test/ to all-intra, replacing it in place.
+   * Completes when the server reports DONE or ERROR.
+   */
+  transcodeVideoInPlaceSse(inputPath: string): Observable<VideoTaskStatus> {
+    const params = new URLSearchParams({
+      projectKey: this.getProjectKeyOrThrow(),
+      inputPath,
+    });
+    return this.openTranscodeSse(
+      `/app/v0/sse/TranscodeVideoInPlace?${params.toString()}`,
+    );
+  }
+
+  /** Rename a project video. The file stays in its current folder. */
+  async renameVideo(
+    path: string,
+    newFilename: string,
+  ): Promise<{ ok: boolean; path: string }> {
+    return (await this.rpc.call('RenameVideo', {
+      projectKey: this.getProjectKeyOrThrow(),
+      path,
+      newFilename,
+    })) as { ok: boolean; path: string };
+  }
+
+  private openTranscodeSse(url: string): Observable<VideoTaskStatus> {
     return new Observable<VideoTaskStatus>((subscriber) => {
       const es = new EventSource(url);
       const onMessage = (ev: MessageEvent) => {

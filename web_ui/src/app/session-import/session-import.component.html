@@ -12,7 +12,11 @@
       </button>
       <h3 class="text-xl font-bold mb-2">Import session</h3>
       <p class="text-sm mb-4">
-        Select one or more local video files to upload.
+        @if (useServerFiles()) {
+          Select one or more video files already on the server.
+        } @else {
+          Select one or more local video files to upload.
+        }
         @if (isMultiview()) {
           <strong class="text-error"
             >Filenames must follow the
@@ -28,22 +32,46 @@
       </p>
 
       <div class="flex gap-3 items-center mb-4 flex-shrink-0">
-        <label
-          class="btn btn-primary"
-          [class.btn-disabled]="isProcessing()"
-          for="videoFileInput"
-          >Choose videos</label
-        >
+        @if (useServerFiles()) {
+          <button
+            type="button"
+            class="btn btn-primary"
+            data-testid="choose-videos"
+            [disabled]="isProcessing()"
+            (click)="openServerPicker()"
+          >
+            Choose videos
+          </button>
+        } @else {
+          <label
+            class="btn btn-primary"
+            data-testid="choose-videos"
+            [class.btn-disabled]="isProcessing()"
+            for="videoFileInput"
+            >Choose videos</label
+          >
+        }
         <input
           id="videoFileInput"
           type="file"
           #fileInput
           class="hidden"
-          [disabled]="isProcessing()"
+          [disabled]="isProcessing() || useServerFiles()"
           (change)="addFiles(fileInput.files)"
           accept="video/*"
           multiple
         />
+        <label class="label cursor-pointer gap-2">
+          <input
+            type="checkbox"
+            class="checkbox checkbox-sm"
+            data-testid="server-files-checkbox"
+            [checked]="useServerFiles()"
+            [disabled]="isProcessing()"
+            (change)="onServerFilesToggle($event)"
+          />
+          <span class="label-text">Server files</span>
+        </label>
         <button
           class="btn btn-ghost"
           (click)="clearAll()"
@@ -53,17 +81,26 @@
         </button>
       </div>
 
-      <div
-        class="overflow-y-auto grow min-h-0 border rounded-box"
-        role="region"
-        aria-label="Selected videos"
-      >
-        <app-video-file-table
-          [items]="items()"
-          [uploading]="isProcessing()"
-          (removeAt)="removeAt($event)"
-        />
-      </div>
+      @if (serverPickerOpen()) {
+        <div class="grow min-h-0">
+          <app-server-video-picker
+            (chosen)="onServerChosen($event)"
+            (dismissed)="serverPickerOpen.set(false)"
+          />
+        </div>
+      } @else {
+        <div
+          class="overflow-y-auto grow min-h-0 border rounded-box"
+          role="region"
+          aria-label="Selected videos"
+        >
+          <app-video-file-table
+            [items]="items()"
+            [uploading]="isProcessing()"
+            (removeAt)="removeAt($event)"
+          />
+        </div>
+      }
 
       <div class="flex justify-between items-center mt-6 flex-shrink-0">
         <div class="text-sm" [class.text-error]="!allValid()">

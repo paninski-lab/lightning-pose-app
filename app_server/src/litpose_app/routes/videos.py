@@ -9,7 +9,7 @@ import math
 import os
 import re
 import threading
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
@@ -249,18 +249,32 @@ def _stream_sse_sync(gen: Iterator[dict]) -> Iterator[str]:
         yield f"data: {data}\n\n"
 
 
-def _start_transcode_background(filename: str, input_path: Path, output_path: Path, delete_on_success: bool = False) -> Future:
-    """Start an ffmpeg transcode of input_path → output_path in the background, returning the Future."""
+def _start_transcode_background(
+    filename: str,
+    input_path: Path,
+    output_path: Path,
+    delete_on_success: bool = False,
+    status_key: str | None = None,
+    finalize: Callable[[], None] | None = None,
+) -> Future:
+    """Start an ffmpeg transcode of input_path → output_path in the background, returning the Future.
+
+    ``status_key`` defaults to ``filename``. In-place jobs pass the absolute path so
+    ``videos/foo.mp4`` and ``videos_test/foo.mp4`` do not share one status entry.
+    ``finalize`` runs after ffmpeg succeeds and before DONE (used to replace the
+    original with the temp output).
+    """
+    key = status_key or filename
     # If already running, return existing future
     with _status_lock:
-        fut = _futures_by_file.get(filename)
+        fut = _futures_by_file.get(key)
         if fut is not None and not fut.done():
             return fut
 
     # Compute total frames once
     total = _ffprobe_total_frames(input_path)
     set_status(
-        filename, totalFrames=total, transcodeStatus=TranscodeStatus.ACTIVE, error=None
+        key, totalFrames=total, transcodeStatus=TranscodeStatus.ACTIVE, error=None
     )
 
     def _run() -> None:
@@ -291,7 +305,7 @@ def _start_transcode_background(filename: str, input_path: Path, output_path: Pa
                     m = re.search(r"frame=\s*(\d+)", line)
                     if m:
                         frames_done_local = int(m.group(1))
-                        set_status(filename, framesDone=frames_done_local)
+                        set_status(key, framesDone=frames_done_local)
 
             # Ensure process has finished if wait() is available (mock Popen may not implement it)
             try:
@@ -299,8 +313,18 @@ def _start_transcode_background(filename: str, input_path: Path, output_path: Pa
             except AttributeError:
                 pass
             if process.returncode == 0 and output_path.exists():
+                try:
+                    if finalize is not None:
+                        finalize()
+                except Exception as e:
+                    set_status(
+                        key,
+                        transcodeStatus=TranscodeStatus.ERROR,
+                        error=f"Failed to replace video: {e}",
+                    )
+                    return
                 set_status(
-                    filename,
+                    key,
                     transcodeStatus=TranscodeStatus.DONE,
                     framesDone=frames_done_local,
                 )
@@ -311,23 +335,69 @@ def _start_transcode_background(filename: str, input_path: Path, output_path: Pa
                         pass
             else:
                 set_status(
-                    filename,
+                    key,
                     transcodeStatus=TranscodeStatus.ERROR,
                     error=f"FFmpeg failed with code {process.returncode}",
                 )
+                if finalize is not None:
+                    output_path.unlink(missing_ok=True)
         except Exception as e:
             # Ensure terminal state on unexpected errors (e.g., ffmpeg missing)
             set_status(
-                filename,
+                key,
                 transcodeStatus=TranscodeStatus.ERROR,
                 error=f"Exception during transcode: {e}",
             )
+            if finalize is not None:
+                output_path.unlink(missing_ok=True)
 
     executor = get_executor()
     future = executor.submit(_run)
     with _status_lock:
-        _futures_by_file[filename] = future
+        _futures_by_file[key] = future
     return future
+
+
+PROJECT_VIDEO_DIRS = ("videos", "videos_test")
+
+
+def project_video_roots(project: Project) -> list[Path]:
+    """Return the project's videos/ and videos_test/ directories (they may not exist)."""
+    data = project.paths.data_dir.resolve()
+    return [data / name for name in PROJECT_VIDEO_DIRS]
+
+
+def resolve_project_video(path: Path, project: Project) -> Path:
+    """Resolve ``path`` and require it to be a file under videos/ or videos_test/."""
+    if not path.is_absolute():
+        raise HTTPException(status_code=400, detail="path must be absolute.")
+    resolved = path.resolve()
+    if not resolved.is_file():
+        raise HTTPException(status_code=404, detail="Input file not found.")
+    for root in project_video_roots(project):
+        try:
+            resolved.relative_to(root)
+        except ValueError:
+            continue
+        else:
+            return resolved
+    raise HTTPException(
+        status_code=400,
+        detail="File must be inside videos/ or videos_test/.",
+    )
+
+
+def _in_place_temp_path(src: Path) -> Path:
+    """Sibling temp file ffmpeg can write without clobbering ``src``."""
+    return src.with_name(f".{src.stem}.allintra.tmp.mp4")
+
+
+def _replace_with_transcode(src: Path, tmp: Path) -> None:
+    """Move the temp all-intra file onto ``src``, keeping the result as .mp4 in the same folder."""
+    final = src.with_suffix(".mp4")
+    os.replace(tmp, final)
+    if final.resolve() != src.resolve() and src.exists():
+        src.unlink()
 
 
 # -----------------------------
@@ -515,6 +585,100 @@ def transcode_video(
     return StreamingResponse(
         _stream_sse_sync(poller_sync()), media_type="text/event-stream"
     )
+
+
+class RenameVideoRequest(BaseModel):
+    """Rename a video that already lives in videos/ or videos_test/."""
+
+    projectKey: str
+    path: str
+    newFilename: str
+
+
+class RenameVideoResponse(BaseModel):
+    """Absolute path of the video after a successful rename."""
+
+    ok: bool
+    path: str
+
+
+@router.get("/app/v0/sse/TranscodeVideoInPlace")
+def transcode_video_in_place(
+    projectKey: str,
+    inputPath: str,
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+) -> StreamingResponse:
+    """Transcode a project video to all-intra and replace it in the same folder.
+
+    ``inputPath`` must be an absolute path under ``<data_dir>/videos`` or
+    ``<data_dir>/videos_test``. ffmpeg writes a temp sibling, then that file
+    replaces the original (non-mp4 sources become ``.mp4`` and the old file is
+    removed). Progress uses the same ``VideoTaskStatus`` SSE payload as
+    ``TranscodeVideo``, keyed by the absolute path.
+    """
+    project: Project = project_info_getter(projectKey)
+    src = resolve_project_video(Path(inputPath), project)
+    parse_session_view(src.name, is_multiview=len(project.config.view_names) > 0)
+
+    tmp = _in_place_temp_path(src)
+    key = str(src)
+
+    def _finalize() -> None:
+        _replace_with_transcode(src, tmp)
+
+    _start_transcode_background(
+        src.name,
+        src,
+        tmp,
+        delete_on_success=False,
+        status_key=key,
+        finalize=_finalize,
+    )
+
+    def poller_sync() -> Iterator[dict]:
+        """Poll transcode status every 250 ms and yield events until DONE or ERROR."""
+        import time
+
+        while True:
+            payload = _status_snapshot_dict(key)
+            yield payload
+            if payload["transcodeStatus"] in (
+                TranscodeStatus.DONE,
+                TranscodeStatus.ERROR,
+            ):
+                break
+            time.sleep(0.25)
+
+    return StreamingResponse(
+        _stream_sse_sync(poller_sync()), media_type="text/event-stream"
+    )
+
+
+@router.post("/app/v0/rpc/RenameVideo")
+def rename_video(
+    request: RenameVideoRequest,
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+) -> RenameVideoResponse:
+    """Rename a video inside its current videos/ or videos_test/ folder.
+
+    The new filename must pass ``parse_session_view``. The file is not moved
+    between folders. Returns 409 when the destination already exists.
+    """
+    project = project_info_getter(request.projectKey)
+    src = resolve_project_video(Path(request.path), project)
+    parse_session_view(
+        request.newFilename, is_multiview=len(project.config.view_names) > 0
+    )
+    dest = src.parent / request.newFilename
+    if dest.resolve() == src.resolve():
+        return RenameVideoResponse(ok=True, path=str(src))
+    if dest.exists():
+        raise HTTPException(
+            status_code=409,
+            detail="A file with that name already exists.",
+        )
+    src.rename(dest)
+    return RenameVideoResponse(ok=True, path=str(dest))
 
 
 # -----------------------------

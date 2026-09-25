@@ -23,6 +23,7 @@ import { JsonPipe, NgTemplateOutlet } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PathEditableComponent } from '../components/path-editable/path-editable.component';
 import { ModelDirInputComponent } from '../components/model-dir-input/model-dir-input.component';
+import { ProjectVideosComponent } from './project-videos/project-videos.component';
 
 @Component({
   selector: 'app-project-settings',
@@ -33,6 +34,7 @@ import { ModelDirInputComponent } from '../components/model-dir-input/model-dir-
     NgTemplateOutlet,
     PathEditableComponent,
     ModelDirInputComponent,
+    ProjectVideosComponent,
   ],
   templateUrl: './project-settings.component.html',
   styleUrl: './project-settings.component.css',
@@ -60,11 +62,18 @@ export class ProjectSettingsComponent implements OnInit {
   protected keypointsForm!: FormGroup;
   protected multiviewForm!: FormGroup;
 
-  protected readonly tabs = [
-    { key: 'directories', icon: 'folder', text: 'Local setup' },
-    { key: 'keypoints', icon: 'adjust', text: 'Keypoints' },
-    { key: 'multiview', icon: 'camera_alt', text: 'Multiview' },
-  ];
+  /** Videos is omitted during project creation so Save stays on Multiview. */
+  protected readonly tabs = computed(() => {
+    const base = [
+      { key: 'directories', icon: 'folder', text: 'Local setup' },
+      { key: 'keypoints', icon: 'adjust', text: 'Keypoints' },
+      { key: 'multiview', icon: 'camera_alt', text: 'Multiview' },
+    ];
+    if (!this.setupMode()) {
+      base.push({ key: 'videos', icon: 'videocam', text: 'Videos' });
+    }
+    return base;
+  });
 
   constructor() {
     this.projectInfoForm = this.fb.group({
@@ -289,16 +298,16 @@ export class ProjectSettingsComponent implements OnInit {
     this.selectedTab.set(tabKey);
   }
   protected selectedTabIndex = computed(() =>
-    this.tabs.findIndex((t) => t.key === this.selectedTab()),
+    this.tabs().findIndex((t) => t.key === this.selectedTab()),
   );
   protected handleBackClick() {
     const currentIndex = this.selectedTabIndex();
     if (currentIndex > 0) {
-      this.selectedTab.set(this.tabs[currentIndex - 1].key);
+      this.selectedTab.set(this.tabs()[currentIndex - 1].key);
     }
   }
   protected handleNextClick() {
-    const currentTabKey = this.tabs[this.selectedTabIndex()].key;
+    const currentTabKey = this.tabs()[this.selectedTabIndex()].key;
     let currentFormGroup: FormGroup | undefined;
 
     switch (currentTabKey) {
@@ -317,9 +326,9 @@ export class ProjectSettingsComponent implements OnInit {
     }
 
     if (currentFormGroup && currentFormGroup.valid) {
-      if (this.selectedTabIndex() === this.tabs.length - 1)
+      if (this.selectedTabIndex() === this.tabs().length - 1)
         throw new Error('Should not display next button on last tab');
-      this.selectedTab.set(this.tabs[this.selectedTabIndex() + 1]!.key);
+      this.selectedTab.set(this.tabs()[this.selectedTabIndex() + 1]!.key);
     } else {
       // If not valid, mark controls in the current tab's form group as touched
       // to display validation errors.
