@@ -5,7 +5,7 @@ import { VideoPlayerControlsComponent } from './video-player-controls.component'
 
 /** Renders the control bar with a duration and no video file. */
 @Component({
-  selector: 'video-controls-story',
+  selector: 'app-video-controls-story',
   imports: [VideoPlayerControlsComponent],
   providers: [VideoPlayerState],
   template: `
