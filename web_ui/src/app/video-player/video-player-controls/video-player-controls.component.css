@@ -23,11 +23,13 @@
   text-align: left;
   padding-block: 0.5rem;
   padding-inline: 0.75rem;
+  font-size: 1rem;
+  line-height: 1.45;
 }
 .shortcut-help table {
   border-collapse: collapse;
-  font-size: 1rem;
-  line-height: 1.45;
+  font-size: inherit;
+  line-height: inherit;
 }
 .shortcut-help th {
   font-family: ui-monospace, monospace;
@@ -39,9 +41,22 @@
 .shortcut-help td {
   white-space: nowrap;
 }
-.timestamp-slider {
-  flex-grow: 1;
-  cursor: pointer;
+.shortcut-help p {
+  margin: 0;
+  font-size: inherit;
+  white-space: nowrap;
+}
+.shortcut-help .shortcut-heading {
+  margin-top: 1.45em;
+}
+.step-tip[data-tip]::before {
+  white-space: pre-line;
+}
+/* DaisyUI range sets width: clamp(...), which collapses in this flex row. */
+.seek-range {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
 }
 .time-display {
   font-family: monospace;
@@ -55,6 +70,7 @@
 .time-range {
   min-width: 16ch;
   text-align: right;
+  cursor: pointer;
 }
 .jump-field {
   font-family: inherit;
