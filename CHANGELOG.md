@@ -2,9 +2,23 @@
 
 All notable changes to Lightning Pose App are documented here. Version format is `X.Y.Z.W`: `X.Y.Z` is the lightning-pose version this app release is built for; `W` is this app's increment for that LP version, starting at `0`.
 
-GitHub Releases use the matching `### [X.Y.Z.W]` section from this file.
+GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### [X.Y.Z.W.dev0]` heading is work that is not released yet. The release that publishes it renames that heading to `### [X.Y.Z.W] — YYYY-MM-DD`.
 
 ## 📝 Release Notes
+
+### [2.4.2.1.dev0]
+
+**Viewer**
+
+* **Transport bar:** Seek slider uses DaisyUI `range`. Playback help uses an info icon. The tip explains that frame and time can be typed, then lists keyboard controls. Previous/next frame tips include Shift+click (10 frames). Clicking the current/total time block focuses the time field.
+
+Tests: `web_ui/src/app/video-player/video-player-controls/video-player-controls.component.spec.ts` (transport bar, Shift+click, typed frame/time, slider bounds, help copy and tips), `video-player-keyboard.spec.ts` (shortcut mapping), and `video-player-state.spec.ts` (seek, step, playback rate).
+
+**Development**
+
+* Document Node, honcho versus `litpose run_app` and `build_ui.sh`, and DaisyUI/Storybook in `CONTRIBUTING.md`. Lightning Studio setup stays in `DEV.md`.
+* `AGENTS.md` now covers UI components and updating specs with the UI.
+* Between releases, `app_server/pyproject.toml` uses the next app increment plus `.dev0` (see `DEV.md`).
 
 ### [2.4.2.0] — 2026-09-21
 

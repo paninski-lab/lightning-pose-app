@@ -4,7 +4,7 @@ Thanks for wanting to improve Lightning Pose App. Questions and informal feedbac
 
 You should not have to clone this repo unless you are changing app source. Everyday use is `pip install lightning-pose lightning-pose-app` — see the [README](README.md) and [user docs](https://lightning-pose.readthedocs.io/).
 
-Stack and code patterns for this codebase: [CLAUDE.md](CLAUDE.md). Maintainer release process: [DEV.md](DEV.md).
+Stack and code patterns for this codebase: [CLAUDE.md](CLAUDE.md). Maintainer notes, including releases and this team's Lightning Studio setup: [DEV.md](DEV.md).
 
 ## Development install
 
@@ -27,7 +27,18 @@ pip install -e ".[dev]"
 
 ### Node (UI)
 
-Only needed if you change Angular sources or run `ng` locally. Use [nvm](https://github.com/nvm-sh/nvm):
+Only needed if you change the UI or run the Angular tooling. 
+
+If you're unfamiliar with Node.js or Angular:
+
+| Name | What it is |
+|------|------------|
+| **Node** | The program that runs the UI tooling. This repo needs **Node 26** (`web_ui/.nvmrc`). |
+| **nvm** | Switches which Node version the **current terminal** uses. `nvm use 26` is not remembered by the next terminal. |
+| **npm** | Installs UI dependencies into `web_ui/node_modules`, and runs scripts from `web_ui/package.json` (`npm run storybook`, and so on). |
+| **ng** | The Angular command-line tool. It is not installed with the operating system. `npm install` in `web_ui` puts it at `web_ui/node_modules/.bin/ng`. Typing `ng` by itself fails unless that directory is on `PATH`. `npm run …` and [Procfile.dev](Procfile.dev) call that local file for you. A global `npm install -g @angular/cli` is optional. |
+
+Install once per machine with [nvm](https://github.com/nvm-sh/nvm):
 
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
@@ -38,13 +49,11 @@ nvm use 26
 cd web_ui && npm install
 ```
 
-`Procfile.dev` runs the **local** Angular CLI (`web_ui/node_modules/.bin/ng`). A global `npm install -g @angular/cli` is optional.
-
-Node 26 must be on `PATH` so `ng` is executed with a matching `node` (see `web_ui/.nvmrc`).
+Every **new terminal** that will run `honcho`, `npm`, `npx ng`, or [scripts/build/build_ui.sh](scripts/build/build_ui.sh) needs Node 26 selected again (`nvm use 26`). Check with `node -v` (it should print `v26…`). The UI files under `web_ui/node_modules` stay installed; you do not repeat `npm install` unless that directory is missing or `package.json` changed.
 
 ## Running the dev servers
 
-From the **repo root**:
+While editing, start both processes from the **repo root** (Node 26 on `PATH` in that terminal):
 
 ```bash
 honcho -f Procfile.dev start
@@ -52,14 +61,52 @@ honcho -f Procfile.dev start
 
 That starts:
 
-- Angular `ng serve` at **http://localhost:4200** (primary URL; hot reload). It proxies `/app` to the backend ([web_ui/src/proxy.conf.json](web_ui/src/proxy.conf.json)).
+- Angular `ng serve` at **http://localhost:4200** (primary URL). It compiles the UI in memory and reloads when UI files change. It does **not** write a build into the Python package. The page proxies `/app` to the backend ([web_ui/src/proxy.conf.json](web_ui/src/proxy.conf.json)).
 - Uvicorn on **port 8080** with `--reload` for Python changes.
 
 To run only one process, copy the matching line from [Procfile.dev](Procfile.dev). Backend-only: you can run the `uvicorn` command from that file without honcho.
 
-This is **not** the packaged app. Production (`litpose run_app`) serves a compiled Angular build from `app_server/src/litpose_app/ngdist` (see [DEV.md](DEV.md)).
-
 If port 8080 or 4200 is already in use, stop the old `uvicorn` / `ng serve` (or `honcho`) before starting again.
+
+### `litpose run_app` needs a separate UI build
+
+`litpose run_app` is the packaged server, the same entry point users get after `pip install`. It starts **only Python**. It never runs `ng`. For the browser it reads HTML, CSS, and JavaScript that were compiled ahead of time into `app_server/src/litpose_app/ngdist/` (gitignored). A fresh clone does not contain that directory, so honcho can already be serving the app at port 4200 while `litpose run_app` still has nothing to show.
+
+If `ngdist` is missing, the process prints a warning and the API still starts, but opening `/` returns 500 because `index.html` is not there.
+
+Build the UI once (and again after UI changes you want this server to pick up). From the repo root, with Node 26 on `PATH`:
+
+```bash
+./scripts/build/build_ui.sh
+```
+
+That script runs `ng build` and writes the compiled files to `app_server/src/litpose_app/ngdist/`. Then:
+
+```bash
+litpose run_app
+# On a cloud VM the browser is not on localhost, so listen on all interfaces:
+litpose run_app --host 0.0.0.0
+```
+
+Day-to-day UI work stays on honcho (`http://localhost:4200`). Use `litpose run_app` when you want to check the packaged server. Wheel and release steps that also call this build are in [DEV.md](DEV.md).
+
+## UI components
+
+The UI uses [DaisyUI](https://daisyui.com/) 5 on Tailwind CSS. The theme is `dim`, set in [web_ui/src/styles.css](web_ui/src/styles.css). Prefer DaisyUI classes (`btn`, `input`, `range`, `menu`, `tooltip`, `modal`, and so on) over custom CSS for buttons, fields, sliders, menus, and dialogs.
+
+Put an Angular component in [web_ui/src/app/components/](web_ui/src/app/components/) when the widget is reused or has behavior of its own (for example the dropdown, alert dialog, and path fields). Leave UI that belongs to one feature next to that feature (for example [web_ui/src/app/video-player/](web_ui/src/app/video-player/)). Do not wrap a single DaisyUI button in its own component.
+
+Add a `*.stories.ts` file next to each component under `components/`. Add one for a feature surface too, when it can be rendered without the rest of the page. Storybook loads the same stylesheet as the app.
+
+From `web_ui`, with Node 26 on `PATH` in that terminal:
+
+```bash
+npm run storybook
+```
+
+Open **http://localhost:6006**.
+
+One allowed exception: the Viewer frame and time fields stay small custom inputs (`.jump-field` in the video controls). DaisyUI's `input` padding and height do not stay inline in that bar. The seek slider uses DaisyUI `range`.
 
 ## Linting
 

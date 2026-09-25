@@ -25,9 +25,29 @@ describe('VideoPlayerControlsComponent', () => {
     expect(frameInput().value).toBe('0');
     expect(timeInput().value).toBe('0.00');
     expect(fixture.nativeElement.textContent).toContain('/ 10.00 s');
-    expect(
-      fixture.nativeElement.querySelector('[aria-label="Keyboard shortcuts"]'),
-    ).toBeTruthy();
+    const help = fixture.nativeElement.querySelector(
+      '[aria-label="Playback help"]',
+    ) as HTMLElement;
+    expect(help).toBeTruthy();
+    const helpText = (
+      fixture.nativeElement.querySelector('.shortcut-help') as HTMLElement
+    ).textContent;
+    expect(helpText).toContain('Click');
+    expect(helpText).toContain('Keyboard controls:');
+    expect(helpText).not.toContain('Shift+click');
+
+    expect(frameInput().closest('[data-tip]')?.getAttribute('data-tip')).toBe(
+      'Click to enter frame',
+    );
+    expect(timeInput().closest('[data-tip]')?.getAttribute('data-tip')).toBe(
+      'Click to enter time',
+    );
+    expect(stepTip('Next frame')).toBe(
+      'Next frame\n(Shift+click = 10 frames)',
+    );
+    expect(stepTip('Previous frame')).toBe(
+      'Previous frame\n(Shift+click = 10 frames)',
+    );
   });
 
   it('handles Space, arrows, and Shift+arrows from the document', () => {
@@ -85,6 +105,12 @@ describe('VideoPlayerControlsComponent', () => {
     );
     expect(state.currentFrameSignal()).toBe(0);
   });
+
+  function stepTip(label: string): string | null {
+    return fixture.nativeElement
+      .querySelector(`[aria-label="${label}"]`)
+      ?.getAttribute('data-tip');
+  }
 
   function seekSlider(): HTMLInputElement {
     return fixture.nativeElement.querySelector(

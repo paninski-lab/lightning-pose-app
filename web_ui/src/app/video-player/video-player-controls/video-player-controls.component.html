@@ -14,8 +14,8 @@
     </button>
     <button
       type="button"
-      class="btn btn-ghost btn-sm tooltip tooltip-top"
-      data-tip="Previous frame"
+      class="btn btn-ghost btn-sm tooltip tooltip-top step-tip"
+      data-tip="Previous frame&#10;(Shift+click = 10 frames)"
       aria-label="Previous frame"
       tabindex="-1"
       [disabled]="!hasVideo()"
@@ -42,8 +42,8 @@
     </button>
     <button
       type="button"
-      class="btn btn-ghost btn-sm tooltip tooltip-top"
-      data-tip="Next frame"
+      class="btn btn-ghost btn-sm tooltip tooltip-top step-tip"
+      data-tip="Next frame&#10;(Shift+click = 10 frames)"
       aria-label="Next frame"
       tabindex="-1"
       [disabled]="!hasVideo()"
@@ -91,7 +91,7 @@
   <input
     #rangeInput
     type="range"
-    class="timestamp-slider"
+    class="range range-xs seek-range"
     min="0"
     max="{{ sliderMax() }}"
     [value]="currentTime()"
@@ -101,7 +101,7 @@
     step="{{ step() }}"
     aria-label="Seek"
   />
-  <label class="time-display frame-display tooltip tooltip-top" data-tip="Frame">
+  <label class="time-display frame-display tooltip tooltip-top" data-tip="Click to enter frame">
     Frame
     <input
       class="jump-field frame-jump"
@@ -118,28 +118,28 @@
       (blur)="onFrameBlur($event)"
     />
   </label>
-  <span class="time-display time-range">
-    <span class="tooltip tooltip-top" data-tip="Time">
-      <input
-        class="jump-field time-jump"
-        type="text"
-        inputmode="decimal"
-        autocomplete="off"
-        aria-label="Time"
-        [disabled]="!hasVideo()"
-        [value]="timeFieldValue()"
-        (focus)="onTimeFocus($event)"
-        (input)="onTimeInput($any($event.target).value)"
-        (keydown.enter)="onTimeEnter($event)"
-        (keydown.escape)="onTimeEscape($event)"
-        (blur)="onTimeBlur($event)"
-      />
-    </span>
+  <label class="time-display time-range tooltip tooltip-top" data-tip="Click to enter time">
+    <input
+      class="jump-field time-jump"
+      type="text"
+      inputmode="decimal"
+      autocomplete="off"
+      aria-label="Time"
+      [disabled]="!hasVideo()"
+      [value]="timeFieldValue()"
+      (focus)="onTimeFocus($event)"
+      (input)="onTimeInput($any($event.target).value)"
+      (keydown.enter)="onTimeEnter($event)"
+      (keydown.escape)="onTimeEscape($event)"
+      (blur)="onTimeBlur($event)"
+    />
     / {{ durationFormatted() }} s
-  </span>
+  </label>
 
   <div class="tooltip tooltip-top tooltip-end shortcut-help-tooltip">
     <div class="tooltip-content shortcut-help">
+      <p>Click <em>frame</em> or <em>time</em> to enter a value.</p>
+      <p class="shortcut-heading">Keyboard controls:</p>
       <table>
         <tbody>
           <tr>
@@ -153,10 +153,6 @@
           <tr>
             <th>Shift+← / →</th>
             <td>Jump 10 frames</td>
-          </tr>
-          <tr>
-            <th>Shift+click</th>
-            <td>Jump 10 frames (buttons)</td>
           </tr>
           <tr>
             <th>Home / End</th>
@@ -176,11 +172,11 @@
     <button
       type="button"
       class="btn btn-ghost btn-sm btn-circle"
-      aria-label="Keyboard shortcuts"
+      aria-label="Playback help"
       tabindex="-1"
       (mousedown)="$event.preventDefault()"
     >
-      <span class="material-icons">keyboard</span>
+      <span class="material-icons">info</span>
     </button>
   </div>
 </div>

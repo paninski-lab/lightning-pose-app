@@ -1,6 +1,16 @@
 # Maintainer notes
 
-How we **build wheels**, **cut GitHub Releases**, and **publish to PyPI**. Everyday contributor setup (conda, Node, honcho, lint, PRs) is in [CONTRIBUTING.md](CONTRIBUTING.md). Architecture: [CLAUDE.md](CLAUDE.md).
+How we **build wheels**, **cut GitHub Releases**, and **publish to PyPI**, plus setup that is specific to this team's machines. Everyday contributor setup (conda, Node, honcho, lint, PRs) is in [CONTRIBUTING.md](CONTRIBUTING.md). Architecture: [CLAUDE.md](CLAUDE.md).
+
+## Lightning Studio
+
+On our [Lightning Studio](https://lightning.ai/), a new shell (including the first shell after the Studio wakes) puts **Node 22** on `PATH` and may define `node`, `npm`, and `npx` as shell functions. Sleep does not uninstall Node 26 or `web_ui/node_modules`. It only drops the shell setup.
+
+Do this in **each terminal** that will run UI commands. One terminal does not fix the others. `lpa-dev` (in `~/bin`, loaded as a shell function from `~/.zshrc`; not part of the repo) is the shortcut. After `~/.zshrc` changes, open a new terminal or run `source ~/.zshrc` once.
+
+- `lpa-dev setup` selects Node 26 in **this** terminal and clears the `node` / `npm` / `npx` functions. It does not start the app. Use it before Storybook, `./scripts/build/build_ui.sh`, lint, or tests. `node -v` should print `v26…`.
+- `lpa-dev run` starts honcho (same as `lpa-dev` with no command). Node 26 applies to that process only; other terminals still need `lpa-dev setup`.
+- `lpa-dev kill` stops a dev or packaged app that is already running (honcho, `ng serve`, uvicorn, `litpose run_app`).
 
 ## Scripts
 
@@ -30,16 +40,17 @@ If `ngdist` is missing, uvicorn still starts the API but the browser will not ge
 
 Canonical version: `app_server/pyproject.toml` (`[project].version`). Git tags: `vX.Y.Z.W`.
 
+Between releases, that version is the next app increment plus `.dev0` (for example `2.4.2.1.dev0`). The `.dev0` stays fixed; it is not a counter. It sorts after the previous release and before the next one (`2.4.2.0` < `2.4.2.1.dev0` < `2.4.2.1`). `publish_github_release.sh` rejects a `.dev0` version, so merging it does not create a release.
+
+The release change removes `.dev0` and renames the changelog heading from `### [X.Y.Z.W.dev0]` to `### [X.Y.Z.W] — YYYY-MM-DD`. Only then can the publish script tag it.
+
 ## Cutting a release
 
 1. Confirm lightning-pose on the machine (or in the release notes) matches the `X.Y.Z` you intend.
 2. On a **feature branch**:
-   - Set `[project].version` in `app_server/pyproject.toml`.
-   - Add a heading at the **top** of [CHANGELOG.md](CHANGELOG.md):
-
-     `### [X.Y.Z.W] — YYYY-MM-DD`
-
-   - Describe user-facing and development changes as needed.
+   - In `app_server/pyproject.toml`, remove `.dev0` so `[project].version` is `X.Y.Z.W`.
+   - In [CHANGELOG.md](CHANGELOG.md), rename `### [X.Y.Z.W.dev0]` to `### [X.Y.Z.W] — YYYY-MM-DD`. If there is no dev heading, add that dated heading at the top.
+   - Describe user-facing and development changes as needed. For each behavior change, name the test that covers it (spec or pytest file, and what it checks).
 3. Land that on **`origin/main`** (PR for version + changelog is typical).
 4. From a **clean** `main` matching `origin/main`:
 
