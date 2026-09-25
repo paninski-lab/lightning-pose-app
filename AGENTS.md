@@ -25,7 +25,7 @@ honcho -f Procfile.dev start   # UI at http://localhost:4200, hot reload
 
 `litpose run_app` is production-shaped (compiled UI). Use `--host 0.0.0.0` on cloud machines; run `./scripts/build/build_ui.sh` first. Honcho compiles the UI in memory and does not fill `ngdist`.
 
-On this team's Lightning Studio, Node 26 is not the default shell. Use `lpa-dev` (`setup`, `run`, `kill`). Details are in [DEV.md](DEV.md), not in the public contributor guide.
+On this team's Lightning Studio, a new shell puts Node 22 on `PATH`. Select Node 26 in that terminal before UI commands (`nvm use 26`, then clear any `node` / `npm` / `npx` shell functions). See [DEV.md](DEV.md).
 
 ## UI
 
