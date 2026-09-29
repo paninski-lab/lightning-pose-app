@@ -6,25 +6,27 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 
 ## 📝 Release Notes
 
-### [2.4.2.1.dev0]
+### [2.4.2.1] — 2026-09-29
 
 **Skeleton**
 
-* Define a skeleton in project settings as keypoint pairs stored in `project.yaml`. The Labeler and Viewer draw those bones in blue, with a show switch plus thickness and opacity in View options. Bone thickness is 0–5 px (default 2, step 0.05); bone opacity is 0–1. An invalid hand-edited skeleton is reported and is not drawn.
+* **Project settings:** New **Skeleton** tab (and the same step in the create-project wizard) to add and remove bones as pairs of keypoint names. The list is saved only in `<data_dir>/project.yaml` under `skeleton:`; display toggles and styling stay in Labeler/Viewer view options (`localStorage`), not in the yaml.
+* **Validation:** One shared rule set for Settings, Labeler, and Viewer (unknown or duplicate keypoints, duplicate pairs, wrong shape, and so on). Invalid definitions show red errors in Settings; the server rejects a bad save; Labeler and Viewer do not draw bones until the definition is valid. Projects with no `skeleton` key behave as before (no bones).
+* **Labeler and Viewer:** Valid bones render as blue SVG segments behind keypoint dots and labels, scaled with zoom. **View options** add **Show skeleton**, **Bone thickness** (0–5 px, default 2, step 0.05), and **Bone opacity** (0–1).
 
-Tests: `app_server/tests/routes/test_project.py` (round-trip, reject one invalid save, a project with no skeleton key), `skeleton-validity.spec.ts` (the rule catalog), `project-skeleton.component.spec.ts` (the settings error and add/remove), `skeleton-bones.spec.ts` (when a line is allowed), `skeleton-overlay.component.spec.ts` (blue stroke, thickness, opacity), `keypoint-container.component.spec.ts` (bones paint behind keypoints), `skeleton-view-options.component.spec.ts` (switch, sliders, invalid definition).
+Tests: `app_server/tests/routes/test_project.py` (yaml round-trip, reject invalid save, project without `skeleton` key); `skeleton-validity.spec.ts` (rule catalog); `project-skeleton.component.spec.ts` (settings add/remove and errors); `skeleton-bones.spec.ts`, `skeleton-overlay.component.spec.ts`, `keypoint-container.component.spec.ts`, `skeleton-view-options.component.spec.ts` (geometry, stroke, z-order, sliders).
 
 **Viewer**
 
-* **Transport bar:** Seek slider uses DaisyUI `range`. Playback help uses an info icon. The tip explains that frame and time can be typed, then lists keyboard controls. Previous/next frame tips include Shift+click (10 frames). Clicking the current/total time block focuses the time field.
+* **Transport bar:** Frame seek uses a DaisyUI `range` slider (max aligned to the last frame, not duration overflow). An info icon opens a tooltip: typed frame and time entry, then the keyboard shortcut list. Previous/next frame buttons document **Shift+click** for ±10 frames (matching Shift+arrow). Clicking the current/total time readout focuses the time field for editing.
 
-Tests: `web_ui/src/app/video-player/video-player-controls/video-player-controls.component.spec.ts` (transport bar, Shift+click, typed frame/time, slider bounds, help copy and tips), `video-player-keyboard.spec.ts` (shortcut mapping), and `video-player-state.spec.ts` (seek, step, playback rate).
+Tests: `video-player-controls.component.spec.ts` (slider bounds, Shift+click, typed frame/time, help copy); `video-player-keyboard.spec.ts` (shortcut → action map); `video-player-state.spec.ts` (seek, step, playback rate).
 
 **Development**
 
-* Document Node, honcho versus `litpose run_app` and `build_ui.sh`, and DaisyUI/Storybook in `CONTRIBUTING.md`. Lightning Studio setup stays in `DEV.md`.
-* `AGENTS.md` now covers UI components and updating specs with the UI.
-* Between releases, `app_server/pyproject.toml` uses the next app increment plus `.dev0` (see `DEV.md`).
+* **`CONTRIBUTING.md`:** Node version, honcho vs `litpose run_app` / `build_ui.sh`, and DaisyUI + Storybook workflow for UI work. Lightning Studio–specific setup remains in `DEV.md`.
+* **`AGENTS.md`:** UI component boundaries and keeping specs in sync when changing the web UI.
+* **`DEV.md`:** Documents app version `X.Y.Z.W` and `.dev0` pre-release versions in `app_server/pyproject.toml`.
 
 ### [2.4.2.0] — 2026-09-21
 
