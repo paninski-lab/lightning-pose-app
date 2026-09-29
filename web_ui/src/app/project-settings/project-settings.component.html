@@ -117,6 +117,13 @@
           </fieldset>
         </form>
       }
+      @if (selectedTab() === "skeleton") {
+        <app-project-skeleton
+          [keypointNames]="parsedKeypointNames()"
+          [skeleton]="skeletonValue()"
+          (skeletonChange)="onSkeletonChange($event)"
+        />
+      }
       @if (selectedTab() === "multiview") {
         <form [formGroup]="multiviewForm" class="prose px-4 w-full">
           <fieldset class="fieldset my-6">
@@ -171,6 +178,7 @@
           [disabled]="
             (selectedTab() === 'directories' && !isDirectoriesFormValid()) ||
             (selectedTab() === 'keypoints' && !isKeypointsFormValid()) ||
+            (selectedTab() === 'skeleton' && skeletonIssues().length > 0) ||
             (selectedTab() === 'multiview' && !isMultiviewFormValid())
           "
         >
@@ -183,7 +191,10 @@
           data-testid="create-project-save"
           class="btn btn-soft btn-primary"
           (click)="handleSaveClick()"
-          [disabled]="!projectInfoForm.dirty"
+          [disabled]="
+            (!projectInfoForm.dirty && !skeletonDirty()) ||
+            (skeletonDirty() && skeletonIssues().length > 0)
+          "
         >
           Save
         </button>

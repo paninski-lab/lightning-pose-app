@@ -32,6 +32,7 @@ def test_get_project_info(register_project, client: TestClient):
         "model_dir": str(data_dir / "models"),
         "views": ["camA", "camB"],
         "keypoint_names": ["nose", "ear_left"],
+        "skeleton": None,
     }
 
 
@@ -266,3 +267,74 @@ def test_update_project_config_updates_paths_and_metadata_when_yaml_exists(
     with open(new_project_yaml) as f:
         updated_data = yaml.safe_load(f)
     assert updated_data["keypoint_names"] == ["nose"]
+
+
+def test_update_project_config_round_trips_skeleton(
+    client: TestClient, register_project
+):
+    project_key = "demo-project"
+    data_dir = register_project(
+        project_key, keypoints=["nose", "neck", "tail_base"]
+    )
+    skeleton = [["nose", "neck"], ["neck", "tail_base"]]
+
+    resp = client.post(
+        "/app/v0/rpc/UpdateProjectConfig",
+        json={
+            "projectKey": project_key,
+            "projectInfo": {"skeleton": skeleton},
+        },
+    )
+    assert resp.status_code == 200
+
+    with open(data_dir / "project.yaml") as f:
+        saved = yaml.safe_load(f)
+    assert saved["skeleton"] == skeleton
+
+    info = client.post(
+        "/app/v0/rpc/getProjectInfo", json={"projectKey": project_key}
+    )
+    assert info.status_code == 200
+    assert info.json()["projectInfo"]["skeleton"] == skeleton
+
+
+def test_update_project_config_rejects_bad_skeleton(
+    client: TestClient, register_project
+):
+    project_key = "demo-project"
+    data_dir = register_project(project_key, keypoints=["nose", "neck"])
+    before = (data_dir / "project.yaml").read_text()
+
+    resp = client.post(
+        "/app/v0/rpc/UpdateProjectConfig",
+        json={
+            "projectKey": project_key,
+            "projectInfo": {"skeleton": [["nose", "nose"]]},
+        },
+    )
+    assert resp.status_code == 400
+    assert (data_dir / "project.yaml").read_text() == before
+
+
+def test_project_without_skeleton_loads(client: TestClient, register_project):
+    project_key = "demo-project"
+    data_dir = register_project(project_key, views=["camA"], keypoints=["nose"])
+
+    loaded = client.post(
+        "/app/v0/rpc/getProjectInfo", json={"projectKey": project_key}
+    )
+    assert loaded.status_code == 200
+    assert loaded.json()["projectInfo"]["skeleton"] is None
+
+    resp = client.post(
+        "/app/v0/rpc/UpdateProjectConfig",
+        json={
+            "projectKey": project_key,
+            "projectInfo": {"keypoint_names": ["nose", "tail"]},
+        },
+    )
+    assert resp.status_code == 200
+    with open(data_dir / "project.yaml") as f:
+        saved = yaml.safe_load(f)
+    assert "skeleton" not in saved
+    assert saved["keypoint_names"] == ["nose", "tail"]

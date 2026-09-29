@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -12,6 +13,9 @@ class ProjectConfig(BaseModel):
 
     view_names: list[str] = []
     keypoint_names: list[str] = []
+    # Raw YAML value. A strict pair type would reject the whole project file
+    # when a hand-edited skeleton is invalid, so validity is checked separately.
+    skeleton: Any = None
     schema_version: int = 0
 
 

@@ -2,6 +2,15 @@ import { computed, effect, inject, Injectable, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { ColorService } from '../infra/color.service';
 import { debounceTime, merge } from 'rxjs';
+import {
+  DEFAULT_SKELETON_OPACITY,
+  DEFAULT_SKELETON_THICKNESS,
+} from '../components/skeleton-overlay/skeleton-validity';
+import {
+  storedFlag,
+  storedNumber,
+  storedSkeletonThickness,
+} from '../components/skeleton-overlay/stored-number';
 
 const DEFAULT_VIDEO_TILE_SIZE = 250;
 const DEFAULT_OPACITY = 1.0;
@@ -30,6 +39,19 @@ export class ViewerViewOptionsService {
   );
   likelihoodThreshold = signal<number>(DEFAULT_LIKELIHOOD_THRESHOLD);
   enableKeypointLabels = signal(false);
+  showSkeleton = signal(storedFlag('viewer-view-options.showSkeleton', true));
+  skeletonThickness = signal(
+    storedSkeletonThickness('viewer-view-options.skeletonThickness'),
+  );
+  skeletonOpacity = signal(
+    storedNumber('viewer-view-options.skeletonOpacity', DEFAULT_SKELETON_OPACITY),
+  );
+  isSkeletonThicknessDefault = computed(
+    () => this.skeletonThickness() === DEFAULT_SKELETON_THICKNESS,
+  );
+  isSkeletonOpacityDefault = computed(
+    () => this.skeletonOpacity() === DEFAULT_SKELETON_OPACITY,
+  );
 
   isVideoTileSizeDefault = computed(
     () => this.videoTileSizePx() === DEFAULT_VIDEO_TILE_SIZE,
@@ -68,6 +90,24 @@ export class ViewerViewOptionsService {
         String(this.keypointLabelFontSize()),
       ),
     );
+    effect(() =>
+      localStorage.setItem(
+        'viewer-view-options.showSkeleton',
+        String(this.showSkeleton()),
+      ),
+    );
+    effect(() =>
+      localStorage.setItem(
+        'viewer-view-options.skeletonThickness',
+        String(this.skeletonThickness()),
+      ),
+    );
+    effect(() =>
+      localStorage.setItem(
+        'viewer-view-options.skeletonOpacity',
+        String(this.skeletonOpacity()),
+      ),
+    );
 
     merge(
       toObservable(this.videoTileSizePx),
@@ -76,6 +116,9 @@ export class ViewerViewOptionsService {
       toObservable(this.keypointLabelFontSize),
       toObservable(this.likelihoodThreshold),
       toObservable(this.enableKeypointLabels),
+      toObservable(this.showSkeleton),
+      toObservable(this.skeletonThickness),
+      toObservable(this.skeletonOpacity),
     )
       .pipe(debounceTime(UMAMI_DEBOUNCE_TIME_MS), takeUntilDestroyed())
       .subscribe(() => {
@@ -86,6 +129,9 @@ export class ViewerViewOptionsService {
           keypointLabelFontSize: this.keypointLabelFontSize(),
           likelihoodThreshold: this.likelihoodThreshold(),
           enableKeypointLabels: this.enableKeypointLabels(),
+          showSkeleton: this.showSkeleton(),
+          skeletonThickness: this.skeletonThickness(),
+          skeletonOpacity: this.skeletonOpacity(),
         });
       });
   }
@@ -113,5 +159,13 @@ export class ViewerViewOptionsService {
   /** Reset likelihood threshold to 0.9. */
   resetLikelihoodThreshold() {
     this.likelihoodThreshold.set(DEFAULT_LIKELIHOOD_THRESHOLD);
+  }
+
+  resetSkeletonThickness() {
+    this.skeletonThickness.set(DEFAULT_SKELETON_THICKNESS);
+  }
+
+  resetSkeletonOpacity() {
+    this.skeletonOpacity.set(DEFAULT_SKELETON_OPACITY);
   }
 }
