@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   ElementRef,
   inject,
   Input,
@@ -39,6 +40,8 @@ import { SelectComponent } from '../../components/dropdown/select.component';
 import { RunModelInferenceDialogComponent } from '../../run-model-inference-dialog/run-model-inference-dialog.component';
 
 import { SessionImportComponent } from '../../session-import/session-import.component';
+import { SkeletonViewOptionsComponent } from '../../components/skeleton-view-options/skeleton-view-options.component';
+import { isSkeletonDefinitionInvalid } from '../../components/skeleton-overlay/skeleton-validity';
 
 @Component({
   selector: 'app-viewer',
@@ -57,6 +60,7 @@ import { SessionImportComponent } from '../../session-import/session-import.comp
     DropdownTriggerDirective,
     RunModelInferenceDialogComponent,
     SessionImportComponent,
+    SkeletonViewOptionsComponent,
   ],
   templateUrl: './viewer-page.component.html',
   styleUrl: './viewer-page.component.css',
@@ -70,6 +74,11 @@ import { SessionImportComponent } from '../../session-import/session-import.comp
 export class ViewerPageComponent implements OnInit {
   enabledViewsKeypoints = inject(EnabledViewsKeypointsService);
   viewOptions = inject(ViewerViewOptionsService);
+  protected skeletonInvalid = computed(() => {
+    const info = this.projectInfoService.projectContext()?.projectInfo;
+    if (!info) return false;
+    return isSkeletonDefinitionInvalid(info.skeleton, info.keypoint_names);
+  });
   projectInfoService = inject(ProjectInfoService);
   sessionService = inject(SessionService);
   loadingService = inject(LoadingService);

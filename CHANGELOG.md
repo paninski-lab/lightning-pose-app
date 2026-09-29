@@ -8,6 +8,12 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 
 ### [2.4.2.1.dev0]
 
+**Skeleton**
+
+* Define a skeleton in project settings as keypoint pairs stored in `project.yaml`. The Labeler and Viewer draw those bones in blue, with a show switch plus thickness and opacity in View options. Bone thickness is 0–5 px (default 2, step 0.05); bone opacity is 0–1. An invalid hand-edited skeleton is reported and is not drawn.
+
+Tests: `app_server/tests/routes/test_project.py` (round-trip, reject one invalid save, a project with no skeleton key), `skeleton-validity.spec.ts` (the rule catalog), `project-skeleton.component.spec.ts` (the settings error and add/remove), `skeleton-bones.spec.ts` (when a line is allowed), `skeleton-overlay.component.spec.ts` (blue stroke, thickness, opacity), `keypoint-container.component.spec.ts` (bones paint behind keypoints), `skeleton-view-options.component.spec.ts` (switch, sliders, invalid definition).
+
 **Viewer**
 
 * **Transport bar:** Seek slider uses DaisyUI `range`. Playback help uses an info icon. The tip explains that frame and time can be typed, then lists keyboard controls. Previous/next frame tips include Shift+click (10 frames). Clicking the current/total time block focuses the time field.

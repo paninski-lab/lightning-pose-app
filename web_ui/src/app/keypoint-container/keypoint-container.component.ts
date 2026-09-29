@@ -9,7 +9,13 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { Keypoint } from '../keypoint';
+import { Keypoint, ViewerKeypoint } from '../keypoint';
+import { SkeletonOverlayComponent } from '../components/skeleton-overlay/skeleton-overlay.component';
+import {
+  SkeletonEndpoint,
+  SkeletonSegment,
+  skeletonBones,
+} from '../components/skeleton-overlay/skeleton-bones';
 import { Point } from '@angular/cdk/drag-drop';
 import { LabelerViewOptionsService } from '../labeler/labeler-view-options.service';
 import { ViewerViewOptionsService } from '../viewer/viewer-view-options.service';
@@ -26,7 +32,7 @@ import {
   templateUrl: './keypoint-container.component.html',
   styleUrl: './keypoint-container.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgClass, DropdownComponent, DropdownTriggerComponent, DropdownContentComponent, DropdownTriggerDirective],
+  imports: [NgClass, DropdownComponent, DropdownTriggerComponent, DropdownContentComponent, DropdownTriggerDirective, SkeletonOverlayComponent],
 })
 export class KeypointContainerComponent {
   enableEditing = input<boolean>(false);
@@ -45,6 +51,33 @@ export class KeypointContainerComponent {
   // one of them must be provided
   labelerViewOptions = input<LabelerViewOptionsService>();
   viewerViewOptions = input<ViewerViewOptionsService>();
+
+  /** Valid pairs only. Parents pass [] when the skeleton is invalid or absent. */
+  skeletonPairs = input<[string, string][]>([]);
+  showSkeleton = input(false);
+  skeletonThickness = input(2);
+  skeletonOpacity = input(1);
+
+  protected displayedSegments = computed((): SkeletonSegment[] => {
+    if (!this.showSkeleton()) return [];
+    const movingId = this.selectedKeypointIsMoving()
+      ? this.selectedKeypoint()
+      : null;
+    const crosshair = movingId ? this.crosshairPosition() : null;
+    const endpoints: SkeletonEndpoint[] = this.keypointModels().map((kp) => {
+      const position =
+        kp.id === movingId && crosshair ? crosshair : kp.position();
+      const viewer = kp as ViewerKeypoint;
+      return {
+        name: typeof viewer.name === 'string' ? viewer.name : kp.id,
+        x: position.x,
+        y: position.y,
+        visible: kp.isVisible ? kp.isVisible() : true,
+        modelKey: viewer.modelKey,
+      };
+    });
+    return skeletonBones(this.skeletonPairs(), endpoints);
+  });
 
   keypointSize = computed(() => {
     try {

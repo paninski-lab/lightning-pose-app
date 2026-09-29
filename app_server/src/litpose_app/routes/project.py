@@ -7,6 +7,7 @@ import os
 import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import yaml
@@ -24,6 +25,7 @@ from litpose_app.project import ProjectUtil
 from litpose_app.routes.labeler.find_label_files import _check_label_file_headers
 from litpose_app.routes.models import read_models_l1_from_base
 from litpose_app.routes.rglob import _rglob
+from litpose_app.skeleton import skeleton_problems
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
 
 logger = logging.getLogger(__name__)
@@ -38,6 +40,8 @@ class ProjectInfo(BaseModel):
     model_dir: Path | None = None
     views: list[str] | None = None
     keypoint_names: list[str] | None = None
+    # Raw project.yaml value. None means the key is absent.
+    skeleton: Any = None
 
 
 class LabelFileStats(BaseModel):
@@ -128,6 +132,16 @@ class DeleteProjectRequest(BaseModel):
 
     projectKey: str
     removeFiles: bool = False
+
+
+def _reject_invalid_skeleton(skeleton: Any, keypoint_names: list[str] | None) -> None:
+    """Refuse a save that would write an invalid skeleton. Load stays permissive."""
+    problems = skeleton_problems(skeleton, keypoint_names)
+    if problems:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=" ".join(problems),
+        )
 
 
 def _get_label_file_stats(csv_path: Path) -> LabelFileStats | None:
@@ -423,6 +437,15 @@ def update_project_config(
     """
     existing_project = project_info_getter(request.projectKey)
 
+    requested_skeleton = request.projectInfo.model_dump(
+        mode="json", exclude_unset=True, exclude={"data_dir", "model_dir"}
+    )
+    if "skeleton" in requested_skeleton:
+        names = requested_skeleton.get("keypoint_names")
+        if names is None:
+            names = existing_project.config.keypoint_names
+        _reject_invalid_skeleton(requested_skeleton["skeleton"], names)
+
     # 1. Validate: If changing both paths and metadata, ensure target project.yaml exists
     # to avoid partial failure (updating projects.toml but failing to update project.yaml).
     requested_data_dir = request.projectInfo.data_dir
@@ -585,6 +608,8 @@ def create_new_project(
     if "views" in info_dict:
         info_dict["view_names"] = info_dict["views"]
         del info_dict["views"]
+    if "skeleton" in info_dict:
+        _reject_invalid_skeleton(info_dict["skeleton"], info_dict.get("keypoint_names"))
     new_yaml.update(info_dict)
 
     with open(project_yaml_path, "x") as f:
