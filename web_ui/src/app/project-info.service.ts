@@ -78,29 +78,9 @@ export class ProjectInfoService {
         )
       : this.rpc.callObservable('getProjectInfo', { projectKey }).pipe(
           first(),
-          map((response: unknown) => {
-            const body = response as {
-              projectInfo?: Partial<ProjectInfo> | null;
-            };
-            if (body && body.projectInfo) {
-              this._projectInfo = new ProjectInfo(
-                body.projectInfo as Partial<ProjectInfo>,
-              );
-            } else {
-              throw Error('Invalid project info response');
-            }
-
-            if (this._projectInfo?.views) {
-              this.setAllViews(this._projectInfo.views as string[]);
-            }
-
-            const ctx: ProjectContext = {
-              key: projectKey,
-              projectInfo: this._projectInfo ?? null,
-            };
-            this.projectLoadedSubject.next(ctx);
-            return ctx;
-          }),
+          map((response: unknown) =>
+            this.storeProjectInfo(projectKey, response),
+          ),
           catchError((err) => {
             console.error('Failed to fetch project context', err);
             throw err;
@@ -166,6 +146,40 @@ export class ProjectInfoService {
       projectInfo: cleaned,
     });
     await this.fetchProjects();
+    try {
+      await this.reloadProjectInfo(payload.projectKey);
+    } catch (err) {
+      console.error('Saved project config but failed to reload it', err);
+    }
+  }
+
+  /** Re-read project.yaml into the session cache. Settings uses this so a skeleton saved on disk is shown. */
+  async reloadProjectInfo(projectKey: string): Promise<ProjectInfo> {
+    const response = await this.rpc.call('getProjectInfo', { projectKey });
+    const ctx = this.storeProjectInfo(projectKey, response);
+    if (!ctx.projectInfo) {
+      throw Error('Invalid project info response');
+    }
+    return ctx.projectInfo;
+  }
+
+  private storeProjectInfo(projectKey: string, response: unknown): ProjectContext {
+    const body = response as {
+      projectInfo?: Partial<ProjectInfo> | null;
+    };
+    if (!body?.projectInfo) {
+      throw Error('Invalid project info response');
+    }
+    this._projectInfo = new ProjectInfo(body.projectInfo);
+    if (this._projectInfo.views) {
+      this.setAllViews(this._projectInfo.views);
+    }
+    const ctx: ProjectContext = {
+      key: projectKey,
+      projectInfo: this._projectInfo,
+    };
+    this.projectLoadedSubject.next(ctx);
+    return ctx;
   }
 
   /** Create a new project directory, register it, and refresh the project list. */

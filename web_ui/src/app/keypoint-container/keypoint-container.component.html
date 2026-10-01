@@ -80,6 +80,13 @@
       <rect width="100%" height="100%" fill="url(#pixel-grid)" />
     </svg>
   }
+  @if (showSkeleton()) {
+    <app-skeleton-overlay
+      [segments]="displayedSegments()"
+      [thickness]="skeletonThickness()"
+      [opacity]="skeletonOpacity()"
+    />
+  }
   @if (showCrosshair() && crosshairPosition()) {
     @let gap = keypointSize() / 2;
     <svg class="big-crosshair" aria-hidden="true">

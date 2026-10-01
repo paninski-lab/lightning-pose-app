@@ -56,6 +56,10 @@
                   [keypointModels]="w.keypoints()"
                   [enableKeypointHoverTooltips]="true"
                   [viewerViewOptions]="viewOptions"
+                  [skeletonPairs]="drawableSkeletonPairs()"
+                  [showSkeleton]="viewOptions.showSkeleton()"
+                  [skeletonThickness]="viewOptions.skeletonThickness()"
+                  [skeletonOpacity]="viewOptions.skeletonOpacity()"
                 ></app-keypoint-container>
               </app-video-tile>
             </app-zoomable-content>

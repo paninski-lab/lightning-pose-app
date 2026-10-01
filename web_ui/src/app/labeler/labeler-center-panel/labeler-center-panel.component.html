@@ -450,6 +450,19 @@
                 class="toggle"
               />
             </div>
+            <app-skeleton-view-options
+              [showSkeleton]="viewOptions.showSkeleton()"
+              (showSkeletonChange)="viewOptions.showSkeleton.set($event)"
+              [thickness]="viewOptions.skeletonThickness()"
+              (thicknessChange)="viewOptions.skeletonThickness.set($event)"
+              [opacity]="viewOptions.skeletonOpacity()"
+              (opacityChange)="viewOptions.skeletonOpacity.set($event)"
+              [invalid]="skeletonInvalid()"
+              [thicknessIsDefault]="viewOptions.isSkeletonThicknessDefault()"
+              [opacityIsDefault]="viewOptions.isSkeletonOpacityDefault()"
+              (resetThickness)="viewOptions.resetSkeletonThickness()"
+              (resetOpacity)="viewOptions.resetSkeletonOpacity()"
+            />
           </div>
         </div>
       </div>

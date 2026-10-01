@@ -33,6 +33,10 @@ import { firstValueFrom, skipWhile } from 'rxjs';
 import { ExtractedFramePredictionList } from '../../extract-frames-request';
 import _ from 'lodash';
 import { ColorService } from '../../infra/color.service';
+import {
+  isSkeletonDefinitionInvalid,
+  skeletonPairs,
+} from '../../components/skeleton-overlay/skeleton-validity';
 
 import { ViewerViewOptionsService } from '../viewer-view-options.service';
 import { FFProbeInfoComponent } from '../../video-player/ffprobe-info/ffprobe-info.component';
@@ -80,6 +84,14 @@ export class ViewerCenterPanelComponent implements OnChanges {
   private enabledViewsKeypoints = inject(EnabledViewsKeypointsService);
   videoPlayerState = inject(VideoPlayerState);
   protected viewOptions = inject(ViewerViewOptionsService);
+
+  protected drawableSkeletonPairs = computed(() => {
+    const info = this.projectInfoService.projectContext()?.projectInfo;
+    if (!info || isSkeletonDefinitionInvalid(info.skeleton, info.keypoint_names)) {
+      return [] as [string, string][];
+    }
+    return skeletonPairs(info.skeleton);
+  });
 
   protected widgetModels = signal([] as VideoWidget[]);
   // cached prediction files for this session.

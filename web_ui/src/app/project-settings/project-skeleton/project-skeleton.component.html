@@ -1,0 +1,73 @@
+<div class="prose px-4 w-full">
+  <h3 class="text-md mt-0!">Skeleton</h3>
+  <p class="m-0!">
+    A skeleton is a list of keypoint pairs. Each pair is a bone drawn in the
+    Labeler and the Viewer.
+  </p>
+
+  @if (problems().length) {
+    <ul class="text-error text-sm not-prose list-disc pl-4 my-2">
+      @for (problem of problems(); track problem) {
+        <li>{{ problem }}</li>
+      }
+    </ul>
+  }
+
+  <div class="not-prose flex flex-wrap items-center gap-2 my-3">
+    <select
+      #leftSelect
+      class="select select-sm"
+      aria-label="First keypoint"
+      [value]="left()"
+      (change)="onLeft($event)"
+    >
+      @for (name of keypointNames(); track name) {
+        <option [value]="name">{{ name }}</option>
+      }
+    </select>
+    <select
+      #rightSelect
+      class="select select-sm"
+      aria-label="Second keypoint"
+      [value]="right()"
+      (change)="onRight($event)"
+    >
+      @for (name of keypointNames(); track name) {
+        <option [value]="name">{{ name }}</option>
+      }
+    </select>
+    <button
+      type="button"
+      class="btn btn-sm"
+      aria-label="Add pair"
+      [disabled]="keypointNames().length === 0"
+      (click)="add()"
+    >
+      Add
+    </button>
+  </div>
+
+  @if (rows().length === 0 && problems().length === 0) {
+    <p class="text-sm">
+      Bones appear in the Labeler and Viewer once both keypoints of a pair are
+      placed.
+    </p>
+  } @else if (rows().length) {
+    <h4 class="text-sm font-medium mt-2 mb-1">Active pairs</h4>
+    <ul class="not-prose flex flex-col gap-1">
+      @for (row of rows(); track $index) {
+        <li class="flex items-center gap-2">
+          <span>{{ row[0] }} — {{ row[1] }}</span>
+          <button
+            type="button"
+            class="btn btn-ghost btn-xs"
+            [attr.aria-label]="'Remove ' + row[0] + ' ' + row[1]"
+            (click)="remove($index)"
+          >
+            Remove
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</div>

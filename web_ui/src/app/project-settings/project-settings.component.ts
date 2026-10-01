@@ -24,6 +24,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PathEditableComponent } from '../components/path-editable/path-editable.component';
 import { ModelDirInputComponent } from '../components/model-dir-input/model-dir-input.component';
 import { ProjectVideosComponent } from './project-videos/project-videos.component';
+import { ProjectSkeletonComponent } from './project-skeleton/project-skeleton.component';
+import { skeletonProblems } from '../components/skeleton-overlay/skeleton-validity';
 
 @Component({
   selector: 'app-project-settings',
@@ -35,6 +37,7 @@ import { ProjectVideosComponent } from './project-videos/project-videos.componen
     PathEditableComponent,
     ModelDirInputComponent,
     ProjectVideosComponent,
+    ProjectSkeletonComponent,
   ],
   templateUrl: './project-settings.component.html',
   styleUrl: './project-settings.component.css',
@@ -67,6 +70,7 @@ export class ProjectSettingsComponent implements OnInit {
     const base = [
       { key: 'directories', icon: 'folder', text: 'Local setup' },
       { key: 'keypoints', icon: 'adjust', text: 'Keypoints' },
+      { key: 'skeleton', icon: 'timeline', text: 'Skeleton' },
       { key: 'multiview', icon: 'camera_alt', text: 'Multiview' },
     ];
     if (!this.setupMode()) {
@@ -74,6 +78,12 @@ export class ProjectSettingsComponent implements OnInit {
     }
     return base;
   });
+  protected parsedKeypointNames = signal<string[]>([]);
+  protected skeletonValue = signal<unknown>([]);
+  protected skeletonDirty = signal(false);
+  protected skeletonIssues = computed(() =>
+    skeletonProblems(this.skeletonValue(), this.parsedKeypointNames()),
+  );
 
   constructor() {
     this.projectInfoForm = this.fb.group({
@@ -106,6 +116,9 @@ export class ProjectSettingsComponent implements OnInit {
       if (this.dataDirPath() !== val) {
         this.dataDirPath.set(val);
       }
+    });
+    this.keypointsForm.get('keypointNames')?.valueChanges.subscribe((val) => {
+      this.parsedKeypointNames.set(this.parseTextAsList(val ?? ''));
     });
 
     effect(() => {
@@ -185,8 +198,28 @@ export class ProjectSettingsComponent implements OnInit {
         this.keypointInitialRows.update((x) =>
           Math.max(x, projectInfo.keypoint_names.length),
         );
+        this.skeletonValue.set(projectInfo.skeleton ?? []);
+        this.parsedKeypointNames.set(projectInfo.keypoint_names);
+        const key = this.projectKey();
+        if (key) void this.refreshSkeletonFromServer(key);
       }
     }
+  }
+
+  /** The session cache can predate project.yaml. Load the skeleton from disk when Settings opens. */
+  private async refreshSkeletonFromServer(projectKey: string) {
+    try {
+      const fresh = await this.projectInfoService.reloadProjectInfo(projectKey);
+      if (this.skeletonDirty()) return;
+      this.skeletonValue.set(fresh.skeleton ?? []);
+    } catch (err) {
+      console.error('Failed to load skeleton from project.yaml', err);
+    }
+  }
+
+  protected onSkeletonChange(value: unknown) {
+    this.skeletonValue.set(value);
+    this.skeletonDirty.set(true);
   }
 
   protected async handleSaveClick() {
@@ -212,18 +245,23 @@ export class ProjectSettingsComponent implements OnInit {
         ? null
         : (modelDirInfo?.modelDir ?? null);
 
+      const created: Partial<ProjectInfo> = {
+        views: this.parseTextAsList(
+          this.multiviewForm.get('views')?.value ?? '',
+        ),
+        keypoint_names: this.parseTextAsList(
+          this.keypointsForm.get('keypointNames')?.value ?? '',
+        ),
+      };
+      const skeleton = this.skeletonValue();
+      if (Array.isArray(skeleton) && skeleton.length > 0) {
+        created.skeleton = skeleton;
+      }
       await this.projectInfoService.createNewProject({
         projectKey: key,
         data_dir: dataDir,
         model_dir: modelDir ?? undefined,
-        projectInfo: {
-          views: this.parseTextAsList(
-            this.multiviewForm.get('views')?.value ?? '',
-          ),
-          keypoint_names: this.parseTextAsList(
-            this.keypointsForm.get('keypointNames')?.value ?? '',
-          ),
-        },
+        projectInfo: created,
       });
     } else {
       // Edit mode
@@ -257,14 +295,21 @@ export class ProjectSettingsComponent implements OnInit {
         );
       }
 
+      if (this.skeletonDirty()) {
+        projectInfo.skeleton = this.skeletonValue();
+      }
+
       await this.projectInfoService.updateProjectConfig({
         projectKey: key,
         projectInfo,
       });
+      this.skeletonDirty.set(false);
+      const fresh = this.projectInfoService.projectContext()?.projectInfo;
+      if (fresh) {
+        this.skeletonValue.set(fresh.skeleton ?? []);
+      }
     }
-    this.saveSuccessMessage.set(
-      'Saved. Refresh the page for changes to take effect.',
-    );
+    this.saveSuccessMessage.set('Saved.');
     // Emit 'done' output when saving is complete
     setTimeout(() => {
       this.saveSuccessMessage.set('');
@@ -317,6 +362,10 @@ export class ProjectSettingsComponent implements OnInit {
       case 'keypoints':
         currentFormGroup = this.keypointsForm;
         break;
+      case 'skeleton':
+        if (this.skeletonIssues().length > 0) return;
+        this.selectedTab.set(this.tabs()[this.selectedTabIndex() + 1]!.key);
+        return;
       case 'multiview':
         currentFormGroup = this.multiviewForm;
         break;

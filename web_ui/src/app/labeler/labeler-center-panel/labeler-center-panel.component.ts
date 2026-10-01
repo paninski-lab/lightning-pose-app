@@ -30,6 +30,8 @@ import { ToastService } from '../../toast.service';
 import { firstValueFrom, Subject } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ImageLabelWidgetComponent } from '../image-label-widget/image-label-widget.component';
+import { SkeletonViewOptionsComponent } from '../../components/skeleton-view-options/skeleton-view-options.component';
+import { isSkeletonDefinitionInvalid } from '../../components/skeleton-overlay/skeleton-validity';
 
 @Component({
   selector: 'app-labeler-center-panel',
@@ -40,6 +42,7 @@ import { ImageLabelWidgetComponent } from '../image-label-widget/image-label-wid
     FormsModule,
     ImageLabelWidgetComponent,
     PathDisplayComponent,
+    SkeletonViewOptionsComponent,
   ],
   providers: [LabelerViewOptionsService],
   templateUrl: './labeler-center-panel.component.html',
@@ -50,6 +53,11 @@ export class LabelerCenterPanelComponent implements OnChanges {
   private projectInfoService = inject(ProjectInfoService);
   private toastService = inject(ToastService);
   protected viewOptions = inject(LabelerViewOptionsService);
+  protected skeletonInvalid = computed(() => {
+    const info = this.projectInfoService.projectContext()?.projectInfo;
+    if (!info) return false;
+    return isSkeletonDefinitionInvalid(info.skeleton, info.keypoint_names);
+  });
   protected isMultiview = computed(() => {
     return (
       (this.projectInfoService.projectContext()?.projectInfo?.views?.length ??

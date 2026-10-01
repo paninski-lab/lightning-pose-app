@@ -19,6 +19,10 @@ import { Keypoint } from '../../keypoint';
 import { ProjectInfoService } from '../../project-info.service';
 import { Point } from '@angular/cdk/drag-drop';
 import { ColorService } from '../../infra/color.service';
+import {
+  isSkeletonDefinitionInvalid,
+  skeletonPairs,
+} from '../../components/skeleton-overlay/skeleton-validity';
 
 @Component({
   selector: 'app-image-label-widget',
@@ -46,6 +50,14 @@ export class ImageLabelWidgetComponent {
   private keypointViewModelCache = new WeakMap<LKeypoint[], Keypoint[]>();
 
   zoomableContent = viewChild<ZoomableContentComponent>('primaryZoomable');
+
+  protected drawableSkeletonPairs = computed(() => {
+    const info = this.projectInfoService.projectContext()?.projectInfo;
+    if (!info || isSkeletonDefinitionInvalid(info.skeleton, info.keypoint_names)) {
+      return [] as [string, string][];
+    }
+    return skeletonPairs(info.skeleton);
+  });
 
   protected get labelerDefaultsToEditMode(): boolean {
     const frameView = this.fv();

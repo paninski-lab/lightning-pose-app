@@ -30,6 +30,10 @@
         (keypointUpdated)="handleKeypointUpdated($event.kp, $event.position)"
         [labelerViewOptions]="viewOptions"
         [enableKeypointHoverTooltips]="true"
+        [skeletonPairs]="drawableSkeletonPairs()"
+        [showSkeleton]="viewOptions.showSkeleton()"
+        [skeletonThickness]="viewOptions.skeletonThickness()"
+        [skeletonOpacity]="viewOptions.skeletonOpacity()"
         class="absolute top-0 left-0 h-full w-full"
       ></app-keypoint-container>
     }
