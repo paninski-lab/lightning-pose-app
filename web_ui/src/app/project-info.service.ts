@@ -226,10 +226,15 @@ export class ProjectInfoService {
   }
 
   /** Unregister (and optionally delete) a project, then refresh the project list. */
-  async deleteProject(projectKey: string, removeFiles: boolean) {
+  async deleteProject(
+    projectKey: string,
+    removeFiles: boolean,
+    confirmProjectKey?: string,
+  ) {
     await this.rpc.call('deleteProject', {
       projectKey,
       removeFiles,
+      confirmProjectKey: removeFiles ? confirmProjectKey : undefined,
     });
     await this.fetchProjects();
   }

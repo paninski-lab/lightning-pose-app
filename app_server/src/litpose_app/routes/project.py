@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -22,6 +21,7 @@ from litpose_app.deps import (
 )
 from litpose_app.migrations import run_migrations_for_project
 from litpose_app.project import ProjectUtil
+from litpose_app.project_deletion import paths_to_delete, reject_forbidden_project_paths
 from litpose_app.routes.labeler.find_label_files import _check_label_file_headers
 from litpose_app.routes.models import read_models_l1_from_base
 from litpose_app.routes.rglob import _rglob
@@ -132,6 +132,9 @@ class DeleteProjectRequest(BaseModel):
 
     projectKey: str
     removeFiles: bool = False
+    # Must match projectKey when removeFiles is true. The home-page dialog
+    # asks the user to type the project name before sending this.
+    confirmProjectKey: str | None = None
 
 
 def _reject_invalid_skeleton(skeleton: Any, keypoint_names: list[str] | None) -> None:
@@ -404,6 +407,11 @@ def update_project_paths_rpc(
     if request.model_dir is not None:
         pp_dict["model_dir"] = request.model_dir
     pp = ProjectPaths.model_validate(pp_dict)
+    reject_forbidden_project_paths(
+        pp.data_dir,
+        pp.model_dir,
+        lp_system_dir=project_util.config.LP_SYSTEM_DIR,
+    )
     run_migrations_for_project(pp)
     project_util.update_project_paths(project_key=request.projectKey, projectpaths=pp)
     return None
@@ -421,6 +429,11 @@ def register_existing_project(
     if request.model_dir is not None:
         pp_dict["model_dir"] = request.model_dir
     pp = ProjectPaths.model_validate(pp_dict)
+    reject_forbidden_project_paths(
+        pp.data_dir,
+        pp.model_dir,
+        lp_system_dir=project_util.config.LP_SYSTEM_DIR,
+    )
     run_migrations_for_project(pp)
     project_util.update_project_paths(project_key=request.projectKey, projectpaths=pp)
     return None
@@ -560,6 +573,11 @@ def _update_paths_if_changed(
         if requested_model_dir is not None:
             pp_dict["model_dir"] = target_model_dir
         pp = ProjectPaths.model_validate(pp_dict)
+        reject_forbidden_project_paths(
+            pp.data_dir,
+            pp.model_dir,
+            lp_system_dir=project_util.config.LP_SYSTEM_DIR,
+        )
         project_util.update_project_paths(project_key=project_key, projectpaths=pp)
 
     return target_data_dir, target_model_dir
@@ -579,6 +597,11 @@ def create_new_project(
     if request.model_dir is not None:
         pp_dict["model_dir"] = request.model_dir
     pp = ProjectPaths.model_validate(pp_dict)
+    reject_forbidden_project_paths(
+        pp.data_dir,
+        pp.model_dir,
+        lp_system_dir=project_util.config.LP_SYSTEM_DIR,
+    )
 
     data_dir = pp.data_dir
     model_dir = pp.model_dir
@@ -628,21 +651,34 @@ def delete_project(
     project_util: ProjectUtil = Depends(deps.project_util),
 ) -> None:
     """Unregister a project from projects.toml, optionally removing its files from disk."""
-    # 1. Get project paths before unregistering if we need to remove files
-    if request.removeFiles:
-        paths = project_util.get_all_project_paths().get(request.projectKey)
-        if paths:
-            # We use shutil.rmtree for physical deletion.
-            if paths.data_dir and os.path.exists(paths.data_dir):
-                shutil.rmtree(paths.data_dir)
-            if paths.model_dir and os.path.exists(paths.model_dir):
-                shutil.rmtree(paths.model_dir)
-
-    # 2. Unregister project from projects.toml
-    try:
-        project_util.update_project_paths(request.projectKey, None)
-    except KeyError:
+    all_paths = project_util.get_all_project_paths()
+    paths = all_paths.get(request.projectKey)
+    if paths is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Project '{request.projectKey}' not found.",
         )
+
+    if request.removeFiles:
+        if request.confirmProjectKey != request.projectKey:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Type the project name exactly to permanently delete this project's files."
+                ),
+            )
+        other_registered: list[Path] = []
+        for key, other in all_paths.items():
+            if key == request.projectKey:
+                continue
+            other_registered.append(other.data_dir)
+            other_registered.append(other.model_dir)
+        for directory in paths_to_delete(
+            paths.data_dir,
+            paths.model_dir,
+            other_registered=other_registered,
+            lp_system_dir=project_util.config.LP_SYSTEM_DIR,
+        ):
+            shutil.rmtree(directory)
+
+    project_util.update_project_paths(request.projectKey, None)
