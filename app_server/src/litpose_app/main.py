@@ -124,7 +124,9 @@ from .routes import (
     labeler,
     models,
     project,
+    rename_project_files,
     rglob,
+    validate_files,
     videos,
 )
 
@@ -138,6 +140,8 @@ router.include_router(config_root.router)
 router.include_router(models.router)
 router.include_router(videos.router)
 router.include_router(inference.router)
+router.include_router(validate_files.router)
+router.include_router(rename_project_files.router)
 app.include_router(router)
 
 

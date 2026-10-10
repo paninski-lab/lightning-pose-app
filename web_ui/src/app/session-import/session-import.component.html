@@ -32,46 +32,15 @@
       </p>
 
       <div class="flex gap-3 items-center mb-4 flex-shrink-0">
-        @if (useServerFiles()) {
-          <button
-            type="button"
-            class="btn btn-primary"
-            data-testid="choose-videos"
-            [disabled]="isProcessing()"
-            (click)="openServerPicker()"
-          >
-            Choose videos
-          </button>
-        } @else {
-          <label
-            class="btn btn-primary"
-            data-testid="choose-videos"
-            [class.btn-disabled]="isProcessing()"
-            for="videoFileInput"
-            >Choose videos</label
-          >
-        }
-        <input
-          id="videoFileInput"
-          type="file"
-          #fileInput
-          class="hidden"
-          [disabled]="isProcessing() || useServerFiles()"
-          (change)="addFiles(fileInput.files)"
+        <app-file-source-chooser
+          buttonLabel="Choose videos"
           accept="video/*"
-          multiple
+          [multiple]="true"
+          [disabled]="isProcessing()"
+          (localFiles)="addFiles($event)"
+          (browseServer)="openServerPicker()"
+          (serverModeChange)="useServerFiles.set($event)"
         />
-        <label class="label cursor-pointer gap-2">
-          <input
-            type="checkbox"
-            class="checkbox checkbox-sm"
-            data-testid="server-files-checkbox"
-            [checked]="useServerFiles()"
-            [disabled]="isProcessing()"
-            (change)="onServerFilesToggle($event)"
-          />
-          <span class="label-text">Server files</span>
-        </label>
         <button
           class="btn btn-ghost"
           (click)="clearAll()"
@@ -84,6 +53,9 @@
       @if (serverPickerOpen()) {
         <div class="grow min-h-0">
           <app-server-video-picker
+            [extensions]="videoExtensions"
+            noun="video"
+            [multiple]="true"
             (chosen)="onServerChosen($event)"
             (dismissed)="serverPickerOpen.set(false)"
           />

@@ -13,7 +13,12 @@ import { ProjectInfoService } from '../../project-info.service';
 import { RpcService } from '../../rpc.service';
 import { SessionService, VideoTaskStatus } from '../../session.service';
 import { ToastService } from '../../toast.service';
+import { SessionImportComponent } from '../../session-import/session-import.component';
 import { parseVideoFilename } from '../../video-import/filename';
+import {
+  isProjectVideoDir,
+  PROJECT_VIDEO_TREE_GLOB,
+} from '../../project-video-paths';
 import {
   AlertDialogComponent,
   AlertFooterComponent,
@@ -21,14 +26,16 @@ import {
 } from '../../components/alert-dialog/alert-dialog.component';
 
 const VIDEO_EXTENSIONS = ['.mp4', '.avi', '.mov', '.mkv', '.webm'];
-const PROJECT_VIDEO_FOLDERS = ['videos', 'videos_test'] as const;
-
-type VideoFolder = (typeof PROJECT_VIDEO_FOLDERS)[number];
 type AllIntraState = 'unknown' | 'yes' | 'no' | 'needs-conversion' | 'checking';
+
+interface VideoDir {
+  name: string;
+  ignored: boolean;
+}
 
 interface ProjectVideoRow {
   path: string;
-  folder: VideoFolder;
+  folder: string;
   displayName: string;
   filename: string;
   nameError: string | null;
@@ -51,6 +58,7 @@ interface RGlobResponse {
     AlertDialogComponent,
     AlertHeaderComponent,
     AlertFooterComponent,
+    SessionImportComponent,
   ],
   templateUrl: './project-videos.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -63,11 +71,15 @@ export class ProjectVideosComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
 
   protected rows = signal<ProjectVideoRow[]>([]);
+  protected videoDirs = signal<VideoDir[]>([]);
   protected loading = signal(false);
   protected busy = signal(false);
+  protected dirsBusy = signal(false);
   protected selectedPath = signal<string | null>(null);
   protected renameOpen = signal(false);
   protected renameValue = signal('');
+  protected importOpen = signal(false);
+  protected processAllConfirm = signal(false);
 
   protected selectedRow = computed(() => {
     const path = this.selectedPath();
@@ -106,11 +118,28 @@ export class ProjectVideosComponent implements OnInit {
     const dataDir = this.projectInfo.projectContext()?.projectInfo?.data_dir;
     if (!dataDir) {
       this.rows.set([]);
+      this.videoDirs.set([]);
       return;
     }
     this.loading.set(true);
     try {
-      const response = await this.listVideos(dataDir);
+      const [response, top] = await Promise.all([
+        this.listVideos(dataDir),
+        this.listVideoDirs(dataDir),
+      ]);
+      const ignored = this.ignoredNames();
+      this.videoDirs.set(
+        top
+          .filter(
+            (entry) =>
+              entry.type === 'dir' && isProjectVideoDir(String(entry.path)),
+          )
+          .map((entry) => ({
+            name: String(entry.path),
+            ignored: ignored.has(String(entry.path)),
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name)),
+      );
       const next = response.entries
         .map((entry) => this.toRow(dataDir, String(entry.path)))
         .filter((row): row is ProjectVideoRow => row !== null)
@@ -137,7 +166,33 @@ export class ProjectVideosComponent implements OnInit {
     this.selectedPath.set(path);
   }
 
-  protected async checkAllIntra() {
+  protected async toggleVideoDir(name: string, ignored: boolean, event: Event) {
+    event.preventDefault();
+    if (this.dirsBusy() || this.loading() || this.busy()) return;
+    const key = this.projectInfo.projectContext()?.key;
+    if (!key) return;
+    const next = new Set(this.ignoredNames());
+    if (ignored) next.delete(name);
+    else next.add(name);
+    this.dirsBusy.set(true);
+    try {
+      await this.rpc.call('setIgnoredVideoDirs', {
+        projectKey: key,
+        ignored: [...next].sort(),
+      });
+      await this.projectInfo.reloadProjectInfo(key);
+      await this.refresh();
+    } catch (err) {
+      this.toast.showToast({
+        content: errorMessage(err, 'Could not update video folders'),
+        variant: 'error',
+      });
+    } finally {
+      this.dirsBusy.set(false);
+    }
+  }
+
+  protected async checkAllEncodings() {
     if (this.busy()) return;
     this.busy.set(true);
     try {
@@ -146,6 +201,17 @@ export class ProjectVideosComponent implements OnInit {
         const current = this.rowByPath(row.path);
         if (current) await this.refreshAllIntra(current);
       }
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  protected async checkSelectedEncoding() {
+    const row = this.selectedRow();
+    if (!row || this.busy()) return;
+    this.busy.set(true);
+    try {
+      await this.refreshAllIntra(row);
     } finally {
       this.busy.set(false);
     }
@@ -167,6 +233,21 @@ export class ProjectVideosComponent implements OnInit {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  protected askProcessAll() {
+    if (this.busy() || this.rows().length === 0) return;
+    this.processAllConfirm.set(true);
+  }
+
+  protected confirmProcessAll() {
+    this.processAllConfirm.set(false);
+    void this.processAll();
+  }
+
+  protected onImportDone() {
+    this.importOpen.set(false);
+    void this.refresh();
   }
 
   protected async processAll() {
@@ -223,10 +304,26 @@ export class ProjectVideosComponent implements OnInit {
   private async listVideos(dataDir: string): Promise<RGlobResponse> {
     return (await this.rpc.call('rglob', {
       baseDir: dataDir,
-      pattern: 'videos*/**/*',
+      pattern: PROJECT_VIDEO_TREE_GLOB,
       noDirs: true,
       stat: false,
     })) as RGlobResponse;
+  }
+
+  private async listVideoDirs(dataDir: string) {
+    const response = (await this.rpc.call('rglob', {
+      baseDir: dataDir,
+      pattern: 'videos*',
+      noDirs: false,
+      stat: true,
+    })) as RGlobResponse;
+    return response.entries;
+  }
+
+  private ignoredNames(): Set<string> {
+    return new Set(
+      this.projectInfo.projectContext()?.projectInfo?.ignored_video_dirs ?? [],
+    );
   }
 
   private async refreshAllIntra(row: ProjectVideoRow): Promise<ProjectVideoRow> {
@@ -332,7 +429,7 @@ export class ProjectVideosComponent implements OnInit {
   private toRow(dataDir: string, relative: string): ProjectVideoRow | null {
     const parts = relative.split('/').filter(Boolean);
     const folder = parts[0];
-    if (!isProjectVideoFolder(folder)) return null;
+    if (!isProjectVideoDir(folder) || this.ignoredNames().has(folder)) return null;
     const filename = parts[parts.length - 1] ?? '';
     if (!filename || filename.startsWith('.')) return null;
     if (filename.includes('.allintra.tmp.')) return null;
@@ -380,10 +477,6 @@ export class ProjectVideosComponent implements OnInit {
       rows.map((row) => (row.path === path ? { ...row, ...partial } : row)),
     );
   }
-}
-
-function isProjectVideoFolder(name: string | undefined): name is VideoFolder {
-  return (PROJECT_VIDEO_FOLDERS as readonly string[]).includes(name ?? '');
 }
 
 function joinPath(dir: string, relative: string): string {

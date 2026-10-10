@@ -23,7 +23,6 @@ import { JsonPipe, NgTemplateOutlet } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PathEditableComponent } from '../components/path-editable/path-editable.component';
 import { ModelDirInputComponent } from '../components/model-dir-input/model-dir-input.component';
-import { ProjectVideosComponent } from './project-videos/project-videos.component';
 import { ProjectSkeletonComponent } from './project-skeleton/project-skeleton.component';
 import { skeletonProblems } from '../components/skeleton-overlay/skeleton-validity';
 
@@ -36,7 +35,6 @@ import { skeletonProblems } from '../components/skeleton-overlay/skeleton-validi
     NgTemplateOutlet,
     PathEditableComponent,
     ModelDirInputComponent,
-    ProjectVideosComponent,
     ProjectSkeletonComponent,
   ],
   templateUrl: './project-settings.component.html',
@@ -65,19 +63,12 @@ export class ProjectSettingsComponent implements OnInit {
   protected keypointsForm!: FormGroup;
   protected multiviewForm!: FormGroup;
 
-  /** Videos is omitted during project creation so Save stays on Multiview. */
-  protected readonly tabs = computed(() => {
-    const base = [
-      { key: 'directories', icon: 'folder', text: 'Local setup' },
-      { key: 'keypoints', icon: 'adjust', text: 'Keypoints' },
-      { key: 'skeleton', icon: 'timeline', text: 'Skeleton' },
-      { key: 'multiview', icon: 'camera_alt', text: 'Multiview' },
-    ];
-    if (!this.setupMode()) {
-      base.push({ key: 'videos', icon: 'videocam', text: 'Videos' });
-    }
-    return base;
-  });
+  protected readonly tabs = computed(() => [
+    { key: 'directories', icon: 'folder', text: 'Local setup' },
+    { key: 'keypoints', icon: 'adjust', text: 'Keypoints' },
+    { key: 'skeleton', icon: 'timeline', text: 'Skeleton' },
+    { key: 'multiview', icon: 'camera_alt', text: 'Multiview' },
+  ]);
   protected parsedKeypointNames = signal<string[]>([]);
   protected skeletonValue = signal<unknown>([]);
   protected skeletonDirty = signal(false);

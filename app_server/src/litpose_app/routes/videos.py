@@ -24,6 +24,7 @@ from litpose_app.rootconfig import RootConfig
 from .. import deps
 from ..datatypes import Project
 from ..deps import ProjectInfoGetter
+from ..paths.project_videos import project_video_root
 from ..tasks import transcode_fine
 
 logger = logging.getLogger(__name__)
@@ -358,33 +359,23 @@ def _start_transcode_background(
     return future
 
 
-PROJECT_VIDEO_DIRS = ("videos", "videos_test")
-
-
-def project_video_roots(project: Project) -> list[Path]:
-    """Return the project's videos/ and videos_test/ directories (they may not exist)."""
-    data = project.paths.data_dir.resolve()
-    return [data / name for name in PROJECT_VIDEO_DIRS]
-
-
 def resolve_project_video(path: Path, project: Project) -> Path:
-    """Resolve ``path`` and require it to be a file under videos/ or videos_test/."""
+    """Resolve ``path`` and require a file under a data-dir folder named ``videos*``."""
     if not path.is_absolute():
         raise HTTPException(status_code=400, detail="path must be absolute.")
     resolved = path.resolve()
     if not resolved.is_file():
         raise HTTPException(status_code=404, detail="Input file not found.")
-    for root in project_video_roots(project):
-        try:
-            resolved.relative_to(root)
-        except ValueError:
-            continue
-        else:
-            return resolved
-    raise HTTPException(
-        status_code=400,
-        detail="File must be inside videos/ or videos_test/.",
-    )
+    if project_video_root(
+        resolved, project.paths.data_dir, project.paths.ignored_video_dirs
+    ) is None:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "File must be inside a data-directory folder whose name starts with videos."
+            ),
+        )
+    return resolved
 
 
 def _in_place_temp_path(src: Path) -> Path:
@@ -588,7 +579,7 @@ def transcode_video(
 
 
 class RenameVideoRequest(BaseModel):
-    """Rename a video that already lives in videos/ or videos_test/."""
+    """Rename a video that already lives under a ``videos*`` data-directory folder."""
 
     projectKey: str
     path: str
@@ -610,11 +601,12 @@ def transcode_video_in_place(
 ) -> StreamingResponse:
     """Transcode a project video to all-intra and replace it in the same folder.
 
-    ``inputPath`` must be an absolute path under ``<data_dir>/videos`` or
-    ``<data_dir>/videos_test``. ffmpeg writes a temp sibling, then that file
-    replaces the original (non-mp4 sources become ``.mp4`` and the old file is
-    removed). Progress uses the same ``VideoTaskStatus`` SSE payload as
-    ``TranscodeVideo``, keyed by the absolute path.
+    ``inputPath`` must be an absolute path under a direct child of the data
+    directory whose name starts with ``videos`` (including nested files).
+    ffmpeg writes a temp sibling, then that file replaces the original (non-mp4
+    sources become ``.mp4`` and the old file is removed). Progress uses the
+    same ``VideoTaskStatus`` SSE payload as ``TranscodeVideo``, keyed by the
+    absolute path.
     """
     project: Project = project_info_getter(projectKey)
     src = resolve_project_video(Path(inputPath), project)
@@ -659,7 +651,7 @@ def rename_video(
     request: RenameVideoRequest,
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> RenameVideoResponse:
-    """Rename a video inside its current videos/ or videos_test/ folder.
+    """Rename a video inside its current ``videos*`` folder.
 
     The new filename must pass ``parse_session_view``. The file is not moved
     between folders. Returns 409 when the destination already exists.

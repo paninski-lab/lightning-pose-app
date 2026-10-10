@@ -27,10 +27,16 @@
                   <app-dropdown-content class="z-50">
                     <div class="p-2 text-sm w-max">
                       @if ((ctx.projectInfo?.views?.length ?? 0) > 0) {
-                        Searches <code class="text-xs">videos/*.mp4</code> then
-                        groups by session prefix
+                        Searches
+                        <code class="text-xs">videos*/**/*.mp4</code>
+                        (any data-directory folder whose name starts with
+                        videos, except folders unchecked in File Manager) then
+                        groups by session prefix.
                       } @else {
-                        Searches <code class="text-xs">videos/*.mp4</code>
+                        Searches
+                        <code class="text-xs">videos*/**/*.mp4</code>
+                        (any data-directory folder whose name starts with
+                        videos, except folders unchecked in File Manager).
                       }
                     </div>
                   </app-dropdown-content>

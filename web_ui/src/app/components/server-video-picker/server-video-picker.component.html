@@ -15,7 +15,7 @@
       </div>
     } @else if (entries().length === 0) {
       <div class="p-4 text-center opacity-50 text-xs italic">
-        No videos or folders here
+        No {{ noun() === 'video' ? 'videos' : 'matching files' }} or folders here
       </div>
     } @else {
       <app-dense-listbox
@@ -46,7 +46,7 @@
       [disabled]="pickedCount() === 0"
       (click)="confirm()"
     >
-      Add {{ pickedCount() }} video{{ pickedCount() === 1 ? '' : 's' }}
+      Add {{ pickedCount() }} {{ noun() }}{{ pickedCount() === 1 ? '' : 's' }}
     </button>
   </div>
 </div>

@@ -6,6 +6,8 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from litpose_app.datatypes import Project, ProjectConfig, ProjectPaths
@@ -401,3 +403,44 @@ def test_rename_video_accepts_valid_name_rejects_bad_name_and_collision(
     assert Path(body["path"]) == dest
     assert dest.read_bytes() == b"video"
     assert not src.exists()
+
+
+def test_resolve_project_video_accepts_any_videos_prefix_dir(register_project):
+    """A nested videos* file is accepted; a top folder that does not start with videos is not."""
+    from litpose_app.routes.videos import resolve_project_video
+
+    data_dir = register_project("demo")
+    nested = data_dir / "videos-for-each-labeled-frame" / "session" / "clip.mp4"
+    nested.parent.mkdir(parents=True)
+    nested.write_bytes(b"x")
+    other = data_dir / "frames" / "clip.mp4"
+    other.parent.mkdir(parents=True)
+    other.write_bytes(b"x")
+
+    project = Project(
+        project_key="demo",
+        paths=ProjectPaths(data_dir=data_dir),
+        config=ProjectConfig(),
+    )
+    assert resolve_project_video(nested, project) == nested.resolve()
+    with pytest.raises(HTTPException) as exc:
+        resolve_project_video(other, project)
+    assert exc.value.status_code == 400
+
+
+def test_ignored_video_dir_is_omitted_from_project_videos(tmp_path):
+    """An ignored videos* folder is skipped; a sibling videos folder is still included."""
+    from litpose_app.paths.project_videos import iter_project_mp4s, project_video_root
+
+    nested = tmp_path / "videos-for-each-labeled-frame" / "sess" / "clip.mp4"
+    nested.parent.mkdir(parents=True)
+    nested.write_bytes(b"x")
+    kept = tmp_path / "videos" / "ok.mp4"
+    kept.parent.mkdir()
+    kept.write_bytes(b"x")
+    ignored = ["videos-for-each-labeled-frame"]
+
+    found = {path.name for path in iter_project_mp4s(tmp_path, ignored)}
+    assert found == {"ok.mp4"}
+    assert project_video_root(nested, tmp_path, ignored) is None
+    assert project_video_root(kept, tmp_path, ignored) == (tmp_path / "videos").resolve()

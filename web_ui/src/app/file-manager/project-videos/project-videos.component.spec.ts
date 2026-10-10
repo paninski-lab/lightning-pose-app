@@ -32,7 +32,15 @@ describe('ProjectVideosComponent', () => {
         {
           provide: RpcService,
           useValue: {
-            call: async () => ({ entries: [], relativeTo: '/data' }),
+            call: async () => ({
+              entries: [
+                {
+                  path: 'videos-for-each-labeled-frame/session/clip.mp4',
+                },
+                { path: 'not-videos/session/clip.mp4' },
+              ],
+              relativeTo: '/data',
+            }),
           },
         },
         { provide: SessionService, useValue: {} },
@@ -50,5 +58,16 @@ describe('ProjectVideosComponent', () => {
       'Filename must be of the form session_view.ext',
     );
     expect(component.nameError('session_view.mp4')).toBeNull();
+  });
+
+  it('keeps a nested mp4 under a videos* folder and shows its filename error', async () => {
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('videos-for-each-labeled-frame');
+    expect(text).toContain('session/clip.mp4');
+    expect(text).not.toContain('not-videos');
+    expect(text).toContain('Filename must be of the form session_view.ext');
+    expect(text).not.toContain('Validate');
   });
 });

@@ -4,6 +4,7 @@ import {
   computed,
   effect,
   inject,
+  input,
   output,
   signal,
 } from '@angular/core';
@@ -13,7 +14,7 @@ import { PathBarComponent } from '../path-bar/path-bar.component';
 import { DenseListboxComponent } from '../dense-listbox/dense-listbox.component';
 import { DenseListboxItemComponent } from '../dense-listbox/dense-listbox-item.component';
 
-const VIDEO_EXTENSIONS = ['.mp4', '.avi', '.mov', '.mkv', '.webm'];
+export const VIDEO_EXTENSIONS = ['.mp4', '.avi', '.mov', '.mkv', '.webm'];
 
 export interface ServerVideoChoice {
   path: string;
@@ -54,6 +55,13 @@ interface RGlobResponse {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ServerVideoPickerComponent {
+  /** Extensions to list, including the dot. Defaults to video files. */
+  extensions = input<readonly string[]>(VIDEO_EXTENSIONS);
+  /** When false, choosing a file replaces the previous choice. */
+  multiple = input(true);
+  /** Singular noun used in the empty state and the confirm button. */
+  noun = input('video');
+
   chosen = output<ServerVideoChoice[]>();
   dismissed = output<void>();
 
@@ -72,8 +80,9 @@ export class ServerVideoPickerComponent {
   constructor() {
     effect(() => {
       const current = this.path();
+      const extensions = this.extensions();
       if (current) {
-        void this.fetchEntries(current);
+        void this.fetchEntries(current, extensions);
       }
     });
   }
@@ -101,16 +110,21 @@ export class ServerVideoPickerComponent {
       this.onPathChange(next);
       return;
     }
+    const choice: ServerVideoChoice = {
+      path: entry.path,
+      name: entry.name,
+      size: entry.size,
+    };
     this.picked.update((map) => {
+      if (!this.multiple()) {
+        if (map.has(entry.path)) return new Map();
+        return new Map([[entry.path, choice]]);
+      }
       const next = new Map(map);
       if (next.has(entry.path)) {
         next.delete(entry.path);
       } else {
-        next.set(entry.path, {
-          path: entry.path,
-          name: entry.name,
-          size: entry.size,
-        });
+        next.set(entry.path, choice);
       }
       return next;
     });
@@ -140,8 +154,9 @@ export class ServerVideoPickerComponent {
     return data ?? home;
   }
 
-  private async fetchEntries(basePath: string) {
+  private async fetchEntries(basePath: string, extensions: readonly string[]) {
     this.loading.set(true);
+    const fileIcon = this.noun() === 'video' ? 'videocam' : 'description';
     try {
       const response = (await this.rpc.call('rglob', {
         baseDir: basePath,
@@ -163,18 +178,18 @@ export class ServerVideoPickerComponent {
           });
           continue;
         }
-        if (!isVideoName(name)) continue;
+        if (!hasExtension(name, extensions)) continue;
         listed.push({
           name,
           path: joinPath(basePath, name),
           type: 'file',
           size: entry.size ?? 0,
-          icon: 'videocam',
+          icon: fileIcon,
         });
       }
       this.entries.set(listed);
     } catch (error) {
-      console.error('Failed to list server videos', error);
+      console.error('Failed to list server files', error);
       this.entries.set([]);
     } finally {
       this.loading.set(false);
@@ -187,7 +202,7 @@ function joinPath(dir: string, name: string): string {
   return `${dir.replace(/\/$/, '')}/${name}`;
 }
 
-function isVideoName(filename: string): boolean {
+function hasExtension(filename: string, extensions: readonly string[]): boolean {
   const lower = filename.toLowerCase();
-  return VIDEO_EXTENSIONS.some((ext) => lower.endsWith(ext));
+  return extensions.some((ext) => lower.endsWith(ext.toLowerCase()));
 }

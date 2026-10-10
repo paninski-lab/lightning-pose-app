@@ -89,6 +89,7 @@ export class AppComponent implements OnInit {
       { link: ['/project', key, 'labeler'] as unknown[], text: 'Labeler' },
       { link: ['/project', key, 'models'] as unknown[], text: 'Models' },
       { link: ['/project', key, 'viewer'] as unknown[], text: 'Viewer' },
+      { link: ['/project', key, 'files'] as unknown[], text: 'File Manager' },
     ];
   });
 

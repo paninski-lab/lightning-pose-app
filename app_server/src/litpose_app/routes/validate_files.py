@@ -1,0 +1,411 @@
+"""Report name, format, and folder problems for one sector of a project."""
+
+from __future__ import annotations
+
+import json
+import re
+from pathlib import Path
+from typing import Literal
+
+import pandas as pd
+import yaml
+from aniposelib.cameras import CameraGroup
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+
+from litpose_app import deps
+from litpose_app.datatypes import Project
+from litpose_app.deps import ProjectInfoGetter
+from litpose_app.routes.rglob import _rglob
+from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
+
+router = APIRouter()
+
+_NAME_RE = re.compile(r"^[A-Za-z0-9_.\-]+$")
+_MODEL_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9-._]+$")
+_FRAME_RE = re.compile(r"[A-Za-z_-]+\d+\.(png|jpg)\Z")
+_LABEL_INDEX_RE = re.compile(r"labeled-data/[^/]+/[A-Za-z_-]+\d+\.(png|jpg)\Z")
+_ISSUE_LIMIT = 8
+
+
+class ValidateProjectFilesRequest(BaseModel):
+    """Which project sector to check. Files are not modified."""
+
+    projectKey: str
+    sector: Literal["labels", "labeled-data", "models", "calibration"]
+
+
+class FileCheck(BaseModel):
+    """One path and the problems found for it."""
+
+    path: str
+    issues: list[str] = []
+    warnings: list[str] = []
+
+
+class ValidateProjectFilesResponse(BaseModel):
+    """Validation results. Empty issue lists mean the path passed."""
+
+    items: list[FileCheck]
+
+
+def _cap(messages: list[str], limit: int = _ISSUE_LIMIT) -> list[str]:
+    if len(messages) <= limit:
+        return messages
+    hidden = len(messages) - limit
+    return [*messages[:limit], f"{hidden} more not shown."]
+
+
+def _summarize_paths(label: str, paths: list[str], limit: int = 5) -> str | None:
+    if not paths:
+        return None
+    shown = ", ".join(paths[:limit])
+    extra = len(paths) - limit
+    suffix = f" (+{extra} more)" if extra > 0 else ""
+    return f"{label}: {shown}{suffix}"
+
+
+def _under(path: Path, root: Path) -> bool:
+    try:
+        path.resolve().relative_to(root.resolve())
+    except ValueError:
+        return False
+    return True
+
+
+def _session_stem_issue(stem: str, views: list[str], *, kind: str) -> str | None:
+    if not _NAME_RE.fullmatch(stem):
+        return f"{kind.capitalize()} name contains invalid characters."
+    if not views:
+        return None
+    if "_" not in stem:
+        return f"{kind.capitalize()} name must be of the form session_view."
+    session, _, view = stem.rpartition("_")
+    if not session or not view:
+        return f"Invalid session/view in {kind} name."
+    if view not in views:
+        return f"Unknown view: {view}"
+    return None
+
+
+def _label_filename_issue(filename: str, views: list[str]) -> str | None:
+    stem = Path(filename).stem
+    if not views:
+        if stem in {"CollectedData", "CollectedData_test"}:
+            return None
+        return "Expected CollectedData.csv or CollectedData_test.csv."
+    if not stem.startswith("CollectedData_"):
+        return "Expected CollectedData_<view>.csv or CollectedData_<view>_test.csv."
+    rest = stem[len("CollectedData_") :]
+    view = rest[: -len("_test")] if rest.endswith("_test") else rest
+    if not view or view not in views:
+        return f"Unknown view in filename: {view or '(missing)'}."
+    return None
+
+
+def _keypoint_warning(bodyparts: set[str], keypoints: list[str]) -> str | None:
+    expected = set(keypoints)
+    if not expected:
+        return None
+    missing = sorted(expected - bodyparts)
+    extra = sorted(bodyparts - expected)
+    if not missing and not extra:
+        return None
+    parts: list[str] = []
+    if missing:
+        parts.append("missing " + ", ".join(missing))
+    if extra:
+        parts.append("extra " + ", ".join(extra))
+    return "Bodyparts do not match project keypoints (" + "; ".join(parts) + ")."
+
+
+def _label_header_issue(full: Path) -> str | None:
+    """Return a format problem, or None when each bodypart has x and y.
+
+    Scorer names are often uniquified (``rick``, ``rick.1``) when a file is
+    saved, so x and y for one bodypart may not share a scorer string.
+    """
+    message = (
+        "Not a label CSV: need 3 header rows (scorer, bodyparts, coords) "
+        "with x and y for each bodypart."
+    )
+    try:
+        df = pd.read_csv(full, header=[0, 1, 2], nrows=0)
+        df = fix_empty_first_row(df)
+    except Exception:
+        return message
+    if not isinstance(df.columns, pd.MultiIndex) or df.columns.nlevels != 3:
+        return message
+    coords_by_bodypart: dict[str, set[str]] = {}
+    for col in df.columns:
+        if col[2] not in ("x", "y"):
+            continue
+        coords_by_bodypart.setdefault(str(col[1]), set()).add(str(col[2]))
+    if not coords_by_bodypart:
+        return message
+    incomplete = [
+        name
+        for name, coords in coords_by_bodypart.items()
+        if coords != {"x", "y"}
+    ]
+    if incomplete:
+        shown = ", ".join(incomplete[:_ISSUE_LIMIT])
+        return f"Bodyparts missing x or y: {shown}."
+    return None
+
+
+def _inspect_label_table(
+    full: Path, data_dir: Path, keypoints: list[str]
+) -> tuple[list[str], list[str]]:
+    try:
+        df = pd.read_csv(full, header=[0, 1, 2], index_col=0)
+        df = fix_empty_first_row(df)
+    except Exception as exc:
+        return [f"Could not read label rows: {exc}"], []
+
+    bad: list[str] = []
+    missing: list[str] = []
+    data_resolved = data_dir.resolve()
+    for raw in df.index:
+        text = str(raw).strip()
+        if text in {"", "nan", "None"}:
+            continue
+        rel = text.replace("\\", "/")
+        if rel.startswith("/") or ".." in Path(rel).parts:
+            bad.append(rel)
+            continue
+        if _LABEL_INDEX_RE.fullmatch(rel) is None:
+            bad.append(rel)
+            continue
+        target = (data_resolved / rel).resolve()
+        try:
+            target.relative_to(data_resolved)
+        except ValueError:
+            bad.append(rel)
+            continue
+        if not target.is_file():
+            missing.append(rel)
+
+    issues: list[str] = []
+    bad_msg = _summarize_paths(
+        "Index paths do not match labeled-data/<dir>/<name><digits>.png or .jpg",
+        bad,
+    )
+    if bad_msg:
+        issues.append(bad_msg)
+    missing_msg = _summarize_paths("Missing images", missing)
+    if missing_msg:
+        issues.append(missing_msg)
+
+    bodyparts = {
+        str(col[1])
+        for col in df.columns
+        if len(col) >= 3 and col[2] in ("x", "y")
+    }
+    warnings: list[str] = []
+    warning = _keypoint_warning(bodyparts, keypoints)
+    if warning:
+        warnings.append(warning)
+    return issues, warnings
+
+
+def _validate_labels(project: Project) -> list[FileCheck]:
+    data_dir = project.paths.data_dir
+    model_dir = project.paths.model_dir
+    views = list(project.config.view_names)
+    items: list[FileCheck] = []
+    entries = _rglob(str(data_dir), pattern="**/*.csv", no_dirs=True)
+    for entry in entries:
+        rel = Path(entry["path"])
+        full = data_dir / rel
+        if model_dir is not None and _under(full, model_dir):
+            continue
+        issues: list[str] = []
+        warnings: list[str] = []
+        name_issue = _label_filename_issue(rel.name, views)
+        if name_issue:
+            issues.append(name_issue)
+        header_issue = _label_header_issue(full)
+        if header_issue:
+            issues.append(header_issue)
+        else:
+            table_issues, table_warnings = _inspect_label_table(
+                full, data_dir, list(project.config.keypoint_names)
+            )
+            issues.extend(table_issues)
+            warnings.extend(table_warnings)
+        items.append(
+            FileCheck(path=rel.as_posix(), issues=issues, warnings=warnings)
+        )
+    return items
+
+
+def _validate_labeled_data(project: Project) -> list[FileCheck]:
+    data_dir = project.paths.data_dir
+    root = data_dir / "labeled-data"
+    if not root.is_dir():
+        return []
+    views = list(project.config.view_names)
+    items: list[FileCheck] = []
+    children = sorted(root.iterdir(), key=lambda p: p.name.lower())
+    for child in children:
+        rel = f"labeled-data/{child.name}"
+        if not child.is_dir():
+            items.append(
+                FileCheck(path=rel, issues=["Expected a session directory."])
+            )
+            continue
+        issues: list[str] = []
+        name_issue = _session_stem_issue(child.name, views, kind="directory")
+        if name_issue:
+            issues.append(name_issue)
+        unexpected: list[str] = []
+        for grandchild in sorted(child.iterdir(), key=lambda p: p.name.lower()):
+            if grandchild.is_dir():
+                unexpected.append(f"Unexpected subdirectory: {grandchild.name}")
+            elif _FRAME_RE.fullmatch(grandchild.name) is None:
+                unexpected.append(f"Unexpected file: {grandchild.name}")
+        issues.extend(_cap(unexpected))
+        items.append(FileCheck(path=rel, issues=issues))
+    return items
+
+
+def _walk_model_dirs(model_dir: Path) -> list[Path]:
+    """Same two-level walk as listModels, including directories it would skip."""
+    if not model_dir.is_dir():
+        return []
+    found: list[Path] = []
+    children = sorted(
+        (p for p in model_dir.iterdir() if p.is_dir()),
+        key=lambda p: p.name.lower(),
+    )
+    for child in children:
+        found.append(child)
+        has_model_file = (child / "config.yaml").is_file() or (
+            child / "ensemble.yaml"
+        ).is_file()
+        if has_model_file:
+            continue
+        for grandchild in sorted(
+            (p for p in child.iterdir() if p.is_dir()), key=lambda p: p.name.lower()
+        ):
+            found.append(grandchild)
+    return found
+
+
+def _validate_one_model(model_path: Path, views: list[str]) -> FileCheck:
+    rel = model_path.name if model_path.parent.name else model_path.name
+    issues: list[str] = []
+    if _MODEL_NAME_RE.fullmatch(model_path.name) is None:
+        issues.append(
+            "Directory name must match the create-model rule "
+            "(letters, digits, and . _ -)."
+        )
+    config = model_path / "config.yaml"
+    ensemble = model_path / "ensemble.yaml"
+    if config.is_file() and ensemble.is_file():
+        issues.append("Has both config.yaml and ensemble.yaml.")
+    elif config.is_file():
+        try:
+            yaml.safe_load(config.read_text())
+        except Exception:
+            issues.append("config.yaml is not valid YAML.")
+    elif ensemble.is_file():
+        try:
+            yaml.safe_load(ensemble.read_text())
+        except Exception:
+            issues.append("ensemble.yaml is not valid YAML.")
+    else:
+        issues.append("Expected config.yaml or ensemble.yaml.")
+
+    status_path = model_path / "train_status.json"
+    if status_path.is_file():
+        try:
+            status_data = json.loads(status_path.read_text())
+        except Exception:
+            issues.append("train_status.json is not valid JSON.")
+        else:
+            if not isinstance(status_data, dict) or "status" not in status_data:
+                issues.append("train_status.json is missing a status field.")
+
+    preds = model_path / "video_preds"
+    if preds.exists():
+        if not preds.is_dir():
+            issues.append("video_preds is not a directory.")
+        else:
+            unexpected: list[str] = []
+            for child in sorted(preds.iterdir(), key=lambda p: p.name.lower()):
+                if child.is_dir():
+                    unexpected.append(f"Unexpected subdirectory: {child.name}")
+                    continue
+                if child.suffix != ".csv":
+                    unexpected.append(f"Unexpected file in video_preds: {child.name}")
+                    continue
+                name_issue = _session_stem_issue(
+                    child.stem, views, kind="prediction file"
+                )
+                if name_issue:
+                    unexpected.append(f"{child.name}: {name_issue}")
+            issues.extend(_cap(unexpected))
+    return FileCheck(path=rel, issues=issues)
+
+
+def _validate_calibrations(project: Project) -> list[FileCheck]:
+    """Check calibration.toml and calibrations/*.toml. Backups are not listed."""
+    data_dir = project.paths.data_dir
+    views = list(project.config.view_names)
+    paths: list[Path] = []
+    root_file = data_dir / "calibration.toml"
+    if root_file.is_file():
+        paths.append(root_file)
+    cal_dir = data_dir / "calibrations"
+    if cal_dir.is_dir():
+        for child in sorted(cal_dir.iterdir(), key=lambda p: p.name.lower()):
+            if child.is_file() and child.suffix == ".toml":
+                paths.append(child)
+    items: list[FileCheck] = []
+    for path in paths:
+        rel = path.relative_to(data_dir).as_posix()
+        issues: list[str] = []
+        try:
+            group = CameraGroup.load(str(path))
+            names = [str(name) for name in group.get_names()]
+        except Exception as exc:
+            issues.append(f"Could not read calibration: {exc}")
+        else:
+            if views and names != views:
+                issues.append(
+                    "Camera names must match project views in order "
+                    f"({', '.join(views)}). Found {', '.join(names) or 'none'}."
+                )
+        items.append(FileCheck(path=rel, issues=issues))
+    return items
+
+
+def _validate_models(project: Project) -> list[FileCheck]:
+    model_dir = project.paths.model_dir
+    views = list(project.config.view_names)
+    items: list[FileCheck] = []
+    for model_path in _walk_model_dirs(model_dir):
+        check = _validate_one_model(model_path, views)
+        check.path = model_path.relative_to(model_dir).as_posix()
+        items.append(check)
+    return items
+
+
+@router.post("/app/v0/rpc/validateProjectFiles")
+def validate_project_files(
+    request: ValidateProjectFilesRequest,
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+) -> ValidateProjectFilesResponse:
+    """Check one sector of the project. Does not rename or rewrite files."""
+    project: Project = project_info_getter(request.projectKey)
+    if request.sector == "labels":
+        items = _validate_labels(project)
+    elif request.sector == "labeled-data":
+        items = _validate_labeled_data(project)
+    elif request.sector == "calibration":
+        items = _validate_calibrations(project)
+    else:
+        items = _validate_models(project)
+    return ValidateProjectFilesResponse(items=items)

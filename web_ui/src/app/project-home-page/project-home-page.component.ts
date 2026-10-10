@@ -30,6 +30,7 @@ export class ProjectHomePageComponent {
         description: 'View and edit configuration for the current Project',
         imgSrc: '/static/project_home_card_settings.jpg',
         imgAlt: 'Accordion',
+        icon: undefined,
       },
       {
         link: [...base, 'labeler'],
@@ -38,6 +39,7 @@ export class ProjectHomePageComponent {
         description: 'View labeled data and label new frames',
         imgSrc: '/static/project_home_card_labeler.jpg',
         imgAlt: 'Accordion',
+        icon: undefined,
       },
       {
         link: [...base, 'models'],
@@ -46,6 +48,7 @@ export class ProjectHomePageComponent {
         description: 'Train, evaluate, and run models',
         imgSrc: '/static/project_home_card_models.png',
         imgAlt: 'Accordion',
+        icon: undefined,
       },
       {
         link: [...base, 'viewer'],
@@ -54,6 +57,16 @@ export class ProjectHomePageComponent {
         description: 'View sessions and model predictions',
         imgSrc: '/static/project_home_card_viewer.png',
         imgAlt: 'Accordion',
+        icon: undefined,
+      },
+      {
+        link: [...base, 'files'],
+        queryParams: undefined,
+        title: 'File Manager',
+        description: 'See project files and check names, format, and folders',
+        imgSrc: undefined,
+        imgAlt: 'Folder',
+        icon: 'folder_open',
       },
     ];
   });

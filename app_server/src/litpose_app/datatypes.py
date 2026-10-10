@@ -26,6 +26,8 @@ class ProjectPaths(BaseModel):
     # Rather than passing None for omitted user value, you must omit the key
     # This allows serialization via
     model_dir: Path = Field(default_factory=lambda data: data["data_dir"] / "models")
+    # videos* folders the app skips. The directories stay on disk.
+    ignored_video_dirs: list[str] = []
 
 
 class Project(BaseModel):

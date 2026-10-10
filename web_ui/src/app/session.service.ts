@@ -24,6 +24,7 @@ import {
 } from './labeler/mv-autolabel';
 import _ from 'lodash';
 import { ModelListResponse } from './modelconf';
+import { PROJECT_VIDEO_MP4_GLOB } from './project-video-paths';
 
 type SessionModelMap = Record<string, string[]>;
 
@@ -210,11 +211,16 @@ export class SessionService {
 
     const response = (await this.rpc.call('rglob', {
       baseDir: projectInfo.data_dir,
-      pattern: 'videos*/**/*.mp4',
+      pattern: PROJECT_VIDEO_MP4_GLOB,
       noDirs: true,
     })) as RGlobResponse;
 
-    const mp4Files: string[] = response.entries.map((entry) => entry.path);
+    const ignored = new Set(
+      this.projectInfoService.projectInfo.ignored_video_dirs ?? [],
+    );
+    const mp4Files: string[] = response.entries
+      .map((entry) => entry.path)
+      .filter((path) => !ignored.has(String(path).split('/')[0]));
     const sessions: Session[] = this.groupFilesBySession(
       mp4Files,
       this.projectInfoService.projectInfo.views,

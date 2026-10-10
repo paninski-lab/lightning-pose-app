@@ -3,6 +3,7 @@ import { ViewerPageComponent } from './viewer/viewer-page/viewer-page.component'
 import { LabelerPageComponent } from './labeler/labeler-page.component';
 import { HomePageComponent } from './home-page/home-page.component';
 import { ModelsPageComponent } from './models-page/models-page.component';
+import { FileManagerPageComponent } from './file-manager/file-manager-page.component';
 import { ProjectHomePageComponent } from './project-home-page/project-home-page.component';
 import {
   GlobalContext,
@@ -70,6 +71,11 @@ export const routes: Routes = [
         path: 'models',
         component: ModelsPageComponent,
         title: 'Lightning Pose Models',
+      },
+      {
+        path: 'files',
+        component: FileManagerPageComponent,
+        title: 'File Manager',
       },
     ],
   },
