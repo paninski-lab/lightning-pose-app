@@ -55,3 +55,18 @@ export const WithoutModels: Story = {
     modelDir: undefined,
   },
 };
+
+export const PermanentDelete: Story = {
+  play: async ({ canvasElement }) => {
+    const dialog = canvasElement.querySelector('dialog');
+    if (dialog) {
+      dialog.showModal();
+    }
+    const checkbox = canvasElement.querySelector(
+      '[data-testid="delete-project-permanent"]',
+    );
+    if (checkbox instanceof HTMLInputElement) {
+      checkbox.click();
+    }
+  },
+};

@@ -3,6 +3,7 @@ import {
   Component,
   inject,
   input,
+  linkedSignal,
   output,
   signal,
 } from '@angular/core';
@@ -34,7 +35,11 @@ export class ProjectDeleteDialogComponent {
   done = output<boolean>();
 
   protected removeFiles = signal(false);
-  protected deleteConfirmation = signal(false);
+  // Clears the typed name whenever the permanent-delete checkbox changes.
+  protected confirmName = linkedSignal(() => {
+    this.removeFiles();
+    return '';
+  });
   private projectInfoService = inject(ProjectInfoService);
   private toastService = inject(ToastService);
 
@@ -43,10 +48,14 @@ export class ProjectDeleteDialogComponent {
   }
 
   protected async handleDelete() {
+    if (this.removeFiles() && this.confirmName() !== this.projectKey()) {
+      return;
+    }
     try {
       await this.projectInfoService.deleteProject(
         this.projectKey(),
         this.removeFiles(),
+        this.removeFiles() ? this.confirmName() : undefined,
       );
       this.toastService.showToast({
         content: `Successfully deleted project "${this.projectKey()}"`,
@@ -55,11 +64,17 @@ export class ProjectDeleteDialogComponent {
       this.done.emit(true);
     } catch (error) {
       console.error('Failed to delete project:', error);
+      let detail = String(error);
+      if (typeof error === 'object' && error !== null && 'error' in error) {
+        const body = (error as { error?: { detail?: unknown } }).error;
+        if (typeof body?.detail === 'string') {
+          detail = body.detail;
+        }
+      }
       this.toastService.showToast({
-        content: `Failed to delete project: ${error}`,
+        content: `Failed to delete project: ${detail}`,
         variant: 'error',
       });
-      this.done.emit(true);
     }
   }
 }
