@@ -24,6 +24,7 @@ from litpose_app.rootconfig import RootConfig
 from .. import deps
 from ..datatypes import Project
 from ..deps import ProjectInfoGetter
+from ..ignored_video_dirs import ignored_video_dirs
 from ..paths.project_videos import project_video_root
 from ..tasks import transcode_fine
 
@@ -367,7 +368,7 @@ def resolve_project_video(path: Path, project: Project) -> Path:
     if not resolved.is_file():
         raise HTTPException(status_code=404, detail="Input file not found.")
     if project_video_root(
-        resolved, project.paths.data_dir, project.paths.ignored_video_dirs
+        resolved, project.paths.data_dir, ignored_video_dirs(project.project_key)
     ) is None:
         raise HTTPException(
             status_code=400,

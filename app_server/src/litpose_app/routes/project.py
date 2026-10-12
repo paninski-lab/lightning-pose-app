@@ -19,6 +19,10 @@ from litpose_app.deps import (
     ApplicationError,
     ProjectInfoGetter,
 )
+from litpose_app.ignored_video_dirs import (
+    ignored_video_dirs,
+    remember_ignored_video_dirs,
+)
 from litpose_app.migrations import run_migrations_for_project
 from litpose_app.paths.project_videos import iter_project_mp4s
 from litpose_app.project import ProjectUtil
@@ -223,7 +227,7 @@ def _fetch_all_stats(
     try:
         # 1. Sessions
         mp4_paths = list(
-            iter_project_mp4s(data_dir, project.paths.ignored_video_dirs)
+            iter_project_mp4s(data_dir, ignored_video_dirs(project_key))
         )
         # Simple grouping logic: replace view name with *
         session_keys = set()
@@ -397,6 +401,7 @@ def get_project_info(
             "views": project.config.model_dump()[
                 "view_names"
             ],  # Rename view_names to views
+            "ignored_video_dirs": ignored_video_dirs(request.projectKey),
         }
         del merged["view_names"]
 
@@ -431,10 +436,9 @@ def update_project_paths_rpc(
 @router.post("/app/v0/rpc/setIgnoredVideoDirs")
 def set_ignored_video_dirs(
     request: SetIgnoredVideoDirsRequest,
-    project_util: ProjectUtil = Depends(deps.project_util),
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> None:
-    """Remember which videos* folders this project skips. Nothing is deleted."""
+    """Remember which videos* folders this project skips until the app stops."""
     project = project_info_getter(request.projectKey)
     data_dir = project.paths.data_dir.resolve()
     cleaned: list[str] = []
@@ -456,8 +460,7 @@ def set_ignored_video_dirs(
         if name not in seen:
             seen.add(name)
             cleaned.append(name)
-    updated = project.paths.model_copy(update={"ignored_video_dirs": cleaned})
-    project_util.update_project_paths(request.projectKey, updated)
+    remember_ignored_video_dirs(request.projectKey, cleaned)
 
 
 @router.post("/app/v0/rpc/RegisterExistingProject")

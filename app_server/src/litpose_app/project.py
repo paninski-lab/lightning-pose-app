@@ -67,14 +67,6 @@ class ProjectUtil:
             del projects_toml_dict[str(project_key)]
         else:
             dumped = projectpaths.model_dump(mode="json", exclude_unset=True)
-            previous = projects_toml_dict.get(str(project_key))
-            # Path updates construct ProjectPaths without this list. Keep it.
-            if (
-                "ignored_video_dirs" not in dumped
-                and isinstance(previous, dict)
-                and "ignored_video_dirs" in previous
-            ):
-                dumped["ignored_video_dirs"] = previous["ignored_video_dirs"]
             projects_toml_dict[str(project_key)] = dumped
         self._write_projects_toml(projects_toml_dict)
 

@@ -13,7 +13,7 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 **File Manager**
 
 * **Screen:** **File Manager** is in the top screen list only (`/project/<key>/files`). It is not a card on the project home screen. The page has five panels: **Label Data (CSV)**, **Videos**, **Labeled Image Folders**, **Models**, and **Camera Calibration**. Each panel starts with a collapsed **Help** chip.
-* **Videos:** **Video directories (`videos*/`)** sits above the folder checkboxes. Unchecked folders stay on disk and are left out of the app. **Add Video** opens Import Session. **Check** and **Process** still convert videos to all-intra in place.
+* **Videos:** **Video directories (`videos*/`)** sits above the folder checkboxes. Unchecked folders stay on disk and are left out of the app until it restarts. **Add Video** opens Import Session. **Check** and **Process** still convert videos to all-intra in place.
 * **Adding files:** **Add Label File** and **Add Model** copy into the project and leave an existing file or folder unchanged. **Add Calibration** asks for a project file or session files. A project file is renamed to `calibration.toml`. A session file is copied into `calibrations/`. If that destination already exists, the dialog asks before replacing it. On a single-view project, Camera Calibration says it is not used and the rest of that panel is disabled.
 * **Buttons:** The **Add** button is green and is the leftmost button on its row. The other File Manager buttons are blue. **Delete Selected** is red and requires typing the model path.
 

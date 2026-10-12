@@ -25,6 +25,7 @@ from pydantic import BaseModel
 from .. import deps
 from ..datatypes import Project
 from ..deps import ProjectInfoGetter
+from ..ignored_video_dirs import ignored_video_dirs
 from ..paths.project_videos import iter_project_mp4s
 from ..utils.gpu_lock import gpu_lock_blocking, read_gpu_task
 
@@ -310,7 +311,7 @@ def _build_infer_plan(
             normal_model_dirs.append(model_dir)
 
     # Compute session → video paths mapping
-    ignored = set(project.paths.ignored_video_dirs)
+    ignored = set(ignored_video_dirs(project.project_key))
     if video_relative_paths:
         explicit_videos = []
         for rel in video_relative_paths:
@@ -329,7 +330,7 @@ def _build_infer_plan(
             sess_to_vids.setdefault(session, []).append(vp)
     else:
         sess_to_vids = _session_to_videos(
-            data_base, view_names, project.paths.ignored_video_dirs
+            data_base, view_names, ignored_video_dirs(project.project_key)
         )
         target_sessions = list(sess_to_vids.keys()) if sessions == ["all"] else sessions
 
