@@ -1,4 +1,4 @@
-import { LKeypoint } from './types';
+import { LKeypoint, lkp } from './types';
 import _ from 'lodash';
 
 export interface MVFrame {
@@ -62,6 +62,43 @@ export class MVFUtils {
       throw new Error('No views available in MVFrame');
     }
     return this.mvFrame.views.some((view) => fv(view).hasChanges);
+  }
+
+  /** Edits that Revert can undo. Unlabeled frames count only placed points,
+   * because originalKeypoints is null even when every point is still empty. */
+  get hasRevertibleEdits(): boolean {
+    if (!this.mvFrame.views.length) {
+      throw new Error('No views available in MVFrame');
+    }
+    if (this.isFromUnlabeledSet) {
+      return this.mvFrame.views.some((view) =>
+        view.keypoints.some((kp) => !lkp(kp).isNaN()),
+      );
+    }
+    return this.hasChanges;
+  }
+
+  /** Labeled frames return to the saved points. Unlabeled frames drop every
+   * point and stay out of the label file. */
+  revertEdits(): void {
+    if (!this.mvFrame.views.length) {
+      throw new Error('No views available in MVFrame');
+    }
+    if (this.isFromUnlabeledSet) {
+      for (const view of this.mvFrame.views) {
+        view.keypoints = view.keypoints.map((kp) => ({
+          ...kp,
+          x: NaN,
+          y: NaN,
+        }));
+      }
+      return;
+    }
+    for (const view of this.mvFrame.views) {
+      const saved = view.originalKeypoints;
+      if (!saved) continue;
+      view.keypoints = structuredClone(saved);
+    }
   }
 
   /** Returns the version that would result on save:

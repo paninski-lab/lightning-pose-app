@@ -62,6 +62,9 @@ export class ServerVideoPickerComponent {
   /** Singular noun used in the empty state and the confirm button. */
   noun = input('video');
 
+  /** When true, confirm selects the current folder instead of files. */
+  chooseDirectory = input(false);
+
   chosen = output<ServerVideoChoice[]>();
   dismissed = output<void>();
 
@@ -131,6 +134,12 @@ export class ServerVideoPickerComponent {
   }
 
   protected confirm() {
+    if (this.chooseDirectory()) {
+      const current = this.path();
+      const name = current.split('/').filter(Boolean).at(-1) ?? current;
+      this.chosen.emit([{ path: current, name, size: 0 }]);
+      return;
+    }
     this.chosen.emit([...this.picked().values()]);
   }
 
@@ -178,6 +187,7 @@ export class ServerVideoPickerComponent {
           });
           continue;
         }
+        if (this.chooseDirectory()) continue;
         if (!hasExtension(name, extensions)) continue;
         listed.push({
           name,

@@ -66,6 +66,7 @@ def test_import_calibration_creates_folder_and_copies_toml(
 ):
     """A server .toml is copied into a new calibrations/ directory.
 
+    The copy of a file CameraGroup cannot load still succeeds and reports a format issue.
     A second import of the same name returns 409 and leaves the first file unchanged.
     """
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
@@ -79,6 +80,7 @@ def test_import_calibration_creates_folder_and_copies_toml(
     payload = {"projectKey": "demo", "serverPath": str(source)}
     first = client.post("/app/v0/rpc/importCalibrationFile", json=payload)
     assert first.status_code == 200, first.text
+    assert first.json()["issues"]
     copied = data_dir / "calibrations" / "sess.toml"
     assert copied.read_text() == original
     assert source.is_file()
@@ -89,3 +91,51 @@ def test_import_calibration_creates_folder_and_copies_toml(
     assert second.status_code == 409, second.text
     assert copied.read_text() == original
     assert source.read_text() == "changed = true\n"
+
+
+def test_import_label_and_model_copy_without_overwrite(
+    client: TestClient, register_project, tmp_path: Path, monkeypatch
+):
+    """A label CSV and a model folder are copied in, and a second copy does not replace them."""
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    data_dir = register_project("demo", views=["bot"], keypoints=["nose"])
+    image = data_dir / "labeled-data" / "sess_bot" / "img0001.png"
+    image.parent.mkdir(parents=True)
+    image.write_bytes(b"png")
+    label_src = tmp_path / "incoming" / "CollectedData_bot.csv"
+    label_src.parent.mkdir()
+    label_body = (
+        "scorer,s,s\n"
+        "bodyparts,nose,nose\n"
+        "coords,x,y\n"
+        "labeled-data/sess_bot/img0001.png,1,2\n"
+    )
+    label_src.write_text(label_body)
+
+    label_payload = {"projectKey": "demo", "serverPath": str(label_src)}
+    first_label = client.post("/app/v0/rpc/importLabelFile", json=label_payload)
+    assert first_label.status_code == 200, first_label.text
+    copied_label = data_dir / "CollectedData_bot.csv"
+    assert copied_label.read_text() == label_body
+    assert label_src.is_file()
+
+    label_src.write_text("changed\n")
+    second_label = client.post("/app/v0/rpc/importLabelFile", json=label_payload)
+    assert second_label.status_code == 409, second_label.text
+    assert copied_label.read_text() == label_body
+
+    model_src = tmp_path / "incoming" / "model_a"
+    model_src.mkdir()
+    (model_src / "config.yaml").write_text("model: demo\n")
+    model_payload = {"projectKey": "demo", "serverPath": str(model_src)}
+    first_model = client.post("/app/v0/rpc/importModelDirectory", json=model_payload)
+    assert first_model.status_code == 200, first_model.text
+    copied_config = data_dir / "models" / "model_a" / "config.yaml"
+    assert copied_config.read_text() == "model: demo\n"
+    assert (model_src / "config.yaml").is_file()
+
+    (model_src / "config.yaml").write_text("model: changed\n")
+    second_model = client.post("/app/v0/rpc/importModelDirectory", json=model_payload)
+    assert second_model.status_code == 409, second_model.text
+    assert copied_config.read_text() == "model: demo\n"
+    assert (model_src / "config.yaml").read_text() == "model: changed\n"

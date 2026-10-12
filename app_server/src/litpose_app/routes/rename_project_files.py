@@ -1,4 +1,4 @@
-"""Rename project files, and copy calibration .toml files into calibrations/."""
+"""Rename project files, and copy calibration, label, and model files into a project."""
 
 from __future__ import annotations
 
@@ -16,9 +16,14 @@ from litpose_app.datatypes import Project
 from litpose_app.deps import ProjectInfoGetter
 from litpose_app.routes.rglob import _rglob
 from litpose_app.routes.validate_files import (
+    _MODEL_NAME_RE,
+    _inspect_label_table,
     _label_filename_issue,
+    _label_header_issue,
     _session_stem_issue,
     _under,
+    _validate_one_model,
+    calibration_file_issues,
 )
 
 router = APIRouter()
@@ -210,6 +215,14 @@ def rename_calibration_file(
     return RenamePathResponse(ok=True, path=str(dest))
 
 
+class ImportCalibrationResponse(BaseModel):
+    """A copied calibration file and the camera-group problems found in it."""
+
+    ok: bool
+    path: str
+    issues: list[str] = []
+
+
 class ImportCalibrationFileRequest(BaseModel):
     """Copy one server .toml into calibrations/."""
 
@@ -285,18 +298,28 @@ def _server_toml(server_path: str) -> Path:
     return src
 
 
+def _imported_calibration(project: Project, dest: Path) -> ImportCalibrationResponse:
+    """The file is already on disk. Report the same problems Validate All would."""
+    views = list(project.config.view_names)
+    return ImportCalibrationResponse(
+        ok=True,
+        path=str(dest),
+        issues=calibration_file_issues(dest, views),
+    )
+
+
 @router.post("/app/v0/rpc/importCalibrationFile")
 def import_calibration_file(
     request: ImportCalibrationFileRequest,
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
-) -> RenamePathResponse:
+) -> ImportCalibrationResponse:
     """Copy a server .toml into calibrations/<filename>. Does not move or delete the source."""
     project = project_info_getter(request.projectKey)
     src = _server_toml(request.serverPath)
     dest = _new_calibration_path(project.paths.data_dir, src.name)
     with src.open("rb") as inp:
         _copy_into_new_file(dest, inp)
-    return RenamePathResponse(ok=True, path=str(dest))
+    return _imported_calibration(project, dest)
 
 
 @router.post("/app/v0/rpc/importCalibrationUpload")
@@ -304,13 +327,13 @@ def import_calibration_upload(
     projectKey: str = Form(...),
     file: UploadFile = File(...),
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
-) -> RenamePathResponse:
+) -> ImportCalibrationResponse:
     """Upload a local .toml into calibrations/<filename>."""
     project = project_info_getter(projectKey)
     filename = Path(file.filename or "").name
     dest = _new_calibration_path(project.paths.data_dir, filename)
     _copy_into_new_file(dest, file.file)
-    return RenamePathResponse(ok=True, path=str(dest))
+    return _imported_calibration(project, dest)
 
 
 @router.post("/app/v0/rpc/renameLabeledDataFolder")
@@ -388,3 +411,252 @@ def rename_labeled_data_folder(
             status_code=500, detail="Could not update label CSV paths."
         ) from exc
     return RenamePathResponse(ok=True, path=str(dest))
+
+
+class ImportedFileResponse(BaseModel):
+    """A copied label file or model folder, plus the problems found in it."""
+
+    ok: bool
+    path: str
+    issues: list[str] = []
+
+
+class ImportServerPathRequest(BaseModel):
+    """Copy one server file or folder into the project."""
+
+    projectKey: str
+    serverPath: str
+
+
+def _server_csv(server_path: str) -> Path:
+    """Resolve a .csv file that stays under the home directory."""
+    src = Path(server_path).expanduser().resolve()
+    home = Path.home().resolve()
+    try:
+        src.relative_to(home)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="Choose a .csv file under the home directory.",
+        ) from exc
+    if not src.is_file() or src.suffix.lower() != ".csv":
+        raise HTTPException(
+            status_code=400,
+            detail="Choose a .csv file under the home directory.",
+        )
+    return src
+
+
+def _new_label_path(data_dir: Path, filename: str, views: list[str]) -> Path:
+    """Return data_dir/<filename> when the CollectedData name is free."""
+    name = Path(filename).name
+    issue = _label_filename_issue(name, views)
+    if issue or not name.lower().endswith(".csv"):
+        raise HTTPException(
+            status_code=400,
+            detail=issue or "Expected a CollectedData CSV filename.",
+        )
+    dest = data_dir / name
+    if dest.exists():
+        raise HTTPException(
+            status_code=409, detail="A file with that name already exists."
+        )
+    return dest
+
+
+def _label_copy_issues(project: Project, dest: Path) -> list[str]:
+    """Header and index problems. A keypoint mismatch stays a warning."""
+    header = _label_header_issue(dest)
+    if header:
+        return [header]
+    issues, _warnings = _inspect_label_table(
+        dest,
+        project.paths.data_dir,
+        list(project.config.keypoint_names),
+    )
+    return issues
+
+
+def _imported_label(project: Project, dest: Path) -> ImportedFileResponse:
+    return ImportedFileResponse(
+        ok=True,
+        path=dest.name,
+        issues=_label_copy_issues(project, dest),
+    )
+
+
+@router.post("/app/v0/rpc/importLabelFile")
+def import_label_file(
+    request: ImportServerPathRequest,
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+) -> ImportedFileResponse:
+    """Copy a server CSV onto the data-directory root. Does not move the source."""
+    project = project_info_getter(request.projectKey)
+    src = _server_csv(request.serverPath)
+    dest = _new_label_path(
+        project.paths.data_dir, src.name, list(project.config.view_names)
+    )
+    with src.open("rb") as inp:
+        _copy_into_new_file(dest, inp)
+    return _imported_label(project, dest)
+
+
+@router.post("/app/v0/rpc/importLabelUpload")
+def import_label_upload(
+    projectKey: str = Form(...),
+    file: UploadFile = File(...),
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+) -> ImportedFileResponse:
+    """Upload a local CSV onto the data-directory root."""
+    project = project_info_getter(projectKey)
+    filename = Path(file.filename or "").name
+    dest = _new_label_path(
+        project.paths.data_dir, filename, list(project.config.view_names)
+    )
+    _copy_into_new_file(dest, file.file)
+    return _imported_label(project, dest)
+
+
+def _server_directory(server_path: str) -> Path:
+    """Resolve a directory that stays under the home directory."""
+    src = Path(server_path).expanduser().resolve()
+    home = Path.home().resolve()
+    try:
+        src.relative_to(home)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="Choose a folder under the home directory.",
+        ) from exc
+    if not src.is_dir():
+        raise HTTPException(
+            status_code=400,
+            detail="Choose a folder under the home directory.",
+        )
+    return src
+
+
+def _path_inside(parent: Path, child: Path) -> bool:
+    try:
+        child.resolve().relative_to(parent.resolve())
+    except ValueError:
+        return False
+    return child.resolve() != parent.resolve()
+
+
+def _new_model_dir(model_dir: Path, folder_name: str, source: Path | None) -> Path:
+    """Return model_dir/<folder name> when that folder does not already exist."""
+    name = folder_name.strip()
+    if (
+        not name
+        or name in {".", ".."}
+        or "/" in name
+        or "\\" in name
+        or _MODEL_NAME_RE.fullmatch(name) is None
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Directory name must match the create-model rule "
+                "(letters, digits, and . _ -)."
+            ),
+        )
+    root = model_dir.resolve()
+    dest = (root / name).resolve()
+    try:
+        dest.relative_to(root)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="Choose a model folder inside the model directory.",
+        ) from exc
+    if source is not None:
+        src = source.resolve()
+        # Dest inside the source would make copytree recurse.
+        if src == dest or _path_inside(dest, src) or _path_inside(src, dest):
+            raise HTTPException(
+                status_code=400,
+                detail="Choose a folder outside the destination.",
+            )
+    if dest.exists():
+        raise HTTPException(
+            status_code=409,
+            detail="A model folder with that name already exists.",
+        )
+    root.mkdir(parents=True, exist_ok=True)
+    return dest
+
+
+def _model_upload_rels(filenames: list[str]) -> tuple[str, list[Path]]:
+    """Return the shared folder name and paths that stay inside that folder."""
+    folder: str | None = None
+    rels: list[Path] = []
+    for raw in filenames:
+        text = raw.replace("\\", "/").strip().lstrip("/")
+        path = Path(text)
+        parts = path.parts
+        if (
+            not text
+            or path.is_absolute()
+            or any(part in {"", ".", ".."} for part in parts)
+            or len(parts) < 2
+        ):
+            raise HTTPException(
+                status_code=400, detail="Choose files inside one model folder."
+            )
+        if folder is None:
+            folder = parts[0]
+        elif parts[0] != folder:
+            raise HTTPException(
+                status_code=400, detail="Choose files inside one model folder."
+            )
+        rels.append(Path(*parts))
+    if folder is None:
+        raise HTTPException(status_code=400, detail="Choose a model folder.")
+    return folder, rels
+
+
+def _imported_model(project: Project, dest: Path) -> ImportedFileResponse:
+    check = _validate_one_model(dest, list(project.config.view_names))
+    return ImportedFileResponse(ok=True, path=dest.name, issues=check.issues)
+
+
+@router.post("/app/v0/rpc/importModelDirectory")
+def import_model_directory(
+    request: ImportServerPathRequest,
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+) -> ImportedFileResponse:
+    """Copy a server directory to model_dir/<folder name>. Does not move the source."""
+    project = project_info_getter(request.projectKey)
+    src = _server_directory(request.serverPath)
+    dest = _new_model_dir(project.paths.model_dir, src.name, src)
+    try:
+        shutil.copytree(src, dest)
+    except Exception:
+        if dest.exists():
+            shutil.rmtree(dest, ignore_errors=True)
+        raise
+    return _imported_model(project, dest)
+
+
+@router.post("/app/v0/rpc/importModelUpload")
+def import_model_upload(
+    projectKey: str = Form(...),
+    files: list[UploadFile] = File(...),
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+) -> ImportedFileResponse:
+    """Upload a local model folder into model_dir/<folder name>."""
+    project = project_info_getter(projectKey)
+    folder, rels = _model_upload_rels([upload.filename or "" for upload in files])
+    dest = _new_model_dir(project.paths.model_dir, folder, None)
+    dest.mkdir()
+    try:
+        for upload, rel in zip(files, rels, strict=True):
+            target = (dest / Path(*rel.parts[1:])).resolve()
+            target.relative_to(dest.resolve())
+            target.parent.mkdir(parents=True, exist_ok=True)
+            _copy_into_new_file(target, upload.file)
+    except Exception:
+        shutil.rmtree(dest, ignore_errors=True)
+        raise
+    return _imported_model(project, dest)

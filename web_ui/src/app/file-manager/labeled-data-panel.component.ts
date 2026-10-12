@@ -41,15 +41,37 @@ const FRAME_NAME = /[A-Za-z_-]+\d+\.(png|jpg)$/;
     <section class="card bg-base-200">
       <div class="card-body gap-3">
         <h2 class="card-title">Labeled Image Folders</h2>
-        <p class="text-sm m-0">
-          This panel shows session folders inside <code>labeled-data/</code>,
-          with a count of frame images in each folder. A folder name is usually
-          <code>session</code> or <code>session_view</code>, and a frame is
-          usually named like <code>img000123.png</code>.
-          <strong>Validate All</strong> looks at those names.
-          <strong>Rename Selected</strong> changes the name of the selected
-          folder and updates label CSV paths that point at it.
-        </p>
+        <input
+          type="checkbox"
+          id="app-accordion-fm-labeled-data"
+          class="app-accordion-toggle"
+        />
+        <label
+          for="app-accordion-fm-labeled-data"
+          class="app-accordion-title app-help-toggle text-sm"
+        >
+          <span class="app-accordion-icon" aria-hidden="true"></span>
+          <span>Help</span>
+        </label>
+        <div class="app-accordion-content text-sm">
+          <p class="m-0">
+            This panel shows session folders inside <code>labeled-data/</code>,
+            with a count of frame images in each folder. A folder name is
+            usually <code>session</code> or <code>session_view</code>, and a
+            frame is usually named like <code>img000123.png</code>.
+          </p>
+          <ul class="m-0 mt-2 flex list-disc flex-col gap-1 pl-5">
+            <li><strong>Refresh</strong> reloads this list.</li>
+            <li>
+              <strong>Validate All</strong> looks at the folder and frame
+              names.
+            </li>
+            <li>
+              <strong>Rename Selected</strong> changes the name of the selected
+              folder and updates label CSV paths that point at it.
+            </li>
+          </ul>
+        </div>
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex flex-wrap gap-2">
             <button

@@ -1,10 +1,17 @@
 """Validation reports for project file sectors."""
 
+import tomli
+import tomli_w
 from fastapi.testclient import TestClient
 
 
-def test_validate_label_csv_flags_bad_header(client: TestClient, register_project):
-    """A CollectedData_<view>.csv with a bad header is reported; a well-formed one is not."""
+def test_validate_label_csv_flags_bad_header(
+    client: TestClient, register_project, override_config
+):
+    """A CollectedData_<view>.csv with a bad header is reported; a well-formed one is not.
+
+    A CSV under data_dir/models is omitted even when the project model directory is elsewhere.
+    """
     data_dir = register_project("demo", views=["bot"], keypoints=["nose"])
     image = data_dir / "labeled-data" / "sess_bot" / "img0001.png"
     image.parent.mkdir(parents=True)
@@ -16,6 +23,13 @@ def test_validate_label_csv_flags_bad_header(client: TestClient, register_projec
         "labeled-data/sess_bot/img0001.png,1,2\n"
     )
     (data_dir / "CollectedData_bot_test.csv").write_text("a,b\n1,2\n")
+    model_copy = data_dir / "models" / "model_0" / "CollectedData_bot.csv"
+    model_copy.parent.mkdir(parents=True)
+    model_copy.write_text("scorer\nbodyparts\ncoords\n")
+    projects_path = override_config.PROJECTS_TOML_PATH
+    projects = tomli.loads(projects_path.read_text())
+    projects["demo"]["model_dir"] = str(data_dir.parent / "other-models")
+    projects_path.write_text(tomli_w.dumps(projects))
 
     resp = client.post(
         "/app/v0/rpc/validateProjectFiles",
@@ -25,6 +39,7 @@ def test_validate_label_csv_flags_bad_header(client: TestClient, register_projec
     items = {item["path"]: item for item in resp.json()["items"]}
     assert items["CollectedData_bot.csv"]["issues"] == []
     assert items["CollectedData_bot_test.csv"]["issues"]
+    assert "models/model_0/CollectedData_bot.csv" not in items
 
 
 def test_validate_calibration_toml_flags_missing_camera_field(

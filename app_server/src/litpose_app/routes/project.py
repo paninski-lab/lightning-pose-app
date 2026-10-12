@@ -23,9 +23,9 @@ from litpose_app.migrations import run_migrations_for_project
 from litpose_app.paths.project_videos import iter_project_mp4s
 from litpose_app.project import ProjectUtil
 from litpose_app.project_deletion import paths_to_delete, reject_forbidden_project_paths
-from litpose_app.routes.labeler.find_label_files import _check_label_file_headers
 from litpose_app.routes.models import read_models_l1_from_base
 from litpose_app.routes.rglob import _rglob
+from litpose_app.routes.validate_files import _label_header_issue
 from litpose_app.skeleton import skeleton_problems
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
 
@@ -251,7 +251,7 @@ def _fetch_all_stats(
 
         valid_label_files = []
         for p in candidate_csv_paths:
-            if _check_label_file_headers(p, data_dir):
+            if _label_header_issue(data_dir / p) is None:
                 valid_label_files.append(data_dir / p)
 
         label_files_stats_raw = []

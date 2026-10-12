@@ -11,18 +11,19 @@
       This will permanently delete the model's directory containing its
       configuration, weights, and prediction outputs.
     </p>
-    <div class="flex gap-2">
+    <div class="flex flex-col gap-2">
+      <label class="text-sm" for="delete-model-confirm">
+        Type <code>{{ modelRelativePath() }}</code> to confirm permanent
+        deletion
+      </label>
       <input
-        id="deleteConfirmation"
-        name="deleteConfirmation"
-        type="checkbox"
-        class="checkbox"
-        [(ngModel)]="deleteConfirmation"
+        id="delete-model-confirm"
+        type="text"
+        class="input input-bordered w-full"
+        [ngModel]="deleteConfirmation()"
+        (ngModelChange)="deleteConfirmation.set($event)"
+        [attr.aria-label]="'Type ' + modelRelativePath() + ' to confirm'"
       />
-      <label for="deleteConfirmation" class="cursor-pointer"
-        >I want to permanently delete
-        <code>{{ modelRelativePath() }}</code></label
-      >
     </div>
   </div>
 
@@ -31,7 +32,7 @@
     <button
       class="btn btn-primary"
       (click)="handleDelete()"
-      [disabled]="!deleteConfirmation()"
+      [disabled]="deleteConfirmation() !== modelRelativePath()"
     >
       Delete Permanently
     </button>

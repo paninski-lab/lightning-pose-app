@@ -25,6 +25,8 @@ _NAME_RE = re.compile(r"^[A-Za-z0-9_.\-]+$")
 _MODEL_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9-._]+$")
 _FRAME_RE = re.compile(r"[A-Za-z_-]+\d+\.(png|jpg)\Z")
 _LABEL_INDEX_RE = re.compile(r"labeled-data/[^/]+/[A-Za-z_-]+\d+\.(png|jpg)\Z")
+# Pandas rewrites a repeated scorer as rick, rick.1, rick.2.
+_PANDAS_SCORER_SUFFIX_RE = re.compile(r"\.\d+\Z")
 _ISSUE_LIMIT = 8
 
 
@@ -120,10 +122,10 @@ def _keypoint_warning(bodyparts: set[str], keypoints: list[str]) -> str | None:
 
 
 def _label_header_issue(full: Path) -> str | None:
-    """Return a format problem, or None when each bodypart has x and y.
+    """Return a format problem, or None when each scorer and bodypart has x and y.
 
-    Scorer names are often uniquified (``rick``, ``rick.1``) when a file is
-    saved, so x and y for one bodypart may not share a scorer string.
+    A trailing pandas suffix on the scorer (``rick.1``) is ignored, so ``rick``
+    and ``rick.1`` count as the same scorer. The file is not rewritten.
     """
     message = (
         "Not a label CSV: need 3 header rows (scorer, bodyparts, coords) "
@@ -136,18 +138,22 @@ def _label_header_issue(full: Path) -> str | None:
         return message
     if not isinstance(df.columns, pd.MultiIndex) or df.columns.nlevels != 3:
         return message
-    coords_by_bodypart: dict[str, set[str]] = {}
+    coords_by_pair: dict[tuple[str, str], set[str]] = {}
     for col in df.columns:
         if col[2] not in ("x", "y"):
             continue
-        coords_by_bodypart.setdefault(str(col[1]), set()).add(str(col[2]))
-    if not coords_by_bodypart:
+        scorer = _PANDAS_SCORER_SUFFIX_RE.sub("", str(col[0]), count=1)
+        bodypart = str(col[1])
+        coords_by_pair.setdefault((scorer, bodypart), set()).add(str(col[2]))
+    if not coords_by_pair:
         return message
-    incomplete = [
-        name
-        for name, coords in coords_by_bodypart.items()
-        if coords != {"x", "y"}
-    ]
+    incomplete: list[str] = []
+    seen: set[str] = set()
+    for (_scorer, bodypart), coords in coords_by_pair.items():
+        if coords == {"x", "y"} or bodypart in seen:
+            continue
+        seen.add(bodypart)
+        incomplete.append(bodypart)
     if incomplete:
         shown = ", ".join(incomplete[:_ISSUE_LIMIT])
         return f"Bodyparts missing x or y: {shown}."
@@ -218,7 +224,9 @@ def _validate_labels(project: Project) -> list[FileCheck]:
     for entry in entries:
         rel = Path(entry["path"])
         full = data_dir / rel
-        if model_dir is not None and _under(full, model_dir):
+        if _under(full, data_dir / "models") or (
+            model_dir is not None and _under(full, model_dir)
+        ):
             continue
         issues: list[str] = []
         warnings: list[str] = []
@@ -350,6 +358,21 @@ def _validate_one_model(model_path: Path, views: list[str]) -> FileCheck:
     return FileCheck(path=rel, issues=issues)
 
 
+def calibration_file_issues(path: Path, views: list[str]) -> list[str]:
+    """Load one calibration file and compare its camera names with the project views."""
+    try:
+        group = CameraGroup.load(str(path))
+        names = [str(name) for name in group.get_names()]
+    except Exception as exc:
+        return [f"Could not read calibration: {exc}"]
+    if views and names != views:
+        return [
+            "Camera names must match project views in order "
+            f"({', '.join(views)}). Found {', '.join(names) or 'none'}."
+        ]
+    return []
+
+
 def _validate_calibrations(project: Project) -> list[FileCheck]:
     """Check calibration.toml and calibrations/*.toml. Backups are not listed."""
     data_dir = project.paths.data_dir
@@ -366,19 +389,12 @@ def _validate_calibrations(project: Project) -> list[FileCheck]:
     items: list[FileCheck] = []
     for path in paths:
         rel = path.relative_to(data_dir).as_posix()
-        issues: list[str] = []
-        try:
-            group = CameraGroup.load(str(path))
-            names = [str(name) for name in group.get_names()]
-        except Exception as exc:
-            issues.append(f"Could not read calibration: {exc}")
-        else:
-            if views and names != views:
-                issues.append(
-                    "Camera names must match project views in order "
-                    f"({', '.join(views)}). Found {', '.join(names) or 'none'}."
-                )
-        items.append(FileCheck(path=rel, issues=issues))
+        items.append(
+            FileCheck(
+                path=rel,
+                issues=calibration_file_issues(path, views),
+            )
+        )
     return items
 
 

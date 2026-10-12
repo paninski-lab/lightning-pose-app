@@ -43,29 +43,66 @@ const SESSION_STEM = /^[A-Za-z0-9_.-]+$/;
     <section class="card bg-base-200">
       <div class="card-body gap-3">
         <h2 class="card-title">Camera Calibration</h2>
-        <p class="text-sm m-0">
-          This panel shows the camera calibration files used for multiview
-          projects. A session file is
-          <code>calibrations/&lt;session&gt;.toml</code>, where the session is
-          the labeled-data folder name before the last
-          <code>_</code>. The project file is <code>calibration.toml</code> in
-          the data directory. Files in <code>calibrations/backups/</code> are
-          not listed. <strong>Load Calibration</strong> copies
-          <code>.toml</code> files into <code>calibrations/</code>, creating
-          that folder when it is missing. The name before
-          <code>.toml</code> is the session id. An existing file is left
-          unchanged. <strong>Validate All</strong> checks that each file loads
-          as a camera group, and that the camera names match the project views
-          in order. <strong>Rename Selected</strong> changes the session id of
-          a file in <code>calibrations/</code>. <code>calibration.toml</code>
-          keeps its name.
-        </p>
+        @if (!isMultiview()) {
+          <p class="text-sm m-0">
+            This project is single-view, so camera calibration is not used.
+          </p>
+        }
+        <div
+          class="flex flex-col gap-3"
+          [class.pointer-events-none]="!isMultiview()"
+          [class.opacity-50]="!isMultiview()"
+          [attr.aria-disabled]="isMultiview() ? null : true"
+        >
+        <input
+          type="checkbox"
+          id="app-accordion-fm-calibration"
+          class="app-accordion-toggle"
+        />
+        <label
+          for="app-accordion-fm-calibration"
+          class="app-accordion-title app-help-toggle text-sm"
+        >
+          <span class="app-accordion-icon" aria-hidden="true"></span>
+          <span>Help</span>
+        </label>
+        <div class="app-accordion-content text-sm">
+          <p class="m-0">
+            This panel shows the camera calibration files used for multiview
+            projects. A session file is
+            <code>calibrations/&lt;session&gt;.toml</code>, where the session
+            is the labeled-data folder name before the last <code>_</code>.
+            The project file is <code>calibration.toml</code> in the data
+            directory. Files in <code>calibrations/backups/</code> are not
+            listed.
+          </p>
+          <ul class="m-0 mt-2 flex list-disc flex-col gap-1 pl-5">
+            <li><strong>Refresh</strong> reloads this list.</li>
+            <li>
+              <strong>Load Calibration</strong> copies
+              <code>.toml</code> files into <code>calibrations/</code>,
+              creating that folder when it is missing. The name before
+              <code>.toml</code> is the session id. An existing file is left
+              unchanged.
+            </li>
+            <li>
+              <strong>Validate All</strong> checks that each file loads as a
+              camera group, and that the camera names match the project views
+              in order.
+            </li>
+            <li>
+              <strong>Rename Selected</strong> changes the session id of a
+              file in <code>calibrations/</code>.
+              <code>calibration.toml</code> keeps its name.
+            </li>
+          </ul>
+        </div>
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex flex-wrap gap-2">
             <button
               type="button"
               class="btn btn-sm btn-primary"
-              [disabled]="loading() || validating()"
+              [disabled]="!isMultiview() || loading() || validating()"
               (click)="refresh()"
             >
               Refresh
@@ -73,7 +110,7 @@ const SESSION_STEM = /^[A-Za-z0-9_.-]+$/;
             <button
               type="button"
               class="btn btn-sm btn-primary"
-              [disabled]="loading() || validating()"
+              [disabled]="!isMultiview() || loading() || validating()"
               (click)="loadOpen.set(true)"
             >
               Load Calibration
@@ -81,7 +118,9 @@ const SESSION_STEM = /^[A-Za-z0-9_.-]+$/;
             <button
               type="button"
               class="btn btn-sm btn-primary"
-              [disabled]="loading() || validating() || rows().length === 0"
+              [disabled]="
+                !isMultiview() || loading() || validating() || rows().length === 0
+              "
               (click)="validateFiles()"
             >
               Validate All
@@ -91,7 +130,7 @@ const SESSION_STEM = /^[A-Za-z0-9_.-]+$/;
             <button
               type="button"
               class="btn btn-sm btn-primary"
-              [disabled]="!canRename() || loading() || validating()"
+              [disabled]="!isMultiview() || !canRename() || loading() || validating()"
               (click)="openRename()"
             >
               Rename Selected
@@ -105,6 +144,7 @@ const SESSION_STEM = /^[A-Za-z0-9_.-]+$/;
           (rowSelected)="selectedPath.set($event)"
           empty="No calibration.toml or session calibration files."
         />
+        </div>
       </div>
     </section>
 
@@ -160,6 +200,9 @@ export class CalibrationFilesPanelComponent implements OnInit {
   protected renameOpen = signal(false);
   protected renameValue = signal('');
   protected loadOpen = signal(false);
+  protected isMultiview = computed(
+    () => (this.projectInfo.projectContext()?.projectInfo?.views?.length ?? 0) > 1,
+  );
 
   protected canRename = computed(() => isSessionCalibration(this.selectedPath()));
 
@@ -172,9 +215,11 @@ export class CalibrationFilesPanelComponent implements OnInit {
     return this.renameValue().trim() === current;
   });
 
-  protected onLoadDone(saved: boolean) {
+  protected async onLoadDone(saved: boolean) {
     this.loadOpen.set(false);
-    if (saved) void this.refresh();
+    if (!saved) return;
+    await this.refresh();
+    await this.validateFiles();
   }
 
   ngOnInit() {

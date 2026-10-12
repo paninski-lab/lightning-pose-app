@@ -19,6 +19,7 @@ import {
   FileCheckTableComponent,
   FileCheckRow,
 } from './file-check-table.component';
+import { LoadLabelDialogComponent } from './load-label-dialog.component';
 import {
   FileCheckResult,
   isUnderDir,
@@ -35,21 +36,51 @@ import {
     AlertDialogComponent,
     AlertHeaderComponent,
     AlertFooterComponent,
+    LoadLabelDialogComponent,
   ],
   template: `
     <section class="card bg-base-200">
       <div class="card-body gap-3">
         <h2 class="card-title">Label Data (CSV)</h2>
-        <p class="text-sm m-0">
-          This panel shows CSV files in the data directory, other than files in
-          the model directory. A label file is usually
-          <code>CollectedData.csv</code>, <code>CollectedData_test.csv</code>,
-          or <code>CollectedData_&lt;view&gt;.csv</code>. <strong>Validate All</strong>
-          looks at the filename, the three header rows, and whether each row
-          points to a frame in <code>labeled-data/</code>.
-          <strong>Rename Selected</strong> changes the name of the selected
-          file in its current folder.
-        </p>
+        <input
+          type="checkbox"
+          id="app-accordion-fm-labels"
+          class="app-accordion-toggle"
+        />
+        <label
+          for="app-accordion-fm-labels"
+          class="app-accordion-title app-help-toggle text-sm"
+        >
+          <span class="app-accordion-icon" aria-hidden="true"></span>
+          <span>Help</span>
+        </label>
+        <div class="app-accordion-content text-sm">
+          <p class="m-0">
+            This panel shows CSV files in the data directory, excluding files
+            in the model directory. A label file is usually
+            <code>CollectedData.csv</code>,
+            <code>CollectedData_test.csv</code>, or
+            <code>CollectedData_&lt;view&gt;.csv</code>.
+          </p>
+          <ul class="m-0 mt-2 flex list-disc flex-col gap-1 pl-5">
+            <li><strong>Refresh</strong> reloads this list.</li>
+            <li>
+              <strong>Load Label File</strong> copies CollectedData CSV files
+              into the data directory. A local file is uploaded, and a server
+              file is copied. The source file stays where it is. An existing
+              file is left unchanged.
+            </li>
+            <li>
+              <strong>Validate All</strong> looks at the filename, the three
+              header rows, and whether each row points to a frame in
+              <code>labeled-data/</code>.
+            </li>
+            <li>
+              <strong>Rename Selected</strong> changes the name of the selected
+              file in its current folder.
+            </li>
+          </ul>
+        </div>
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex flex-wrap gap-2">
             <button
@@ -59,6 +90,14 @@ import {
               (click)="refresh()"
             >
               Refresh
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-primary"
+              [disabled]="loading() || validating()"
+              (click)="loadOpen.set(true)"
+            >
+              Load Label File
             </button>
             <button
               type="button"
@@ -121,6 +160,9 @@ import {
         </app-alert-footer>
       </app-alert-dialog>
     }
+    @if (loadOpen()) {
+      <app-load-label-dialog (done)="onLoadDone($event)" />
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -135,6 +177,7 @@ export class LabelFilesPanelComponent implements OnInit {
   protected selectedPath = signal<string | null>(null);
   protected renameOpen = signal(false);
   protected renameValue = signal('');
+  protected loadOpen = signal(false);
 
   protected selectedRow = computed(
     () => this.rows().find((row) => row.path === this.selectedPath()) ?? null,
@@ -148,6 +191,13 @@ export class LabelFilesPanelComponent implements OnInit {
     const current = this.selectedRow()?.path.split('/').at(-1);
     return this.renameValue().trim() === current;
   });
+
+  protected async onLoadDone(saved: boolean) {
+    this.loadOpen.set(false);
+    if (!saved) return;
+    await this.refresh();
+    await this.validateFiles();
+  }
 
   ngOnInit() {
     void this.refresh();
@@ -170,10 +220,7 @@ export class LabelFilesPanelComponent implements OnInit {
       })) as RGlobResponse;
       const paths = response.entries
         .map((entry) => String(entry.path))
-        .filter((rel) => {
-          if (!info.model_dir) return true;
-          return !isUnderDir(joinPath(info.data_dir, rel), info.model_dir);
-        })
+        .filter((rel) => !isModelsCsv(rel, info.data_dir, info.model_dir))
         .sort();
       this.rows.set(paths.map((path) => uncheckedRow(path, null)));
       if (!paths.includes(this.selectedPath() ?? '')) {
@@ -269,6 +316,13 @@ function checkedRow(
     warnings: item.warnings,
     checked: true,
   };
+}
+
+function isModelsCsv(rel: string, dataDir: string, modelDir: string): boolean {
+  const path = rel.replaceAll('\\', '/');
+  if (path === 'models' || path.startsWith('models/')) return true;
+  if (!modelDir) return false;
+  return isUnderDir(joinPath(dataDir, path), modelDir);
 }
 
 function labelFilenameIssue(filename: string, views: string[]): string | null {

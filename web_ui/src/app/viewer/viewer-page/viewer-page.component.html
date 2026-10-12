@@ -51,13 +51,20 @@
             [selectedSessionKey]="_sessionKey()"
             (selectedSessionChange)="handleSelectedSessionChange($event)"
           ></app-sessions-panel>
-          <div class="mt-4 flex justify-center">
+          <div class="mt-4 flex flex-col gap-2">
             <button
               class="btn btn-sm btn-outline w-full"
               data-tip="Upload local video files to create a new session"
               (click)="sessionImportOpen.set(true)"
             >
               Upload a new session
+            </button>
+            <button
+              class="btn btn-sm btn-outline w-full"
+              [disabled]="!isMultiview()"
+              (click)="calibrationImportOpen.set(true)"
+            >
+              Upload a calibration file
             </button>
           </div>
         </div>
@@ -453,4 +460,9 @@
 }
 @if (sessionImportOpen()) {
   <app-session-import (done)="onImportDone()"></app-session-import>
+}
+@if (calibrationImportOpen()) {
+  <app-load-calibration-dialog
+    (done)="calibrationImportOpen.set(false)"
+  />
 }

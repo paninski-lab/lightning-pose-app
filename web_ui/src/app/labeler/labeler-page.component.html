@@ -161,6 +161,7 @@
         [hasNextFrame]="hasNextFrame()"
         [numLabeledFramesGetter]="getNumLabeledFramesGetter"
         (saved)="handleSaved($event)"
+        (nextFrame)="handleNextFrame()"
         (newLabelFile)="extractFramesDialogOpen.set(true)"
       ></app-labeler-center-panel>
     </as-split-area>

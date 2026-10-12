@@ -20,6 +20,8 @@ from pydantic import BaseModel, Field
 from litpose_app import deps
 from litpose_app.datatypes import Project
 from litpose_app.deps import ProjectInfoGetter
+from litpose_app.project import ProjectUtil
+from litpose_app.project_deletion import model_folder_to_delete
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +93,8 @@ class DeleteModelRequest(BaseModel):
 
     projectKey: str
     modelRelativePath: str
+    # Must match modelRelativePath. The dialog asks the user to type this path.
+    confirmModelPath: str
 
 
 class RenameModelRequest(BaseModel):
@@ -236,16 +240,28 @@ def read_models_l1_from_base(
 def delete_model(
     request: DeleteModelRequest,
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+    project_util: ProjectUtil = Depends(deps.project_util),
 ) -> None:
-    """Delete the model directory for the given model relative path."""
+    """Delete one model folder after the typed path matches and the path is safe."""
+    if request.confirmModelPath != request.modelRelativePath:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Type the model path exactly to permanently delete this model.",
+        )
     project: Project = project_info_getter(request.projectKey)
-    model_dir = project.paths.model_dir / request.modelRelativePath
-
-    assert os.path.normpath(model_dir).startswith(
-        os.path.normpath(project.paths.model_dir)
+    other_registered: list[Path] = []
+    for key, paths in project_util.get_all_project_paths().items():
+        if key == request.projectKey:
+            continue
+        other_registered.append(paths.data_dir)
+        other_registered.append(paths.model_dir)
+    target = model_folder_to_delete(
+        project.paths.model_dir,
+        request.modelRelativePath,
+        other_registered=other_registered,
+        lp_system_dir=project_util.config.LP_SYSTEM_DIR,
     )
-
-    shutil.rmtree(model_dir)
+    shutil.rmtree(target)
 
 
 class EnsembleMember(BaseModel):

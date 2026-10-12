@@ -30,6 +30,7 @@
         <app-image-label-widget
           #primaryZoomable
           [fv]="fv"
+          [revision]="cacheBuster()"
           [(selectedKeypoint)]="selectedKeypoint"
           [disableInteractions]="disableInteractions()"
           (keypointUpdated)="
@@ -62,6 +63,7 @@
               <app-image-label-widget
                 class="!h-[120px] !w-[120px] block"
                 [fv]="fv"
+                [revision]="cacheBuster()"
                 [disableInteractions]="true"
                 [zoomableInteractivityDisabled]="true"
               ></app-image-label-widget>
@@ -265,6 +267,18 @@
               <span class="material-icons">model_training</span>
               Refine calibration (bundle adjustment)
             </button>
+            <button
+              class="btn btn-sm w-full mt-2"
+              [class.btn-disabled]="disableInteractions()"
+              (click)="loadCalibrationOpen.set(true)"
+            >
+              Load Calibration
+            </button>
+            @if (loadCalibrationOpen()) {
+              <app-load-calibration-dialog
+                (done)="onCalibrationLoadDone($event)"
+              />
+            }
             <app-bundle-adjust-dialog
               #baDialog
               [labelFile]="labelFile()"
@@ -481,35 +495,19 @@
               <span class="material-icons">save</span> Save
             </button>
           </div>
-          @if (!mvf(this.frame()!).isFromUnlabeledSet) {
-            <div
-              class="tooltip tooltip-left"
-              data-tip="Remove frame from label file"
+          <div
+            class="tooltip tooltip-left"
+            [attr.data-tip]="removeFrameTooltip()"
+          >
+            <button
+              class="btn btn-error btn-soft w-full"
+              [class.btn-disabled]="isSaving()"
+              (click)="handleSaveClick(lbfl, frame2, false, true)"
+              (keydown.enter)="handleSaveClick(lbfl, frame2, false, true)"
             >
-              <button
-                class="btn btn-error btn-soft w-full"
-                [class.btn-disabled]="isSaving()"
-                (click)="handleSaveClick(lbfl, frame2, false, true)"
-                (keydown.enter)="handleSaveClick(lbfl, frame2, false, true)"
-              >
-                <span class="material-icons">delete</span>
-              </button>
-            </div>
-          } @else {
-            <div
-              class="tooltip tooltip-left"
-              data-tip="Remove frame from labeling queue"
-            >
-              <button
-                class="btn btn-soft w-full"
-                [class.btn-disabled]="isSaving()"
-                (click)="handleSaveClick(lbfl, frame2, false, true)"
-                (keydown.enter)="handleSaveClick(lbfl, frame2, false, true)"
-              >
-                <span class="material-icons">cancel</span>
-              </button>
-            </div>
-          }
+              <span class="material-icons">delete</span>
+            </button>
+          </div>
         </div>
         <div
           class="tooltip tooltip-bottom w-full"
@@ -526,6 +524,20 @@
             <span class="material-icons">arrow_forward</span>
           </button>
         </div>
+        <button
+          class="btn bg-sky-700 w-full mt-2"
+          [class.btn-disabled]="!hasNextFrame() || disableInteractions()"
+          (click)="handleNext()"
+        >
+          Next →
+        </button>
+        <button
+          class="btn bg-sky-700 w-full mt-2"
+          [class.btn-disabled]="!canRevert()"
+          (click)="handleRevert()"
+        >
+          Revert changes ↫
+        </button>
       }
     </div>
   </div>

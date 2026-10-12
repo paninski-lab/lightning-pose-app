@@ -38,6 +38,8 @@ export class ImageLabelWidgetComponent {
   private colorService = inject(ColorService);
 
   fv = input.required<FrameView>();
+  /** Bumped when keypoints are replaced in place so OnPush redraws markers. */
+  revision = input(0);
   selectedKeypoint = model<string | null>(null);
   disableInteractions = input<boolean>(false);
   zoomableInteractivityDisabled = input<boolean>(false);
@@ -72,6 +74,7 @@ export class ImageLabelWidgetComponent {
   }
 
   protected getCachedKeypointViewModels(keypoints: LKeypoint[]): Keypoint[] {
+    this.revision();
     if (!this.keypointViewModelCache.has(keypoints)) {
       const target = keypoints
         .map((k) => this.buildViewModel(k))

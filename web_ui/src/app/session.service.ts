@@ -769,10 +769,11 @@ export class SessionService {
   }
 
   /** Delete a model directory by its project-relative path. */
-  deleteModel(modelRelativePath: string) {
+  deleteModel(modelRelativePath: string, confirmModelPath: string) {
     return this.rpc.call('deleteModel', {
       projectKey: this.getProjectKeyOrThrow(),
       modelRelativePath,
+      confirmModelPath,
     });
   }
 

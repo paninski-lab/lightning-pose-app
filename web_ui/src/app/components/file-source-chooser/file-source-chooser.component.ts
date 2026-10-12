@@ -39,8 +39,9 @@ import {
         class="hidden"
         #fileInput
         [disabled]="disabled() || useServerFiles()"
-        [accept]="accept()"
-        [multiple]="multiple()"
+        [accept]="directory() ? '' : accept()"
+        [multiple]="multiple() || directory()"
+        [attr.webkitdirectory]="directory() ? '' : null"
         (change)="onLocal(fileInput)"
       />
       <label class="label cursor-pointer gap-2">
@@ -67,6 +68,8 @@ export class FileSourceChooserComponent {
   buttonLabel = input('Choose files');
   accept = input('');
   multiple = input(true);
+  /** When true, the browser picker selects a folder instead of files. */
+  directory = input(false);
   disabled = input(false);
   inputId = input('videoFileInput');
   chooseTestId = input('choose-videos');

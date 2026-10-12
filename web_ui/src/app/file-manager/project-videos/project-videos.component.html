@@ -1,22 +1,59 @@
 <section class="card bg-base-200">
   <div class="card-body gap-3">
     <h2 class="card-title">Videos</h2>
-    <p class="m-0 text-sm">
-      This panel shows video files in folders whose names start with
-      <code>videos</code>, including files in subfolders. Each of those folders
-      is listed here. Uncheck a folder to leave it on disk and keep it out of
-      the app. A single-view name looks like <code>session.ext</code>. A
-      multiview name looks like <code>session_view.ext</code>. File names are
-      checked each time the list is refreshed, and a problem is shown beside
-      that file. <strong>Check All Encodings</strong> and
-      <strong>Check Selected Encoding</strong> report whether a video is
-      all-intra. <strong>Process Selected</strong> and
-      <strong>Process All</strong> replace a video with an all-intra copy in
-      the same folder. All-intra encoding is optimal for analysis.
-      <strong>Rename Selected</strong> changes the filename in that folder.
-      <strong>Add Video</strong> opens the Import Session screen.
-    </p>
+    <input
+      type="checkbox"
+      id="app-accordion-fm-videos"
+      class="app-accordion-toggle"
+    />
+    <label
+      for="app-accordion-fm-videos"
+      class="app-accordion-title app-help-toggle text-sm"
+    >
+      <span class="app-accordion-icon" aria-hidden="true"></span>
+      <span>Help</span>
+    </label>
+    <div class="app-accordion-content text-sm">
+      <p class="m-0">
+        This panel shows video files in folders whose names start with
+        <code>videos</code>, including files in subfolders. Each of those
+        folders is listed here. Uncheck a folder to leave it on disk and keep
+        it out of the app. A single-view name looks like
+        <code>session.ext</code>. A multiview name looks like
+        <code>session_view.ext</code>. File names are checked each time the
+        list is refreshed, and a problem is shown beside that file. All-intra
+        encoding is optimal for analysis.
+      </p>
+      <ul class="m-0 mt-2 flex list-disc flex-col gap-1 pl-5">
+        <li><strong>Refresh</strong> reloads this list.</li>
+        <li>
+          <strong>Add Video</strong> opens the Import Session screen.
+        </li>
+        <li>
+          <strong>Check All Encodings</strong> reports whether every listed
+          video is all-intra.
+        </li>
+        <li>
+          <strong>Process All</strong> replaces every listed video with an
+          all-intra copy in the same folder.
+        </li>
+        <li>
+          <strong>Rename Selected</strong> changes the filename in that folder.
+        </li>
+        <li>
+          <strong>Check Selected Encoding</strong> reports whether the selected
+          video is all-intra.
+        </li>
+        <li>
+          <strong>Process Selected</strong> replaces the selected video with an
+          all-intra copy in the same folder.
+        </li>
+      </ul>
+    </div>
 
+    <h3 class="m-0 text-sm font-medium">
+      Video directories (<code>videos*/</code>)
+    </h3>
     @if (videoDirs().length === 0 && !loading()) {
       <p class="text-sm m-0">No folders whose names start with videos.</p>
     } @else if (videoDirs().length > 0) {

@@ -160,16 +160,23 @@ export class LoadCalibrationDialogComponent implements AfterViewInit, OnDestroy 
     if (!key || this.busy() || this.chosenNames().length === 0) return;
     this.busy.set(true);
     const failures: string[] = [];
+    const formatProblems: string[] = [];
     let saved = 0;
     for (const file of this.localFiles()) {
       const form = new FormData();
       form.append('projectKey', key);
       form.append('file', file, file.name);
       try {
-        await firstValueFrom(
-          this.http.post('/app/v0/rpc/importCalibrationUpload', form),
+        const response = await firstValueFrom(
+          this.http.post<{ issues?: string[] }>(
+            '/app/v0/rpc/importCalibrationUpload',
+            form,
+          ),
         );
         saved += 1;
+        if (response.issues?.length) {
+          formatProblems.push(`${file.name}: ${response.issues.join(' ')}`);
+        }
       } catch (err) {
         failures.push(
           `${file.name}: ${rpcErrorMessage(err, 'Could not load file')}`,
@@ -178,11 +185,14 @@ export class LoadCalibrationDialogComponent implements AfterViewInit, OnDestroy 
     }
     for (const file of this.serverFiles()) {
       try {
-        await this.rpc.call('importCalibrationFile', {
+        const response = (await this.rpc.call('importCalibrationFile', {
           projectKey: key,
           serverPath: file.path,
-        });
+        })) as { issues?: string[] };
         saved += 1;
+        if (response.issues?.length) {
+          formatProblems.push(`${file.name}: ${response.issues.join(' ')}`);
+        }
       } catch (err) {
         failures.push(
           `${file.name}: ${rpcErrorMessage(err, 'Could not load file')}`,
@@ -198,6 +208,12 @@ export class LoadCalibrationDialogComponent implements AfterViewInit, OnDestroy 
             ? 'Loaded 1 calibration file'
             : `Loaded ${saved} calibration files`,
         variant: 'success',
+      });
+    }
+    if (formatProblems.length > 0) {
+      this.toast.showToast({
+        content: formatProblems.join(' '),
+        variant: 'error',
       });
     }
     if (failures.length > 0) {

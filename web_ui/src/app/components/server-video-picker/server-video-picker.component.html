@@ -15,7 +15,11 @@
       </div>
     } @else if (entries().length === 0) {
       <div class="p-4 text-center opacity-50 text-xs italic">
-        No {{ noun() === 'video' ? 'videos' : 'matching files' }} or folders here
+        @if (chooseDirectory()) {
+          No folders here.
+        } @else {
+          No {{ noun() === 'video' ? 'videos' : 'matching files' }} or folders here
+        }
       </div>
     } @else {
       <app-dense-listbox
@@ -43,10 +47,14 @@
     <button
       class="btn btn-primary"
       type="button"
-      [disabled]="pickedCount() === 0"
+      [disabled]="chooseDirectory() ? !path() : pickedCount() === 0"
       (click)="confirm()"
     >
-      Add {{ pickedCount() }} {{ noun() }}{{ pickedCount() === 1 ? '' : 's' }}
+      @if (chooseDirectory()) {
+        Use this folder
+      } @else {
+        Add {{ pickedCount() }} {{ noun() }}{{ pickedCount() === 1 ? '' : 's' }}
+      }
     </button>
   </div>
 </div>

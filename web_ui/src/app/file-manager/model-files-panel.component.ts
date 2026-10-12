@@ -6,6 +6,8 @@ import {
   signal,
 } from '@angular/core';
 import { ModelRenameDialogComponent } from '../models-page/model-rename-dialog/model-rename-dialog.component';
+import { ModelDeleteDialogComponent } from '../models-page/model-delete-dialog/model-delete-dialog.component';
+import { LoadModelDialogComponent } from './load-model-dialog.component';
 import { ProjectInfoService } from '../project-info.service';
 import { RpcService } from '../rpc.service';
 import { ToastService } from '../toast.service';
@@ -23,20 +25,57 @@ import {
 
 @Component({
   selector: 'app-model-files-panel',
-  imports: [FileCheckTableComponent, ModelRenameDialogComponent],
+  imports: [
+    FileCheckTableComponent,
+    ModelRenameDialogComponent,
+    ModelDeleteDialogComponent,
+    LoadModelDialogComponent,
+  ],
   template: `
     <section class="card bg-base-200">
       <div class="card-body gap-3">
         <h2 class="card-title">Models</h2>
-        <p class="text-sm m-0">
-          This panel shows folders in the model directory, including folders
-          the Models page does not open. A model folder usually contains
-          <code>config.yaml</code> or <code>ensemble.yaml</code>.
-          <strong>Validate All</strong> looks at the folder name, those files,
-          <code>train_status.json</code> when it is present, and prediction CSV
-          names in <code>video_preds/</code>. <strong>Rename Selected</strong>
-          changes the selected folder's name within the model directory.
-        </p>
+        <input
+          type="checkbox"
+          id="app-accordion-fm-models"
+          class="app-accordion-toggle"
+        />
+        <label
+          for="app-accordion-fm-models"
+          class="app-accordion-title app-help-toggle text-sm"
+        >
+          <span class="app-accordion-icon" aria-hidden="true"></span>
+          <span>Help</span>
+        </label>
+        <div class="app-accordion-content text-sm">
+          <p class="m-0">
+            This panel shows folders in the model directory, including folders
+            the Models page does not open. A model folder usually contains
+            <code>config.yaml</code> or <code>ensemble.yaml</code>.
+          </p>
+          <ul class="m-0 mt-2 flex list-disc flex-col gap-1 pl-5">
+            <li><strong>Refresh</strong> reloads this list.</li>
+            <li>
+              <strong>Load Model</strong> copies one model directory into this
+              project's model directory. A local folder is uploaded, and a
+              server folder is copied. The source stays where it is. An
+              existing folder is left unchanged.
+            </li>
+            <li>
+              <strong>Validate All</strong> looks at the folder name, those
+              files, <code>train_status.json</code> when it is present, and
+              prediction CSV names in <code>video_preds/</code>.
+            </li>
+            <li>
+              <strong>Rename Selected</strong> changes the selected folder's
+              name within the model directory.
+            </li>
+            <li>
+              <strong>Delete Selected</strong> permanently removes the selected
+              folder after the model path is typed.
+            </li>
+          </ul>
+        </div>
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex flex-wrap gap-2">
             <button
@@ -46,6 +85,14 @@ import {
               (click)="refresh()"
             >
               Refresh
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-primary"
+              [disabled]="loading() || validating()"
+              (click)="loadOpen.set(true)"
+            >
+              Load Model
             </button>
             <button
               type="button"
@@ -65,6 +112,14 @@ import {
             >
               Rename Selected
             </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-primary"
+              [disabled]="!selectedPath() || loading() || validating()"
+              (click)="openDelete()"
+            >
+              Delete Selected
+            </button>
           </div>
         </div>
         <app-file-check-table
@@ -83,6 +138,15 @@ import {
         (done)="onRenameDone($event)"
       />
     }
+    @if (deletePath(); as path) {
+      <app-model-delete-dialog
+        [modelRelativePath]="path"
+        (done)="onDeleteDone($event)"
+      />
+    }
+    @if (loadOpen()) {
+      <app-load-model-dialog (done)="onLoadDone($event)" />
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -96,6 +160,15 @@ export class ModelFilesPanelComponent implements OnInit {
   protected validating = signal(false);
   protected selectedPath = signal<string | null>(null);
   protected renamePath = signal<string | null>(null);
+  protected deletePath = signal<string | null>(null);
+  protected loadOpen = signal(false);
+
+  protected async onLoadDone(saved: boolean) {
+    this.loadOpen.set(false);
+    if (!saved) return;
+    await this.refresh();
+    await this.validateFiles();
+  }
 
   ngOnInit() {
     void this.refresh();
@@ -167,9 +240,22 @@ export class ModelFilesPanelComponent implements OnInit {
     this.renamePath.set(path);
   }
 
+  protected openDelete() {
+    const path = this.selectedPath();
+    if (!path) return;
+    this.deletePath.set(path);
+  }
+
   protected async onRenameDone(renamed: boolean) {
     this.renamePath.set(null);
     if (renamed) await this.refresh();
+  }
+
+  protected async onDeleteDone(deleted: boolean) {
+    this.deletePath.set(null);
+    if (!deleted) return;
+    this.selectedPath.set(null);
+    await this.refresh();
   }
 
   /** Level-1 directories, plus level-2 when the parent has no config or ensemble file. */
