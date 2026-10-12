@@ -78,11 +78,13 @@ const SESSION_STEM = /^[A-Za-z0-9_.-]+$/;
           </p>
           <ul class="m-0 mt-2 flex list-disc flex-col gap-1 pl-5">
             <li>
-              <strong>Add Calibration</strong> copies
-              <code>.toml</code> files into <code>calibrations/</code>,
-              creating that folder when it is missing. The name before
-              <code>.toml</code> is the session id. An existing file is left
-              unchanged.
+              <strong>Add Calibration</strong> asks whether to write one
+              project file or session files. A project file is renamed to
+              <code>calibration.toml</code> in the data directory. A session
+              file keeps its name in <code>calibrations/</code>, and that
+              folder is created when it is missing. The name before
+              <code>.toml</code> is the session id. If that destination
+              already exists, the dialog asks before replacing it.
             </li>
             <li><strong>Refresh</strong> reloads this list.</li>
             <li>

@@ -5,13 +5,15 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import tempfile
 from pathlib import Path
-from typing import BinaryIO
+from typing import BinaryIO, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from litpose_app import deps
+from litpose_app.config import Config
 from litpose_app.datatypes import Project
 from litpose_app.deps import ProjectInfoGetter
 from litpose_app.routes.rglob import _rglob
@@ -28,6 +30,8 @@ from litpose_app.routes.validate_files import (
 
 router = APIRouter()
 _SESSION_STEM_RE = re.compile(r"^[A-Za-z0-9_.\-]+$")
+_GLOBAL_CALIBRATION_PATH = Config().GLOBAL_CALIBRATION_PATH
+_CalibrationDestination = Literal["project", "session"]
 
 
 class RenameLabelFileRequest(BaseModel):
@@ -224,10 +228,12 @@ class ImportCalibrationResponse(BaseModel):
 
 
 class ImportCalibrationFileRequest(BaseModel):
-    """Copy one server .toml into calibrations/."""
+    """Copy one server .toml to the project file or into calibrations/."""
 
     projectKey: str
     serverPath: str
+    destination: _CalibrationDestination = "session"
+    overwrite: bool = False
 
 
 def _calibration_filename_issue(filename: str) -> str | None:
@@ -279,6 +285,65 @@ def _copy_into_new_file(dest: Path, source: BinaryIO) -> None:
         raise
 
 
+def _replace_file(dest: Path, source: BinaryIO) -> None:
+    """Write a temp file in dest's folder, then replace dest.
+
+    A failed copy deletes the temp file and leaves an existing dest unchanged.
+    The parent of a project file is the data directory, so this does not create
+    calibrations/.
+    """
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(prefix=".calibration-", suffix=".tmp", dir=dest.parent)
+    tmp = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "wb") as out:
+            shutil.copyfileobj(source, out)
+        os.chmod(tmp, 0o644)
+        os.replace(tmp, dest)
+    except Exception:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
+def _import_one_calibration(
+    project: Project,
+    filename: str,
+    source: BinaryIO,
+    *,
+    destination: str,
+    overwrite: bool,
+) -> ImportCalibrationResponse:
+    """Copy one .toml to calibration.toml or calibrations/<filename>."""
+    data_dir = project.paths.data_dir
+    if destination == "project":
+        if Path(filename).suffix.lower() != ".toml":
+            raise HTTPException(status_code=400, detail="Choose a .toml file.")
+        dest = data_dir / _GLOBAL_CALIBRATION_PATH
+        if overwrite:
+            _replace_file(dest, source)
+        elif dest.exists():
+            raise HTTPException(
+                status_code=409, detail="A file with that name already exists."
+            )
+        else:
+            _copy_into_new_file(dest, source)
+        return _imported_calibration(project, dest)
+    if destination != "session":
+        raise HTTPException(
+            status_code=400, detail="Choose a project file or a session file."
+        )
+    if overwrite:
+        issue = _calibration_filename_issue(filename)
+        if issue:
+            raise HTTPException(status_code=400, detail=issue)
+        dest = data_dir / "calibrations" / Path(filename.strip()).name
+        _replace_file(dest, source)
+        return _imported_calibration(project, dest)
+    dest = _new_calibration_path(data_dir, filename)
+    _copy_into_new_file(dest, source)
+    return _imported_calibration(project, dest)
+
+
 def _server_toml(server_path: str) -> Path:
     """Resolve a .toml file that stays under the home directory."""
     src = Path(server_path).expanduser().resolve()
@@ -313,27 +378,40 @@ def import_calibration_file(
     request: ImportCalibrationFileRequest,
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> ImportCalibrationResponse:
-    """Copy a server .toml into calibrations/<filename>. Does not move or delete the source."""
+    """Copy a server .toml to calibration.toml or calibrations/<filename>.
+
+    The source is not moved or deleted. overwrite replaces that one destination.
+    """
     project = project_info_getter(request.projectKey)
     src = _server_toml(request.serverPath)
-    dest = _new_calibration_path(project.paths.data_dir, src.name)
     with src.open("rb") as inp:
-        _copy_into_new_file(dest, inp)
-    return _imported_calibration(project, dest)
+        return _import_one_calibration(
+            project,
+            src.name,
+            inp,
+            destination=request.destination,
+            overwrite=request.overwrite,
+        )
 
 
 @router.post("/app/v0/rpc/importCalibrationUpload")
 def import_calibration_upload(
     projectKey: str = Form(...),
     file: UploadFile = File(...),
+    destination: str = Form("session"),
+    overwrite: str = Form("false"),
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> ImportCalibrationResponse:
-    """Upload a local .toml into calibrations/<filename>."""
+    """Upload a local .toml to calibration.toml or calibrations/<filename>."""
     project = project_info_getter(projectKey)
     filename = Path(file.filename or "").name
-    dest = _new_calibration_path(project.paths.data_dir, filename)
-    _copy_into_new_file(dest, file.file)
-    return _imported_calibration(project, dest)
+    return _import_one_calibration(
+        project,
+        filename,
+        file.file,
+        destination=destination,
+        overwrite=overwrite.strip().lower() == "true",
+    )
 
 
 @router.post("/app/v0/rpc/renameLabeledDataFolder")

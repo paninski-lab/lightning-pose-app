@@ -93,6 +93,49 @@ def test_import_calibration_creates_folder_and_copies_toml(
     assert source.read_text() == "changed = true\n"
 
 
+def test_import_calibration_project_file_and_overwrite(
+    client: TestClient, register_project, tmp_path: Path, monkeypatch
+):
+    """A project-file copy lands at calibration.toml and does not create calibrations/.
+
+    A second copy without overwrite returns 409. A copy with overwrite replaces the contents.
+    """
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    data_dir = register_project("demo", views=["bot"])
+    source = tmp_path / "incoming" / "other.toml"
+    source.parent.mkdir()
+    original = 'name = "bot"\n'
+    source.write_text(original)
+
+    payload = {
+        "projectKey": "demo",
+        "serverPath": str(source),
+        "destination": "project",
+    }
+    first = client.post("/app/v0/rpc/importCalibrationFile", json=payload)
+    assert first.status_code == 200, first.text
+    copied = data_dir / "calibration.toml"
+    assert copied.read_text() == original
+    assert source.is_file()
+    assert not (data_dir / "calibrations").exists()
+
+    source.write_text("changed = true\n")
+    second = client.post("/app/v0/rpc/importCalibrationFile", json=payload)
+    assert second.status_code == 409, second.text
+    assert copied.read_text() == original
+    assert not (data_dir / "calibrations").exists()
+
+    replaced = client.post(
+        "/app/v0/rpc/importCalibrationFile",
+        json={**payload, "overwrite": True},
+    )
+    assert replaced.status_code == 200, replaced.text
+    assert copied.read_text() == "changed = true\n"
+    assert source.read_text() == "changed = true\n"
+    assert not (data_dir / "calibrations").exists()
+    assert not list(data_dir.glob(".calibration-*"))
+
+
 def test_import_label_and_model_copy_without_overwrite(
     client: TestClient, register_project, tmp_path: Path, monkeypatch
 ):
