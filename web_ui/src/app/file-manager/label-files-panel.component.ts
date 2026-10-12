@@ -24,6 +24,7 @@ import {
   FileCheckResult,
   isUnderDir,
   joinPath,
+  keepCurrentPathOrder,
   RGlobResponse,
   rpcErrorMessage,
 } from './file-listing';
@@ -246,7 +247,10 @@ export class LabelFilesPanelComponent implements OnInit {
         sector: 'labels',
       })) as { items: FileCheckResult[] };
       this.rows.set(
-        response.items.map((item) => checkedRow(item.path, null, item)),
+        keepCurrentPathOrder(
+          this.rows().map((row) => row.path),
+          response.items,
+        ).map((item) => checkedRow(item.path, null, item)),
       );
     } catch (err) {
       this.toast.showToast({

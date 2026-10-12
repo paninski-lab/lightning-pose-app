@@ -22,6 +22,7 @@ import {
 import {
   FileCheckResult,
   joinPath,
+  keepCurrentPathOrder,
   RGlobResponse,
   rpcErrorMessage,
 } from './file-listing';
@@ -261,7 +262,10 @@ export class LabeledDataPanelComponent implements OnInit {
         sector: 'labeled-data',
       })) as { items: FileCheckResult[] };
       this.rows.set(
-        response.items.map((item) => ({
+        keepCurrentPathOrder(
+          this.rows().map((row) => row.path),
+          response.items,
+        ).map((item) => ({
           path: item.path,
           detail: this.details.get(item.path) ?? null,
           issues: item.issues,

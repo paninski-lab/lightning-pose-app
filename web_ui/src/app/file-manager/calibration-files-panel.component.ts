@@ -23,6 +23,7 @@ import { LoadCalibrationDialogComponent } from './load-calibration-dialog.compon
 import {
   FileCheckResult,
   joinPath,
+  keepCurrentPathOrder,
   RGlobResponse,
   rpcErrorMessage,
 } from './file-listing';
@@ -288,7 +289,10 @@ export class CalibrationFilesPanelComponent implements OnInit {
       })) as { items: FileCheckResult[] };
       const details = new Map(this.rows().map((row) => [row.path, row.detail]));
       this.rows.set(
-        response.items.map((item) => ({
+        keepCurrentPathOrder(
+          this.rows().map((row) => row.path),
+          response.items,
+        ).map((item) => ({
           path: item.path,
           detail: details.get(item.path) ?? null,
           issues: item.issues,

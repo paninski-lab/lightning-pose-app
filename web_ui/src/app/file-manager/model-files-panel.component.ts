@@ -18,6 +18,7 @@ import {
 import {
   FileCheckResult,
   joinPath,
+  keepCurrentPathOrder,
   RGlobEntry,
   RGlobResponse,
   rpcErrorMessage,
@@ -216,7 +217,10 @@ export class ModelFilesPanelComponent implements OnInit {
         sector: 'models',
       })) as { items: FileCheckResult[] };
       this.rows.set(
-        response.items.map((item) => ({
+        keepCurrentPathOrder(
+          this.rows().map((row) => row.path),
+          response.items,
+        ).map((item) => ({
           path: item.path,
           detail: null,
           issues: item.issues,
