@@ -16,7 +16,8 @@
           data-testid="delete-project-permanent"
           type="checkbox"
           class="checkbox"
-          [(ngModel)]="removeFiles"
+          [ngModel]="removeFiles()"
+          (ngModelChange)="removeFiles.set($event)"
         />
         <span>Permanently delete files</span>
       </label>
@@ -27,6 +28,21 @@
           Models: <code>{{ modelDir() }}</code>
         }
       </div>
+      @if (removeFiles()) {
+        <label class="ml-9 mt-3 flex flex-col gap-2 text-sm">
+          <span>
+            Type <code>{{ projectKey() }}</code> to confirm permanent deletion
+          </span>
+          <input
+            data-testid="delete-project-confirm-name"
+            type="text"
+            class="input input-bordered w-full"
+            [ngModel]="confirmName()"
+            (ngModelChange)="confirmName.set($event)"
+            [attr.aria-label]="'Type ' + projectKey() + ' to confirm'"
+          />
+        </label>
+      }
     </div>
   </div>
 
@@ -34,7 +50,9 @@
     <button class="btn btn-ghost" (click)="closeDialog()">Cancel</button>
     <button
       data-testid="delete-project-confirm"
+      type="button"
       class="btn btn-error"
+      [disabled]="removeFiles() && confirmName() !== projectKey()"
       (click)="handleDelete()"
     >
       @if (removeFiles()) {

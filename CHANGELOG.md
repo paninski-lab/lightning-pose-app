@@ -6,6 +6,10 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 
 ## 📝 Release Notes
 
+### [2.4.2.2.dev0]
+
+* **Project delete:** Permanently deleting files requires typing the project name and refuses protected directories (home, the server working directory, `~/.lightning-pose`, or a path that contains another project). Removing a project from the list without deleting files is unchanged.
+
 ### [2.4.2.1] — 2026-09-29
 
 **Skeleton**
