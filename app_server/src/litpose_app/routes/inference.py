@@ -12,7 +12,7 @@ import sys
 import threading
 import time
 import uuid
-from collections.abc import Iterator
+from collections.abc import Collection, Iterator
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -25,6 +25,8 @@ from pydantic import BaseModel
 from .. import deps
 from ..datatypes import Project
 from ..deps import ProjectInfoGetter
+from ..ignored_video_dirs import ignored_video_dirs
+from ..paths.project_videos import iter_project_mp4s
 from ..utils.gpu_lock import gpu_lock_blocking, read_gpu_task
 
 logger = logging.getLogger(__name__)
@@ -229,10 +231,14 @@ def _derive_sessions(video_paths: list[Path], view_names: list[str]) -> list[str
     return sessions
 
 
-def _session_to_videos(data_dir: Path, view_names: list[str]) -> dict[str, list[Path]]:
+def _session_to_videos(
+    data_dir: Path,
+    view_names: list[str],
+    ignored: Collection[str] | None = None,
+) -> dict[str, list[Path]]:
     """Map session name → list of video paths by globbing data_dir."""
     result: dict[str, list[Path]] = {}
-    for vp in data_dir.glob("videos*/**/*.mp4"):
+    for vp in iter_project_mp4s(data_dir, ignored):
         stem = vp.stem
         session = stem
         for cam in view_names:
@@ -305,8 +311,13 @@ def _build_infer_plan(
             normal_model_dirs.append(model_dir)
 
     # Compute session → video paths mapping
+    ignored = set(ignored_video_dirs(project.project_key))
     if video_relative_paths:
-        explicit_videos = [(data_base / rel).resolve() for rel in video_relative_paths]
+        explicit_videos = []
+        for rel in video_relative_paths:
+            if Path(rel).parts and Path(rel).parts[0] in ignored:
+                continue
+            explicit_videos.append((data_base / rel).resolve())
         target_sessions = _derive_sessions(explicit_videos, view_names)
         sess_to_vids: dict[str, list[Path]] = {}
         for vp in explicit_videos:
@@ -318,7 +329,9 @@ def _build_infer_plan(
                     break
             sess_to_vids.setdefault(session, []).append(vp)
     else:
-        sess_to_vids = _session_to_videos(data_base, view_names)
+        sess_to_vids = _session_to_videos(
+            data_base, view_names, ignored_video_dirs(project.project_key)
+        )
         target_sessions = list(sess_to_vids.keys()) if sessions == ["all"] else sessions
 
     steps: list[InferStep] = []

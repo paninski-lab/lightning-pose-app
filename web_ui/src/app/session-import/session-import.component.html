@@ -12,7 +12,11 @@
       </button>
       <h3 class="text-xl font-bold mb-2">Import session</h3>
       <p class="text-sm mb-4">
-        Select one or more local video files to upload.
+        @if (useServerFiles()) {
+          Select one or more video files already on the server.
+        } @else {
+          Select one or more local video files to upload.
+        }
         @if (isMultiview()) {
           <strong class="text-error"
             >Filenames must follow the
@@ -28,24 +32,17 @@
       </p>
 
       <div class="flex gap-3 items-center mb-4 flex-shrink-0">
-        <label
-          class="btn btn-primary"
-          [class.btn-disabled]="isProcessing()"
-          for="videoFileInput"
-          >Choose videos</label
-        >
-        <input
-          id="videoFileInput"
-          type="file"
-          #fileInput
-          class="hidden"
-          [disabled]="isProcessing()"
-          (change)="addFiles(fileInput.files)"
+        <app-file-source-chooser
+          buttonLabel="Choose videos"
           accept="video/*"
-          multiple
+          [multiple]="true"
+          [disabled]="isProcessing()"
+          (localFiles)="addFiles($event)"
+          (browseServer)="openServerPicker()"
+          (serverModeChange)="useServerFiles.set($event)"
         />
         <button
-          class="btn btn-ghost"
+          class="btn btn-soft btn-error"
           (click)="clearAll()"
           [disabled]="items().length === 0 || isProcessing()"
         >
@@ -53,17 +50,29 @@
         </button>
       </div>
 
-      <div
-        class="overflow-y-auto grow min-h-0 border rounded-box"
-        role="region"
-        aria-label="Selected videos"
-      >
-        <app-video-file-table
-          [items]="items()"
-          [uploading]="isProcessing()"
-          (removeAt)="removeAt($event)"
-        />
-      </div>
+      @if (serverPickerOpen()) {
+        <div class="grow min-h-0">
+          <app-server-video-picker
+            [extensions]="videoExtensions"
+            noun="video"
+            [multiple]="true"
+            (chosen)="onServerChosen($event)"
+            (dismissed)="serverPickerOpen.set(false)"
+          />
+        </div>
+      } @else {
+        <div
+          class="overflow-y-auto grow min-h-0 border rounded-box"
+          role="region"
+          aria-label="Selected videos"
+        >
+          <app-video-file-table
+            [items]="items()"
+            [uploading]="isProcessing()"
+            (removeAt)="removeAt($event)"
+          />
+        </div>
+      }
 
       <div class="flex justify-between items-center mt-6 flex-shrink-0">
         <div class="text-sm" [class.text-error]="!allValid()">
@@ -77,7 +86,7 @@
           }
         </div>
         <div class="flex gap-2">
-          <button class="btn btn-outline" (click)="closeDialog()">
+          <button class="btn btn-soft btn-info" (click)="closeDialog()">
             Cancel
           </button>
           @if (isProcessing()) {
@@ -87,7 +96,7 @@
             ></span>
           }
           <button
-            class="btn btn-primary"
+            class="btn btn-soft btn-primary"
             [disabled]="!allValid() || isProcessing()"
             (click)="startImport()"
           >

@@ -63,12 +63,12 @@ export class ProjectSettingsComponent implements OnInit {
   protected keypointsForm!: FormGroup;
   protected multiviewForm!: FormGroup;
 
-  protected readonly tabs = [
+  protected readonly tabs = computed(() => [
     { key: 'directories', icon: 'folder', text: 'Local setup' },
     { key: 'keypoints', icon: 'adjust', text: 'Keypoints' },
     { key: 'skeleton', icon: 'timeline', text: 'Skeleton' },
     { key: 'multiview', icon: 'camera_alt', text: 'Multiview' },
-  ];
+  ]);
   protected parsedKeypointNames = signal<string[]>([]);
   protected skeletonValue = signal<unknown>([]);
   protected skeletonDirty = signal(false);
@@ -334,16 +334,16 @@ export class ProjectSettingsComponent implements OnInit {
     this.selectedTab.set(tabKey);
   }
   protected selectedTabIndex = computed(() =>
-    this.tabs.findIndex((t) => t.key === this.selectedTab()),
+    this.tabs().findIndex((t) => t.key === this.selectedTab()),
   );
   protected handleBackClick() {
     const currentIndex = this.selectedTabIndex();
     if (currentIndex > 0) {
-      this.selectedTab.set(this.tabs[currentIndex - 1].key);
+      this.selectedTab.set(this.tabs()[currentIndex - 1].key);
     }
   }
   protected handleNextClick() {
-    const currentTabKey = this.tabs[this.selectedTabIndex()].key;
+    const currentTabKey = this.tabs()[this.selectedTabIndex()].key;
     let currentFormGroup: FormGroup | undefined;
 
     switch (currentTabKey) {
@@ -355,7 +355,7 @@ export class ProjectSettingsComponent implements OnInit {
         break;
       case 'skeleton':
         if (this.skeletonIssues().length > 0) return;
-        this.selectedTab.set(this.tabs[this.selectedTabIndex() + 1]!.key);
+        this.selectedTab.set(this.tabs()[this.selectedTabIndex() + 1]!.key);
         return;
       case 'multiview':
         currentFormGroup = this.multiviewForm;
@@ -366,9 +366,9 @@ export class ProjectSettingsComponent implements OnInit {
     }
 
     if (currentFormGroup && currentFormGroup.valid) {
-      if (this.selectedTabIndex() === this.tabs.length - 1)
+      if (this.selectedTabIndex() === this.tabs().length - 1)
         throw new Error('Should not display next button on last tab');
-      this.selectedTab.set(this.tabs[this.selectedTabIndex() + 1]!.key);
+      this.selectedTab.set(this.tabs()[this.selectedTabIndex() + 1]!.key);
     } else {
       // If not valid, mark controls in the current tab's form group as touched
       // to display validation errors.

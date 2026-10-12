@@ -31,7 +31,7 @@ export class ModelDeleteDialogComponent {
   modelRelativePath = input.required<string>();
   done = output<boolean>();
 
-  protected deleteConfirmation = signal(false);
+  protected deleteConfirmation = signal('');
   private sessionService = inject(SessionService);
   private toastService = inject(ToastService);
 
@@ -40,10 +40,29 @@ export class ModelDeleteDialogComponent {
   }
 
   protected async handleDelete() {
-    await this.sessionService.deleteModel(this.modelRelativePath());
-    this.toastService.showToast({
-      content: 'Successfully deleted model',
-    });
-    this.done.emit(true);
+    if (this.deleteConfirmation() !== this.modelRelativePath()) return;
+    try {
+      await this.sessionService.deleteModel(
+        this.modelRelativePath(),
+        this.deleteConfirmation(),
+      );
+      this.toastService.showToast({
+        content: 'Successfully deleted model',
+      });
+      this.done.emit(true);
+    } catch (error) {
+      console.error('Failed to delete model:', error);
+      let detail = String(error);
+      if (typeof error === 'object' && error !== null && 'error' in error) {
+        const body = (error as { error?: { detail?: unknown } }).error;
+        if (typeof body?.detail === 'string') {
+          detail = body.detail;
+        }
+      }
+      this.toastService.showToast({
+        content: `Failed to delete model: ${detail}`,
+        variant: 'error',
+      });
+    }
   }
 }

@@ -47,11 +47,11 @@
   </div>
 
   <app-alert-footer>
-    <button class="btn btn-ghost" (click)="closeDialog()">Cancel</button>
+    <button class="btn btn-soft btn-info" (click)="closeDialog()">Cancel</button>
     <button
       data-testid="delete-project-confirm"
       type="button"
-      class="btn btn-error"
+      class="btn btn-soft btn-error"
       [disabled]="removeFiles() && confirmName() !== projectKey()"
       (click)="handleDelete()"
     >

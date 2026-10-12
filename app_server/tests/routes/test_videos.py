@@ -6,6 +6,8 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from litpose_app.datatypes import Project, ProjectConfig, ProjectPaths
@@ -282,3 +284,163 @@ def test_startup_cleanup_removes_old_uploads(override_config, tmp_path, monkeypa
 
     assert not old_file.exists()
     assert new_file.exists()
+
+
+def test_transcode_in_place_replaces_videos_test_file(
+    client: TestClient, register_project, monkeypatch
+):
+    """In-place transcode replaces a videos_test file and does not copy it into videos/."""
+    from litpose_app.routes import videos as videos_mod
+
+    project_key = "demo"
+    data_dir = register_project(project_key)
+    src = data_dir / "videos_test" / "clip_camA.mp4"
+    src.parent.mkdir(parents=True, exist_ok=True)
+    src.write_bytes(b"original")
+
+    monkeypatch.setattr(videos_mod, "_ffprobe_total_frames", lambda p: 8)
+
+    class FakePopen:
+        def __init__(self, cmd, stdout=None, stderr=None, text=None):
+            output_path = Path(cmd[-1])
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_bytes(b"all-intra")
+            self._stderr_lines = iter(["frame=    8\n"])
+            self.returncode = 0
+
+        @property
+        def stderr(self):
+            return self
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            return next(self._stderr_lines)
+
+        def communicate(self):
+            return ("", "done")
+
+    import subprocess as _subprocess
+
+    monkeypatch.setattr(_subprocess, "Popen", FakePopen)
+
+    with client.stream(
+        "GET",
+        "/app/v0/sse/TranscodeVideoInPlace",
+        params={"projectKey": project_key, "inputPath": str(src)},
+    ) as resp:
+        assert resp.status_code == 200
+        payloads = _collect_sse_data_lines(resp)
+
+    assert payloads[-1]["transcodeStatus"] == "DONE"
+    assert src.read_bytes() == b"all-intra"
+    assert not (data_dir / "videos" / src.name).exists()
+    assert not list(src.parent.glob(".*.allintra.tmp.mp4"))
+
+
+def test_transcode_in_place_rejects_file_outside_video_dirs(
+    client: TestClient, register_project, tmp_path
+):
+    project_key = "demo"
+    register_project(project_key)
+    outside = tmp_path / "elsewhere.mp4"
+    outside.write_bytes(b"x")
+
+    resp = client.get(
+        "/app/v0/sse/TranscodeVideoInPlace",
+        params={"projectKey": project_key, "inputPath": str(outside)},
+    )
+    assert resp.status_code == 400
+
+
+def test_rename_video_accepts_valid_name_rejects_bad_name_and_collision(
+    client: TestClient, register_project
+):
+    """Rename accepts a valid name, rejects a bad name, and returns 409 on collision."""
+    project_key = "demo"
+    data_dir = register_project(project_key)
+    src = data_dir / "videos" / "clip_camA.mp4"
+    src.parent.mkdir(parents=True, exist_ok=True)
+    src.write_bytes(b"video")
+    taken = src.parent / "other_camB.mp4"
+    taken.write_bytes(b"taken")
+
+    bad = client.post(
+        "/app/v0/rpc/RenameVideo",
+        json={
+            "projectKey": project_key,
+            "path": str(src),
+            "newFilename": "bad name.mp4",
+        },
+    )
+    assert bad.status_code == 400
+    assert src.exists()
+
+    collision = client.post(
+        "/app/v0/rpc/RenameVideo",
+        json={
+            "projectKey": project_key,
+            "path": str(src),
+            "newFilename": taken.name,
+        },
+    )
+    assert collision.status_code == 409
+    assert src.exists()
+
+    ok = client.post(
+        "/app/v0/rpc/RenameVideo",
+        json={
+            "projectKey": project_key,
+            "path": str(src),
+            "newFilename": "renamed_camA.mp4",
+        },
+    )
+    assert ok.status_code == 200, ok.text
+    body = ok.json()
+    assert body["ok"] is True
+    dest = data_dir / "videos" / "renamed_camA.mp4"
+    assert Path(body["path"]) == dest
+    assert dest.read_bytes() == b"video"
+    assert not src.exists()
+
+
+def test_resolve_project_video_accepts_any_videos_prefix_dir(register_project):
+    """A nested videos* file is accepted; a top folder that does not start with videos is not."""
+    from litpose_app.routes.videos import resolve_project_video
+
+    data_dir = register_project("demo")
+    nested = data_dir / "videos-for-each-labeled-frame" / "session" / "clip.mp4"
+    nested.parent.mkdir(parents=True)
+    nested.write_bytes(b"x")
+    other = data_dir / "frames" / "clip.mp4"
+    other.parent.mkdir(parents=True)
+    other.write_bytes(b"x")
+
+    project = Project(
+        project_key="demo",
+        paths=ProjectPaths(data_dir=data_dir),
+        config=ProjectConfig(),
+    )
+    assert resolve_project_video(nested, project) == nested.resolve()
+    with pytest.raises(HTTPException) as exc:
+        resolve_project_video(other, project)
+    assert exc.value.status_code == 400
+
+
+def test_ignored_video_dir_is_omitted_from_project_videos(tmp_path):
+    """An ignored videos* folder is skipped; a sibling videos folder is still included."""
+    from litpose_app.paths.project_videos import iter_project_mp4s, project_video_root
+
+    nested = tmp_path / "videos-for-each-labeled-frame" / "sess" / "clip.mp4"
+    nested.parent.mkdir(parents=True)
+    nested.write_bytes(b"x")
+    kept = tmp_path / "videos" / "ok.mp4"
+    kept.parent.mkdir()
+    kept.write_bytes(b"x")
+    ignored = ["videos-for-each-labeled-frame"]
+
+    found = {path.name for path in iter_project_mp4s(tmp_path, ignored)}
+    assert found == {"ok.mp4"}
+    assert project_video_root(nested, tmp_path, ignored) is None
+    assert project_video_root(kept, tmp_path, ignored) == (tmp_path / "videos").resolve()

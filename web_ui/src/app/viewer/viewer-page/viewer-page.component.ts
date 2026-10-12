@@ -40,6 +40,7 @@ import { SelectComponent } from '../../components/dropdown/select.component';
 import { RunModelInferenceDialogComponent } from '../../run-model-inference-dialog/run-model-inference-dialog.component';
 
 import { SessionImportComponent } from '../../session-import/session-import.component';
+import { LoadCalibrationDialogComponent } from '../../file-manager/load-calibration-dialog.component';
 import { SkeletonViewOptionsComponent } from '../../components/skeleton-view-options/skeleton-view-options.component';
 import { isSkeletonDefinitionInvalid } from '../../components/skeleton-overlay/skeleton-validity';
 
@@ -60,6 +61,7 @@ import { isSkeletonDefinitionInvalid } from '../../components/skeleton-overlay/s
     DropdownTriggerDirective,
     RunModelInferenceDialogComponent,
     SessionImportComponent,
+    LoadCalibrationDialogComponent,
     SkeletonViewOptionsComponent,
   ],
   templateUrl: './viewer-page.component.html',
@@ -111,6 +113,12 @@ export class ViewerPageComponent implements OnInit {
   protected isIniting = signal(true);
   protected isRunModelInferenceDialogOpen = signal(false);
   protected sessionImportOpen = signal(false);
+  protected calibrationImportOpen = signal(false);
+  protected isMultiview = computed(
+    () =>
+      (this.projectInfoService.projectContext()?.projectInfo?.views?.length ??
+        0) > 1,
+  );
   async ngOnInit() {
     // Page inits by loading project info, and if it does not exist,
     // it will (future) open a dialog to get the project info.

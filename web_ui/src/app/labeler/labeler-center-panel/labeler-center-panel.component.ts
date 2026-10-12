@@ -30,6 +30,7 @@ import { ToastService } from '../../toast.service';
 import { firstValueFrom, Subject } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ImageLabelWidgetComponent } from '../image-label-widget/image-label-widget.component';
+import { LoadCalibrationDialogComponent } from '../../file-manager/load-calibration-dialog.component';
 import { SkeletonViewOptionsComponent } from '../../components/skeleton-view-options/skeleton-view-options.component';
 import { isSkeletonDefinitionInvalid } from '../../components/skeleton-overlay/skeleton-validity';
 
@@ -43,6 +44,7 @@ import { isSkeletonDefinitionInvalid } from '../../components/skeleton-overlay/s
     ImageLabelWidgetComponent,
     PathDisplayComponent,
     SkeletonViewOptionsComponent,
+    LoadCalibrationDialogComponent,
   ],
   providers: [LabelerViewOptionsService],
   templateUrl: './labeler-center-panel.component.html',
@@ -79,6 +81,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
     shouldAdvanceFrame: boolean;
     deletion?: boolean;
   }>();
+  nextFrame = output<void>();
 
   constructor() {
     effect(() => {
@@ -174,7 +177,8 @@ export class LabelerCenterPanelComponent implements OnChanges {
   }
 
   // Set to a random value if you need to bust cache of computed signals.
-  private cacheBuster = signal(0);
+  protected cacheBuster = signal(0);
+  protected loadCalibrationOpen = signal(false);
   /** an overload of `handleKeypointUpdated` that uses viewName: string
    * instead of a reference to frameview. Used for autolabeling */
   private handleKeypointUpdated2(
@@ -290,6 +294,40 @@ export class LabelerCenterPanelComponent implements OnChanges {
       this.isSaveDisabled() || (!this.hasNextView() && !this.hasNextFrame())
     );
   });
+
+  protected canRevert = computed(() => {
+    this.cacheBuster();
+    const frame = this.frame();
+    if (!frame || this.disableInteractions()) return false;
+    return mvf(frame).hasRevertibleEdits;
+  });
+
+  protected removeFrameTooltip(): string {
+    const frame = this.frame();
+    if (frame && mvf(frame).isFromUnlabeledSet) {
+      return 'Remove frame from labeling queue';
+    }
+    return 'Remove frame from label file';
+  }
+
+  protected handleNext() {
+    if (!this.hasNextFrame() || this.disableInteractions()) return;
+    this.nextFrame.emit();
+  }
+
+  protected handleRevert() {
+    const frame = this.frame();
+    if (!frame || this.disableInteractions() || !mvf(frame).hasRevertibleEdits) {
+      return;
+    }
+    mvf(frame).revertEdits();
+    this.cacheBuster.set(Math.random());
+  }
+
+  protected onCalibrationLoadDone(saved: boolean) {
+    this.loadCalibrationOpen.set(false);
+    if (saved) this.checkIfHasCameraCalibrationFiles();
+  }
 
   newLabelFile = output();
 

@@ -211,6 +211,21 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     }
   }
 
+  protected handleNextFrame() {
+    const frames = this.labelFileData();
+    const frameKey = this.frameKey();
+    if (!frames || frameKey == null) return;
+    const index = frames.findIndex((frame) => frame.key === frameKey);
+    const nextFrameKey = frames[index + 1]?.key;
+    if (!nextFrameKey) return;
+    this.router.navigate([], {
+      queryParams: {
+        labelFileKey: this.labelFileKey(),
+        frameKey: nextFrameKey,
+      },
+    });
+  }
+
   protected get projectKey() {
     const projectKey = this.projectInfoService.projectContext()?.key as
       | string

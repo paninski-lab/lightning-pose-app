@@ -22,6 +22,7 @@
             @for (tab of tabs; track tab.id) {
               <li class="step">
                 <a
+                  class="btn-choice"
                   [class.menu-active]="selectedTab() === tab.id"
                   tabindex="0"
                   (click)="handleTabClick(tab.id)"
@@ -337,7 +338,7 @@
           <ul class="menu min-w-50">
             <li>
               <a
-                class="opacity-40 hover:opacity-100"
+                class="btn-choice"
                 [class.menu-active]="selectedTab() === 'yaml'"
                 tabindex="0"
                 (click)="onPreviewYamlClick()"
@@ -349,7 +350,7 @@
         </div>
         <div class="flex gap-2">
           <ng-template #backButtonTemplate>
-            <button class="btn btn-soft" (click)="handleBackClick()">
+            <button class="btn btn-soft btn-info" (click)="handleBackClick()">
               Back
             </button>
           </ng-template>

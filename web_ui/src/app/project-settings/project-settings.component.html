@@ -24,9 +24,10 @@
 
   <div class="flex gap-2 w-full grow shrink min-h-0">
     <ul class="menu min-w-40">
-      @for (tab of tabs; track tab.key; let i = $index) {
+      @for (tab of tabs(); track tab.key; let i = $index) {
         <li>
           <a
+            class="btn-choice"
             [class.menu-active]="selectedTab() === tab.key"
             tabindex="0"
             (click)="handleTabClick(tab.key)"
@@ -167,7 +168,7 @@
 
     <div class="flex gap-2">
       <ng-template #backButtonTemplate>
-        <button class="btn btn-soft" (click)="handleBackClick()">Back</button>
+        <button class="btn btn-soft btn-info" (click)="handleBackClick()">Back</button>
       </ng-template>
 
       <ng-template #nextButtonTemplate>
@@ -205,7 +206,7 @@
           <ng-container *ngTemplateOutlet="backButtonTemplate"></ng-container>
         }
         <!-- Create: next until the last tab, then save -->
-        @if (selectedTabIndex() < tabs.length - 1) {
+        @if (selectedTabIndex() < tabs().length - 1) {
           <ng-container *ngTemplateOutlet="nextButtonTemplate"></ng-container>
         } @else {
           <ng-container *ngTemplateOutlet="saveButtonTemplate"></ng-container>

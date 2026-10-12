@@ -1,6 +1,6 @@
 <div class="flex flex-col gap-4">
   <div class="flex items-center gap-2">
-    <button class="btn btn-primary" (click)="fileInput.click()">
+    <button class="btn btn-soft btn-primary" (click)="fileInput.click()">
       Select Videos
     </button>
     <input
@@ -56,7 +56,7 @@
             </td>
             <td class="text-right">
               <button
-                class="btn btn-ghost btn-xs text-error"
+                class="btn btn-soft btn-error btn-xs"
                 (click)="item.type === 'session' ? removeSession(item) : removeFile(item)"
               >
                 Remove

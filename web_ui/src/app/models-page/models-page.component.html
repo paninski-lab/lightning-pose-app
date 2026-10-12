@@ -13,7 +13,7 @@
       <div class="flex gap-2 items-center m-4">
         <app-dropdown #createDropdown>
           <app-dropdown-trigger>
-            <button appDropdownTrigger class="btn btn-primary" tabindex="0">
+            <button appDropdownTrigger class="btn btn-soft btn-primary" tabindex="0">
               New model
             </button>
           </app-dropdown-trigger>
@@ -57,7 +57,7 @@
           </app-dropdown-content>
         </app-dropdown>
         <button
-          class="btn btn-accent"
+          class="btn btn-soft btn-info"
           (click)="openRunModelInferenceDialog()"
         >
           Run inference on all sessions

@@ -30,6 +30,7 @@
         <app-image-label-widget
           #primaryZoomable
           [fv]="fv"
+          [revision]="cacheBuster()"
           [(selectedKeypoint)]="selectedKeypoint"
           [disableInteractions]="disableInteractions()"
           (keypointUpdated)="
@@ -62,6 +63,7 @@
               <app-image-label-widget
                 class="!h-[120px] !w-[120px] block"
                 [fv]="fv"
+                [revision]="cacheBuster()"
                 [disableInteractions]="true"
                 [zoomableInteractivityDisabled]="true"
               ></app-image-label-widget>
@@ -212,7 +214,7 @@
               <div class="modal-action">
                 <form method="dialog">
                   <!-- if there is a button in form, it will close the modal -->
-                  <button class="btn">Close</button>
+                  <button class="btn btn-soft btn-info">Close</button>
                 </form>
               </div>
             </div>
@@ -247,16 +249,14 @@
               }
             </div>
             <button
-              class="btn btn-sm bg-sky-700 w-full mb-2"
-              [class.btn-disabled]="
-                !hasCameraCalibrationFiles() || disableInteractions()
-              "
-              (click)="handleMVAutoLabelClick(lbfl, frame2)"
+              class="btn btn-sm btn-soft btn-info w-full mb-2"
+              [class.btn-disabled]="disableInteractions()"
+              (click)="loadCalibrationOpen.set(true)"
             >
-              ✨ Project keypoints to all views
+              Load Calibration
             </button>
             <button
-              class="btn btn-sm w-full btn-soft"
+              class="btn btn-sm w-full btn-soft btn-info"
               [class.btn-disabled]="
                 !hasCameraCalibrationFiles() || disableInteractions()
               "
@@ -265,6 +265,20 @@
               <span class="material-icons">model_training</span>
               Refine calibration (bundle adjustment)
             </button>
+            <button
+              class="btn btn-sm btn-soft btn-info w-full mt-2"
+              [class.btn-disabled]="
+                !hasCameraCalibrationFiles() || disableInteractions()
+              "
+              (click)="handleMVAutoLabelClick(lbfl, frame2)"
+            >
+              ✨ Project keypoints to all views
+            </button>
+            @if (loadCalibrationOpen()) {
+              <app-load-calibration-dialog
+                (done)="onCalibrationLoadDone($event)"
+              />
+            }
             <app-bundle-adjust-dialog
               #baDialog
               [labelFile]="labelFile()"
@@ -297,7 +311,7 @@
             <div class="p-2">
               @if (!viewOptions.isShowingTemporalContext()) {
                 <button
-                  class="btn btn-primary btn-sm"
+                  class="btn btn-soft btn-info btn-sm"
                   (click)="viewOptions.handleShowTemporalContextClick()"
                 >
                   <span class="material-icons">animation</span> Show
@@ -305,7 +319,7 @@
               } @else {
                 <div class="flex items-center gap-4">
                   <button
-                    class="btn btn-error btn-sm"
+                    class="btn btn-soft btn-info btn-sm"
                     (click)="viewOptions.handleStopTemporalContextClick()"
                   >
                     <span class="material-icons">stop</span> Stop
@@ -473,7 +487,7 @@
         <div class="flex gap-2">
           <div class="tooltip flex-1" [attr.data-tip]="saveTooltip">
             <button
-              class="btn bg-sky-700 w-full"
+              class="btn btn-soft btn-info w-full"
               [class.btn-disabled]="isSaveDisabled()"
               (click)="handleSaveClick(lbfl, frame2, false)"
               (keydown.enter)="handleSaveClick(lbfl, frame2, false)"
@@ -481,42 +495,26 @@
               <span class="material-icons">save</span> Save
             </button>
           </div>
-          @if (!mvf(this.frame()!).isFromUnlabeledSet) {
-            <div
-              class="tooltip tooltip-left"
-              data-tip="Remove frame from label file"
+          <div
+            class="tooltip tooltip-left"
+            [attr.data-tip]="removeFrameTooltip()"
+          >
+            <button
+              class="btn btn-error btn-soft w-full"
+              [class.btn-disabled]="isSaving()"
+              (click)="handleSaveClick(lbfl, frame2, false, true)"
+              (keydown.enter)="handleSaveClick(lbfl, frame2, false, true)"
             >
-              <button
-                class="btn btn-error btn-soft w-full"
-                [class.btn-disabled]="isSaving()"
-                (click)="handleSaveClick(lbfl, frame2, false, true)"
-                (keydown.enter)="handleSaveClick(lbfl, frame2, false, true)"
-              >
-                <span class="material-icons">delete</span>
-              </button>
-            </div>
-          } @else {
-            <div
-              class="tooltip tooltip-left"
-              data-tip="Remove frame from labeling queue"
-            >
-              <button
-                class="btn btn-soft w-full"
-                [class.btn-disabled]="isSaving()"
-                (click)="handleSaveClick(lbfl, frame2, false, true)"
-                (keydown.enter)="handleSaveClick(lbfl, frame2, false, true)"
-              >
-                <span class="material-icons">cancel</span>
-              </button>
-            </div>
-          }
+              <span class="material-icons">delete</span>
+            </button>
+          </div>
         </div>
         <div
           class="tooltip tooltip-bottom w-full"
           [attr.data-tip]="saveAndContinueTooltip"
         >
           <button
-            class="btn bg-sky-700 w-full mt-2"
+            class="btn btn-soft btn-info w-full mt-2"
             [class.btn-disabled]="isSaveAndNextDisabled()"
             (click)="handleSaveClick(lbfl, frame2, true)"
             (keydown.enter)="handleSaveClick(lbfl, frame2, true)"
@@ -526,6 +524,20 @@
             <span class="material-icons">arrow_forward</span>
           </button>
         </div>
+        <button
+          class="btn btn-soft btn-info w-full mt-2"
+          [class.btn-disabled]="!hasNextFrame() || disableInteractions()"
+          (click)="handleNext()"
+        >
+          Next →
+        </button>
+        <button
+          class="btn btn-soft btn-info w-full mt-2"
+          [class.btn-disabled]="!canRevert()"
+          (click)="handleRevert()"
+        >
+          Revert changes ↫
+        </button>
       }
     </div>
   </div>
@@ -536,13 +548,13 @@
     <p>This cannot be undone.</p>
     <div class="modal-action">
       <button
-        class="btn btn-primary"
+        class="btn btn-soft btn-error"
         (click)="handleDeleteConfirmationDialogContinuation(true)"
       >
         Delete
       </button>
       <button
-        class="btn"
+        class="btn btn-soft btn-info"
         (click)="handleDeleteConfirmationDialogContinuation(false)"
       >
         Cancel

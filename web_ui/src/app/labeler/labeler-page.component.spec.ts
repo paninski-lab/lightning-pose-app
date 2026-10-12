@@ -33,6 +33,7 @@ class StubLabelerCenterPanelComponent {
   hasNextFrame = input(false);
   numLabeledFramesGetter = input<unknown>(null);
   saved = output<unknown>();
+  nextFrame = output<void>();
   newLabelFile = output<void>();
 }
 
@@ -312,6 +313,29 @@ describe('LabelerPageComponent — handleSaved frame advance', () => {
       [],
       jasmine.objectContaining({
         queryParams: { labelFileKey: labelFile.key, frameKey: 'f1' },
+      }),
+    );
+  });
+
+  it('next frame follows the combined list without saving', () => {
+    const labeled = makeFrame('labeled');
+    const remaining = makeFrame('remaining');
+    remaining.views[0].originalKeypoints = null;
+    labeled.views[0].keypoints = [{ keypointName: 'nose', x: 9, y: 9 }];
+    setFrames([labeled, remaining]);
+    fixture.componentRef.setInput('frameKey', 'labeled');
+
+    (
+      component as unknown as { handleNextFrame: () => void }
+    ).handleNextFrame();
+
+    expect(labeled.views[0].keypoints).toEqual([
+      { keypointName: 'nose', x: 9, y: 9 },
+    ]);
+    expect(navigateSpy).toHaveBeenCalledWith(
+      [],
+      jasmine.objectContaining({
+        queryParams: { labelFileKey: labelFile.key, frameKey: 'remaining' },
       }),
     );
   });

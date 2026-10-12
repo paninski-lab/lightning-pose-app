@@ -1,0 +1,275 @@
+<section class="card bg-base-200">
+  <div class="card-body gap-3">
+    <h2 class="card-title">Videos</h2>
+    <input
+      type="checkbox"
+      id="app-accordion-fm-videos"
+      class="app-accordion-toggle"
+    />
+    <label
+      for="app-accordion-fm-videos"
+      class="app-accordion-title app-help-toggle text-sm"
+    >
+      <span class="app-accordion-icon" aria-hidden="true"></span>
+      <span>Help</span>
+    </label>
+    <div class="app-accordion-content text-sm">
+      <p class="m-0">
+        This panel shows video files in folders whose names start with
+        <code>videos</code>, including files in subfolders. Each of those
+        folders is listed here. Uncheck a folder to leave it on disk and keep
+        it out of the app until this app restarts. A single-view name looks like
+        <code>session.ext</code>. A multiview name looks like
+        <code>session_view.ext</code>. File names are checked each time the
+        list is refreshed, and a problem is shown beside that file. All-intra
+        encoding is optimal for analysis.
+      </p>
+      <ul class="m-0 mt-2 flex list-disc flex-col gap-1 pl-5">
+        <li>
+          <strong>Add Video</strong> opens the Import Session screen.
+        </li>
+        <li><strong>Refresh</strong> reloads this list.</li>
+        <li>
+          <strong>Check All Encodings</strong> reports whether every listed
+          video is all-intra.
+        </li>
+        <li>
+          <strong>Process All</strong> replaces every listed video with an
+          all-intra copy in the same folder.
+        </li>
+        <li>
+          <strong>Rename Selected</strong> changes the filename in that folder.
+        </li>
+        <li>
+          <strong>Check Selected Encoding</strong> reports whether the selected
+          video is all-intra.
+        </li>
+        <li>
+          <strong>Process Selected</strong> replaces the selected video with an
+          all-intra copy in the same folder.
+        </li>
+      </ul>
+    </div>
+
+    <h3 class="m-0 text-sm font-medium">
+      Video directories (<code>videos*/</code>)
+    </h3>
+    @if (videoDirs().length === 0 && !loading()) {
+      <p class="text-sm m-0">No folders whose names start with videos.</p>
+    } @else if (videoDirs().length > 0) {
+      <ul class="m-0 flex list-none flex-col gap-1 p-0">
+        @for (dir of videoDirs(); track dir.name) {
+          <li>
+            <label class="flex cursor-pointer items-center gap-2">
+              <input
+                type="checkbox"
+                class="checkbox checkbox-sm checkbox-primary"
+                [checked]="!dir.ignored"
+                [disabled]="dirsBusy() || loading() || busy()"
+                (click)="toggleVideoDir(dir.name, dir.ignored, $event)"
+              />
+              <span class="font-mono text-sm">{{ dir.name }}</span>
+              @if (dir.ignored) {
+                <span class="text-xs opacity-70">Ignored by the app</span>
+              }
+            </label>
+          </li>
+        }
+      </ul>
+    }
+
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div class="flex flex-wrap gap-2">
+        <button
+          type="button"
+          class="btn btn-sm btn-soft btn-primary"
+          [disabled]="loading() || busy()"
+          (click)="importOpen.set(true)"
+        >
+          Add Video
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm btn-soft btn-info"
+          [disabled]="loading() || busy()"
+          (click)="refresh()"
+        >
+          Refresh
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm btn-soft btn-info"
+          [disabled]="loading() || busy() || rows().length === 0"
+          (click)="checkAllEncodings()"
+        >
+          Check All Encodings
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm btn-soft btn-info"
+          [disabled]="busy() || rows().length === 0"
+          (click)="askProcessAll()"
+        >
+          Process All
+        </button>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button
+          type="button"
+          class="btn btn-sm btn-soft btn-info"
+          [disabled]="!selectedRow() || busy()"
+          (click)="openRename()"
+        >
+          Rename Selected
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm btn-soft btn-info"
+          [disabled]="!selectedRow() || busy()"
+          (click)="checkSelectedEncoding()"
+        >
+          Check Selected Encoding
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm btn-soft btn-info"
+          [disabled]="!selectedRow() || busy()"
+          (click)="processSelected()"
+        >
+          Process Selected
+        </button>
+      </div>
+    </div>
+
+    @if (loading()) {
+      <div class="flex justify-center py-8 not-prose">
+        <span class="loading loading-spinner loading-md"></span>
+      </div>
+    } @else if (rows().length === 0) {
+      <p class="text-sm">
+        No video files in folders whose names start with videos.
+      </p>
+    } @else {
+      <div class="overflow-auto max-h-96">
+        <table class="table table-sm table-zebra">
+          <thead>
+            <tr>
+              <th scope="col">Folder</th>
+              <th scope="col">Filename</th>
+              <th scope="col">All-intra</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.path) {
+              <tr
+                class="cursor-pointer"
+                [class.bg-base-300]="selectedPath() === row.path"
+                (click)="select(row.path)"
+              >
+                <td class="font-mono text-xs">{{ row.folder }}</td>
+                <td class="text-xs break-all">
+                  <div class="font-mono">{{ row.displayName }}</div>
+                  @if (row.nameError) {
+                    <div class="text-error">{{ row.nameError }}</div>
+                  } @else if (row.nameWarning) {
+                    <div class="text-warning">{{ row.nameWarning }}</div>
+                  }
+                </td>
+                <td>
+                  @switch (row.allIntra) {
+                    @case ('yes') {
+                      <span class="badge badge-success badge-sm">Yes</span>
+                    }
+                    @case ('no') {
+                      <span class="badge badge-warning badge-sm">No</span>
+                    }
+                    @case ('needs-conversion') {
+                      <span class="badge badge-warning badge-sm">Not mp4</span>
+                    }
+                    @case ('checking') {
+                      <span class="loading loading-spinner loading-xs"></span>
+                    }
+                    @default {
+                      <span class="badge badge-ghost badge-sm">Unchecked</span>
+                    }
+                  }
+                  @if (row.progress !== null) {
+                    <progress
+                      class="progress progress-primary w-24 ml-2"
+                      [value]="row.progress"
+                      max="100"
+                    ></progress>
+                  }
+                  @if (row.taskError) {
+                    <div class="text-error text-xs">{{ row.taskError }}</div>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</section>
+
+@if (renameOpen()) {
+  <app-alert-dialog (dismiss)="renameOpen.set(false)">
+    <app-alert-header>Rename video</app-alert-header>
+    <div class="flex flex-col gap-2">
+      <p class="text-sm m-0">
+        The file stays in <code>{{ selectedRow()?.folder }}</code>.
+      </p>
+      <input
+        type="text"
+        class="input input-bordered w-full"
+        [class.input-error]="!!renameProblem()"
+        [ngModel]="renameValue()"
+        (ngModelChange)="renameValue.set($event)"
+      />
+      @if (renameProblem()) {
+        <p class="text-error text-xs m-0">{{ renameProblem() }}</p>
+      }
+    </div>
+    <app-alert-footer>
+      <button class="btn btn-soft btn-info" type="button" (click)="renameOpen.set(false)">
+        Cancel
+      </button>
+      <button
+        class="btn btn-soft btn-info"
+        type="button"
+        [disabled]="
+          !!renameProblem() || renameValue().trim() === selectedRow()?.filename
+        "
+        (click)="confirmRename()"
+      >
+        Rename
+      </button>
+    </app-alert-footer>
+  </app-alert-dialog>
+}
+
+@if (processAllConfirm()) {
+  <app-alert-dialog (dismiss)="processAllConfirm.set(false)">
+    <app-alert-header>Process all videos</app-alert-header>
+    <p class="text-sm m-0">
+      Processing every video may take a long time. Continue?
+    </p>
+    <app-alert-footer>
+      <button
+        class="btn btn-soft btn-info"
+        type="button"
+        (click)="processAllConfirm.set(false)"
+      >
+        No
+      </button>
+      <button class="btn btn-soft btn-info" type="button" (click)="confirmProcessAll()">
+        Yes
+      </button>
+    </app-alert-footer>
+  </app-alert-dialog>
+}
+
+@if (importOpen()) {
+  <app-session-import (done)="onImportDone()" />
+}

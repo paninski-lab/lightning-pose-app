@@ -1,0 +1,60 @@
+<div class="flex flex-col gap-2 h-full min-h-0">
+  <app-path-bar
+    [path]="path()"
+    (pathChange)="onPathChange($event)"
+    [baseDir]="baseDir()"
+    baseDirLabel="Home"
+    [showActions]="false"
+  />
+  <div
+    class="flex-1 overflow-auto border rounded border-base-content/10 bg-base-100 min-h-[12rem]"
+  >
+    @if (loading()) {
+      <div class="flex items-center justify-center h-full p-4">
+        <span class="loading loading-spinner loading-md opacity-20"></span>
+      </div>
+    } @else if (entries().length === 0) {
+      <div class="p-4 text-center opacity-50 text-xs italic">
+        @if (chooseDirectory()) {
+          No folders here.
+        } @else {
+          No {{ noun() === 'video' ? 'videos' : 'matching files' }} or folders here
+        }
+      </div>
+    } @else {
+      <app-dense-listbox
+        [selected]="listSelection()"
+        (selectedChange)="onPick($event)"
+      >
+        @for (entry of entries(); track entry.path) {
+          <app-dense-listbox-item [value]="entry" [selected]="isPicked(entry)">
+            <div left class="flex items-center gap-2 min-w-0">
+              <span class="material-icons text-xs opacity-40">{{
+                entry.icon
+              }}</span>
+              <span class="text-xs font-mono truncate">{{ entry.name }}</span>
+            </div>
+            @if (entry.type === 'file' && isPicked(entry)) {
+              <span right class="material-icons text-sm!">check</span>
+            }
+          </app-dense-listbox-item>
+        }
+      </app-dense-listbox>
+    }
+  </div>
+  <div class="flex justify-end gap-2">
+    <button class="btn btn-soft btn-info" type="button" (click)="dismiss()">Cancel</button>
+    <button
+      class="btn btn-soft btn-primary"
+      type="button"
+      [disabled]="chooseDirectory() ? !path() : pickedCount() === 0"
+      (click)="confirm()"
+    >
+      @if (chooseDirectory()) {
+        Use this folder
+      } @else {
+        Add {{ pickedCount() }} {{ noun() }}{{ pickedCount() === 1 ? '' : 's' }}
+      }
+    </button>
+  </div>
+</div>

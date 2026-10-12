@@ -24,6 +24,7 @@ import {
 } from './labeler/mv-autolabel';
 import _ from 'lodash';
 import { ModelListResponse } from './modelconf';
+import { PROJECT_VIDEO_MP4_GLOB } from './project-video-paths';
 
 type SessionModelMap = Record<string, string[]>;
 
@@ -81,14 +82,43 @@ export class SessionService {
     inputPath: string,
     shouldOverwrite = false,
   ): Observable<VideoTaskStatus> {
-    const projectKey = this.getProjectKeyOrThrow();
     const params = new URLSearchParams({
-      projectKey,
+      projectKey: this.getProjectKeyOrThrow(),
       inputPath,
       should_overwrite: String(shouldOverwrite),
     });
-    const url = `/app/v0/sse/TranscodeVideo?${params.toString()}`;
+    return this.openTranscodeSse(
+      `/app/v0/sse/TranscodeVideo?${params.toString()}`,
+    );
+  }
 
+  /**
+   * Transcode a file already in videos/ or videos_test/ to all-intra, replacing it in place.
+   * Completes when the server reports DONE or ERROR.
+   */
+  transcodeVideoInPlaceSse(inputPath: string): Observable<VideoTaskStatus> {
+    const params = new URLSearchParams({
+      projectKey: this.getProjectKeyOrThrow(),
+      inputPath,
+    });
+    return this.openTranscodeSse(
+      `/app/v0/sse/TranscodeVideoInPlace?${params.toString()}`,
+    );
+  }
+
+  /** Rename a project video. The file stays in its current folder. */
+  async renameVideo(
+    path: string,
+    newFilename: string,
+  ): Promise<{ ok: boolean; path: string }> {
+    return (await this.rpc.call('RenameVideo', {
+      projectKey: this.getProjectKeyOrThrow(),
+      path,
+      newFilename,
+    })) as { ok: boolean; path: string };
+  }
+
+  private openTranscodeSse(url: string): Observable<VideoTaskStatus> {
     return new Observable<VideoTaskStatus>((subscriber) => {
       const es = new EventSource(url);
       const onMessage = (ev: MessageEvent) => {
@@ -181,11 +211,16 @@ export class SessionService {
 
     const response = (await this.rpc.call('rglob', {
       baseDir: projectInfo.data_dir,
-      pattern: 'videos*/**/*.mp4',
+      pattern: PROJECT_VIDEO_MP4_GLOB,
       noDirs: true,
     })) as RGlobResponse;
 
-    const mp4Files: string[] = response.entries.map((entry) => entry.path);
+    const ignored = new Set(
+      this.projectInfoService.projectInfo.ignored_video_dirs ?? [],
+    );
+    const mp4Files: string[] = response.entries
+      .map((entry) => entry.path)
+      .filter((path) => !ignored.has(String(path).split('/')[0]));
     const sessions: Session[] = this.groupFilesBySession(
       mp4Files,
       this.projectInfoService.projectInfo.views,
@@ -734,10 +769,11 @@ export class SessionService {
   }
 
   /** Delete a model directory by its project-relative path. */
-  deleteModel(modelRelativePath: string) {
+  deleteModel(modelRelativePath: string, confirmModelPath: string) {
     return this.rpc.call('deleteModel', {
       projectKey: this.getProjectKeyOrThrow(),
       modelRelativePath,
+      confirmModelPath,
     });
   }
 

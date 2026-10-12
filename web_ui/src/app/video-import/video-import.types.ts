@@ -13,7 +13,10 @@ export interface TranscodeState {
 }
 
 export interface ParsedItem {
-  file: File;
+  id: string;
+  kind: 'local' | 'server';
+  file: File | null;
+  serverPath: string | null;
   name: string;
   size: number;
   ext: string;

@@ -58,7 +58,7 @@
 
     <div class="modal-action">
       <button
-        class="btn btn-primary"
+        class="btn btn-soft btn-info"
         (click)="handleBundleAdjustClick()"
         [disabled]="baLoading()"
       >
@@ -159,10 +159,10 @@
             Saved successfully. You can exit the dialog.
           </p>
         }
-        <button class="btn" type="button" (click)="close()">Close</button>
+        <button class="btn btn-soft btn-info" type="button" (click)="close()">Close</button>
 
         <button
-          class="btn btn-primary"
+          class="btn btn-soft btn-primary"
           [disabled]="baSaving() || baSavingSuccess()"
           (click)="handleSaveClick()"
         >

@@ -25,9 +25,10 @@ def test_get_project_info(register_project, client: TestClient):
 
     resp = client.post("/app/v0/rpc/getProjectInfo", json=payload)
     assert resp.status_code == 200
-    resp_json = resp.json()
+    project_info = resp.json()["projectInfo"]
+    project_info.pop("ignored_video_dirs", None)
 
-    assert resp_json["projectInfo"] == {
+    assert project_info == {
         "data_dir": str(data_dir),
         "model_dir": str(data_dir / "models"),
         "views": ["camA", "camB"],

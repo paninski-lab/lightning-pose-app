@@ -159,3 +159,56 @@ def paths_to_delete(
         )
     _reject_if_contains_registered(model, other_registered)
     return [data, model]
+
+
+def model_folder_to_delete(
+    model_dir: Path,
+    relative_path: str,
+    *,
+    other_registered: list[Path],
+    lp_system_dir: Path,
+    home: Path | None = None,
+    cwd: Path | None = None,
+) -> Path:
+    """Return the resolved model folder to remove, or 400 if deletion is unsafe.
+
+    The folder must be a directory strictly inside the model directory. It must
+    not contain a protected root, project.yaml, or another registered project.
+    """
+    home = Path.home() if home is None else home
+    cwd = Path.cwd() if cwd is None else cwd
+    root = reject_forbidden_root(
+        model_dir, home=home, cwd=cwd, lp_system_dir=lp_system_dir
+    )
+    raw = relative_path.strip()
+    parts = Path(raw).parts
+    if (
+        not raw
+        or Path(raw).is_absolute()
+        or any(part in {".", ".."} for part in parts)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Choose a model folder inside the model directory.",
+        )
+    target = (root / raw).resolve()
+    try:
+        target.relative_to(root)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Choose a model folder inside the model directory.",
+        ) from exc
+    if target == root or not target.is_dir():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Choose a model folder inside the model directory.",
+        )
+    reject_forbidden_root(target, home=home, cwd=cwd, lp_system_dir=lp_system_dir)
+    if _directory_contains_project_yaml(target):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot delete {target}: it contains a project.yaml file.",
+        )
+    _reject_if_contains_registered(target, other_registered)
+    return target

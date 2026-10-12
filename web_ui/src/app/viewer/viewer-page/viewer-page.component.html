@@ -27,10 +27,16 @@
                   <app-dropdown-content class="z-50">
                     <div class="p-2 text-sm w-max">
                       @if ((ctx.projectInfo?.views?.length ?? 0) > 0) {
-                        Searches <code class="text-xs">videos/*.mp4</code> then
-                        groups by session prefix
+                        Searches
+                        <code class="text-xs">videos*/**/*.mp4</code>
+                        (any data-directory folder whose name starts with
+                        videos, except folders unchecked in File Manager) then
+                        groups by session prefix.
                       } @else {
-                        Searches <code class="text-xs">videos/*.mp4</code>
+                        Searches
+                        <code class="text-xs">videos*/**/*.mp4</code>
+                        (any data-directory folder whose name starts with
+                        videos, except folders unchecked in File Manager).
                       }
                     </div>
                   </app-dropdown-content>
@@ -45,13 +51,20 @@
             [selectedSessionKey]="_sessionKey()"
             (selectedSessionChange)="handleSelectedSessionChange($event)"
           ></app-sessions-panel>
-          <div class="mt-4 flex justify-center">
+          <div class="mt-4 flex flex-col gap-2">
             <button
-              class="btn btn-sm btn-outline w-full"
+              class="btn btn-sm btn-soft btn-primary w-full"
               data-tip="Upload local video files to create a new session"
               (click)="sessionImportOpen.set(true)"
             >
               Upload a new session
+            </button>
+            <button
+              class="btn btn-sm btn-soft btn-primary w-full"
+              [disabled]="!isMultiview()"
+              (click)="calibrationImportOpen.set(true)"
+            >
+              Upload a calibration file
             </button>
           </div>
         </div>
@@ -195,7 +208,7 @@
                             >
                             or
                             <button
-                              class="btn btn-xs btn-primary"
+                              class="btn btn-xs btn-soft btn-primary"
                               (click)="isRunModelInferenceDialogOpen.set(true)"
                             >
                               Run inference
@@ -424,7 +437,7 @@
   <div class="modal-box">
     <p>Enable view of all views and keypoints in the viewer and retry.</p>
     <div class="modal-action">
-      <button class="btn btn-primary" (click)="partialViewsError.close()">
+      <button class="btn btn-soft btn-info" (click)="partialViewsError.close()">
         OK
       </button>
     </div>
@@ -434,7 +447,7 @@
   <div class="modal-box">
     <p>Ensure only one model is shown in the viewer and retry.</p>
     <div class="modal-action">
-      <button class="btn btn-primary" (click)="partialModelsError.close()">
+      <button class="btn btn-soft btn-info" (click)="partialModelsError.close()">
         OK
       </button>
     </div>
@@ -447,4 +460,9 @@
 }
 @if (sessionImportOpen()) {
   <app-session-import (done)="onImportDone()"></app-session-import>
+}
+@if (calibrationImportOpen()) {
+  <app-load-calibration-dialog
+    (done)="calibrationImportOpen.set(false)"
+  />
 }

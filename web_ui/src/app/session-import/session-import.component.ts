@@ -16,10 +16,21 @@ import { FormsModule } from '@angular/forms';
 import { VideoFileTableComponent } from '../video-import/video-file-table/video-file-table.component';
 import { VideoImportStore } from '../video-import/video-import.store';
 import { ToastService } from '../toast.service';
+import { FileSourceChooserComponent } from '../components/file-source-chooser/file-source-chooser.component';
+import {
+  ServerVideoChoice,
+  ServerVideoPickerComponent,
+  VIDEO_EXTENSIONS,
+} from '../components/server-video-picker/server-video-picker.component';
 
 @Component({
   selector: 'app-session-import',
-  imports: [FormsModule, VideoFileTableComponent],
+  imports: [
+    FormsModule,
+    VideoFileTableComponent,
+    ServerVideoPickerComponent,
+    FileSourceChooserComponent,
+  ],
   templateUrl: './session-import.component.html',
   styleUrl: './session-import.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -42,6 +53,10 @@ export class SessionImportComponent implements AfterViewInit, OnDestroy {
 
   // Local state to track if an import cycle has finished
   protected importAttempted = signal(false);
+  /** When true, Choose videos browses the server instead of the local file picker. */
+  protected useServerFiles = signal(false);
+  protected readonly videoExtensions = VIDEO_EXTENSIONS;
+  protected serverPickerOpen = signal(false);
 
   protected hasErrors = computed(() => {
     return this.items().some(
@@ -69,8 +84,17 @@ export class SessionImportComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  protected addFiles(files: FileList | null) {
+  protected addFiles(files: FileList | File[] | null) {
     this.store.addFiles(files);
+  }
+
+  protected openServerPicker() {
+    this.serverPickerOpen.set(true);
+  }
+
+  protected onServerChosen(files: ServerVideoChoice[]) {
+    this.store.addServerFiles(files);
+    this.serverPickerOpen.set(false);
   }
 
   protected removeAt(idx: number) {

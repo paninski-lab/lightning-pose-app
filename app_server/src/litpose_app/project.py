@@ -66,9 +66,8 @@ class ProjectUtil:
         if projectpaths is None:
             del projects_toml_dict[str(project_key)]
         else:
-            projects_toml_dict[str(project_key)] = projectpaths.model_dump(
-                mode="json", exclude_unset=True
-            )
+            dumped = projectpaths.model_dump(mode="json", exclude_unset=True)
+            projects_toml_dict[str(project_key)] = dumped
         self._write_projects_toml(projects_toml_dict)
 
     ####################################

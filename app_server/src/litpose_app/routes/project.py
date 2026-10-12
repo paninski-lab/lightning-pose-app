@@ -19,12 +19,17 @@ from litpose_app.deps import (
     ApplicationError,
     ProjectInfoGetter,
 )
+from litpose_app.ignored_video_dirs import (
+    ignored_video_dirs,
+    remember_ignored_video_dirs,
+)
 from litpose_app.migrations import run_migrations_for_project
+from litpose_app.paths.project_videos import iter_project_mp4s
 from litpose_app.project import ProjectUtil
 from litpose_app.project_deletion import paths_to_delete, reject_forbidden_project_paths
-from litpose_app.routes.labeler.find_label_files import _check_label_file_headers
 from litpose_app.routes.models import read_models_l1_from_base
 from litpose_app.routes.rglob import _rglob
+from litpose_app.routes.validate_files import _label_header_issue
 from litpose_app.skeleton import skeleton_problems
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
 
@@ -42,6 +47,8 @@ class ProjectInfo(BaseModel):
     keypoint_names: list[str] | None = None
     # Raw project.yaml value. None means the key is absent.
     skeleton: Any = None
+    # videos* folders left on disk but skipped by the app.
+    ignored_video_dirs: list[str] = []
 
 
 class LabelFileStats(BaseModel):
@@ -98,6 +105,13 @@ class UpdateProjectPathsRequest(BaseModel):
     projectKey: str
     data_dir: Path
     model_dir: Path | None = None
+
+
+class SetIgnoredVideoDirsRequest(BaseModel):
+    """videos* folders to leave on disk but skip in the app."""
+
+    projectKey: str
+    ignored: list[str]
 
 
 class UpdateProjectConfigRequest(BaseModel):
@@ -212,8 +226,9 @@ def _fetch_all_stats(
 
     try:
         # 1. Sessions
-        mp4_entries = _rglob(str(data_dir), pattern="videos*/**/*.mp4", no_dirs=True)
-        mp4_paths = [str(e["path"]) for e in mp4_entries]
+        mp4_paths = list(
+            iter_project_mp4s(data_dir, ignored_video_dirs(project_key))
+        )
         # Simple grouping logic: replace view name with *
         session_keys = set()
         for p in mp4_paths:
@@ -240,7 +255,7 @@ def _fetch_all_stats(
 
         valid_label_files = []
         for p in candidate_csv_paths:
-            if _check_label_file_headers(p, data_dir):
+            if _label_header_issue(data_dir / p) is None:
                 valid_label_files.append(data_dir / p)
 
         label_files_stats_raw = []
@@ -386,6 +401,7 @@ def get_project_info(
             "views": project.config.model_dump()[
                 "view_names"
             ],  # Rename view_names to views
+            "ignored_video_dirs": ignored_video_dirs(request.projectKey),
         }
         del merged["view_names"]
 
@@ -415,6 +431,36 @@ def update_project_paths_rpc(
     run_migrations_for_project(pp)
     project_util.update_project_paths(project_key=request.projectKey, projectpaths=pp)
     return None
+
+
+@router.post("/app/v0/rpc/setIgnoredVideoDirs")
+def set_ignored_video_dirs(
+    request: SetIgnoredVideoDirsRequest,
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+) -> None:
+    """Remember which videos* folders this project skips until the app stops."""
+    project = project_info_getter(request.projectKey)
+    data_dir = project.paths.data_dir.resolve()
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for raw in request.ignored:
+        name = raw.strip()
+        if not name or name in {".", ".."} or "/" in name or "\\" in name:
+            raise HTTPException(status_code=400, detail="Enter a folder name, not a path.")
+        if not name.startswith("videos"):
+            raise HTTPException(
+                status_code=400, detail="Folder name must start with videos."
+            )
+        folder = (data_dir / name).resolve()
+        if folder.parent != data_dir or not folder.is_dir():
+            raise HTTPException(
+                status_code=400,
+                detail=f"{name} is not a videos folder in the data directory.",
+            )
+        if name not in seen:
+            seen.add(name)
+            cleaned.append(name)
+    remember_ignored_video_dirs(request.projectKey, cleaned)
 
 
 @router.post("/app/v0/rpc/RegisterExistingProject")
@@ -451,7 +497,7 @@ def update_project_config(
     existing_project = project_info_getter(request.projectKey)
 
     requested_skeleton = request.projectInfo.model_dump(
-        mode="json", exclude_unset=True, exclude={"data_dir", "model_dir"}
+        mode="json", exclude_unset=True, exclude={"data_dir", "model_dir", "ignored_video_dirs"}
     )
     if "skeleton" in requested_skeleton:
         names = requested_skeleton.get("keypoint_names")
@@ -472,7 +518,7 @@ def update_project_config(
     )
 
     metadata_to_update = request.projectInfo.model_dump(
-        mode="json", exclude_none=True, exclude={"data_dir", "model_dir"}
+        mode="json", exclude_none=True, exclude={"data_dir", "model_dir", "ignored_video_dirs"}
     )
     metadata_changed = len(metadata_to_update) > 0
 
@@ -498,7 +544,7 @@ def update_project_config(
 
     # Merge request settings with saved project settings (excluding path fields)
     project_yaml_dict = request.projectInfo.model_dump(
-        mode="json", exclude_none=True, exclude={"data_dir", "model_dir"}
+        mode="json", exclude_none=True, exclude={"data_dir", "model_dir", "ignored_video_dirs"}
     )
     # Rename views to view_names
     if "views" in project_yaml_dict:
@@ -626,7 +672,7 @@ def create_new_project(
 
     # Merge required projectInfo fields
     info_dict = request.projectInfo.model_dump(
-        mode="json", exclude_none=True, exclude={"data_dir", "model_dir"}
+        mode="json", exclude_none=True, exclude={"data_dir", "model_dir", "ignored_video_dirs"}
     )
     if "views" in info_dict:
         info_dict["view_names"] = info_dict["views"]
