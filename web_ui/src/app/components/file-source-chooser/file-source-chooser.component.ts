@@ -17,7 +17,7 @@ import {
       @if (useServerFiles()) {
         <button
           type="button"
-          class="btn btn-primary"
+          class="btn btn-soft btn-primary"
           [attr.data-testid]="chooseTestId()"
           [disabled]="disabled()"
           (click)="browseServer.emit()"
@@ -26,7 +26,7 @@ import {
         </button>
       } @else {
         <label
-          class="btn btn-primary"
+          class="btn btn-soft btn-primary"
           [attr.data-testid]="chooseTestId()"
           [class.btn-disabled]="disabled()"
           [attr.for]="inputId()"

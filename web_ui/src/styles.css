@@ -98,6 +98,19 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   font-weight: 700;
 }
 
+/* Settings and model-creation page lists. The selected page uses the darker
+   base-300. Resting pages use the dialog's base-100, with no border. */
+.menu a.btn-choice {
+  background-color: var(--color-base-100);
+  color: var(--color-base-content);
+  border: none;
+}
+
+.menu a.btn-choice.menu-active {
+  background-color: var(--color-base-300);
+  color: var(--color-base-content);
+}
+
 :root {
   --as-gutter-background-color: var(--color-base-200) !important;
 }

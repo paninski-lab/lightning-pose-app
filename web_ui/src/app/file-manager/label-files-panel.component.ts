@@ -63,13 +63,13 @@ import {
             <code>CollectedData_&lt;view&gt;.csv</code>.
           </p>
           <ul class="m-0 mt-2 flex list-disc flex-col gap-1 pl-5">
-            <li><strong>Refresh</strong> reloads this list.</li>
             <li>
-              <strong>Load Label File</strong> copies CollectedData CSV files
+              <strong>Add Label File</strong> copies CollectedData CSV files
               into the data directory. A local file is uploaded, and a server
               file is copied. The source file stays where it is. An existing
               file is left unchanged.
             </li>
+            <li><strong>Refresh</strong> reloads this list.</li>
             <li>
               <strong>Validate All</strong> looks at the filename, the three
               header rows, and whether each row points to a frame in
@@ -85,7 +85,15 @@ import {
           <div class="flex flex-wrap gap-2">
             <button
               type="button"
-              class="btn btn-sm btn-primary"
+              class="btn btn-sm btn-soft btn-primary"
+              [disabled]="loading() || validating()"
+              (click)="loadOpen.set(true)"
+            >
+              Add Label File
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-soft btn-info"
               [disabled]="loading() || validating()"
               (click)="refresh()"
             >
@@ -93,15 +101,7 @@ import {
             </button>
             <button
               type="button"
-              class="btn btn-sm btn-primary"
-              [disabled]="loading() || validating()"
-              (click)="loadOpen.set(true)"
-            >
-              Load Label File
-            </button>
-            <button
-              type="button"
-              class="btn btn-sm btn-primary"
+              class="btn btn-sm btn-soft btn-info"
               [disabled]="loading() || validating() || rows().length === 0"
               (click)="validateFiles()"
             >
@@ -111,7 +111,7 @@ import {
           <div class="flex flex-wrap gap-2">
             <button
               type="button"
-              class="btn btn-sm btn-primary"
+              class="btn btn-sm btn-soft btn-info"
               [disabled]="!selectedPath() || loading() || validating()"
               (click)="openRename()"
             >
@@ -146,11 +146,11 @@ import {
           }
         </div>
         <app-alert-footer>
-          <button class="btn" type="button" (click)="renameOpen.set(false)">
+          <button class="btn btn-soft btn-info" type="button" (click)="renameOpen.set(false)">
             Cancel
           </button>
           <button
-            class="btn btn-primary"
+            class="btn btn-soft btn-info"
             type="button"
             [disabled]="!!renameProblem() || renameUnchanged()"
             (click)="confirmRename()"

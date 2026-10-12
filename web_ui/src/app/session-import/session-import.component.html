@@ -42,7 +42,7 @@
           (serverModeChange)="useServerFiles.set($event)"
         />
         <button
-          class="btn btn-ghost"
+          class="btn btn-soft btn-error"
           (click)="clearAll()"
           [disabled]="items().length === 0 || isProcessing()"
         >
@@ -86,7 +86,7 @@
           }
         </div>
         <div class="flex gap-2">
-          <button class="btn btn-outline" (click)="closeDialog()">
+          <button class="btn btn-soft btn-info" (click)="closeDialog()">
             Cancel
           </button>
           @if (isProcessing()) {
@@ -96,7 +96,7 @@
             ></span>
           }
           <button
-            class="btn btn-primary"
+            class="btn btn-soft btn-primary"
             [disabled]="!allValid() || isProcessing()"
             (click)="startImport()"
           >

@@ -10,6 +10,25 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 
 * **Project delete:** Permanently deleting files requires typing the project name and refuses protected directories (home, the server working directory, `~/.lightning-pose`, or a path that contains another project). Removing a project from the list without deleting files is unchanged.
 
+**File Manager**
+
+* **Screen:** **File Manager** is in the top screen list only (`/project/<key>/files`). It is not a card on the project home screen. The page has five panels: **Label Data (CSV)**, **Videos**, **Labeled Image Folders**, **Models**, and **Camera Calibration**. Each panel starts with a collapsed **Help** chip.
+* **Videos:** **Video directories (`videos*/`)** sits above the folder checkboxes. Unchecked folders stay on disk and are left out of the app. **Add Video** opens Import Session. **Check** and **Process** still convert videos to all-intra in place.
+* **Adding files:** **Add Label File**, **Add Model**, and **Add Calibration** copy into the project and leave an existing file or folder unchanged. On a single-view project, Camera Calibration says it is not used and the rest of that panel is disabled.
+* **Buttons:** The **Add** button is green and is the leftmost button on its row. The other File Manager buttons are blue. **Delete Selected** is red and requires typing the model path.
+
+**Labeler**
+
+* **Frame actions:** **Save**, **Save and next**, **Next →**, and **Revert changes ↫** stack in one column and use the blue button. **Next** opens the next frame in the combined list without saving. **Revert** restores a labeled frame, or clears an unlabeled frame and leaves it in **Remaining frames to label**. Both remove-frame actions are the red trash icon.
+* **Multiview tools:** **Load Calibration**, then **Refine calibration**, then **Project keypoints to all views**. The first two are blue. **Load Calibration** copies `.toml` files into `calibrations/` and does not replace an existing file.
+* **Label files:** A pandas scorer suffix such as `.1` is ignored when deciding whether a CSV is a label file, so those files show up in the Labeler and Viewer.
+
+**Buttons**
+
+* Text buttons use the existing soft green, blue, and red. Green opens another screen or dialog, or writes files, except for the blue Labeler and Models actions noted above. The selected page in Project settings and model creation is a darker fill with no outline.
+
+Tests: `test_import_label_and_model_copy_without_overwrite` and `test_import_calibration_creates_folder_and_copies_toml` (copy without overwrite); `test_find_label_files_logic` (pandas scorer suffix); `test_delete_model_requires_typed_path_and_stays_inside_model_dir`; `frame.model.spec.ts` and `labeler-page.component.spec.ts` (revert and next frame).
+
 ### [2.4.2.1] — 2026-09-29
 
 **Skeleton**

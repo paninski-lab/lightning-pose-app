@@ -77,14 +77,14 @@ const SESSION_STEM = /^[A-Za-z0-9_.-]+$/;
             listed.
           </p>
           <ul class="m-0 mt-2 flex list-disc flex-col gap-1 pl-5">
-            <li><strong>Refresh</strong> reloads this list.</li>
             <li>
-              <strong>Load Calibration</strong> copies
+              <strong>Add Calibration</strong> copies
               <code>.toml</code> files into <code>calibrations/</code>,
               creating that folder when it is missing. The name before
               <code>.toml</code> is the session id. An existing file is left
               unchanged.
             </li>
+            <li><strong>Refresh</strong> reloads this list.</li>
             <li>
               <strong>Validate All</strong> checks that each file loads as a
               camera group, and that the camera names match the project views
@@ -101,7 +101,15 @@ const SESSION_STEM = /^[A-Za-z0-9_.-]+$/;
           <div class="flex flex-wrap gap-2">
             <button
               type="button"
-              class="btn btn-sm btn-primary"
+              class="btn btn-sm btn-soft btn-primary"
+              [disabled]="!isMultiview() || loading() || validating()"
+              (click)="loadOpen.set(true)"
+            >
+              Add Calibration
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-soft btn-info"
               [disabled]="!isMultiview() || loading() || validating()"
               (click)="refresh()"
             >
@@ -109,15 +117,7 @@ const SESSION_STEM = /^[A-Za-z0-9_.-]+$/;
             </button>
             <button
               type="button"
-              class="btn btn-sm btn-primary"
-              [disabled]="!isMultiview() || loading() || validating()"
-              (click)="loadOpen.set(true)"
-            >
-              Load Calibration
-            </button>
-            <button
-              type="button"
-              class="btn btn-sm btn-primary"
+              class="btn btn-sm btn-soft btn-info"
               [disabled]="
                 !isMultiview() || loading() || validating() || rows().length === 0
               "
@@ -129,7 +129,7 @@ const SESSION_STEM = /^[A-Za-z0-9_.-]+$/;
           <div class="flex flex-wrap gap-2">
             <button
               type="button"
-              class="btn btn-sm btn-primary"
+              class="btn btn-sm btn-soft btn-info"
               [disabled]="!isMultiview() || !canRename() || loading() || validating()"
               (click)="openRename()"
             >
@@ -168,11 +168,11 @@ const SESSION_STEM = /^[A-Za-z0-9_.-]+$/;
           }
         </div>
         <app-alert-footer>
-          <button class="btn" type="button" (click)="renameOpen.set(false)">
+          <button class="btn btn-soft btn-info" type="button" (click)="renameOpen.set(false)">
             Cancel
           </button>
           <button
-            class="btn btn-primary"
+            class="btn btn-soft btn-info"
             type="button"
             [disabled]="!!renameProblem() || renameUnchanged()"
             (click)="confirmRename()"

@@ -76,7 +76,7 @@ const FRAME_NAME = /[A-Za-z_-]+\d+\.(png|jpg)$/;
           <div class="flex flex-wrap gap-2">
             <button
               type="button"
-              class="btn btn-sm btn-primary"
+              class="btn btn-sm btn-soft btn-info"
               [disabled]="loading() || validating()"
               (click)="refresh()"
             >
@@ -84,7 +84,7 @@ const FRAME_NAME = /[A-Za-z_-]+\d+\.(png|jpg)$/;
             </button>
             <button
               type="button"
-              class="btn btn-sm btn-primary"
+              class="btn btn-sm btn-soft btn-info"
               [disabled]="loading() || validating() || rows().length === 0"
               (click)="validateFiles()"
             >
@@ -94,7 +94,7 @@ const FRAME_NAME = /[A-Za-z_-]+\d+\.(png|jpg)$/;
           <div class="flex flex-wrap gap-2">
             <button
               type="button"
-              class="btn btn-sm btn-primary"
+              class="btn btn-sm btn-soft btn-info"
               [disabled]="!selectedPath() || loading() || validating()"
               (click)="openRename()"
             >
@@ -139,11 +139,11 @@ const FRAME_NAME = /[A-Za-z_-]+\d+\.(png|jpg)$/;
           }
         </div>
         <app-alert-footer>
-          <button class="btn" type="button" (click)="renameOpen.set(false)">
+          <button class="btn btn-soft btn-info" type="button" (click)="renameOpen.set(false)">
             Cancel
           </button>
           <button
-            class="btn btn-primary"
+            class="btn btn-soft btn-info"
             type="button"
             [disabled]="!!renameProblem() || renameUnchanged()"
             (click)="confirmRename()"

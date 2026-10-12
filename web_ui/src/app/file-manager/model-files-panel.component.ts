@@ -54,13 +54,13 @@ import {
             <code>config.yaml</code> or <code>ensemble.yaml</code>.
           </p>
           <ul class="m-0 mt-2 flex list-disc flex-col gap-1 pl-5">
-            <li><strong>Refresh</strong> reloads this list.</li>
             <li>
-              <strong>Load Model</strong> copies one model directory into this
+              <strong>Add Model</strong> copies one model directory into this
               project's model directory. A local folder is uploaded, and a
               server folder is copied. The source stays where it is. An
               existing folder is left unchanged.
             </li>
+            <li><strong>Refresh</strong> reloads this list.</li>
             <li>
               <strong>Validate All</strong> looks at the folder name, those
               files, <code>train_status.json</code> when it is present, and
@@ -80,7 +80,15 @@ import {
           <div class="flex flex-wrap gap-2">
             <button
               type="button"
-              class="btn btn-sm btn-primary"
+              class="btn btn-sm btn-soft btn-primary"
+              [disabled]="loading() || validating()"
+              (click)="loadOpen.set(true)"
+            >
+              Add Model
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-soft btn-info"
               [disabled]="loading() || validating()"
               (click)="refresh()"
             >
@@ -88,15 +96,7 @@ import {
             </button>
             <button
               type="button"
-              class="btn btn-sm btn-primary"
-              [disabled]="loading() || validating()"
-              (click)="loadOpen.set(true)"
-            >
-              Load Model
-            </button>
-            <button
-              type="button"
-              class="btn btn-sm btn-primary"
+              class="btn btn-sm btn-soft btn-info"
               [disabled]="loading() || validating() || rows().length === 0"
               (click)="validateFiles()"
             >
@@ -106,7 +106,7 @@ import {
           <div class="flex flex-wrap gap-2">
             <button
               type="button"
-              class="btn btn-sm btn-primary"
+              class="btn btn-sm btn-soft btn-info"
               [disabled]="!selectedPath() || loading() || validating()"
               (click)="openRename()"
             >
@@ -114,7 +114,7 @@ import {
             </button>
             <button
               type="button"
-              class="btn btn-sm btn-primary"
+              class="btn btn-sm btn-soft btn-error"
               [disabled]="!selectedPath() || loading() || validating()"
               (click)="openDelete()"
             >

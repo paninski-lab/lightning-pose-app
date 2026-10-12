@@ -53,14 +53,14 @@
           ></app-sessions-panel>
           <div class="mt-4 flex flex-col gap-2">
             <button
-              class="btn btn-sm btn-outline w-full"
+              class="btn btn-sm btn-soft btn-primary w-full"
               data-tip="Upload local video files to create a new session"
               (click)="sessionImportOpen.set(true)"
             >
               Upload a new session
             </button>
             <button
-              class="btn btn-sm btn-outline w-full"
+              class="btn btn-sm btn-soft btn-primary w-full"
               [disabled]="!isMultiview()"
               (click)="calibrationImportOpen.set(true)"
             >
@@ -208,7 +208,7 @@
                             >
                             or
                             <button
-                              class="btn btn-xs btn-primary"
+                              class="btn btn-xs btn-soft btn-primary"
                               (click)="isRunModelInferenceDialogOpen.set(true)"
                             >
                               Run inference
@@ -437,7 +437,7 @@
   <div class="modal-box">
     <p>Enable view of all views and keypoints in the viewer and retry.</p>
     <div class="modal-action">
-      <button class="btn btn-primary" (click)="partialViewsError.close()">
+      <button class="btn btn-soft btn-info" (click)="partialViewsError.close()">
         OK
       </button>
     </div>
@@ -447,7 +447,7 @@
   <div class="modal-box">
     <p>Ensure only one model is shown in the viewer and retry.</p>
     <div class="modal-action">
-      <button class="btn btn-primary" (click)="partialModelsError.close()">
+      <button class="btn btn-soft btn-info" (click)="partialModelsError.close()">
         OK
       </button>
     </div>

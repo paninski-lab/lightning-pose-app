@@ -22,23 +22,13 @@
       [queryParams]="card.queryParams"
       [attr.aria-label]="card.title"
       ><figure class="px-4 pt-4">
-        @if (card.icon) {
-          <div
-            class="frosted-soft border-base-content/5 bg-base-300 rounded-lg border flex items-center justify-center h-36"
-          >
-            <span class="material-icons text-6xl! opacity-70">{{
-              card.icon
-            }}</span>
-          </div>
-        } @else {
-          <img
-            class="frosted-soft border-base-content/5 bg-base-300 rounded-lg border"
-            [src]="card.imgSrc"
-            [alt]="card.imgAlt"
-            width="320"
-            height="180"
-          />
-        }
+        <img
+          class="frosted-soft border-base-content/5 bg-base-300 rounded-lg border"
+          [src]="card.imgSrc"
+          [alt]="card.imgAlt"
+          width="320"
+          height="180"
+        />
       </figure>
 
       <div class="card-body">

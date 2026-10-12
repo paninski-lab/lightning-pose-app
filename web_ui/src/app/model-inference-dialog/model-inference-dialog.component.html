@@ -31,7 +31,7 @@
 
       <div class="flex gap-3 items-center mb-4 flex-shrink-0">
         <label
-          class="btn btn-primary"
+          class="btn btn-soft btn-primary"
           [class.btn-disabled]="isProcessing()"
           for="videoFileInput"
           >Choose videos</label
@@ -47,7 +47,7 @@
           multiple
         />
         <button
-          class="btn btn-ghost"
+          class="btn btn-soft btn-error"
           (click)="clearAll()"
           [disabled]="items().length === 0 || isProcessing()"
         >
@@ -109,7 +109,7 @@
           }
         </div>
         <div class="flex gap-2">
-          <button class="btn btn-outline" (click)="closeDialog()">Close</button>
+          <button class="btn btn-soft btn-info" (click)="closeDialog()">Close</button>
           @if (isProcessing()) {
             <span
               class="loading loading-spinner loading-sm"
@@ -117,14 +117,14 @@
             ></span>
           }
           <button
-            class="btn btn-primary"
+            class="btn btn-soft btn-primary"
             [disabled]="!allValid() || isProcessing()"
             (click)="startImport()"
           >
             Import (upload + transcode)
           </button>
           <button
-            class="btn btn-secondary"
+            class="btn btn-soft btn-primary"
             [disabled]="!allTranscoded() || inferenceRunning()"
             (click)="startInference()"
           >

@@ -89,9 +89,9 @@
     </form>
 
     <div class="modal-action">
-      <button class="btn btn-ghost" (click)="handleCloseClick()">Cancel</button>
+      <button class="btn btn-soft btn-info" (click)="handleCloseClick()">Cancel</button>
       <button
-        class="btn btn-primary"
+        class="btn btn-soft btn-primary"
         (click)="onCreateClick()"
         [class.btn-disabled]="
           form.invalid || form.controls.memberIds.value.length < 1

@@ -27,6 +27,7 @@
       @for (tab of tabs(); track tab.key; let i = $index) {
         <li>
           <a
+            class="btn-choice"
             [class.menu-active]="selectedTab() === tab.key"
             tabindex="0"
             (click)="handleTabClick(tab.key)"
@@ -167,7 +168,7 @@
 
     <div class="flex gap-2">
       <ng-template #backButtonTemplate>
-        <button class="btn btn-soft" (click)="handleBackClick()">Back</button>
+        <button class="btn btn-soft btn-info" (click)="handleBackClick()">Back</button>
       </ng-template>
 
       <ng-template #nextButtonTemplate>

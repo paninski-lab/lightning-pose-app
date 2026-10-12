@@ -17,7 +17,7 @@
         <div class="flex items-center gap-2 mt-1">
           <span class="opacity-70">optional:</span>
           <button
-            class="btn btn-sm btn-outline"
+            class="btn btn-sm btn-soft btn-primary"
             data-tip="Upload local video files to create a new session"
             (click)="sessionImportOpen.set(true)"
           >
@@ -152,7 +152,7 @@
         }
       </div>
       <div class="flex gap-2">
-        <button class="btn btn-soft" (click)="handleCloseClick()">
+        <button class="btn btn-soft btn-info" (click)="handleCloseClick()">
           {{ inferenceActive() ? "Close" : "Cancel" }}
         </button>
         @if (!inferenceActive()) {

@@ -72,9 +72,9 @@ function folderFileName(file: File): string {
             }
           </ul>
           <div class="flex justify-end gap-2">
-            <button class="btn" type="button" (click)="close()">Cancel</button>
+            <button class="btn btn-soft btn-info" type="button" (click)="close()">Cancel</button>
             <button
-              class="btn btn-primary"
+              class="btn btn-soft btn-info"
               type="button"
               [disabled]="busy() || !folderName()"
               (click)="load()"
