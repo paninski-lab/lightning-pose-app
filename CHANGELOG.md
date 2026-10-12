@@ -6,7 +6,7 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 
 ## 📝 Release Notes
 
-### [2.4.2.2.dev0]
+### [2.4.2.2] — 2026-10-12
 
 * **Project delete:** Permanently deleting files requires typing the project name and refuses protected directories (home, the server working directory, `~/.lightning-pose`, or a path that contains another project). Removing a project from the list without deleting files is unchanged.
 
@@ -27,7 +27,7 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 
 * Text buttons use the existing soft green, blue, and red. Green opens another screen or dialog, or writes files, except for the blue Labeler and Models actions noted above. The selected page in Project settings and model creation is a darker fill with no outline.
 
-Tests: `test_import_label_and_model_copy_without_overwrite` and `test_import_calibration_creates_folder_and_copies_toml` (copy without overwrite); `test_import_calibration_project_file_and_overwrite` (project `calibration.toml` and overwrite); `test_find_label_files_logic` (pandas scorer suffix); `test_delete_model_requires_typed_path_and_stays_inside_model_dir`; `frame.model.spec.ts` and `labeler-page.component.spec.ts` (revert and next frame).
+Tests: `test_import_label_and_model_copy_without_overwrite` and `test_import_calibration_creates_folder_and_copies_toml` (copy without overwrite); `test_import_calibration_project_file_and_overwrite` (project `calibration.toml` and overwrite); `test_find_label_files_logic` (pandas scorer suffix); `test_delete_model_requires_typed_path_and_stays_inside_model_dir`; `file-listing.spec.ts` (**Validate All** keeps list order); `frame.model.spec.ts` and `labeler-page.component.spec.ts` (revert and next frame).
 
 ### [2.4.2.1] — 2026-09-29
 
