@@ -6,6 +6,16 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 
 ## 📝 Release Notes
 
+### [2.4.2.3.dev0]
+
+* **Folder picker:** The path dropdown scrolls when a directory has more subfolders than fit on screen.
+* **Multiview:** A project with exactly one camera view cannot be created or saved. Leave camera views blank for a single-view project. Projects that already have one view still open.
+* **ffmpeg:** If ffmpeg or ffprobe is missing from PATH, a warning stays in the top bar. Videos will not open until both are installed.
+* **Windows:** On native Windows, the top bar says labeling works here and training, inference, and video processing should run in WSL.
+* **Keypoints:** Changing keypoint names warns that existing label files keep the old columns. Saving a label whose keypoint is not a column in that CSV shows an error and does not write the file.
+
+Tests: `test_create_and_update_reject_exactly_one_camera_view` (one view rejected; none and two accepted); `project-settings.component.spec.ts` (one camera view disables Save); `test_get_global_context_reports_ffmpeg_and_windows`; `test_save_mvframe_rejects_keypoint_missing_from_columns` (mismatched keypoint is not written).
+
 ### [2.4.2.2] — 2026-10-12
 
 * **Project delete:** Permanently deleting files requires typing the project name and refuses protected directories (home, the server working directory, `~/.lightning-pose`, or a path that contains another project). Removing a project from the list without deleting files is unchanged.

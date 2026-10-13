@@ -75,6 +75,22 @@
 
     <div class="navbar-end flex gap-2">
       <app-active-task-indicator />
+      @if (nativeWindows()) {
+        <div role="alert" class="alert alert-warning alert-soft">
+          <span>
+            Native Windows. Labeling works here. Use WSL for training,
+            inference, and video processing.
+          </span>
+        </div>
+      }
+      @if (ffmpegMissing()) {
+        <div role="alert" class="alert alert-warning alert-soft">
+          <span>
+            ffmpeg is not available. Videos will not open until ffmpeg and
+            ffprobe are on PATH.
+          </span>
+        </div>
+      }
       @if (!isCompatibleBrowser) {
         <div role="alert" class="alert alert-warning alert-soft">
           <span

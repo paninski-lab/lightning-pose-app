@@ -91,16 +91,18 @@ interface RGlobResponse {
 
       <app-dropdown-content class="w-full">
         @if (isEditing() && !loading() && subdirectories().length > 0) {
-          <app-dense-listbox (selectedChange)="onSubdirSelect($event)">
-            @for (subdir of subdirectories(); track subdir) {
-              <app-dense-listbox-item [value]="subdir">
-                <div left class="flex items-center gap-2">
-                  <span class="material-icons text-xs opacity-40">folder</span>
-                  <span class="text-xs font-mono">{{ subdir }}</span>
-                </div>
-              </app-dense-listbox-item>
-            }
-          </app-dense-listbox>
+          <div class="max-h-[min(16rem,50vh)] overflow-y-auto">
+            <app-dense-listbox (selectedChange)="onSubdirSelect($event)">
+              @for (subdir of subdirectories(); track subdir) {
+                <app-dense-listbox-item [value]="subdir">
+                  <div left class="flex items-center gap-2">
+                    <span class="material-icons text-xs opacity-40">folder</span>
+                    <span class="text-xs font-mono">{{ subdir }}</span>
+                  </div>
+                </app-dense-listbox-item>
+              }
+            </app-dense-listbox>
+          </div>
         }
       </app-dropdown-content>
     </app-dropdown>

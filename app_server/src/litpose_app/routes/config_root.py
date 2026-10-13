@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import shutil
+import sys
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
@@ -19,6 +22,8 @@ class GlobalContextResponse(BaseModel):
     homeDir: str
     versions: dict[str, str | None]
     isEditable: dict[str, bool]
+    ffmpegAvailable: bool
+    nativeWindows: bool
 
 
 def get_package_version(package_name: str) -> str | None:
@@ -91,4 +96,7 @@ def get_root_config(
         "homeDir": home_dir,
         "versions": versions,
         "isEditable": is_editable,
+        "ffmpegAvailable": shutil.which("ffmpeg") is not None
+        and shutil.which("ffprobe") is not None,
+        "nativeWindows": sys.platform == "win32",
     }
