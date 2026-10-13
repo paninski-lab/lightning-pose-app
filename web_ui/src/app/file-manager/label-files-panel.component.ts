@@ -94,7 +94,7 @@ import {
             </button>
             <button
               type="button"
-              class="btn btn-sm btn-soft btn-info"
+              class="btn btn-sm btn-soft btn-primary"
               [disabled]="loading() || validating()"
               (click)="refresh()"
             >
@@ -102,7 +102,7 @@ import {
             </button>
             <button
               type="button"
-              class="btn btn-sm btn-soft btn-info"
+              class="btn btn-sm btn-soft btn-primary"
               [disabled]="loading() || validating() || rows().length === 0"
               (click)="validateFiles()"
             >
@@ -112,7 +112,7 @@ import {
           <div class="flex flex-wrap gap-2">
             <button
               type="button"
-              class="btn btn-sm btn-soft btn-info"
+              class="btn btn-sm btn-soft btn-primary"
               [disabled]="!selectedPath() || loading() || validating()"
               (click)="openRename()"
             >
@@ -147,11 +147,11 @@ import {
           }
         </div>
         <app-alert-footer>
-          <button class="btn btn-soft btn-info" type="button" (click)="renameOpen.set(false)">
+          <button class="btn btn-soft btn-primary" type="button" (click)="renameOpen.set(false)">
             Cancel
           </button>
           <button
-            class="btn btn-soft btn-info"
+            class="btn btn-soft btn-primary"
             type="button"
             [disabled]="!!renameProblem() || renameUnchanged()"
             (click)="confirmRename()"

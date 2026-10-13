@@ -2,6 +2,8 @@
   :host {
     flex-grow: 1;
     display: flex;
+    min-height: 0;
+    overflow: hidden;
   }
 </style>
 
@@ -72,17 +74,16 @@
       </div>
     </as-split-area>
 
-    <as-split-area size="*">
-      <div class="flex h-full">
-        <!-- Center content -->
-        <app-viewer-center-panel
-          class="grow z-30"
-          [sessionKey]="_sessionKey()"
-          (extractFrame)="onExtractFrameShortcut()"
-        ></app-viewer-center-panel>
+    <as-split-area class="viewer-center" size="*">
+      <app-viewer-center-panel
+        class="block h-full min-w-0 z-30"
+        [sessionKey]="_sessionKey()"
+        (extractFrame)="onExtractFrameShortcut()"
+      ></app-viewer-center-panel>
+    </as-split-area>
 
-        <!-- Right pane -->
-        <div class="flex-none w-60 h-full">
+    <as-split-area size="280">
+      <div class="h-full min-w-0 w-full overflow-y-auto">
           <div class="panel m-4">
             <input
               type="checkbox"
@@ -236,7 +237,7 @@
                     max="1"
                     step="0.01"
                     [(ngModel)]="viewOptions.likelihoodThreshold"
-                    class="range range-xs"
+                    class="range range-xs flex-1 min-w-0"
                   />
                   <button
                     class="btn btn-ghost btn-xs tooltip"
@@ -283,7 +284,7 @@
                     max="900"
                     step="10"
                     [(ngModel)]="viewOptions.videoTileSizePx"
-                    class="range range-xs"
+                    class="range range-xs flex-1 min-w-0"
                   />
                   <button
                     class="btn btn-ghost btn-xs tooltip"
@@ -308,7 +309,7 @@
                     max="1"
                     step="0.01"
                     [(ngModel)]="viewOptions.keypointOpacity"
-                    class="range range-xs"
+                    class="range range-xs flex-1 min-w-0"
                   />
                   <button
                     class="btn btn-ghost btn-xs tooltip"
@@ -333,7 +334,7 @@
                     max="25"
                     step="1"
                     [(ngModel)]="viewOptions.keypointSize"
-                    class="range range-xs"
+                    class="range range-xs flex-1 min-w-0"
                   />
                   <button
                     class="btn btn-ghost btn-xs tooltip"
@@ -358,7 +359,7 @@
                     max="8"
                     step="1"
                     [(ngModel)]="viewOptions.keypointLabelFontSize"
-                    class="range range-xs"
+                    class="range range-xs flex-1 min-w-0"
                   />
                   <button
                     class="btn btn-ghost btn-xs tooltip"
@@ -423,12 +424,13 @@
               <code>{{ videoPlayerState.currentFrameSignal() }}</code>
               to labeling queue of
               <app-label-file-picker
+                class="block w-full"
+                [fullWidth]="true"
                 [disabled]="isExtractFramesInteractionDisabled()"
                 [(labelFileKey)]="extractFramesLabelFileKey"
               ></app-label-file-picker>
             </div>
           </div>
-        </div>
       </div>
     </as-split-area>
   </as-split>
@@ -437,7 +439,7 @@
   <div class="modal-box">
     <p>Enable view of all views and keypoints in the viewer and retry.</p>
     <div class="modal-action">
-      <button class="btn btn-soft btn-info" (click)="partialViewsError.close()">
+      <button class="btn btn-soft btn-primary" (click)="partialViewsError.close()">
         OK
       </button>
     </div>
@@ -447,7 +449,7 @@
   <div class="modal-box">
     <p>Ensure only one model is shown in the viewer and retry.</p>
     <div class="modal-action">
-      <button class="btn btn-soft btn-info" (click)="partialModelsError.close()">
+      <button class="btn btn-soft btn-primary" (click)="partialModelsError.close()">
         OK
       </button>
     </div>

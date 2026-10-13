@@ -90,7 +90,7 @@
         </button>
         <button
           type="button"
-          class="btn btn-sm btn-soft btn-info"
+          class="btn btn-sm btn-soft btn-primary"
           [disabled]="loading() || busy()"
           (click)="refresh()"
         >
@@ -98,7 +98,7 @@
         </button>
         <button
           type="button"
-          class="btn btn-sm btn-soft btn-info"
+          class="btn btn-sm btn-soft btn-primary"
           [disabled]="loading() || busy() || rows().length === 0"
           (click)="checkAllEncodings()"
         >
@@ -106,7 +106,7 @@
         </button>
         <button
           type="button"
-          class="btn btn-sm btn-soft btn-info"
+          class="btn btn-sm btn-soft btn-primary"
           [disabled]="busy() || rows().length === 0"
           (click)="askProcessAll()"
         >
@@ -116,7 +116,7 @@
       <div class="flex flex-wrap gap-2">
         <button
           type="button"
-          class="btn btn-sm btn-soft btn-info"
+          class="btn btn-sm btn-soft btn-primary"
           [disabled]="!selectedRow() || busy()"
           (click)="openRename()"
         >
@@ -124,7 +124,7 @@
         </button>
         <button
           type="button"
-          class="btn btn-sm btn-soft btn-info"
+          class="btn btn-sm btn-soft btn-primary"
           [disabled]="!selectedRow() || busy()"
           (click)="checkSelectedEncoding()"
         >
@@ -132,7 +132,7 @@
         </button>
         <button
           type="button"
-          class="btn btn-sm btn-soft btn-info"
+          class="btn btn-sm btn-soft btn-primary"
           [disabled]="!selectedRow() || busy()"
           (click)="processSelected()"
         >
@@ -232,11 +232,11 @@
       }
     </div>
     <app-alert-footer>
-      <button class="btn btn-soft btn-info" type="button" (click)="renameOpen.set(false)">
+      <button class="btn btn-soft btn-primary" type="button" (click)="renameOpen.set(false)">
         Cancel
       </button>
       <button
-        class="btn btn-soft btn-info"
+        class="btn btn-soft btn-primary"
         type="button"
         [disabled]="
           !!renameProblem() || renameValue().trim() === selectedRow()?.filename
@@ -257,13 +257,13 @@
     </p>
     <app-alert-footer>
       <button
-        class="btn btn-soft btn-info"
+        class="btn btn-soft btn-primary"
         type="button"
         (click)="processAllConfirm.set(false)"
       >
         No
       </button>
-      <button class="btn btn-soft btn-info" type="button" (click)="confirmProcessAll()">
+      <button class="btn btn-soft btn-primary" type="button" (click)="confirmProcessAll()">
         Yes
       </button>
     </app-alert-footer>

@@ -89,7 +89,7 @@ import {
             </button>
             <button
               type="button"
-              class="btn btn-sm btn-soft btn-info"
+              class="btn btn-sm btn-soft btn-primary"
               [disabled]="loading() || validating()"
               (click)="refresh()"
             >
@@ -97,7 +97,7 @@ import {
             </button>
             <button
               type="button"
-              class="btn btn-sm btn-soft btn-info"
+              class="btn btn-sm btn-soft btn-primary"
               [disabled]="loading() || validating() || rows().length === 0"
               (click)="validateFiles()"
             >
@@ -107,7 +107,7 @@ import {
           <div class="flex flex-wrap gap-2">
             <button
               type="button"
-              class="btn btn-sm btn-soft btn-info"
+              class="btn btn-sm btn-soft btn-primary"
               [disabled]="!selectedPath() || loading() || validating()"
               (click)="openRename()"
             >

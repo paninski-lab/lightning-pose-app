@@ -54,7 +54,7 @@ import {
       <div class="pl-2 flex items-center">
         <input
           type="range"
-          class="range range-xs"
+          class="range range-xs flex-1 min-w-0"
           aria-label="Bone thickness"
           [attr.min]="minThickness"
           [attr.max]="maxThickness"
@@ -82,7 +82,7 @@ import {
       <div class="pl-2 flex items-center">
         <input
           type="range"
-          class="range range-xs"
+          class="range range-xs flex-1 min-w-0"
           aria-label="Bone opacity"
           min="0"
           max="1"

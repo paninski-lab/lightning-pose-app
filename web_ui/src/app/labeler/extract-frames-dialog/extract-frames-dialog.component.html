@@ -304,14 +304,14 @@
     <div class="flex justify-between mt-6 gap-2">
       @if (step() === "labelFile") {
         <button
-          class="btn btn-soft btn-info"
+          class="btn btn-soft btn-primary"
           (click)="handleCloseClick()"
         >
           Cancel
         </button>
       } @else {
         <button
-          class="btn btn-soft btn-info"
+          class="btn btn-soft btn-primary"
           [disabled]="isProcessing()"
           (click)="step.set(stepOrder[stepOrder.indexOf(step()) - 1])"
         >

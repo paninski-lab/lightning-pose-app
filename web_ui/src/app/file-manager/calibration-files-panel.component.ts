@@ -112,7 +112,7 @@ const SESSION_STEM = /^[A-Za-z0-9_.-]+$/;
             </button>
             <button
               type="button"
-              class="btn btn-sm btn-soft btn-info"
+              class="btn btn-sm btn-soft btn-primary"
               [disabled]="!isMultiview() || loading() || validating()"
               (click)="refresh()"
             >
@@ -120,7 +120,7 @@ const SESSION_STEM = /^[A-Za-z0-9_.-]+$/;
             </button>
             <button
               type="button"
-              class="btn btn-sm btn-soft btn-info"
+              class="btn btn-sm btn-soft btn-primary"
               [disabled]="
                 !isMultiview() || loading() || validating() || rows().length === 0
               "
@@ -132,7 +132,7 @@ const SESSION_STEM = /^[A-Za-z0-9_.-]+$/;
           <div class="flex flex-wrap gap-2">
             <button
               type="button"
-              class="btn btn-sm btn-soft btn-info"
+              class="btn btn-sm btn-soft btn-primary"
               [disabled]="!isMultiview() || !canRename() || loading() || validating()"
               (click)="openRename()"
             >
@@ -171,11 +171,11 @@ const SESSION_STEM = /^[A-Za-z0-9_.-]+$/;
           }
         </div>
         <app-alert-footer>
-          <button class="btn btn-soft btn-info" type="button" (click)="renameOpen.set(false)">
+          <button class="btn btn-soft btn-primary" type="button" (click)="renameOpen.set(false)">
             Cancel
           </button>
           <button
-            class="btn btn-soft btn-info"
+            class="btn btn-soft btn-primary"
             type="button"
             [disabled]="!!renameProblem() || renameUnchanged()"
             (click)="confirmRename()"

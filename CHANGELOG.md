@@ -6,6 +6,12 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 
 ## 📝 Release Notes
 
+### [2.4.2.3.dev0]
+
+* **Buttons:** Text buttons that were blue are green, including Cancel, Back, Close, and OK. Red buttons are unchanged.
+* **Labeler:** The right-hand controls sit in a panel you can drag wider or narrower. The frame stays in the center.
+* **Viewer:** Views, models, and the other controls sit in a panel you can drag wider or narrower. Videos stay in the center, with the playback bar along the bottom of that center region.
+
 ### [2.4.2.2] — 2026-10-12
 
 * **Project delete:** Permanently deleting files requires typing the project name and refuses protected directories (home, the server working directory, `~/.lightning-pose`, or a path that contains another project). Removing a project from the list without deleting files is unchanged.

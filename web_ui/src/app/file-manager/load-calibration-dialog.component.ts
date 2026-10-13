@@ -103,14 +103,14 @@ import { rpcErrorMessage } from './file-listing';
             </p>
             <div class="flex justify-end gap-2">
               <button
-                class="btn btn-soft btn-info"
+                class="btn btn-soft btn-primary"
                 type="button"
                 (click)="answerOverwrite(false)"
               >
                 No
               </button>
               <button
-                class="btn btn-soft btn-info"
+                class="btn btn-soft btn-primary"
                 type="button"
                 (click)="answerOverwrite(true)"
               >
@@ -119,9 +119,9 @@ import { rpcErrorMessage } from './file-listing';
             </div>
           } @else {
             <div class="flex justify-end gap-2">
-              <button class="btn btn-soft btn-info" type="button" (click)="close()">Cancel</button>
+              <button class="btn btn-soft btn-primary" type="button" (click)="close()">Cancel</button>
               <button
-                class="btn btn-soft btn-info"
+                class="btn btn-soft btn-primary"
                 type="button"
                 [disabled]="busy() || chosenNames().length === 0"
                 (click)="load()"
