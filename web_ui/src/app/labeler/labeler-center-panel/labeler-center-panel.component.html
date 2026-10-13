@@ -17,7 +17,7 @@
       </div>
     } @else {
       @let fv = selectedFrameView()!;
-      <div>
+      <div class="min-h-0 min-w-0 overflow-auto">
         @if (isMultiview()) {
           <h3 class="bg-base-200 px-2 text-md">
             {{ fv.viewName }}
@@ -25,6 +25,9 @@
         }
         <app-image-label-widget
           #primaryZoomable
+          class="block"
+          [style.height.px]="viewOptions.imageSizePx()"
+          [style.width.px]="viewOptions.imageSizePx()"
           [fv]="fv"
           [revision]="cacheBuster()"
           [(selectedKeypoint)]="selectedKeypoint"
@@ -335,6 +338,31 @@
               }
             </div>
             <div class="flex items-center gap-2 pt-2">
+              <span class="material-icons text-sm!">aspect_ratio</span>
+              Image size
+            </div>
+            <div class="pl-2 flex items-center">
+              <input
+                type="range"
+                min="200"
+                max="900"
+                step="10"
+                [(ngModel)]="viewOptions.imageSizePx"
+                class="range range-xs flex-1 min-w-0"
+              />
+              <button
+                class="btn btn-ghost btn-xs tooltip"
+                data-tip="Reset"
+                [disabled]="viewOptions.isImageSizeDefault()"
+                (click)="viewOptions.resetImageSize()"
+              >
+                <span class="material-icons text-sm!">restart_alt</span>
+              </button>
+            </div>
+            <div class="pl-2 opacity-60 text-xs">
+              {{ viewOptions.imageSizePx() }}px
+            </div>
+            <div class="flex items-center gap-2 pt-2">
               <span class="material-icons text-sm!">brightness_medium</span>
               Image brightness
             </div>
@@ -440,17 +468,6 @@
               </button>
             </div>
             <div class="flex items-center gap-2 pt-2">
-              <span class="material-icons text-sm!">grid_on</span>
-              Pixel grid overlay
-            </div>
-            <div class="pl-2 flex items-center">
-              <input
-                type="checkbox"
-                [(ngModel)]="viewOptions.enablePixelGrid"
-                class="toggle toggle-primary"
-              />
-            </div>
-            <div class="flex items-center gap-2 pt-2">
               <span class="material-icons text-sm!">label</span>
               Keypoint labels
             </div>
@@ -458,7 +475,7 @@
               <input
                 type="checkbox"
                 [(ngModel)]="viewOptions.enableKeypointLabels"
-                class="toggle"
+                class="toggle toggle-sm"
               />
             </div>
             <app-skeleton-view-options
@@ -474,6 +491,17 @@
               (resetThickness)="viewOptions.resetSkeletonThickness()"
               (resetOpacity)="viewOptions.resetSkeletonOpacity()"
             />
+            <div class="flex items-center gap-2 pt-2">
+              <span class="material-icons text-sm!">grid_on</span>
+              Pixel grid overlay
+            </div>
+            <div class="pl-2 flex items-center">
+              <input
+                type="checkbox"
+                [(ngModel)]="viewOptions.enablePixelGrid"
+                class="toggle toggle-sm toggle-primary"
+              />
+            </div>
           </div>
         </div>
       </div>

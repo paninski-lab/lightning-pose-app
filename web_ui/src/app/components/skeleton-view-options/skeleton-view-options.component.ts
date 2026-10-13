@@ -34,6 +34,8 @@ import {
         />
       </svg>
       Show skeleton
+    </div>
+    <div class="pl-2 flex items-center">
       <input
         type="checkbox"
         class="toggle toggle-sm"
@@ -42,10 +44,10 @@ import {
         [disabled]="invalid()"
         (change)="onToggle($event)"
       />
-      @if (invalid()) {
-        <span class="text-error text-xs">Skeleton definition is invalid.</span>
-      }
     </div>
+    @if (invalid()) {
+      <div class="pl-2 text-error text-xs">Skeleton definition is invalid.</div>
+    }
     @if (showSkeleton() && !invalid()) {
       <div class="flex items-center gap-2 pt-2">
         <span class="material-icons text-sm!">line_weight</span>

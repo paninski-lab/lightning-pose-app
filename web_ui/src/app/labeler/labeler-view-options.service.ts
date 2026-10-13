@@ -21,6 +21,7 @@ import {
 
 const DEFAULT_BRIGHTNESS = 1;
 const DEFAULT_CONTRAST = 1;
+const DEFAULT_IMAGE_SIZE = 500;
 const UMAMI_DEBOUNCE_TIME_MS = 10000;
 
 @Injectable()
@@ -33,6 +34,10 @@ export class LabelerViewOptionsService {
 
   imgBrightnessScalar = signal(DEFAULT_BRIGHTNESS);
   imgContrastScalar = signal(DEFAULT_CONTRAST);
+  imageSizePx = signal(
+    Number(localStorage.getItem('labeler-view-options.image-size')) ||
+      DEFAULT_IMAGE_SIZE,
+  );
   keypointOpacity = signal(
     Number(localStorage.getItem('labeler-view-options.opacity')) ||
       this.colorService.defaultOpacity,
@@ -46,6 +51,9 @@ export class LabelerViewOptionsService {
   );
   isBrightnessDefault = computed(
     () => this.imgBrightnessScalar() === DEFAULT_BRIGHTNESS,
+  );
+  isImageSizeDefault = computed(
+    () => this.imageSizePx() === DEFAULT_IMAGE_SIZE,
   );
   isContrastDefault = computed(
     () => this.imgContrastScalar() === DEFAULT_CONTRAST,
@@ -85,6 +93,12 @@ export class LabelerViewOptionsService {
   constructor() {
     effect(() =>
       localStorage.setItem(
+        'labeler-view-options.image-size',
+        String(this.imageSizePx()),
+      ),
+    );
+    effect(() =>
+      localStorage.setItem(
         'labeler-view-options.opacity',
         String(this.keypointOpacity()),
       ),
@@ -121,6 +135,7 @@ export class LabelerViewOptionsService {
     );
 
     merge(
+      toObservable(this.imageSizePx),
       toObservable(this.imgBrightnessScalar),
       toObservable(this.imgContrastScalar),
       toObservable(this.keypointOpacity),
@@ -138,6 +153,7 @@ export class LabelerViewOptionsService {
       )
       .subscribe(() => {
         window.umami?.track('labeler_view_options_change', {
+          imageSizePx: this.imageSizePx(),
           imgBrightnessScalar: this.imgBrightnessScalar(),
           imgContrastScalar: this.imgContrastScalar(),
           keypointOpacity: this.keypointOpacity(),
@@ -172,6 +188,11 @@ export class LabelerViewOptionsService {
 
   resetSkeletonOpacity() {
     this.skeletonOpacity.set(DEFAULT_SKELETON_OPACITY);
+  }
+
+  /** Reset the labeled frame viewport to 500px. */
+  resetImageSize() {
+    this.imageSizePx.set(DEFAULT_IMAGE_SIZE);
   }
 
   /** Reset image brightness to 1 (no adjustment). */

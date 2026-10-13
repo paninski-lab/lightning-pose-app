@@ -11,6 +11,7 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 * **Buttons:** Text buttons that were blue are green, including Cancel, Back, Close, and OK. Red buttons are unchanged.
 * **Labeler:** The right-hand controls sit in a panel you can drag wider or narrower. The frame stays in the center.
 * **Viewer:** Views, models, and the other controls sit in a panel you can drag wider or narrower. Videos stay in the center, with the playback bar along the bottom of that center region.
+* **View options:** In the Labeler, **Pixel grid overlay** is last in the list. **Show skeleton** uses the same label-then-toggle layout as the other switches in the Labeler and Viewer. All View Options toggles use the same size. **Image size** sets how large the frame is shown, the same way **Video tile size** works in the Viewer.
 
 ### [2.4.2.2] — 2026-10-12
 
