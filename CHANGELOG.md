@@ -17,7 +17,11 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 * **Labeler:** Saving a labeled frame succeeds when the unlabeled-frame list is empty or has a blank line. A failed save shows the server error instead of `[object Object]`.
 * **Viewer:** On a single-view project, the **Views** list is hidden. A video tile shows the info icon, then the view name only when the project has more than one camera, then the video file name.
 * **Viewer:** A message sits just above the playback bar instead of covering it.
-* **Labeler:** The frame image has the same shadow box as a video tile in the Viewer.
+* **Labeler:** The frame sits in a tile with a header: an info icon for the image path, the view name when the project has camera views, the image file name, and a close button that returns to the frame list.
+* **Labeler and Viewer:** The frame is as tall as the picture. A wide image or video no longer sits in a square with empty space underneath. The top corners of the tile stay rounded; the bottom corners are square.
+* **View options:** **Image size** and **Video tile size** go up to 1200px.
+* **Labeler and Viewer:** The left and right panels scroll up and down only. A long name no longer adds a sideways scroll bar.
+* **Labeler:** **Keypoints** and **Multiview tools** fold open and closed. The help button sits next to **Multiview tools**.
 
 ### [2.4.2.2] — 2026-10-12
 

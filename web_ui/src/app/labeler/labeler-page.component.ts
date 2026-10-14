@@ -227,6 +227,12 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     }
   }
 
+  protected handleCloseFrame() {
+    this.router.navigate([], {
+      queryParams: { labelFileKey: this.labelFileKey() },
+    });
+  }
+
   protected handleNextFrame() {
     const frames = this.labelFileData();
     const frameKey = this.frameKey();

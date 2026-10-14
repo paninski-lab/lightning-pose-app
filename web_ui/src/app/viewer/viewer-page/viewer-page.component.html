@@ -88,7 +88,7 @@
       [size]="rightPaneSize()"
       [maxSize]="rightPaneMax()"
     >
-      <div class="h-full min-w-0 w-full overflow-y-auto">
+      <div class="h-full min-w-0 w-full overflow-x-hidden overflow-y-auto">
           @if (isMultiview()) {
           <div class="panel m-4">
             <input
@@ -105,7 +105,7 @@
               <span class="app-accordion-icon"></span>
             </label>
             <div
-              class="bg-base-100 text-sm max-h-60 overflow-y-auto app-accordion-content"
+              class="bg-base-100 text-sm max-h-60 overflow-x-hidden overflow-y-auto app-accordion-content"
             >
               <ul class="p-1">
                 @for (cam of allViews; track cam) {
@@ -139,7 +139,7 @@
               <span class="app-accordion-icon"></span>
             </label>
             <div
-              class="bg-base-100 text-sm max-h-60 overflow-y-auto app-accordion-content"
+              class="bg-base-100 text-sm max-h-60 overflow-x-hidden overflow-y-auto app-accordion-content"
             >
               <ul class="p-1">
                 @for (kp of projectInfoService.allKeypoints(); track kp) {
@@ -277,7 +277,7 @@
               <span class="app-accordion-icon"></span>
             </label>
             <div
-              class="bg-base-100 text-sm overflow-y-auto app-accordion-content"
+              class="bg-base-100 text-sm overflow-x-hidden overflow-y-auto app-accordion-content"
             >
               <div class="panel-content p-2!">
                 <div class="flex items-center gap-2">
@@ -288,7 +288,7 @@
                   <input
                     type="range"
                     min="200"
-                    max="900"
+                    max="1200"
                     step="10"
                     [(ngModel)]="viewOptions.videoTileSizePx"
                     class="range range-xs flex-1 min-w-0"

@@ -34,6 +34,12 @@ import { LoadCalibrationDialogComponent } from '../../file-manager/load-calibrat
 import { SkeletonViewOptionsComponent } from '../../components/skeleton-view-options/skeleton-view-options.component';
 import { isSkeletonDefinitionInvalid } from '../../components/skeleton-overlay/skeleton-validity';
 import { SplitAreaComponent, SplitComponent } from 'angular-split';
+import {
+  DropdownComponent,
+  DropdownContentComponent,
+  DropdownTriggerComponent,
+  DropdownTriggerDirective,
+} from '../../components/dropdown/dropdown.component';
 
 @Component({
   selector: 'app-labeler-center-panel',
@@ -48,6 +54,10 @@ import { SplitAreaComponent, SplitComponent } from 'angular-split';
     LoadCalibrationDialogComponent,
     SplitComponent,
     SplitAreaComponent,
+    DropdownComponent,
+    DropdownContentComponent,
+    DropdownTriggerComponent,
+    DropdownTriggerDirective,
   ],
   providers: [LabelerViewOptionsService],
   templateUrl: './labeler-center-panel.component.html',
@@ -85,6 +95,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
     deletion?: boolean;
   }>();
   nextFrame = output<void>();
+  closeFrame = output<void>();
 
   constructor() {
     effect(() => {

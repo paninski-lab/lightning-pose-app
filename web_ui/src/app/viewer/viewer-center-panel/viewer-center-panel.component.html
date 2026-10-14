@@ -13,7 +13,7 @@
      destroyed and recreated if videoSrc changes. Reactively
      changing videoSrc of an existing video does not work unfortunately. -->
         @for (w of widgetModels(); track w.videoSrc) {
-          <div class="panel !border-none">
+          <div class="panel !border-none !rounded-b-none">
             <div class="px-2 py-1 text-sm flex justify-between items-center">
               <div class="flex items-center gap-2 min-w-0">
                 @if (w.metadata) {
@@ -44,7 +44,7 @@
 
             <app-zoomable-content
               class="block"
-              [style.height.px]="viewOptions.videoTileSizePx()"
+              [style.height.px]="mediaTileHeight(w.metadata)"
               [style.width.px]="viewOptions.videoTileSizePx()"
             >
               <app-video-tile

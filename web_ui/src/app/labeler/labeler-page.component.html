@@ -67,25 +67,25 @@
               </div>
             </div>
             <div
-              class="panel-content inset-shadow-xs inset-shadow-black/30 overflow-auto h-60"
+              class="panel-content inset-shadow-xs inset-shadow-black/30 overflow-x-hidden overflow-y-auto h-60"
             >
               <!--panel content-->
-              <ul class="w-fit relative" tabindex="0" role="listbox">
+              <ul class="w-full min-w-0 relative" tabindex="0" role="listbox">
                 @if (labelFileDataLabeledSlice() === null) {
                   <li class="p-1">No labeled frames</li>
                 } @else {
                   @for (frame of labelFileDataLabeledSlice(); track frame.key) {
-                    <li class="text-nowrap" routerLinkActive="bg-sky-700">
+                    <li class="min-w-0" routerLinkActive="bg-sky-700">
                       <a
-                        class="p-1 block hover:bg-base-content/10 rounded-sm flex items-center justify-between text-xs"
+                        class="p-1 block min-w-0 truncate hover:bg-base-content/10 rounded-sm text-xs"
+                        [title]="frame.key"
                         [routerLink]="['/project', projectKey, 'labeler']"
                         [queryParams]="{
                           labelFileKey: selectedLabelFile()?.key,
                           frameKey: frame.key,
                         }"
                       >
-                        <span>{{ frame.key | path }}</span>
-                        <!-- left hand side -->
+                        {{ frame.key | path }}
                       </a>
                     </li>
                   }
@@ -109,14 +109,14 @@
             <div
               class="panel-content
               inset-shadow-xs inset-shadow-black/30
-              overflow-auto
+              overflow-x-hidden overflow-y-auto
               h-60 flex flex-col justify-between
               transition-color duration-500 ease-in-out {{
                 xfSuccessNotifyClasses()
               }}"
             >
               <!--panel content-->
-              <ul class="w-fit relative" tabindex="0" role="listbox">
+              <ul class="w-full min-w-0 relative" tabindex="0" role="listbox">
                 @if (labelFileDataUnLabeledSlice() === null) {
                   <li class="p-1">No labeled frames</li>
                 } @else {
@@ -124,17 +124,17 @@
                     frame of labelFileDataUnLabeledSlice();
                     track frame.key
                   ) {
-                    <li class="text-nowrap" routerLinkActive="bg-sky-700">
+                    <li class="min-w-0" routerLinkActive="bg-sky-700">
                       <a
-                        class="p-1 block hover:bg-base-content/10 rounded-sm flex items-center justify-between text-xs"
+                        class="p-1 block min-w-0 truncate hover:bg-base-content/10 rounded-sm text-xs"
+                        [title]="frame.key"
                         [routerLink]="['/project', projectKey, 'labeler']"
                         [queryParams]="{
                           labelFileKey: selectedLabelFile()?.key,
                           frameKey: frame.key,
                         }"
                       >
-                        <span>{{ frame.key | path }}</span>
-                        <!-- left hand side -->
+                        {{ frame.key | path }}
                       </a>
                     </li>
                   }
@@ -165,6 +165,7 @@
         [numLabeledFramesGetter]="getNumLabeledFramesGetter"
         (saved)="handleSaved($event)"
         (nextFrame)="handleNextFrame()"
+        (closeFrame)="handleCloseFrame()"
         (newLabelFile)="extractFramesDialogOpen.set(true)"
       ></app-labeler-center-panel>
     </as-split-area>

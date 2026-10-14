@@ -18,24 +18,50 @@
     } @else {
       @let fv = selectedFrameView()!;
       <div class="min-h-0 min-w-0 overflow-auto">
-        @if (isMultiview()) {
-          <h3 class="bg-base-200 px-2 text-md">
-            {{ fv.viewName }}
-          </h3>
-        }
-        <app-image-label-widget
-          #primaryZoomable
-          class="block"
-          [style.height.px]="viewOptions.imageSizePx()"
+        <div
+          class="panel !border-none !rounded-b-none"
           [style.width.px]="viewOptions.imageSizePx()"
-          [fv]="fv"
-          [revision]="cacheBuster()"
-          [(selectedKeypoint)]="selectedKeypoint"
-          [disableInteractions]="disableInteractions()"
-          (keypointUpdated)="
-            handleKeypointUpdated($event.kp, $event.position, fv)
-          "
-        ></app-image-label-widget>
+        >
+          <div class="px-2 py-1 text-sm flex justify-between items-center">
+            <div class="flex items-center gap-2 min-w-0">
+              <app-dropdown class="dropdown-hover dropdown-right">
+                <app-dropdown-trigger>
+                  <span
+                    appDropdownTrigger
+                    class="material-icons text-xs! opacity-70"
+                    >info</span
+                  >
+                </app-dropdown-trigger>
+                <app-dropdown-content>
+                  <div class="p-2">
+                    <app-path-display [path]="fv.imgPath"></app-path-display>
+                  </div>
+                </app-dropdown-content>
+              </app-dropdown>
+              @if (isMultiview()) {
+                <h3 class="font-semibold">{{ fv.viewName }}</h3>
+              }
+              <span class="truncate">{{ fv.imgPath.split('/').pop() }}</span>
+            </div>
+            <span
+              class="btn btn-circle btn-xs material-icons !text-sm"
+              (click)="closeFrame.emit()"
+              >close</span
+            >
+          </div>
+          <app-image-label-widget
+            #primaryZoomable
+            class="block"
+            [style.width.px]="viewOptions.imageSizePx()"
+            [fv]="fv"
+            [revision]="cacheBuster()"
+            [(selectedKeypoint)]="selectedKeypoint"
+            [disableInteractions]="disableInteractions()"
+            (keypointUpdated)="
+              handleKeypointUpdated($event.kp, $event.position, fv)
+            "
+          ></app-image-label-widget>
+        </div>
       </div>
     }
 
@@ -75,13 +101,23 @@
   </as-split-area>
 
   <as-split-area size="320">
-  <div class="flex flex-col gap-4 h-full min-w-0 w-full overflow-y-auto">
+  <div class="flex flex-col gap-4 h-full min-w-0 w-full overflow-x-hidden overflow-y-auto">
     <div class="panel m-4">
-      <div>
-        <!-- panel header -->
-        <h1 class="px-2 mb-1">Keypoints</h1>
-      </div>
-      <div class="panel-content overflow-y-auto max-h-100">
+      <input
+        type="checkbox"
+        id="app-accordion-keypoints"
+        class="app-accordion-toggle"
+        checked
+      />
+      <label
+        for="app-accordion-keypoints"
+        class="app-accordion-title flex justify-between px-2 pb-1"
+      >
+        <h1>Keypoints</h1>
+        <span class="app-accordion-icon"></span>
+      </label>
+      <div class="app-accordion-content">
+      <div class="panel-content overflow-x-hidden overflow-y-auto max-h-100">
         @if (selectedFrameView(); as fv) {
           <ul>
             @for (kp of fv.keypoints; track $index) {
@@ -112,24 +148,36 @@
           </ul>
         }
       </div>
+      </div>
     </div>
     @if (frame(); as frame2) {
       @let lbfl = labelFile()!;
       @if (isMultiview()) {
         <div class="panel m-4 mt-0">
-          <div>
-            <!-- panel header -->
-            <h1 class="px-2 mb-1 flex justify-between items-center">
-              Multiview tools
+          <input
+            type="checkbox"
+            id="app-accordion-multiview"
+            class="app-accordion-toggle"
+            checked
+          />
+          <label
+            for="app-accordion-multiview"
+            class="app-accordion-title flex justify-between items-center px-2 pb-1"
+          >
+            <span class="flex items-center gap-1">
+              <h1>Multiview tools</h1>
               <button
+                type="button"
                 class="btn btn-circle btn-primary btn-soft btn-xs text-sm! tooltip tooltip-bottom"
                 data-tip="Learn more"
                 onclick="multiview_info.showModal()"
+                (click)="$event.preventDefault(); $event.stopPropagation()"
               >
                 <span class="material-icons text-xs!">question_mark</span>
               </button>
-            </h1>
-          </div>
+            </span>
+            <span class="app-accordion-icon"></span>
+          </label>
           <dialog class="modal" id="multiview_info">
             <div class="modal-box w-5/6 max-w-3xl prose">
               <button
@@ -219,7 +267,8 @@
               </div>
             </div>
           </dialog>
-          <div class="panel-content overflow-y-auto p-2!">
+          <div class="app-accordion-content">
+          <div class="panel-content overflow-x-hidden overflow-y-auto p-2!">
             <div class="mb-2 px-1 text-xs text-base-content/70">
               @switch (calibrationStatus()) {
                 @case ("session") {
@@ -286,6 +335,7 @@
               [numLabeledFramesGetter]="numLabeledFramesGetter()"
             ></app-bundle-adjust-dialog>
           </div>
+          </div>
         </div>
       }
       <div class="panel m-4 mt-0">
@@ -302,7 +352,7 @@
           <h1>View options</h1>
           <span class="app-accordion-icon"></span>
         </label>
-        <div class="overflow-y-auto app-accordion-content">
+        <div class="overflow-x-hidden overflow-y-auto app-accordion-content">
           <div class="panel-content p-2!">
             <div class="flex items-center gap-2">
               <span class="material-icons text-sm!">animation</span>
@@ -345,7 +395,7 @@
               <input
                 type="range"
                 min="200"
-                max="900"
+                max="1200"
                 step="10"
                 [(ngModel)]="viewOptions.imageSizePx"
                 class="range range-xs flex-1 min-w-0"
