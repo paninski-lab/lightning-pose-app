@@ -1,13 +1,17 @@
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
+  ElementRef,
   inject,
   input,
   OnChanges,
   output,
   signal,
   SimpleChanges,
+  viewChild,
 } from '@angular/core';
 import { VideoPlayerControlsComponent } from '../../video-player/video-player-controls/video-player-controls.component';
 import { VideoTileComponent } from '../../video-player/video-tile/video-tile.component';
@@ -84,6 +88,11 @@ export class ViewerCenterPanelComponent implements OnChanges {
   private enabledViewsKeypoints = inject(EnabledViewsKeypointsService);
   videoPlayerState = inject(VideoPlayerState);
   protected viewOptions = inject(ViewerViewOptionsService);
+  protected isMultiview = computed(
+    () =>
+      (this.projectInfoService.projectContext()?.projectInfo?.views?.length ??
+        0) > 1,
+  );
 
   protected drawableSkeletonPairs = computed(() => {
     const info = this.projectInfoService.projectContext()?.projectInfo;
@@ -348,6 +357,7 @@ export class ViewerCenterPanelComponent implements OnChanges {
         );
         return {
           id: view,
+          fileName: sessionView.videoPath.split('/').pop() ?? '',
           videoSrc: this.fineVideoService.fineVideoPath(sessionView.videoPath),
           metadata: ffprobeData.get(view),
           keypoints: signal(
@@ -408,7 +418,25 @@ export class ViewerCenterPanelComponent implements OnChanges {
     this.enabledViewsKeypoints.setViewsShown(nextViewsShown);
   }
 
+  private playbackBar = viewChild('playbackBar', { read: ElementRef });
+  private destroyRef = inject(DestroyRef);
+
   constructor() {
+    afterNextRender(() => {
+      const host = this.playbackBar()?.nativeElement as HTMLElement | undefined;
+      if (!host) return;
+      const gapPx = 8;
+      const apply = () => {
+        this.toastService.setBottomOffset(host.offsetHeight + gapPx);
+      };
+      apply();
+      const observer = new ResizeObserver(apply);
+      observer.observe(host);
+      this.destroyRef.onDestroy(() => {
+        observer.disconnect();
+        this.toastService.setBottomOffset(0);
+      });
+    });
     this.enabledViewsKeypoints.viewsShown$
       .pipe(takeUntilDestroyed())
       .subscribe(() => {

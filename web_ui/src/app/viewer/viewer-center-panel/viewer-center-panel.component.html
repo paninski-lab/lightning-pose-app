@@ -1,6 +1,6 @@
-<div class="flex flex-col h-full">
+<div class="flex flex-col h-full min-w-0">
   <!-- Video content area -->
-  <div class="w-full grow overflow-y-auto">
+  <div class="w-full min-w-0 grow overflow-x-hidden overflow-y-auto">
     @if (!sessionKey()) {
       <div class="flex items-center justify-center h-full">
         <p class="text-lg opacity-60">Select a session on the left to view.</p>
@@ -15,8 +15,7 @@
         @for (w of widgetModels(); track w.videoSrc) {
           <div class="panel !border-none">
             <div class="px-2 py-1 text-sm flex justify-between items-center">
-              <div class="flex items-center gap-2">
-                <h3 class="font-semibold">{{ w.id }}</h3>
+              <div class="flex items-center gap-2 min-w-0">
                 @if (w.metadata) {
                   <app-dropdown class="dropdown-hover dropdown-right">
                     <app-dropdown-trigger>
@@ -31,6 +30,10 @@
                     </app-dropdown-content>
                   </app-dropdown>
                 }
+                @if (isMultiview()) {
+                  <h3 class="font-semibold">{{ w.id }}</h3>
+                }
+                <span class="truncate">{{ w.fileName }}</span>
               </div>
               <span
                 class="btn btn-circle btn-xs material-icons !text-sm"
@@ -70,6 +73,7 @@
   </div>
 
   <app-video-player-controls
+    #playbackBar
     (extractFrame)="extractFrame.emit()"
   ></app-video-player-controls>
 </div>

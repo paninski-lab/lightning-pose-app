@@ -9,9 +9,15 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 ### [2.4.2.3.dev0]
 
 * **Buttons:** Text buttons that were blue are green, including Cancel, Back, Close, and OK. Red buttons are unchanged.
-* **Labeler:** The right-hand controls sit in a panel you can drag wider or narrower. The frame stays in the center.
-* **Viewer:** Views, models, and the other controls sit in a panel you can drag wider or narrower. Videos stay in the center, with the playback bar along the bottom of that center region.
-* **View options:** In the Labeler, **Pixel grid overlay** is last in the list. **Show skeleton** uses the same label-then-toggle layout as the other switches in the Labeler and Viewer. All View Options toggles use the same size. **Image size** sets how large the frame is shown, the same way **Video tile size** works in the Viewer.
+* **Labeler:** The right-hand controls sit in a panel you can drag wider or narrower. The frame stays in the center. A large frame or a long side panel scrolls in place. The frame list stops when it meets the right-hand panel.
+* **Viewer:** Views, models, and the other controls sit in a panel you can drag wider or narrower. Videos stay in the center, with the playback bar along the bottom of that center region. Either side panel can cover a video tile, and both stop at the playback bar instead of running off the screen.
+* **View options:** In the Labeler, **Pixel grid overlay** is last in the list. **Show skeleton** uses the same label-then-toggle layout as the other switches in the Labeler and Viewer. All View Options toggles use the same size. **Image size** sets how large the frame is shown, the same way **Video tile size** works in the Viewer. **Keypoint label size** sits under **Keypoint labels** and is hidden while labels are off.
+* **Labeler:** Keypoint markers and labels are sharp as soon as a labeled frame opens. They no longer stay blurry until you move a point or change marker or label size.
+* **Keypoint labels:** In the Labeler and the Viewer, a name sits in the lower-right when that corner stays inside the frame and does not cover another name or marker. Otherwise it uses another corner until the lower-right is free again. The gap between the name and its marker stays the same when the label size changes. Names stay hidden until they can be placed, and the gap follows the letters rather than the em box.
+* **Labeler:** Saving a labeled frame succeeds when the unlabeled-frame list is empty or has a blank line. A failed save shows the server error instead of `[object Object]`.
+* **Viewer:** On a single-view project, the **Views** list is hidden. A video tile shows the info icon, then the view name only when the project has more than one camera, then the video file name.
+* **Viewer:** A message sits just above the playback bar instead of covering it.
+* **Labeler:** The frame image has the same shadow box as a video tile in the Viewer.
 
 ### [2.4.2.2] — 2026-10-12
 

@@ -5,15 +5,21 @@ import {
   DropdownTriggerDirective,
 } from '../components/dropdown/dropdown.component';
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
+  ElementRef,
   inject,
+  Injector,
   input,
+  NgZone,
   OnChanges,
   OnInit,
   signal,
   SimpleChanges,
+  viewChild,
 } from '@angular/core';
 import { LoadingBarComponent } from '../loading-bar/loading-bar.component';
 import { ProjectInfoService } from '../project-info.service';
@@ -29,6 +35,7 @@ import { ToastService } from '../toast.service';
 import { LabelFilePickerComponent } from '../label-file-picker/label-file-picker.component';
 import _ from 'lodash';
 import { SplitAreaComponent, SplitComponent } from 'angular-split';
+import { clampSplitPane, gutterPixels } from '../split-pane-limit';
 
 interface LoadError {
   message: string;
@@ -56,6 +63,15 @@ interface LoadError {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LabelerPageComponent implements OnInit, OnChanges {
+  private host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private zone = inject(NgZone);
+  private destroyRef = inject(DestroyRef);
+  private injector = inject(Injector);
+  private leftPane = viewChild<SplitAreaComponent>('leftPane');
+  /** The frame list stops when it meets the right-hand panel. */
+  protected leftPaneMax = signal(10000);
+  protected leftPaneSize = signal(280);
+
   protected isIniting = signal(true);
   protected projectInfoService = inject(ProjectInfoService);
   protected sessionService = inject(SessionService);
@@ -254,6 +270,41 @@ export class LabelerPageComponent implements OnInit, OnChanges {
 
     this.isIniting.set(false);
     this.loadLabelFileData(this.selectedLabelFile());
+    afterNextRender(
+      () => {
+        const split = this.host.nativeElement.querySelector('as-split');
+        if (!split) return;
+        const observer = new ResizeObserver(() => {
+          this.zone.run(() => this.limitLeftPane());
+        });
+        observer.observe(split);
+        const rightPane = split.querySelector(
+          'app-labeler-center-panel as-split > as-split-area:last-child',
+        );
+        if (rightPane) observer.observe(rightPane);
+        this.destroyRef.onDestroy(() => observer.disconnect());
+        this.limitLeftPane();
+      },
+      { injector: this.injector },
+    );
+  }
+
+  /** Keep the frame list from covering the right-hand panel. */
+  protected limitLeftPane() {
+    const split = this.host.nativeElement.querySelector('as-split');
+    const left = this.leftPane();
+    if (!split || !left) return;
+    const nested = split.querySelector('app-labeler-center-panel as-split');
+    const nestedAreas = nested
+      ? [...nested.querySelectorAll(':scope > as-split-area')]
+      : [];
+    const nestedRight = nestedAreas[nestedAreas.length - 1];
+    const reserved =
+      (nestedRight?.clientWidth ?? 0) + (nested ? gutterPixels(nested) : 0);
+    const max = split.clientWidth - gutterPixels(split) - reserved;
+    const leftWidth =
+      split.querySelector(':scope > as-split-area')?.clientWidth ?? 0;
+    clampSplitPane(this.leftPaneSize, this.leftPaneMax, max, leftWidth);
   }
 
   extractFramesDialogOpen = signal<boolean>(false);

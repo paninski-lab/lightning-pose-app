@@ -375,7 +375,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
       })
       .catch((error) => {
         this.isSaving.set(false);
-        throw new Error(error);
+        throw new Error(error?.message ?? String(error));
       });
   }
 

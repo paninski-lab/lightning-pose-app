@@ -14,6 +14,8 @@ export interface ShowToastOptions {
 })
 export class ToastService {
   private containerEl: HTMLElement | null = null;
+  /** Pixels to lift the toast above the bottom of the window. */
+  private bottomOffsetPx = 0;
 
   constructor(@Inject(DOCUMENT) private document: Document) {}
 
@@ -89,6 +91,17 @@ export class ToastService {
     this.showAlert(options);
   }
 
+  /** Lift toasts by `px` while a screen's bottom bar would cover them. */
+  setBottomOffset(px: number) {
+    this.bottomOffsetPx = Math.max(0, px);
+    if (!this.containerEl) return;
+    if (this.bottomOffsetPx > 0) {
+      this.containerEl.style.bottom = `${this.bottomOffsetPx}px`;
+    } else {
+      this.containerEl.style.removeProperty('bottom');
+    }
+  }
+
   private ensureContainer(): HTMLElement {
     if (this.containerEl && this.document.body.contains(this.containerEl)) {
       return this.containerEl;
@@ -102,6 +115,7 @@ export class ToastService {
     );
     this.document.body.appendChild(container);
     this.containerEl = container;
+    this.setBottomOffset(this.bottomOffsetPx);
     return container;
   }
 

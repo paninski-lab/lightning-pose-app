@@ -2,12 +2,15 @@
   :host {
     flex-grow: 1;
     display: flex;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
   }
 </style>
 
 @if (!isIniting()) {
-  <as-split unit="pixel" direction="horizontal">
-    <as-split-area size="280">
+  <as-split unit="pixel" direction="horizontal" (dragEnd)="limitLeftPane()">
+    <as-split-area #leftPane [size]="leftPaneSize()" [maxSize]="leftPaneMax()">
       <!-- Left pane -->
       <div class="bg-base-200 h-full flex flex-col justify-between shadow-lg">
         <div>

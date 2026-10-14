@@ -3,14 +3,15 @@
     flex-grow: 1;
     display: flex;
     min-height: 0;
+    min-width: 0;
     overflow: hidden;
   }
 </style>
 
 @if (!isIniting()) {
-  <as-split unit="pixel" direction="horizontal">
+  <as-split unit="pixel" direction="horizontal" (dragEnd)="limitSidePanes()">
     <!-- Left pane -->
-    <as-split-area size="280">
+    <as-split-area #leftPane [size]="leftPaneSize()" [maxSize]="leftPaneMax()">
       <div class="bg-base-200 h-full flex flex-col justify-between shadow-lg">
         <div class="p-4">
           <div class="flex justify-between items-center">
@@ -82,8 +83,13 @@
       ></app-viewer-center-panel>
     </as-split-area>
 
-    <as-split-area size="280">
+    <as-split-area
+      #rightPane
+      [size]="rightPaneSize()"
+      [maxSize]="rightPaneMax()"
+    >
       <div class="h-full min-w-0 w-full overflow-y-auto">
+          @if (isMultiview()) {
           <div class="panel m-4">
             <input
               type="checkbox"
@@ -116,6 +122,7 @@
               </ul>
             </div>
           </div>
+          }
 
           <div class="panel m-4">
             <input
@@ -349,31 +356,6 @@
                   {{ viewOptions.keypointSize() }}px
                 </div>
                 <div class="flex items-center gap-2 pt-2">
-                  <span class="material-icons text-sm!">format_size</span>
-                  Keypoint label size
-                </div>
-                <div class="pl-2 flex items-center">
-                  <input
-                    type="range"
-                    min="1"
-                    max="8"
-                    step="1"
-                    [(ngModel)]="viewOptions.keypointLabelFontSize"
-                    class="range range-xs flex-1 min-w-0"
-                  />
-                  <button
-                    class="btn btn-ghost btn-xs tooltip"
-                    data-tip="Reset"
-                    [disabled]="viewOptions.isLabelFontSizeDefault()"
-                    (click)="viewOptions.resetLabelFontSize()"
-                  >
-                    <span class="material-icons text-sm!">restart_alt</span>
-                  </button>
-                </div>
-                <div class="pl-2 opacity-60 text-xs">
-                  {{ viewOptions.keypointLabelFontSize() }}px
-                </div>
-                <div class="flex items-center gap-2 pt-2">
                   <span class="material-icons text-sm!">label</span>
                   Keypoint labels
                 </div>
@@ -384,6 +366,33 @@
                     class="toggle toggle-sm"
                   />
                 </div>
+                @if (viewOptions.enableKeypointLabels()) {
+                  <div class="flex items-center gap-2 pt-2">
+                    <span class="material-icons text-sm!">format_size</span>
+                    Keypoint label size
+                  </div>
+                  <div class="pl-2 flex items-center">
+                    <input
+                      type="range"
+                      min="1"
+                      max="8"
+                      step="1"
+                      [(ngModel)]="viewOptions.keypointLabelFontSize"
+                      class="range range-xs flex-1 min-w-0"
+                    />
+                    <button
+                      class="btn btn-ghost btn-xs tooltip"
+                      data-tip="Reset"
+                      [disabled]="viewOptions.isLabelFontSizeDefault()"
+                      (click)="viewOptions.resetLabelFontSize()"
+                    >
+                      <span class="material-icons text-sm!">restart_alt</span>
+                    </button>
+                  </div>
+                  <div class="pl-2 opacity-60 text-xs">
+                    {{ viewOptions.keypointLabelFontSize() }}px
+                  </div>
+                }
                 <app-skeleton-view-options
                   [showSkeleton]="viewOptions.showSkeleton()"
                   (showSkeletonChange)="viewOptions.showSkeleton.set($event)"
