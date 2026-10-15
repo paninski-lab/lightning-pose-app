@@ -12,7 +12,7 @@ import { ScrollingModule } from '@angular/cdk/scrolling';
 import { EnabledViewsKeypointsService } from '../../enabled-views-keypoints.service';
 import { ProjectInfoService } from '../../project-info.service';
 import { PathPipe } from '../../utils/pipes';
-import { Session } from '../../session.model';
+import { Session, missingSessionViews } from '../../session.model';
 
 @Component({
   selector: 'app-sessions-panel',
@@ -29,6 +29,7 @@ export class ViewerSessionsPanelComponent implements OnInit {
   });
 
   showModelAvailableMarkers = input.required<boolean>();
+  flagIncompleteSessions = input(false);
   selectedSessionKey = input<string | null>();
   selectedSessionChange = output<Session | null>();
 
@@ -54,6 +55,14 @@ export class ViewerSessionsPanelComponent implements OnInit {
     const availableModels =
       this.sessionService.getAvailableModelsForSession(sessionKey);
     return availableModels.includes(model);
+  }
+
+  protected missingViews(session: Session): string[] {
+    if (!this.flagIncompleteSessions()) return [];
+    return missingSessionViews(
+      session,
+      this.projectInfoService.projectInfo?.views ?? [],
+    );
   }
 
   handleSessionSelect(session: Session) {

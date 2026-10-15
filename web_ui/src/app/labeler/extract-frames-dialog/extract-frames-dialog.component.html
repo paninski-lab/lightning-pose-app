@@ -175,6 +175,7 @@
           <app-sessions-panel
             class="flex-1 min-w-0 max-h-70 overflow-clip"
             [showModelAvailableMarkers]="false"
+            [flagIncompleteSessions]="true"
             [selectedSessionKey]="session()?.key"
             (selectedSessionChange)="handleSelectedSessionChange($event)"
           ></app-sessions-panel>
@@ -189,10 +190,21 @@
             </button>
           </div>
         </div>
+        @if (sessionProblems().length) {
+          <div role="alert" class="alert alert-warning text-sm">
+            This session is missing {{ sessionProblems().join(', ') }}. Choose a
+            session that includes every camera view.
+          </div>
+        }
       </div>
     } @else {
       <div>
         <sub class="text-sm">Choose which frames to extract.</sub>
+        @if (extractError()) {
+          <div role="alert" class="alert alert-error text-sm mt-2">
+            {{ extractError() }}
+          </div>
+        }
         <div class="p-4 flex flex-col gap-2">
           <div class="flex gap-1">
             <input
@@ -343,6 +355,21 @@
     </div>
     @if (sessionImportOpen()) {
       <app-session-import (done)="onImportDone()"></app-session-import>
+    }
+    @if (duplicateFrameOpen()) {
+      <dialog class="modal modal-open">
+        <div class="modal-box">
+          <p>These frames are already in your labeled data or labeling queue.</p>
+          <div class="modal-action">
+            <button
+              class="btn btn-soft btn-primary"
+              (click)="duplicateFrameOpen.set(false)"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </dialog>
     }
   </div>
 </dialog>

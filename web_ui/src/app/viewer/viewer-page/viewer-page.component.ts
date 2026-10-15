@@ -317,6 +317,7 @@ export class ViewerPageComponent implements OnInit {
 
   protected extractFramesLabelFileKey = signal<string | null>(null);
   protected isExtractFramesLoading = signal(false);
+  protected duplicateFrameOpen = signal(false);
 
   protected isExtractFramesInteractionDisabled() {
     return (
@@ -346,7 +347,7 @@ export class ViewerPageComponent implements OnInit {
     }
     this.handleExtractFramesClick();
   }
-  protected handleExtractFramesClick() {
+  protected async handleExtractFramesClick() {
     if (this.enabledViewsKeypoints.modelsShown().length > 1) {
       this.showPartialModelsError();
       return;
@@ -365,17 +366,34 @@ export class ViewerPageComponent implements OnInit {
       return;
     }
     const request = this.toExtractFramesRequest();
+    const frame = request.manualFrameOptions?.frame_index_list[0];
     this.isExtractFramesLoading.set(true);
-    this.rpc
-      .call('extractFrames', request)
-      .then(() => {
-        this.toastService.showToast({
-          content: 'Successfully appended frame to label file. See in labeler.',
-        });
-      })
-      .finally(() => {
-        this.isExtractFramesLoading.set(false);
+    try {
+      const preview = (await this.rpc.call('validateExtractFrames', request)) as {
+        conflicts?: string[];
+      };
+      if (preview.conflicts?.length) {
+        this.duplicateFrameOpen.set(true);
+        return;
+      }
+      await this.rpc.call('extractFrames', request);
+      this.toastService.showToast({
+        content: `Added frame ${frame} to the labeling queue.`,
       });
+    } catch (err) {
+      const detail = (err as { error?: { detail?: string } })?.error?.detail;
+      if (typeof detail === 'string' && detail.includes('already in the label file')) {
+        this.duplicateFrameOpen.set(true);
+        return;
+      }
+      this.toastService.showToast({
+        content:
+          typeof detail === 'string' && detail ? detail : 'Could not add this frame.',
+        variant: 'error',
+      });
+    } finally {
+      this.isExtractFramesLoading.set(false);
+    }
   }
   private viewerCenterPanel = viewChild<ViewerCenterPanelComponent>(
     ViewerCenterPanelComponent,

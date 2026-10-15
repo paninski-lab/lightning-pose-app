@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import cv2
 import numpy as np
+import pandas as pd
 from numpy.typing import NDArray
 from pydantic import BaseModel
 
@@ -72,6 +74,127 @@ class ManualMethodOptions(BaseModel):
 
 DEFAULT_RANDOM_OPTIONS = RandomMethodOptions()
 
+
+class ExtractedFrameConflict(Exception):
+    """Center frames that are already a label row or a queue entry."""
+
+    def __init__(self, paths: list[str]) -> None:
+        self.paths = paths
+        super().__init__(conflict_detail(paths))
+
+
+def missing_session_views(session: Session, project: Project) -> list[str]:
+    """Project camera names this session does not include. Empty when the session is complete.
+
+    A project with no camera views is single-view and needs exactly one session view.
+    """
+    expected = list(project.config.view_names)
+    present = {view.viewName for view in session.views}
+    if expected:
+        return [name for name in expected if name not in present]
+    if len(session.views) == 1:
+        return []
+    return ["one camera"]
+
+
+def session_view_message(session: Session, project: Project) -> str | None:
+    """Why this session cannot be extracted, or None when it matches the project."""
+    missing = missing_session_views(session, project)
+    expected = list(project.config.view_names)
+    if expected:
+        if missing:
+            return f"Session is missing views: {', '.join(missing)}."
+        extra = sorted({view.viewName for view in session.views} - set(expected))
+        if extra:
+            return f"Session has views that are not in the project: {', '.join(extra)}."
+        return None
+    if missing:
+        return "Single-view project requires exactly one session view."
+    return None
+
+
+def known_frame_paths(data_dir: Path, mv_label_file: MVLabelFile) -> set[str]:
+    """Relative paths already stored as label rows or unlabeled-queue entries."""
+    found: set[str] = set()
+    for view in mv_label_file.views:
+        csv_path = Path(view.csvPath)
+        if csv_path.is_file():
+            try:
+                table = pd.read_csv(csv_path, header=[0, 1, 2], index_col=0)
+            except Exception:
+                table = None
+            if table is not None:
+                for raw in table.index:
+                    normalized = _normalize_frame_path(str(raw), data_dir)
+                    if normalized is not None:
+                        found.add(normalized)
+        sidecar = csv_path.with_suffix(".unlabeled.jsonl")
+        if not sidecar.is_file():
+            continue
+        for line in sidecar.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            normalized = _normalize_frame_path(str(payload.get("frame_path", "")), data_dir)
+            if normalized is not None:
+                found.add(normalized)
+    return found
+
+
+def planned_frame_paths(
+    session: Session,
+    frame_idxs: Sequence[int],
+    config: Config,
+    project: Project,
+) -> set[str]:
+    """Relative paths of the center frames this extract would queue."""
+    width = config.FMT_FRAME_INDEX_DIGITS
+    folder = config.LABELED_DATA_DIRNAME
+    planned: set[str] = set()
+    for view in session.views:
+        stem = Path(view.videoPath).stem
+        for index in frame_idxs:
+            relative = f"{folder}/{stem}/img{int(index):0{width}d}.jpg"
+            planned.add(relative)
+    return planned
+
+
+def conflicting_frame_paths(
+    project: Project,
+    mv_label_file: MVLabelFile,
+    session: Session,
+    frame_idxs: Sequence[int],
+    config: Config,
+) -> list[str]:
+    """Sorted center-frame paths that are already labeled or queued."""
+    known = known_frame_paths(project.paths.data_dir, mv_label_file)
+    planned = planned_frame_paths(session, frame_idxs, config, project)
+    return sorted(known & planned)
+
+
+def conflict_detail(paths: list[str]) -> str:
+    """Short 409 message naming at most two conflicting paths."""
+    shown = ", ".join(paths[:2])
+    extra = len(paths) - 2
+    suffix = f" (+{extra} more)" if extra > 0 else ""
+    return f"Frame already in the label file or labeling queue: {shown}{suffix}"
+
+
+def _normalize_frame_path(raw: str, data_dir: Path) -> str | None:
+    text = raw.strip().replace("\\", "/")
+    if text in {"", "nan", "None"}:
+        return None
+    path = Path(text)
+    if path.is_absolute():
+        try:
+            return path.resolve().relative_to(data_dir.resolve()).as_posix()
+        except ValueError:
+            return None
+    return path.as_posix()
+
 # Other configuration
 
 
@@ -101,6 +224,12 @@ def extract_frames_task(
             frame_idxs = np.array(manual_frame_options.frame_index_list, dtype=int)
         else:
             raise ValueError("method not supported: " + method)
+
+        conflicts = conflicting_frame_paths(
+            project, mv_label_file, session, [int(index) for index in frame_idxs], config
+        )
+        if conflicts:
+            raise ExtractedFrameConflict(conflicts)
 
         view_to_frame_index_to_path = _export_frames(
             config, session, project, frame_idxs, process_pool

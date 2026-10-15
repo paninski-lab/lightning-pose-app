@@ -13,6 +13,9 @@ export interface ShowToastOptions {
   providedIn: 'root',
 })
 export class ToastService {
+  /** How long a toast stays up when the caller does not pass durationMs. */
+  readonly durationMs = 3000;
+
   private containerEl: HTMLElement | null = null;
   /** Pixels to lift the toast above the bottom of the window. */
   private bottomOffsetPx = 0;
@@ -29,7 +32,7 @@ export class ToastService {
     const {
       content,
       variant = 'success',
-      durationMs = 3000,
+      durationMs = this.durationMs,
       dismissOnClick = true,
     } = options;
 

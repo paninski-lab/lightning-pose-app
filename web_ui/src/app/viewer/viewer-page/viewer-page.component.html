@@ -444,6 +444,16 @@
     </as-split-area>
   </as-split>
 }
+<dialog class="modal" [class.modal-open]="duplicateFrameOpen()">
+  <div class="modal-box">
+    <p>This frame is already in your labeled data or labeling queue.</p>
+    <div class="modal-action">
+      <button class="btn btn-soft btn-primary" (click)="duplicateFrameOpen.set(false)">
+        OK
+      </button>
+    </div>
+  </div>
+</dialog>
 <dialog #partialViewsError class="modal">
   <div class="modal-box">
     <p>Enable view of all views and keypoints in the viewer and retry.</p>

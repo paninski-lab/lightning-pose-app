@@ -16,12 +16,16 @@ from .. import deps
 from ..datatypes import Project
 from ..deps import ProjectInfoGetter
 from ..tasks.extract_frames import (
+    ExtractedFrameConflict,
     LabelFileView,
     ManualMethodOptions,
     MVLabelFile,
     RandomMethodOptions,
     Session,
+    conflict_detail,
+    conflicting_frame_paths,
     extract_frames_task,
+    session_view_message,
 )
 
 logger = logging.getLogger(__name__)
@@ -71,21 +75,9 @@ async def extract_frames(
     """Run frame extraction for the given session, creating label files if requested."""
     async with _lock:
         project: Project = project_info_getter(request.projectKey)
-
-        request_view_names = {sv.viewName for sv in request.session.views}
-        project_view_names = set(project.config.view_names)
-        if project_view_names:
-            if request_view_names != project_view_names:
-                raise HTTPException(
-                    status_code=422,
-                    detail=f"Session views {sorted(request_view_names)} do not match project views {sorted(project_view_names)}",
-                )
-        else:
-            if len(request.session.views) != 1:
-                raise HTTPException(
-                    status_code=422,
-                    detail=f"Single-view project requires exactly one session view, got {len(request.session.views)}",
-                )
+        view_problem = session_view_message(request.session, project)
+        if view_problem:
+            raise HTTPException(status_code=422, detail=view_problem)
 
         def on_progress(x: str) -> None:
             """Log a progress message from the extraction task."""
@@ -112,20 +104,67 @@ async def extract_frames(
                     )
                 )
             )
+            if request.labelFile is not None:
+                conflicts = conflicting_frame_paths(
+                    project,
+                    request.labelFile,
+                    request.session,
+                    request.manualFrameOptions.frame_index_list,
+                    config,
+                )
+                if conflicts:
+                    raise HTTPException(status_code=409, detail=conflict_detail(conflicts))
 
-        await run_in_threadpool(
-            extract_frames_task,
-            config,
-            request.session,
-            project,
-            request.labelFile,
-            on_progress,
-            request.method,
-            request.options,
-            request.manualFrameOptions,
-        )
+        try:
+            await run_in_threadpool(
+                extract_frames_task,
+                config,
+                request.session,
+                project,
+                request.labelFile,
+                on_progress,
+                request.method,
+                request.options,
+                request.manualFrameOptions,
+            )
+        except ExtractedFrameConflict as exc:
+            raise HTTPException(status_code=409, detail=conflict_detail(exc.paths)) from exc
 
     return "ok"
+
+
+class ValidateExtractFramesResponse(BaseModel):
+    """Paths already labeled or queued. Empty means the extract may proceed."""
+
+    conflicts: list[str]
+
+
+@router.post("/app/v0/rpc/validateExtractFrames")
+def validate_extract_frames(
+    request: ExtractFramesRequest,
+    config: Config = Depends(deps.config),
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+) -> ValidateExtractFramesResponse:
+    """Report manual-extract conflicts. Does not write frames."""
+    if request.method != "manual":
+        raise HTTPException(
+            status_code=400,
+            detail="Only manual extraction can be checked before it runs.",
+        )
+    project: Project = project_info_getter(request.projectKey)
+    view_problem = session_view_message(request.session, project)
+    if view_problem:
+        raise HTTPException(status_code=422, detail=view_problem)
+    if request.labelFile is None or request.manualFrameOptions is None:
+        return ValidateExtractFramesResponse(conflicts=[])
+    conflicts = conflicting_frame_paths(
+        project,
+        request.labelFile,
+        request.session,
+        request.manualFrameOptions.frame_index_list,
+        config,
+    )
+    return ValidateExtractFramesResponse(conflicts=conflicts)
 
 
 def init_label_file(
