@@ -1,7 +1,7 @@
 ![](docs/images/lpa.png)
 
-![PyPI](https://img.shields.io/pypi/v/lightning-pose-app)
-![GitHub](https://img.shields.io/github/license/paninski-lab/lightning-pose-app)
+[![PyPI](https://img.shields.io/pypi/v/lightning-pose-app)](https://pypi.org/project/lightning-pose-app/)
+[![GitHub](https://img.shields.io/github/license/paninski-lab/lightning-pose-app)](https://github.com/paninski-lab/lightning-pose-app/blob/main/LICENSE)
 [![Documentation Status](https://readthedocs.org/projects/lightning-pose/badge/?version=latest)](https://lightning-pose.readthedocs.io/en/latest/?badge=latest)
 [![Discord](https://img.shields.io/discord/1103381776895856720)](https://discord.gg/tDUPdRj4BM)
 
