@@ -6,7 +6,7 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 
 ## 📝 Release Notes
 
-### [2.4.2.3.dev0]
+### [2.4.2.3] — 2026-10-15
 
 * **File manager:** Validation results and video probe results are kept in `.project-cache` in the project data directory. Opening a file panel shows the last check when the file is unchanged. A changed file, a deleted frame, or a keypoint change is not shown as OK until Validate runs again. Checking a video skips ffprobe when the file is unchanged, and a replaced video is not treated as all-intra from the old result.
 * **Extract frames:** A session missing a camera view cannot be extracted. A frame that is already labeled or already in the labeling queue is not added again. In the Viewer, adding a frame shows a toast that names that frame and then goes away. Toasts share one duration, `ToastService.durationMs`.

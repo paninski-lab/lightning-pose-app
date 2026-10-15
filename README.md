@@ -34,7 +34,7 @@ Bug reports with a clear repro can also go in [GitHub Issues](https://github.com
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md). Latest: **[2.4.2.2](CHANGELOG.md#2422--2026-10-12)**.
+See [CHANGELOG.md](CHANGELOG.md). Latest: **[2.4.2.3](CHANGELOG.md#2423--2026-10-15)**.
 
 ## Contributing
 
