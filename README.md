@@ -1,7 +1,7 @@
 ![](docs/images/lpa.png)
 
-![PyPI](https://img.shields.io/pypi/v/lightning-pose-app)
-![GitHub](https://img.shields.io/github/license/paninski-lab/lightning-pose-app)
+[![PyPI](https://img.shields.io/pypi/v/lightning-pose-app)](https://pypi.org/project/lightning-pose-app/)
+[![GitHub](https://img.shields.io/github/license/paninski-lab/lightning-pose-app)](https://github.com/paninski-lab/lightning-pose-app/blob/main/LICENSE)
 [![Documentation Status](https://readthedocs.org/projects/lightning-pose/badge/?version=latest)](https://lightning-pose.readthedocs.io/en/latest/?badge=latest)
 [![Discord](https://img.shields.io/discord/1103381776895856720)](https://discord.gg/tDUPdRj4BM)
 
@@ -34,7 +34,7 @@ Bug reports with a clear repro can also go in [GitHub Issues](https://github.com
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md). Latest: **[2.4.2.2](CHANGELOG.md#2422--2026-10-12)**.
+See [CHANGELOG.md](CHANGELOG.md). Latest: **[2.4.2.3](CHANGELOG.md#2423--2026-10-15)**.
 
 ## Contributing
 
