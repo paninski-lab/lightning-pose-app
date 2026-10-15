@@ -34,6 +34,8 @@ import {
         />
       </svg>
       Show skeleton
+    </div>
+    <div class="pl-2 flex items-center">
       <input
         type="checkbox"
         class="toggle toggle-sm"
@@ -42,10 +44,10 @@ import {
         [disabled]="invalid()"
         (change)="onToggle($event)"
       />
-      @if (invalid()) {
-        <span class="text-error text-xs">Skeleton definition is invalid.</span>
-      }
     </div>
+    @if (invalid()) {
+      <div class="pl-2 text-error text-xs">Skeleton definition is invalid.</div>
+    }
     @if (showSkeleton() && !invalid()) {
       <div class="flex items-center gap-2 pt-2">
         <span class="material-icons text-sm!">line_weight</span>
@@ -54,7 +56,7 @@ import {
       <div class="pl-2 flex items-center">
         <input
           type="range"
-          class="range range-xs"
+          class="range range-xs flex-1 min-w-0"
           aria-label="Bone thickness"
           [attr.min]="minThickness"
           [attr.max]="maxThickness"
@@ -82,7 +84,7 @@ import {
       <div class="pl-2 flex items-center">
         <input
           type="range"
-          class="range range-xs"
+          class="range range-xs flex-1 min-w-0"
           aria-label="Bone opacity"
           min="0"
           max="1"

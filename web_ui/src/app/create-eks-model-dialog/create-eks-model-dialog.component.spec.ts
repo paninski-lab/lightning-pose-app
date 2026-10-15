@@ -63,7 +63,11 @@ describe('CreateEksModelDialogComponent', () => {
   }
 
   function getCreateButton(): HTMLButtonElement {
-    return fixture.debugElement.query(By.css('button.btn-primary')).nativeElement;
+    const create = fixture.debugElement
+      .queryAll(By.css('.modal-action button'))
+      .find((el) => el.nativeElement.textContent?.trim() === 'Create');
+    expect(create).withContext('Create button').toBeDefined();
+    return create!.nativeElement;
   }
 
   describe('Create button disabled state', () => {

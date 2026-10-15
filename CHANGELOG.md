@@ -13,8 +13,22 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 * **ffmpeg:** If ffmpeg or ffprobe is missing from PATH, a warning stays in the top bar. Videos will not open until both are installed.
 * **Windows:** On native Windows, the top bar says labeling works here and training, inference, and video processing should run in WSL.
 * **Keypoints:** Changing keypoint names warns that existing label files keep the old columns. Saving a label whose keypoint is not a column in that CSV shows an error and does not write the file.
+* **Buttons:** Text buttons that were blue are green, including Cancel, Back, Close, and OK. Red buttons are unchanged.
+* **Labeler:** The right-hand controls sit in a panel you can drag wider or narrower. The frame stays in the center. A large frame or a long side panel scrolls in place. The frame list stops when it meets the right-hand panel.
+* **Viewer:** Views, models, and the other controls sit in a panel you can drag wider or narrower. Videos stay in the center, with the playback bar along the bottom of that center region. Either side panel can cover a video tile, and both stop at the playback bar instead of running off the screen.
+* **View options:** In the Labeler, **Pixel grid overlay** is last in the list. **Show skeleton** uses the same label-then-toggle layout as the other switches in the Labeler and Viewer. All View Options toggles use the same size. **Image size** sets how large the frame is shown, the same way **Video tile size** works in the Viewer. **Keypoint label size** sits under **Keypoint labels** and is hidden while labels are off.
+* **Labeler:** Keypoint markers and labels are sharp as soon as a labeled frame opens. They no longer stay blurry until you move a point or change marker or label size.
+* **Keypoint labels:** In the Labeler and the Viewer, a name sits in the lower-right when that corner stays inside the frame and does not cover another name or marker. Otherwise it uses another corner until the lower-right is free again. The gap between the name and its marker stays the same when the label size changes. Names stay hidden until they can be placed, and the gap follows the letters rather than the em box.
+* **Labeler:** Saving a labeled frame succeeds when the unlabeled-frame list is empty or has a blank line. A failed save shows the server error instead of `[object Object]`.
+* **Viewer:** On a single-view project, the **Views** list is hidden. A video tile shows the info icon, then the view name only when the project has more than one camera, then the video file name.
+* **Viewer:** A message sits just above the playback bar instead of covering it.
+* **Labeler:** The frame sits in a tile with a header: an info icon for the image path, the view name when the project has camera views, the image file name, and a close button that returns to the frame list.
+* **Labeler and Viewer:** The frame is as tall as the picture. A wide image or video no longer sits in a square with empty space underneath. The top corners of the tile stay rounded; the bottom corners are square.
+* **View options:** **Image size** and **Video tile size** go up to 1200px.
+* **Labeler and Viewer:** The left and right panels scroll up and down only. A long name no longer adds a sideways scroll bar.
+* **Labeler:** **Keypoints** and **Multiview tools** fold open and closed. The help button sits next to **Multiview tools**.
 
-Tests: `test_create_and_update_reject_exactly_one_camera_view` (one view rejected; none and two accepted); `project-settings.component.spec.ts` (one camera view disables Save); `test_get_global_context_reports_ffmpeg_and_windows`; `test_save_mvframe_rejects_keypoint_missing_from_columns` (mismatched keypoint is not written).
+Tests: `test_create_and_update_reject_exactly_one_camera_view` (one view rejected; none and two accepted); `project-settings.component.spec.ts` (one camera view disables Save); `test_get_global_context_reports_ffmpeg_and_windows`; `test_save_mvframe_rejects_keypoint_missing_from_columns` (mismatched keypoint is not written); `test_save_mvframe_skips_blank_unlabeled_sidecar_lines` (blank unlabeled sidecar does not break save).
 
 ### [2.4.2.2] — 2026-10-12
 

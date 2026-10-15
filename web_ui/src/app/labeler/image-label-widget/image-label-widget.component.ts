@@ -2,12 +2,15 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
+  ElementRef,
   inject,
   input,
   model,
   output,
   signal,
   viewChild,
+  viewChildren,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LabelerViewOptionsService } from '../labeler-view-options.service';
@@ -23,6 +26,7 @@ import {
   isSkeletonDefinitionInvalid,
   skeletonPairs,
 } from '../../components/skeleton-overlay/skeleton-validity';
+import { fittedMediaHeight } from '../../fitted-media-height';
 
 @Component({
   selector: 'app-image-label-widget',
@@ -30,6 +34,9 @@ import {
   imports: [CommonModule, KeypointContainerComponent, ZoomableContentComponent],
   templateUrl: './image-label-widget.component.html',
   styles: '',
+  host: {
+    '[style.height.px]': 'tileHeight()',
+  },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ImageLabelWidgetComponent {
@@ -52,6 +59,64 @@ export class ImageLabelWidgetComponent {
   private keypointViewModelCache = new WeakMap<LKeypoint[], Keypoint[]>();
 
   zoomableContent = viewChild<ZoomableContentComponent>('primaryZoomable');
+  private frameImages = viewChildren<ElementRef<HTMLImageElement>>('frameImage');
+  /** src of the image whose pixel size we last measured. */
+  private loadedSize = signal<{ src: string; w: number; h: number } | null>(
+    null,
+  );
+
+  /** Width comes from the parent. Height follows the image until a size class overrides it. */
+  protected tileHeight = computed(() => {
+    const size = this.viewOptions.imageSizePx();
+    const loaded = this.loadedSize();
+    const srcs = this.temporalImgPaths(this.fv().imgPath);
+    // img.src is an absolute URL; the template binds the app path.
+    const measured = loaded
+      ? srcs.some(
+          (src) => loaded.src === src || loaded.src.endsWith(src),
+        )
+      : false;
+    if (!measured || !loaded) return size;
+    return fittedMediaHeight(size, loaded.w, loaded.h);
+  });
+
+  constructor() {
+    // Cached images can finish loading before the (load) listener exists.
+    effect(() => {
+      const imgs = this.frameImages();
+      for (const ref of imgs) {
+        const img = ref.nativeElement;
+        if (img.complete && img.naturalWidth > 0) {
+          this.rememberImageSize(img);
+          return;
+        }
+      }
+    });
+  }
+
+  protected onImageLoad(event: Event) {
+    const img = event.target;
+    if (img instanceof HTMLImageElement) this.rememberImageSize(img);
+  }
+
+  private rememberImageSize(img: HTMLImageElement) {
+    if (img.naturalWidth <= 0 || img.naturalHeight <= 0) return;
+    const src = img.currentSrc || img.src;
+    const loaded = this.loadedSize();
+    if (
+      loaded &&
+      loaded.src === src &&
+      loaded.w === img.naturalWidth &&
+      loaded.h === img.naturalHeight
+    ) {
+      return;
+    }
+    this.loadedSize.set({
+      src,
+      w: img.naturalWidth,
+      h: img.naturalHeight,
+    });
+  }
 
   protected drawableSkeletonPairs = computed(() => {
     const info = this.projectInfoService.projectContext()?.projectInfo;

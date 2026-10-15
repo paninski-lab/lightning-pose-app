@@ -33,6 +33,13 @@ import { ImageLabelWidgetComponent } from '../image-label-widget/image-label-wid
 import { LoadCalibrationDialogComponent } from '../../file-manager/load-calibration-dialog.component';
 import { SkeletonViewOptionsComponent } from '../../components/skeleton-view-options/skeleton-view-options.component';
 import { isSkeletonDefinitionInvalid } from '../../components/skeleton-overlay/skeleton-validity';
+import { SplitAreaComponent, SplitComponent } from 'angular-split';
+import {
+  DropdownComponent,
+  DropdownContentComponent,
+  DropdownTriggerComponent,
+  DropdownTriggerDirective,
+} from '../../components/dropdown/dropdown.component';
 
 @Component({
   selector: 'app-labeler-center-panel',
@@ -45,6 +52,12 @@ import { isSkeletonDefinitionInvalid } from '../../components/skeleton-overlay/s
     PathDisplayComponent,
     SkeletonViewOptionsComponent,
     LoadCalibrationDialogComponent,
+    SplitComponent,
+    SplitAreaComponent,
+    DropdownComponent,
+    DropdownContentComponent,
+    DropdownTriggerComponent,
+    DropdownTriggerDirective,
   ],
   providers: [LabelerViewOptionsService],
   templateUrl: './labeler-center-panel.component.html',
@@ -82,6 +95,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
     deletion?: boolean;
   }>();
   nextFrame = output<void>();
+  closeFrame = output<void>();
 
   constructor() {
     effect(() => {
@@ -372,7 +386,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
       })
       .catch((error) => {
         this.isSaving.set(false);
-        throw new Error(error);
+        throw new Error(error?.message ?? String(error));
       });
   }
 

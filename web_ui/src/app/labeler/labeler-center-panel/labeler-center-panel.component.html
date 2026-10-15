@@ -1,10 +1,6 @@
-<div
-  class="grid grid-cols-1 md:grid-cols-[2fr_minmax(260px,_1fr)] h-[90vh] w-full gap-4"
->
-  <!-- First Column: Nested Grid with Two Rows -->
-  <!-- grid-rows-[1fr_auto] makes the first row take available space (big), and the second row size to its content (small) -->
-  <!-- Alternatively, you could use fixed heights like grid-rows-[1fr_h-32] for the second row -->
-  <div class="grid grid-rows-[1fr_auto] gap-4 p-4">
+<as-split class="h-full w-full" unit="pixel" direction="horizontal">
+  <as-split-area size="*">
+  <div class="grid grid-rows-[1fr_auto] gap-4 p-4 h-full min-h-0 min-w-0">
     <!-- Main view -->
 
     @if (!labelFile()) {
@@ -21,22 +17,51 @@
       </div>
     } @else {
       @let fv = selectedFrameView()!;
-      <div>
-        @if (isMultiview()) {
-          <h3 class="bg-base-200 px-2 text-md">
-            {{ fv.viewName }}
-          </h3>
-        }
-        <app-image-label-widget
-          #primaryZoomable
-          [fv]="fv"
-          [revision]="cacheBuster()"
-          [(selectedKeypoint)]="selectedKeypoint"
-          [disableInteractions]="disableInteractions()"
-          (keypointUpdated)="
-            handleKeypointUpdated($event.kp, $event.position, fv)
-          "
-        ></app-image-label-widget>
+      <div class="min-h-0 min-w-0 overflow-auto">
+        <div
+          class="panel !border-none !rounded-b-none"
+          [style.width.px]="viewOptions.imageSizePx()"
+        >
+          <div class="px-2 py-1 text-sm flex justify-between items-center">
+            <div class="flex items-center gap-2 min-w-0">
+              <app-dropdown class="dropdown-hover dropdown-right">
+                <app-dropdown-trigger>
+                  <span
+                    appDropdownTrigger
+                    class="material-icons text-xs! opacity-70"
+                    >info</span
+                  >
+                </app-dropdown-trigger>
+                <app-dropdown-content>
+                  <div class="p-2">
+                    <app-path-display [path]="fv.imgPath"></app-path-display>
+                  </div>
+                </app-dropdown-content>
+              </app-dropdown>
+              @if (isMultiview()) {
+                <h3 class="font-semibold">{{ fv.viewName }}</h3>
+              }
+              <span class="truncate">{{ fv.imgPath.split('/').pop() }}</span>
+            </div>
+            <span
+              class="btn btn-circle btn-xs material-icons !text-sm"
+              (click)="closeFrame.emit()"
+              >close</span
+            >
+          </div>
+          <app-image-label-widget
+            #primaryZoomable
+            class="block"
+            [style.width.px]="viewOptions.imageSizePx()"
+            [fv]="fv"
+            [revision]="cacheBuster()"
+            [(selectedKeypoint)]="selectedKeypoint"
+            [disableInteractions]="disableInteractions()"
+            (keypointUpdated)="
+              handleKeypointUpdated($event.kp, $event.position, fv)
+            "
+          ></app-image-label-widget>
+        </div>
       </div>
     }
 
@@ -73,15 +98,26 @@
       </div>
     }
   </div>
+  </as-split-area>
 
-  <!-- Second Column: Single Row -->
-  <div class="flex flex-col gap-4">
+  <as-split-area size="320">
+  <div class="flex flex-col gap-4 h-full min-w-0 w-full overflow-x-hidden overflow-y-auto">
     <div class="panel m-4">
-      <div>
-        <!-- panel header -->
-        <h1 class="px-2 mb-1">Keypoints</h1>
-      </div>
-      <div class="panel-content overflow-y-auto max-h-100">
+      <input
+        type="checkbox"
+        id="app-accordion-keypoints"
+        class="app-accordion-toggle"
+        checked
+      />
+      <label
+        for="app-accordion-keypoints"
+        class="app-accordion-title flex justify-between px-2 pb-1"
+      >
+        <h1>Keypoints</h1>
+        <span class="app-accordion-icon"></span>
+      </label>
+      <div class="app-accordion-content">
+      <div class="panel-content overflow-x-hidden overflow-y-auto max-h-100">
         @if (selectedFrameView(); as fv) {
           <ul>
             @for (kp of fv.keypoints; track $index) {
@@ -112,24 +148,36 @@
           </ul>
         }
       </div>
+      </div>
     </div>
     @if (frame(); as frame2) {
       @let lbfl = labelFile()!;
       @if (isMultiview()) {
         <div class="panel m-4 mt-0">
-          <div>
-            <!-- panel header -->
-            <h1 class="px-2 mb-1 flex justify-between items-center">
-              Multiview tools
+          <input
+            type="checkbox"
+            id="app-accordion-multiview"
+            class="app-accordion-toggle"
+            checked
+          />
+          <label
+            for="app-accordion-multiview"
+            class="app-accordion-title flex justify-between items-center px-2 pb-1"
+          >
+            <span class="flex items-center gap-1">
+              <h1>Multiview tools</h1>
               <button
-                class="btn btn-circle btn-info btn-soft btn-xs text-sm! tooltip tooltip-bottom"
+                type="button"
+                class="btn btn-circle btn-primary btn-soft btn-xs text-sm! tooltip tooltip-bottom"
                 data-tip="Learn more"
                 onclick="multiview_info.showModal()"
+                (click)="$event.preventDefault(); $event.stopPropagation()"
               >
                 <span class="material-icons text-xs!">question_mark</span>
               </button>
-            </h1>
-          </div>
+            </span>
+            <span class="app-accordion-icon"></span>
+          </label>
           <dialog class="modal" id="multiview_info">
             <div class="modal-box w-5/6 max-w-3xl prose">
               <button
@@ -214,12 +262,13 @@
               <div class="modal-action">
                 <form method="dialog">
                   <!-- if there is a button in form, it will close the modal -->
-                  <button class="btn btn-soft btn-info">Close</button>
+                  <button class="btn btn-soft btn-primary">Close</button>
                 </form>
               </div>
             </div>
           </dialog>
-          <div class="panel-content overflow-y-auto p-2!">
+          <div class="app-accordion-content">
+          <div class="panel-content overflow-x-hidden overflow-y-auto p-2!">
             <div class="mb-2 px-1 text-xs text-base-content/70">
               @switch (calibrationStatus()) {
                 @case ("session") {
@@ -249,14 +298,14 @@
               }
             </div>
             <button
-              class="btn btn-sm btn-soft btn-info w-full mb-2"
+              class="btn btn-sm btn-soft btn-primary w-full mb-2"
               [class.btn-disabled]="disableInteractions()"
               (click)="loadCalibrationOpen.set(true)"
             >
               Load Calibration
             </button>
             <button
-              class="btn btn-sm w-full btn-soft btn-info"
+              class="btn btn-sm w-full btn-soft btn-primary"
               [class.btn-disabled]="
                 !hasCameraCalibrationFiles() || disableInteractions()
               "
@@ -266,7 +315,7 @@
               Refine calibration (bundle adjustment)
             </button>
             <button
-              class="btn btn-sm btn-soft btn-info w-full mt-2"
+              class="btn btn-sm btn-soft btn-primary w-full mt-2"
               [class.btn-disabled]="
                 !hasCameraCalibrationFiles() || disableInteractions()
               "
@@ -286,6 +335,7 @@
               [numLabeledFramesGetter]="numLabeledFramesGetter()"
             ></app-bundle-adjust-dialog>
           </div>
+          </div>
         </div>
       }
       <div class="panel m-4 mt-0">
@@ -302,7 +352,7 @@
           <h1>View options</h1>
           <span class="app-accordion-icon"></span>
         </label>
-        <div class="overflow-y-auto app-accordion-content">
+        <div class="overflow-x-hidden overflow-y-auto app-accordion-content">
           <div class="panel-content p-2!">
             <div class="flex items-center gap-2">
               <span class="material-icons text-sm!">animation</span>
@@ -311,7 +361,7 @@
             <div class="p-2">
               @if (!viewOptions.isShowingTemporalContext()) {
                 <button
-                  class="btn btn-soft btn-info btn-sm"
+                  class="btn btn-soft btn-primary btn-sm"
                   (click)="viewOptions.handleShowTemporalContextClick()"
                 >
                   <span class="material-icons">animation</span> Show
@@ -319,7 +369,7 @@
               } @else {
                 <div class="flex items-center gap-4">
                   <button
-                    class="btn btn-soft btn-info btn-sm"
+                    class="btn btn-soft btn-primary btn-sm"
                     (click)="viewOptions.handleStopTemporalContextClick()"
                   >
                     <span class="material-icons">stop</span> Stop
@@ -338,6 +388,31 @@
               }
             </div>
             <div class="flex items-center gap-2 pt-2">
+              <span class="material-icons text-sm!">aspect_ratio</span>
+              Image size
+            </div>
+            <div class="pl-2 flex items-center">
+              <input
+                type="range"
+                min="200"
+                max="1200"
+                step="10"
+                [(ngModel)]="viewOptions.imageSizePx"
+                class="range range-xs flex-1 min-w-0"
+              />
+              <button
+                class="btn btn-ghost btn-xs tooltip"
+                data-tip="Reset"
+                [disabled]="viewOptions.isImageSizeDefault()"
+                (click)="viewOptions.resetImageSize()"
+              >
+                <span class="material-icons text-sm!">restart_alt</span>
+              </button>
+            </div>
+            <div class="pl-2 opacity-60 text-xs">
+              {{ viewOptions.imageSizePx() }}px
+            </div>
+            <div class="flex items-center gap-2 pt-2">
               <span class="material-icons text-sm!">brightness_medium</span>
               Image brightness
             </div>
@@ -348,7 +423,7 @@
                 max="1.7"
                 step=".02"
                 [(ngModel)]="viewOptions.imgBrightnessScalar"
-                class="range range-xs"
+                class="range range-xs flex-1 min-w-0"
               /><button
                 class="btn btn-ghost btn-xs tooltip"
                 data-tip="Reset"
@@ -369,7 +444,7 @@
                 max="1.5"
                 step=".02"
                 [(ngModel)]="viewOptions.imgContrastScalar"
-                class="range range-xs"
+                class="range range-xs flex-1 min-w-0"
               /><button
                 class="btn btn-ghost btn-xs tooltip"
                 data-tip="Reset"
@@ -390,7 +465,7 @@
                 max="0.6"
                 step=".005"
                 [(ngModel)]="viewOptions.keypointOpacity"
-                class="range range-xs"
+                class="range range-xs flex-1 min-w-0"
               /><button
                 class="btn btn-ghost btn-xs tooltip"
                 data-tip="Reset"
@@ -411,7 +486,7 @@
                 max="25"
                 step="1"
                 [(ngModel)]="viewOptions.keypointSize"
-                class="range range-xs"
+                class="range range-xs flex-1 min-w-0"
               /><button
                 class="btn btn-ghost btn-xs tooltip"
                 data-tip="Reset"
@@ -422,38 +497,6 @@
               </button>
             </div>
             <div class="flex items-center gap-2 pt-2">
-              <span class="material-icons text-sm!">format_size</span>
-              Keypoint label size
-            </div>
-            <div class="pl-2 flex items-center">
-              <input
-                type="range"
-                min="1"
-                max="10"
-                step="1"
-                [(ngModel)]="viewOptions.keypointLabelFontSize"
-                class="range range-xs"
-              /><button
-                class="btn btn-ghost btn-xs tooltip"
-                data-tip="Reset"
-                [disabled]="viewOptions.isLabelFontSizeDefault()"
-                (click)="viewOptions.resetLabelFontSize()"
-              >
-                <span class="material-icons text-sm!">restart_alt</span>
-              </button>
-            </div>
-            <div class="flex items-center gap-2 pt-2">
-              <span class="material-icons text-sm!">grid_on</span>
-              Pixel grid overlay
-            </div>
-            <div class="pl-2 flex items-center">
-              <input
-                type="checkbox"
-                [(ngModel)]="viewOptions.enablePixelGrid"
-                class="toggle toggle-primary"
-              />
-            </div>
-            <div class="flex items-center gap-2 pt-2">
               <span class="material-icons text-sm!">label</span>
               Keypoint labels
             </div>
@@ -461,9 +504,32 @@
               <input
                 type="checkbox"
                 [(ngModel)]="viewOptions.enableKeypointLabels"
-                class="toggle"
+                class="toggle toggle-sm"
               />
             </div>
+            @if (viewOptions.enableKeypointLabels()) {
+              <div class="flex items-center gap-2 pt-2">
+                <span class="material-icons text-sm!">format_size</span>
+                Keypoint label size
+              </div>
+              <div class="pl-2 flex items-center">
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  step="1"
+                  [(ngModel)]="viewOptions.keypointLabelFontSize"
+                  class="range range-xs flex-1 min-w-0"
+                /><button
+                  class="btn btn-ghost btn-xs tooltip"
+                  data-tip="Reset"
+                  [disabled]="viewOptions.isLabelFontSizeDefault()"
+                  (click)="viewOptions.resetLabelFontSize()"
+                >
+                  <span class="material-icons text-sm!">restart_alt</span>
+                </button>
+              </div>
+            }
             <app-skeleton-view-options
               [showSkeleton]="viewOptions.showSkeleton()"
               (showSkeletonChange)="viewOptions.showSkeleton.set($event)"
@@ -477,6 +543,17 @@
               (resetThickness)="viewOptions.resetSkeletonThickness()"
               (resetOpacity)="viewOptions.resetSkeletonOpacity()"
             />
+            <div class="flex items-center gap-2 pt-2">
+              <span class="material-icons text-sm!">grid_on</span>
+              Pixel grid overlay
+            </div>
+            <div class="pl-2 flex items-center">
+              <input
+                type="checkbox"
+                [(ngModel)]="viewOptions.enablePixelGrid"
+                class="toggle toggle-sm toggle-primary"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -487,7 +564,7 @@
         <div class="flex gap-2">
           <div class="tooltip flex-1" [attr.data-tip]="saveTooltip">
             <button
-              class="btn btn-soft btn-info w-full"
+              class="btn btn-soft btn-primary w-full"
               [class.btn-disabled]="isSaveDisabled()"
               (click)="handleSaveClick(lbfl, frame2, false)"
               (keydown.enter)="handleSaveClick(lbfl, frame2, false)"
@@ -514,7 +591,7 @@
           [attr.data-tip]="saveAndContinueTooltip"
         >
           <button
-            class="btn btn-soft btn-info w-full mt-2"
+            class="btn btn-soft btn-primary w-full mt-2"
             [class.btn-disabled]="isSaveAndNextDisabled()"
             (click)="handleSaveClick(lbfl, frame2, true)"
             (keydown.enter)="handleSaveClick(lbfl, frame2, true)"
@@ -525,14 +602,14 @@
           </button>
         </div>
         <button
-          class="btn btn-soft btn-info w-full mt-2"
+          class="btn btn-soft btn-primary w-full mt-2"
           [class.btn-disabled]="!hasNextFrame() || disableInteractions()"
           (click)="handleNext()"
         >
           Next →
         </button>
         <button
-          class="btn btn-soft btn-info w-full mt-2"
+          class="btn btn-soft btn-primary w-full mt-2"
           [class.btn-disabled]="!canRevert()"
           (click)="handleRevert()"
         >
@@ -541,7 +618,8 @@
       }
     </div>
   </div>
-</div>
+  </as-split-area>
+</as-split>
 <dialog #deleteConfirmationDialog class="modal">
   <div class="modal-box">
     <p>Are you sure you want to remove this frame from the label file?</p>
@@ -554,7 +632,7 @@
         Delete
       </button>
       <button
-        class="btn btn-soft btn-info"
+        class="btn btn-soft btn-primary"
         (click)="handleDeleteConfirmationDialogContinuation(false)"
       >
         Cancel

@@ -5,24 +5,25 @@
   }
 </style>
 <div
-  class="panel-content inset-shadow-xs inset-shadow-black/30 overflow-auto h-full w-full"
+  class="panel-content inset-shadow-xs inset-shadow-black/30 overflow-x-hidden overflow-y-auto h-full w-full"
 >
   @if (sessionService.sessionsLoading()) {
     <progress class="progress w-full"></progress>
   } @else {
     <!--panel content-->
-    <ul class="w-fit relative" tabindex="0" role="listbox">
+    <ul class="w-full min-w-0 relative" tabindex="0" role="listbox">
       @for (session of sessionService.allSessions(); track session.key) {
         <li
           tabindex="0"
-          class="text-nowrap p-1 block hover:bg-base-content/10 rounded-sm flex items-center justify-between cursor-pointer"
+          class="min-w-0 p-1 block hover:bg-base-content/10 rounded-sm flex items-center justify-between cursor-pointer"
           (click)="handleSessionSelect(session)"
           (keydown.enter)="handleSessionSelect(session)"
           [class.bg-sky-700]="session.key === selectedSessionKey()"
         >
-          <span>{{ session.relativePath | path }}</span
-          ><!-- left hand side -->
-          <span>
+          <span class="truncate min-w-0" [title]="session.relativePath">{{
+            session.relativePath | path
+          }}</span>
+          <span class="shrink-0">
             <span
               class="text-xs text-red-400 font-bold ml-2"
               [hidden]="!sessionHasModel1(session.key)"
