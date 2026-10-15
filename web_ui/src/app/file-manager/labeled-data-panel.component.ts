@@ -20,6 +20,8 @@ import {
   FileCheckRow,
 } from './file-check-table.component';
 import {
+  applyCachedChecks,
+  fetchCachedFileChecks,
   FileCheckResult,
   joinPath,
   keepCurrentPathOrder,
@@ -238,7 +240,15 @@ export class LabeledDataPanelComponent implements OnInit {
         })
         .sort((a, b) => a.path.localeCompare(b.path));
       this.details = details;
-      this.rows.set(rows);
+      const key = this.projectInfo.projectContext()?.key;
+      const cached = key
+        ? await fetchCachedFileChecks(
+            (method, params) => this.rpc.call(method, params),
+            key,
+            'labeled-data',
+          )
+        : [];
+      this.rows.set(applyCachedChecks(rows, cached));
       if (!rows.some((row) => row.path === this.selectedPath())) {
         this.selectedPath.set(null);
       }

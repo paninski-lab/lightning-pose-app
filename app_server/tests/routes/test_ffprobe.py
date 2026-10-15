@@ -95,6 +95,49 @@ def test_ffprobe_endpoint(client: TestClient, register_project, tmp_path):
         assert data["is_all_intra"] is True
         assert data["width"] == 1280
 
+def test_cached_all_intra_is_dropped_when_the_video_changes(
+    client: TestClient, register_project
+):
+    """A replaced mp4 is probed again. The previous all-intra result is not reused."""
+    data_dir = register_project("demo")
+    video = data_dir / "videos" / "clip.mp4"
+    video.parent.mkdir()
+    video.write_bytes(b"a" * 32)
+    payload = {
+        "file_path": str(video),
+        "duration": 10.0,
+        "width": 1280,
+        "height": 720,
+        "fps": 30,
+        "format": "mov,mp4",
+        "size": 32,
+        "codec": "h264",
+        "is_vfr": False,
+        "bitrate_str": "1.0 Mbps",
+        "dar": "16:9",
+        "sar": "1:1",
+        "color_space": "bt709",
+        "is_all_intra": True,
+    }
+    body = {"projectKey": "demo", "path": str(video)}
+    with patch("litpose_app.routes.ffprobe.run_ffprobe") as mock_run:
+        mock_run.return_value = payload
+        first = client.post("/app/v0/rpc/ffprobe", json=body)
+        assert first.status_code == 200, first.text
+        assert first.json()["is_all_intra"] is True
+        second = client.post("/app/v0/rpc/ffprobe", json=body)
+        assert second.json()["is_all_intra"] is True
+        assert mock_run.call_count == 1
+
+        video.write_bytes(b"b" * 8)
+        mock_run.return_value = {**payload, "is_all_intra": False, "width": 10}
+        third = client.post("/app/v0/rpc/ffprobe", json=body)
+        assert third.status_code == 200, third.text
+        assert third.json()["is_all_intra"] is False
+        assert third.json()["width"] == 10
+        assert mock_run.call_count == 2
+
+
 def test_ffprobe_not_mp4(client: TestClient, register_project):
     project_key = "test_proj"
     register_project(project_key)
