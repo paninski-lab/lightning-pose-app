@@ -23,6 +23,9 @@
           <span class="truncate min-w-0" [title]="session.relativePath">{{
             session.relativePath | path
           }}</span>
+          @if (missingViews(session).length) {
+            <span class="badge badge-warning badge-sm shrink-0">incomplete</span>
+          }
           <span class="shrink-0">
             <span
               class="text-xs text-red-400 font-bold ml-2"

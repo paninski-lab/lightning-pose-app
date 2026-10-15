@@ -9,6 +9,7 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 ### [2.4.2.3.dev0]
 
 * **File manager:** Validation results and video probe results are kept in `.project-cache` in the project data directory. Opening a file panel shows the last check when the file is unchanged. A changed file, a deleted frame, or a keypoint change is not shown as OK until Validate runs again. Checking a video skips ffprobe when the file is unchanged, and a replaced video is not treated as all-intra from the old result.
+* **Extract frames:** A session missing a camera view cannot be extracted. A frame that is already labeled or already in the labeling queue is not added again. In the Viewer, adding a frame shows a toast that names that frame and then goes away. Toasts share one duration, `ToastService.durationMs`.
 * **Folder picker:** The path dropdown scrolls when a directory has more subfolders than fit on screen.
 * **Multiview:** A project with exactly one camera view cannot be created or saved. Leave camera views blank for a single-view project. Projects that already have one view still open.
 * **ffmpeg:** If ffmpeg or ffprobe is missing from PATH, a warning stays in the top bar. Videos will not open until both are installed.
@@ -29,7 +30,7 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 * **Labeler and Viewer:** The left and right panels scroll up and down only. A long name no longer adds a sideways scroll bar.
 * **Labeler:** **Keypoints** and **Multiview tools** fold open and closed. The help button sits next to **Multiview tools**.
 
-Tests: `test_create_and_update_reject_exactly_one_camera_view` (one view rejected; none and two accepted); `project-settings.component.spec.ts` (one camera view disables Save); `test_get_global_context_reports_ffmpeg_and_windows`; `test_save_mvframe_rejects_keypoint_missing_from_columns` (mismatched keypoint is not written); `test_save_mvframe_skips_blank_unlabeled_sidecar_lines` (blank unlabeled sidecar does not break save); `test_cached_ok_is_dropped_when_the_label_file_changes` (a broken label CSV is not shown as OK from the cache); `test_cached_all_intra_is_dropped_when_the_video_changes` (a replaced video is not treated as all-intra from the cache).
+Tests: `test_create_and_update_reject_exactly_one_camera_view` (one view rejected; none and two accepted); `project-settings.component.spec.ts` (one camera view disables Save); `test_get_global_context_reports_ffmpeg_and_windows`; `test_save_mvframe_rejects_keypoint_missing_from_columns` (mismatched keypoint is not written); `test_save_mvframe_skips_blank_unlabeled_sidecar_lines` (blank unlabeled sidecar does not break save); `test_cached_ok_is_dropped_when_the_label_file_changes` (a broken label CSV is not shown as OK from the cache); `test_cached_all_intra_is_dropped_when_the_video_changes` (a replaced video is not treated as all-intra from the cache); `test_extract_frames_rejects_incomplete_session_views` (a session missing a camera is not extracted); `test_extract_frames_rejects_frame_already_in_label_csv` (a frame already in the label file is not queued again).
 
 ### [2.4.2.2] — 2026-10-12
 

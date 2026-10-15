@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { ViewerSessionsPanelComponent } from '../../viewer/viewer-left-panel/viewer-sessions-panel.component';
-import { Session } from '../../session.model';
+import { Session, missingSessionViews } from '../../session.model';
 import {
   AbstractControl,
   FormsModule,
@@ -215,6 +215,8 @@ export class ExtractFramesDialogComponent implements OnInit {
   }
 
   protected isProcessing = signal(false);
+  protected extractError = signal<string | null>(null);
+  protected duplicateFrameOpen = signal(false);
 
   private rpc = inject(RpcService);
   private projectInfoService = inject(ProjectInfoService);
@@ -259,8 +261,17 @@ export class ExtractFramesDialogComponent implements OnInit {
     return true;
   }
 
+  protected sessionProblems = computed(() => {
+    const session = this.session();
+    if (!session) return [];
+    return missingSessionViews(
+      session,
+      this.projectInfoService.projectInfo?.views ?? [],
+    );
+  });
+
   protected sessionStepIsValid = computed(() => {
-    return this.session() !== null;
+    return this.session() !== null && this.sessionProblems().length === 0;
   });
 
   protected settingsStepIsValid = computed(() => {
@@ -316,20 +327,38 @@ export class ExtractFramesDialogComponent implements OnInit {
     };
   }
 
-  protected handleExtractFramesClick() {
+  protected async handleExtractFramesClick() {
     this.isProcessing.set(true);
+    this.extractError.set(null);
+    const request = this.toExtractFramesRequest();
     const targetKey =
       this.labelFileSelectionType() === 'createNew'
         ? this.newLabelFileTemplate() + '.csv'
         : this.existingLabelFileKey()!;
-    this.rpc
-      .call('extractFrames', this.toExtractFramesRequest())
-      .then(() => {
-        this.done.emit(targetKey);
-      })
-      .finally(() => {
-        this.isProcessing.set(false);
-      });
+    try {
+      if (this.method() === 'manual') {
+        const preview = (await this.rpc.call('validateExtractFrames', request)) as {
+          conflicts?: string[];
+        };
+        if (preview.conflicts?.length) {
+          this.duplicateFrameOpen.set(true);
+          return;
+        }
+      }
+      await this.rpc.call('extractFrames', request);
+      this.done.emit(targetKey);
+    } catch (err) {
+      const detail = (err as { error?: { detail?: string } })?.error?.detail;
+      if (typeof detail === 'string' && detail.includes('already in the label file')) {
+        this.duplicateFrameOpen.set(true);
+        return;
+      }
+      this.extractError.set(
+        typeof detail === 'string' && detail ? detail : 'Could not extract frames.',
+      );
+    } finally {
+      this.isProcessing.set(false);
+    }
   }
 
   protected isNextEnabled(): boolean {
