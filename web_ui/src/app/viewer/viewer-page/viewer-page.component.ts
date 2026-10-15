@@ -1,10 +1,13 @@
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   ElementRef,
   inject,
   Input,
+  NgZone,
   OnInit,
   signal,
   viewChild,
@@ -43,6 +46,11 @@ import { SessionImportComponent } from '../../session-import/session-import.comp
 import { LoadCalibrationDialogComponent } from '../../file-manager/load-calibration-dialog.component';
 import { SkeletonViewOptionsComponent } from '../../components/skeleton-view-options/skeleton-view-options.component';
 import { isSkeletonDefinitionInvalid } from '../../components/skeleton-overlay/skeleton-validity';
+import {
+  clampSplitPane,
+  gutterPixels,
+  playbackBarMinWidth,
+} from '../../split-pane-limit';
 
 @Component({
   selector: 'app-viewer',
@@ -74,6 +82,17 @@ import { isSkeletonDefinitionInvalid } from '../../components/skeleton-overlay/s
   ],
 })
 export class ViewerPageComponent implements OnInit {
+  private host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private zone = inject(NgZone);
+  private destroyRef = inject(DestroyRef);
+  private leftPane = viewChild<SplitAreaComponent>('leftPane');
+  private rightPane = viewChild<SplitAreaComponent>('rightPane');
+  /** Side panes stop before they cover the playback bar or each other. */
+  protected leftPaneMax = signal(10000);
+  protected rightPaneMax = signal(10000);
+  protected leftPaneSize = signal(280);
+  protected rightPaneSize = signal(280);
+
   enabledViewsKeypoints = inject(EnabledViewsKeypointsService);
   viewOptions = inject(ViewerViewOptionsService);
   protected skeletonInvalid = computed(() => {
@@ -185,6 +204,45 @@ export class ViewerPageComponent implements OnInit {
       .subscribe((keypointsShown) => {
         this.keypointSelectionModel.setSelection(...keypointsShown);
       });
+
+    afterNextRender(() => {
+      const split = this.host.nativeElement.querySelector('as-split');
+      if (!split) return;
+      const observer = new ResizeObserver(() => {
+        this.zone.run(() => this.limitSidePanes());
+      });
+      observer.observe(split);
+      this.destroyRef.onDestroy(() => observer.disconnect());
+      this.limitSidePanes();
+    });
+  }
+
+  /** Keep both side panes on screen, and leave the playback bar fully visible. */
+  protected limitSidePanes() {
+    const split = this.host.nativeElement.querySelector('as-split');
+    const left = this.leftPane();
+    const right = this.rightPane();
+    if (!split || !left || !right) return;
+    const areas = [...split.querySelectorAll(':scope > as-split-area')];
+    const gutterWidth = gutterPixels(split);
+    const controls = split.querySelector('.video-controls-container');
+    const controlsMin =
+      controls instanceof HTMLElement ? measuredPlaybackBarMin(controls) : 0;
+    const leftWidth = areas[0]?.clientWidth ?? 0;
+    const rightWidth = areas[areas.length - 1]?.clientWidth ?? 0;
+    const room = split.clientWidth - gutterWidth - controlsMin;
+    clampSplitPane(
+      this.leftPaneSize,
+      this.leftPaneMax,
+      room - rightWidth,
+      leftWidth,
+    );
+    clampSplitPane(
+      this.rightPaneSize,
+      this.rightPaneMax,
+      room - leftWidth,
+      rightWidth,
+    );
   }
 
   protected onKeypointCheckboxChange(event: Event, keypointName: string) {
@@ -352,4 +410,22 @@ export class ViewerPageComponent implements OnInit {
       },
     };
   }
+}
+
+/** Width of the playback bar when the seek slider is as narrow as it can be. */
+function measuredPlaybackBarMin(controls: HTMLElement): number {
+  const style = getComputedStyle(controls);
+  const gap = Number.parseFloat(style.columnGap) || 0;
+  const padding =
+    (Number.parseFloat(style.paddingLeft) || 0) +
+    (Number.parseFloat(style.paddingRight) || 0);
+  const items = [...controls.children].filter(
+    (child): child is HTMLElement => child instanceof HTMLElement,
+  );
+  return playbackBarMinWidth(
+    items.map((item) => item.getBoundingClientRect().width),
+    items.findIndex((item) => item.classList.contains('seek-range')),
+    gap,
+    padding,
+  );
 }

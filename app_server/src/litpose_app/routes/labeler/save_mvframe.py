@@ -198,7 +198,9 @@ async def remove_from_unlabeled_sidecar_files(
         if not unlabeled_sidecar_file.exists():
             return
         lines = [
-            json.loads(line) for line in unlabeled_sidecar_file.read_text().splitlines()
+            json.loads(line)
+            for line in unlabeled_sidecar_file.read_text().splitlines()
+            if line.strip()
         ]
         filtered_lines = [
             line for line in lines if line.get("frame_path") != vr.indexToChange

@@ -1,8 +1,12 @@
 import {
+  afterEveryRender,
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   ElementRef,
+  inject,
   input,
   model,
   output,
@@ -26,6 +30,12 @@ import {
   DropdownTriggerComponent,
   DropdownTriggerDirective,
 } from '../components/dropdown/dropdown.component';
+import {
+  LABEL_STROKE_PAD_PX,
+  LabelCorner,
+  LabelFrame,
+  placeKeypointLabels,
+} from './keypoint-label-placement';
 
 @Component({
   selector: 'app-keypoint-container',
@@ -136,6 +146,147 @@ export class KeypointContainerComponent {
     );
   });
 
+  private labelCorners = new Map<string, LabelCorner>();
+  private labelInk = signal(
+    new Map<string, { w: number; h: number; insetLeft: number; insetTop: number }>(),
+  );
+  private frameSize = signal<LabelFrame>({ width: 0, height: 0 });
+  private labelMeasureKey = '';
+
+  constructor() {
+    const destroyRef = inject(DestroyRef);
+    afterNextRender(() => {
+      const el = this.containerDiv().nativeElement as HTMLElement;
+      const readFrame = () => {
+        const width = el.offsetWidth;
+        const height = el.offsetHeight;
+        const current = this.frameSize();
+        if (current.width === width && current.height === height) return;
+        this.frameSize.set({ width, height });
+      };
+      readFrame();
+      const observer = new ResizeObserver(readFrame);
+      observer.observe(el);
+      destroyRef.onDestroy(() => observer.disconnect());
+    });
+    afterEveryRender(() => {
+      if (!this.enableKeypointLabels()) return;
+      const movingId = this.selectedKeypointIsMoving()
+        ? this.selectedKeypoint()
+        : null;
+      const ids: string[] = [];
+      for (const kp of this.keypointModels()) {
+        if (!kp.position()) continue;
+        const visible = !kp.isVisible || kp.isVisible();
+        if (!visible || kp.id === movingId) continue;
+        ids.push(kp.id);
+      }
+      ids.sort();
+      const key = `${this.keypointLabelFontSize()}\0${ids.join('\0')}`;
+      const measured = this.labelInk();
+      if (key === this.labelMeasureKey && ids.every((id) => measured.has(id))) {
+        return;
+      }
+      const root = this.containerDiv().nativeElement as HTMLElement;
+      const next = new Map(measured);
+      let complete = true;
+      for (const span of root.querySelectorAll<HTMLElement>('.keypoint-label')) {
+        const id = span.dataset['kpId'];
+        if (!id || !ids.includes(id)) continue;
+        const ink = inkBox(span);
+        if (!ink) {
+          complete = false;
+          continue;
+        }
+        next.set(id, ink);
+      }
+      if (ids.some((id) => !next.has(id))) complete = false;
+      for (const id of [...next.keys()]) {
+        if (!ids.includes(id)) next.delete(id);
+      }
+      let same = measured.size === next.size;
+      if (same) {
+        for (const [id, size] of next) {
+          const old = measured.get(id);
+          if (
+            !old ||
+            old.w !== size.w ||
+            old.h !== size.h ||
+            old.insetLeft !== size.insetLeft ||
+            old.insetTop !== size.insetTop
+          ) {
+            same = false;
+            break;
+          }
+        }
+      }
+      if (!same) this.labelInk.set(next);
+      if (complete) this.labelMeasureKey = key;
+    });
+  }
+
+  private labelOffsets = computed(() => {
+    const markerSize = this.keypointSize();
+    const measured = this.labelInk();
+    const frame = this.frameSize();
+    const movingId = this.selectedKeypointIsMoving()
+      ? this.selectedKeypoint()
+      : null;
+    const liveIds = new Set<string>();
+    const labels: { id: string; x: number; y: number; w: number; h: number }[] =
+      [];
+    let complete = frame.width > 0 && frame.height > 0;
+    for (const kp of this.keypointModels()) {
+      liveIds.add(kp.id);
+      const position = kp.position();
+      if (!position) continue;
+      const visible = !kp.isVisible || kp.isVisible();
+      if (!visible || kp.id === movingId) continue;
+      const box = measured.get(kp.id);
+      if (!box) {
+        complete = false;
+        continue;
+      }
+      labels.push({
+        id: kp.id,
+        x: position.x,
+        y: position.y,
+        w: box.w,
+        h: box.h,
+      });
+    }
+    for (const id of [...this.labelCorners.keys()]) {
+      if (!liveIds.has(id)) this.labelCorners.delete(id);
+    }
+    if (!complete) return new Map();
+    const placed = placeKeypointLabels(
+      labels,
+      markerSize,
+      frame,
+      this.labelCorners,
+    );
+    for (const [id, corner] of placed.corners) {
+      this.labelCorners.set(id, corner);
+    }
+    return placed.offsets;
+  });
+
+  /** Span top/left. Empty until the frame and every ink box are known. */
+  protected labelSpanOffsets = computed(() => {
+    const placed = this.labelOffsets();
+    const measured = this.labelInk();
+    const spans = new Map<string, { top: number; left: number }>();
+    for (const [id, offset] of placed) {
+      const ink = measured.get(id);
+      if (!ink) continue;
+      spans.set(id, {
+        left: offset.left + LABEL_STROKE_PAD_PX - ink.insetLeft,
+        top: offset.top + LABEL_STROKE_PAD_PX - ink.insetTop,
+      });
+    }
+    return spans;
+  });
+
   // Notifies parent of the user's intent to change keypoint position.
   keypointUpdated = output<{ kp: string; position: Point }>();
 
@@ -151,15 +302,6 @@ export class KeypointContainerComponent {
 
   protected mouseIsOverContainer = signal(false);
   private isMouseDownOnKeypoint = signal(false);
-
-  getTransform(keypoint: Keypoint) {
-    const cssPosition = keypoint.position();
-    const x = cssPosition.x;
-    const y = cssPosition.y;
-    const isVisible = !keypoint.isVisible || keypoint.isVisible();
-    const scale = isVisible ? 1 : 0;
-    return `translate3d(calc(${x}px - 50%), calc(${y}px - 50%), 0px) scale(${scale})`;
-  }
 
   /** Called when user clicks on a keypoint div */
   handleKeypointClick(event: Event, keypoint: Keypoint) {
@@ -291,4 +433,27 @@ export class KeypointContainerComponent {
       });
     }
   }
+}
+
+function inkBox(span: HTMLElement): {
+  w: number;
+  h: number;
+  insetLeft: number;
+  insetTop: number;
+} | null {
+  if (span.offsetWidth === 0 || span.offsetHeight === 0) return null;
+  const spanRect = span.getBoundingClientRect();
+  if (spanRect.width === 0) return null;
+  const range = document.createRange();
+  range.selectNodeContents(span);
+  const inkRect = range.getBoundingClientRect();
+  if (inkRect.width === 0 || inkRect.height === 0) return null;
+  const scale = spanRect.width / span.offsetWidth;
+  if (!Number.isFinite(scale) || scale === 0) return null;
+  return {
+    w: inkRect.width / scale + LABEL_STROKE_PAD_PX * 2,
+    h: inkRect.height / scale + LABEL_STROKE_PAD_PX * 2,
+    insetLeft: (inkRect.left - spanRect.left) / scale,
+    insetTop: (inkRect.top - spanRect.top) / scale,
+  };
 }

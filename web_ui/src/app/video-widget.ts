@@ -4,6 +4,7 @@ import { Signal } from '@angular/core';
 
 export interface VideoWidget {
   id: string;
+  fileName: string;
   videoSrc: string;
   keypoints: Signal<Keypoint[]>;
   metadata?: VideoMetadata;

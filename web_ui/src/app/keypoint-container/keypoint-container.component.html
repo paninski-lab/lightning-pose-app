@@ -30,26 +30,21 @@
   }
   svg text {
     fill: var(--color-base-content);
-    filter: url(#halo);
+    stroke: black;
+    stroke-width: 2px;
+    paint-order: stroke fill;
+  }
+
+  /*
+    Stroke follows the letter shape. A text-shadow outline is a stack of
+    square offsets, and an SVG filter would be its own layer inside the zoom.
+  */
+  .keypoint-label {
+    -webkit-text-stroke: 2px black;
+    paint-order: stroke fill;
+    line-height: 1;
   }
 </style>
-<!-- Text halo filter -->
-<svg width="0" height="0" style="position: absolute">
-  <filter id="halo">
-    <feMorphology
-      operator="dilate"
-      radius="1"
-      in="SourceAlpha"
-      result="expanded"
-    />
-    <feFlood flood-color="black" result="color" />
-    <feComposite in="color" in2="expanded" operator="in" />
-    <feMerge>
-      <feMergeNode />
-      <feMergeNode in="SourceGraphic" />
-    </feMerge>
-  </filter>
-</svg>
 
 <div
   #containerDiv
@@ -186,13 +181,20 @@
         hit area. dropdown-hover is suppressed in crosshair (edit) mode to avoid
         distracting popups while the user is actively placing a keypoint.
       -->
+      <!--
+        left/top, not transform. A transformed marker is its own layer inside
+        the zoom scale, so it is rasterized too small and stays blurry until
+        a later style change.
+      -->
+      @let keypointIsVisible = !keypoint.isVisible || keypoint.isVisible();
       <app-dropdown
-        class="absolute top-0 left-0 dropdown-top"
+        class="absolute dropdown-top"
         [class.dropdown-hover]="enableKeypointHoverTooltips() && !(showCrosshair() && crosshairPosition())"
-        [style.will-change]="'transform'"
-        [style.transform]="getTransform(keypoint)"
-        [style.transform-origin]="'0 0'"
-        [style.display]="hideKeypointBecauseMoving ? 'none' : 'block'"
+        [style.left.px]="keypoint.position().x - keypointSize() / 2"
+        [style.top.px]="keypoint.position().y - keypointSize() / 2"
+        [style.display]="
+          hideKeypointBecauseMoving || !keypointIsVisible ? 'none' : 'block'
+        "
       >
         <app-dropdown-trigger>
           <div
@@ -220,13 +222,15 @@
             }"
           >
             @if (enableKeypointLabels()) {
+              @let spanOffset = labelSpanOffsets().get(keypoint.id);
               <span
-                class="text-nowrap pointer-events-none absolute select-none"
+                class="keypoint-label text-nowrap pointer-events-none absolute select-none"
+                [attr.data-kp-id]="keypoint.id"
                 [style.font-size.px]="keypointLabelFontSize()"
-                [style.top.px]="keypointSize() / 1.15"
-                [style.left.px]="keypointSize() / 1.15"
+                [style.visibility]="spanOffset ? null : 'hidden'"
+                [style.top.px]="spanOffset?.top ?? 0"
+                [style.left.px]="spanOffset?.left ?? 0"
                 [style.opacity]="calculatedKeypointLabelOpacity(keypoint.id)"
-                style="filter: url(#halo)"
                 >{{ keypoint.id }}</span
               >
             }

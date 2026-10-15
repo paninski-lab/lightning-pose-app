@@ -1,13 +1,17 @@
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
+  ElementRef,
   inject,
   input,
   OnChanges,
   output,
   signal,
   SimpleChanges,
+  viewChild,
 } from '@angular/core';
 import { VideoPlayerControlsComponent } from '../../video-player/video-player-controls/video-player-controls.component';
 import { VideoTileComponent } from '../../video-player/video-tile/video-tile.component';
@@ -29,6 +33,7 @@ import * as dfd from 'danfojs';
 import { PredictionFile } from '../../prediction-file';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ZoomableContentComponent } from '../../zoomable-content.component';
+import { fittedMediaHeight } from '../../fitted-media-height';
 import { firstValueFrom, skipWhile } from 'rxjs';
 import { ExtractedFramePredictionList } from '../../extract-frames-request';
 import _ from 'lodash';
@@ -84,6 +89,20 @@ export class ViewerCenterPanelComponent implements OnChanges {
   private enabledViewsKeypoints = inject(EnabledViewsKeypointsService);
   videoPlayerState = inject(VideoPlayerState);
   protected viewOptions = inject(ViewerViewOptionsService);
+  protected isMultiview = computed(
+    () =>
+      (this.projectInfoService.projectContext()?.projectInfo?.views?.length ??
+        0) > 1,
+  );
+
+  /** Tile width stays on the size slider; height follows the video's pixel aspect. */
+  protected mediaTileHeight(metadata: VideoMetadata | undefined): number {
+    return fittedMediaHeight(
+      this.viewOptions.videoTileSizePx(),
+      metadata?.width ?? 0,
+      metadata?.height ?? 0,
+    );
+  }
 
   protected drawableSkeletonPairs = computed(() => {
     const info = this.projectInfoService.projectContext()?.projectInfo;
@@ -348,6 +367,7 @@ export class ViewerCenterPanelComponent implements OnChanges {
         );
         return {
           id: view,
+          fileName: sessionView.videoPath.split('/').pop() ?? '',
           videoSrc: this.fineVideoService.fineVideoPath(sessionView.videoPath),
           metadata: ffprobeData.get(view),
           keypoints: signal(
@@ -408,7 +428,25 @@ export class ViewerCenterPanelComponent implements OnChanges {
     this.enabledViewsKeypoints.setViewsShown(nextViewsShown);
   }
 
+  private playbackBar = viewChild('playbackBar', { read: ElementRef });
+  private destroyRef = inject(DestroyRef);
+
   constructor() {
+    afterNextRender(() => {
+      const host = this.playbackBar()?.nativeElement as HTMLElement | undefined;
+      if (!host) return;
+      const gapPx = 8;
+      const apply = () => {
+        this.toastService.setBottomOffset(host.offsetHeight + gapPx);
+      };
+      apply();
+      const observer = new ResizeObserver(apply);
+      observer.observe(host);
+      this.destroyRef.onDestroy(() => {
+        observer.disconnect();
+        this.toastService.setBottomOffset(0);
+      });
+    });
     this.enabledViewsKeypoints.viewsShown$
       .pipe(takeUntilDestroyed())
       .subscribe(() => {
