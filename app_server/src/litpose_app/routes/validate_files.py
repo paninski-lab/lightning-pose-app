@@ -16,6 +16,14 @@ from pydantic import BaseModel
 from litpose_app import deps
 from litpose_app.datatypes import Project
 from litpose_app.deps import ProjectInfoGetter
+from litpose_app.project_cache import (
+    dir_record,
+    file_record,
+    fresh_file_checks,
+    model_record,
+    project_context,
+    replace_file_checks,
+)
 from litpose_app.routes.rglob import _rglob
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
 
@@ -162,15 +170,21 @@ def _label_header_issue(full: Path) -> str | None:
 
 def _inspect_label_table(
     full: Path, data_dir: Path, keypoints: list[str]
-) -> tuple[list[str], list[str]]:
+) -> tuple[list[str], list[str], list[dict]]:
+    """Issues, warnings, and whether each indexed image existed.
+
+    The third list is only valid index paths. A later cache read stats those
+    paths again, because deleting a frame does not change the CSV.
+    """
     try:
         df = pd.read_csv(full, header=[0, 1, 2], index_col=0)
         df = fix_empty_first_row(df)
     except Exception as exc:
-        return [f"Could not read label rows: {exc}"], []
+        return [f"Could not read label rows: {exc}"], [], []
 
     bad: list[str] = []
     missing: list[str] = []
+    deps: list[dict] = []
     data_resolved = data_dir.resolve()
     for raw in df.index:
         text = str(raw).strip()
@@ -189,7 +203,9 @@ def _inspect_label_table(
         except ValueError:
             bad.append(rel)
             continue
-        if not target.is_file():
+        exists = target.is_file()
+        deps.append({"path": rel, "exists": exists})
+        if not exists:
             missing.append(rel)
 
     issues: list[str] = []
@@ -212,14 +228,24 @@ def _inspect_label_table(
     warning = _keypoint_warning(bodyparts, keypoints)
     if warning:
         warnings.append(warning)
-    return issues, warnings
+    return issues, warnings, deps
 
 
-def _validate_labels(project: Project) -> list[FileCheck]:
+def _check_context(project: Project) -> dict[str, list[str]]:
+    return project_context(
+        list(project.config.view_names), list(project.config.keypoint_names)
+    )
+
+
+def _validate_labels(
+    project: Project, *, remember: bool = True
+) -> tuple[list[FileCheck], dict[str, dict]]:
     data_dir = project.paths.data_dir
     model_dir = project.paths.model_dir
     views = list(project.config.view_names)
+    context = _check_context(project)
     items: list[FileCheck] = []
+    records: dict[str, dict] = {}
     entries = _rglob(str(data_dir), pattern="**/*.csv", no_dirs=True)
     for entry in entries:
         rel = Path(entry["path"])
@@ -230,6 +256,7 @@ def _validate_labels(project: Project) -> list[FileCheck]:
             continue
         issues: list[str] = []
         warnings: list[str] = []
+        deps: list[dict] = []
         name_issue = _label_filename_issue(rel.name, views)
         if name_issue:
             issues.append(name_issue)
@@ -237,33 +264,45 @@ def _validate_labels(project: Project) -> list[FileCheck]:
         if header_issue:
             issues.append(header_issue)
         else:
-            table_issues, table_warnings = _inspect_label_table(
+            table_issues, table_warnings, deps = _inspect_label_table(
                 full, data_dir, list(project.config.keypoint_names)
             )
             issues.extend(table_issues)
             warnings.extend(table_warnings)
-        items.append(
-            FileCheck(path=rel.as_posix(), issues=issues, warnings=warnings)
+        rel_posix = rel.as_posix()
+        items.append(FileCheck(path=rel_posix, issues=issues, warnings=warnings))
+        if not remember:
+            continue
+        record = file_record(
+            full, issues=issues, warnings=warnings, context=context, deps=deps
         )
-    return items
+        if record is not None:
+            records[rel_posix] = record
+    return items, records
 
 
-def _validate_labeled_data(project: Project) -> list[FileCheck]:
+def _validate_labeled_data(
+    project: Project,
+) -> tuple[list[FileCheck], dict[str, dict]]:
     data_dir = project.paths.data_dir
     root = data_dir / "labeled-data"
     if not root.is_dir():
-        return []
+        return [], {}
     views = list(project.config.view_names)
+    context = _check_context(project)
     items: list[FileCheck] = []
+    records: dict[str, dict] = {}
     children = sorted(root.iterdir(), key=lambda p: p.name.lower())
     for child in children:
         rel = f"labeled-data/{child.name}"
         if not child.is_dir():
-            items.append(
-                FileCheck(path=rel, issues=["Expected a session directory."])
-            )
+            issues = ["Expected a session directory."]
+            items.append(FileCheck(path=rel, issues=issues))
+            record = dir_record(child, issues=issues, warnings=[], context=context)
+            if record is not None:
+                records[rel] = record
             continue
-        issues: list[str] = []
+        issues = []
         name_issue = _session_stem_issue(child.name, views, kind="directory")
         if name_issue:
             issues.append(name_issue)
@@ -275,7 +314,10 @@ def _validate_labeled_data(project: Project) -> list[FileCheck]:
                 unexpected.append(f"Unexpected file: {grandchild.name}")
         issues.extend(_cap(unexpected))
         items.append(FileCheck(path=rel, issues=issues))
-    return items
+        record = dir_record(child, issues=issues, warnings=[], context=context)
+        if record is not None:
+            records[rel] = record
+    return items, records
 
 
 def _walk_model_dirs(model_dir: Path) -> list[Path]:
@@ -373,10 +415,13 @@ def calibration_file_issues(path: Path, views: list[str]) -> list[str]:
     return []
 
 
-def _validate_calibrations(project: Project) -> list[FileCheck]:
+def _validate_calibrations(
+    project: Project,
+) -> tuple[list[FileCheck], dict[str, dict]]:
     """Check calibration.toml and calibrations/*.toml. Backups are not listed."""
     data_dir = project.paths.data_dir
     views = list(project.config.view_names)
+    context = _check_context(project)
     paths: list[Path] = []
     root_file = data_dir / "calibration.toml"
     if root_file.is_file():
@@ -387,26 +432,33 @@ def _validate_calibrations(project: Project) -> list[FileCheck]:
             if child.is_file() and child.suffix == ".toml":
                 paths.append(child)
     items: list[FileCheck] = []
+    records: dict[str, dict] = {}
     for path in paths:
         rel = path.relative_to(data_dir).as_posix()
-        items.append(
-            FileCheck(
-                path=rel,
-                issues=calibration_file_issues(path, views),
-            )
-        )
-    return items
+        issues = calibration_file_issues(path, views)
+        items.append(FileCheck(path=rel, issues=issues))
+        record = file_record(path, issues=issues, warnings=[], context=context, deps=[])
+        if record is not None:
+            records[rel] = record
+    return items, records
 
 
-def _validate_models(project: Project) -> list[FileCheck]:
+def _validate_models(project: Project) -> tuple[list[FileCheck], dict[str, dict]]:
     model_dir = project.paths.model_dir
     views = list(project.config.view_names)
+    context = _check_context(project)
     items: list[FileCheck] = []
+    records: dict[str, dict] = {}
     for model_path in _walk_model_dirs(model_dir):
         check = _validate_one_model(model_path, views)
         check.path = model_path.relative_to(model_dir).as_posix()
         items.append(check)
-    return items
+        record = model_record(
+            model_path, issues=check.issues, warnings=check.warnings, context=context
+        )
+        if record is not None:
+            records[check.path] = record
+    return items, records
 
 
 @router.post("/app/v0/rpc/validateProjectFiles")
@@ -414,14 +466,39 @@ def validate_project_files(
     request: ValidateProjectFilesRequest,
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> ValidateProjectFilesResponse:
-    """Check one sector of the project. Does not rename or rewrite files."""
+    """Check one sector of the project and remember the results. Does not rewrite project files."""
     project: Project = project_info_getter(request.projectKey)
-    if request.sector == "labels":
-        items = _validate_labels(project)
-    elif request.sector == "labeled-data":
-        items = _validate_labeled_data(project)
-    elif request.sector == "calibration":
-        items = _validate_calibrations(project)
-    else:
-        items = _validate_models(project)
+    items, records = _validate_sector(project, request.sector)
+    replace_file_checks(project.paths.data_dir, request.sector, records)
     return ValidateProjectFilesResponse(items=items)
+
+
+@router.post("/app/v0/rpc/cachedProjectFileChecks")
+def cached_project_file_checks(
+    request: ValidateProjectFilesRequest,
+    project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+) -> ValidateProjectFilesResponse:
+    """Return stored checks that still match the files. Stale paths are omitted."""
+    project: Project = project_info_getter(request.projectKey)
+    rows = fresh_file_checks(
+        project.paths.data_dir,
+        project.paths.model_dir,
+        request.sector,
+        list(project.config.view_names),
+        list(project.config.keypoint_names),
+    )
+    return ValidateProjectFilesResponse(
+        items=[FileCheck.model_validate(row) for row in rows]
+    )
+
+
+def _validate_sector(
+    project: Project, sector: str
+) -> tuple[list[FileCheck], dict[str, dict]]:
+    if sector == "labels":
+        return _validate_labels(project)
+    if sector == "labeled-data":
+        return _validate_labeled_data(project)
+    if sector == "calibration":
+        return _validate_calibrations(project)
+    return _validate_models(project)

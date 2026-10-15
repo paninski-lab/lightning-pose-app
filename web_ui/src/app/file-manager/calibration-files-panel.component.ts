@@ -21,6 +21,8 @@ import {
 } from './file-check-table.component';
 import { LoadCalibrationDialogComponent } from './load-calibration-dialog.component';
 import {
+  applyCachedChecks,
+  fetchCachedFileChecks,
   FileCheckResult,
   joinPath,
   keepCurrentPathOrder,
@@ -256,14 +258,25 @@ export class CalibrationFilesPanelComponent implements OnInit {
         if (b === 'calibration.toml') return 1;
         return a.localeCompare(b);
       });
+      const key = this.projectInfo.projectContext()?.key;
+      const cached = key
+        ? await fetchCachedFileChecks(
+            (method, params) => this.rpc.call(method, params),
+            key,
+            'calibration',
+          )
+        : [];
       this.rows.set(
-        unique.map((path) => ({
-          path,
-          detail: path === 'calibration.toml' ? 'project file' : 'session file',
-          issues: [],
-          warnings: [],
-          checked: false,
-        })),
+        applyCachedChecks(
+          unique.map((path) => ({
+            path,
+            detail: path === 'calibration.toml' ? 'project file' : 'session file',
+            issues: [] as string[],
+            warnings: [] as string[],
+            checked: false,
+          })),
+          cached,
+        ),
       );
       if (!unique.includes(this.selectedPath() ?? '')) {
         this.selectedPath.set(null);

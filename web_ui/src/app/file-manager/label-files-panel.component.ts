@@ -21,6 +21,8 @@ import {
 } from './file-check-table.component';
 import { LoadLabelDialogComponent } from './load-label-dialog.component';
 import {
+  applyCachedChecks,
+  fetchCachedFileChecks,
   FileCheckResult,
   isUnderDir,
   joinPath,
@@ -223,7 +225,20 @@ export class LabelFilesPanelComponent implements OnInit {
         .map((entry) => String(entry.path))
         .filter((rel) => !isModelsCsv(rel, info.data_dir, info.model_dir))
         .sort();
-      this.rows.set(paths.map((path) => uncheckedRow(path, null)));
+      const key = this.projectInfo.projectContext()?.key;
+      const cached = key
+        ? await fetchCachedFileChecks(
+            (method, params) => this.rpc.call(method, params),
+            key,
+            'labels',
+          )
+        : [];
+      this.rows.set(
+        applyCachedChecks(
+          paths.map((path) => uncheckedRow(path, null)),
+          cached,
+        ),
+      );
       if (!paths.includes(this.selectedPath() ?? '')) {
         this.selectedPath.set(null);
       }

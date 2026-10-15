@@ -32,7 +32,6 @@ def find_label_files(
     by the shared header check.
     """
     project: Project = project_info_getter(request.projectKey)
-    label_files = [
-        item.path for item in _validate_labels(project) if not item.issues
-    ]
+    items, _records = _validate_labels(project, remember=False)
+    label_files = [item.path for item in items if not item.issues]
     return {"labelFiles": label_files}

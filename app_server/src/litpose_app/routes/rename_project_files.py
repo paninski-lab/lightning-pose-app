@@ -16,6 +16,7 @@ from litpose_app import deps
 from litpose_app.config import Config
 from litpose_app.datatypes import Project
 from litpose_app.deps import ProjectInfoGetter
+from litpose_app.project_cache import drop_file_check, relative_data_path
 from litpose_app.routes.rglob import _rglob
 from litpose_app.routes.validate_files import (
     _MODEL_NAME_RE,
@@ -168,7 +169,13 @@ def rename_label_file(
     dest = src.parent / new_name
     if dest.exists():
         raise HTTPException(status_code=409, detail="A file with that name already exists.")
+    old_rel = relative_data_path(data_dir, src)
     src.rename(dest)
+    if old_rel is not None:
+        drop_file_check(data_dir, "labels", old_rel)
+    new_rel = relative_data_path(data_dir, dest)
+    if new_rel is not None:
+        drop_file_check(data_dir, "labels", new_rel)
     return RenamePathResponse(ok=True, path=str(dest))
 
 
@@ -215,7 +222,13 @@ def rename_calibration_file(
     dest = cal_dir / new_name
     if dest.exists():
         raise HTTPException(status_code=409, detail="A file with that name already exists.")
+    old_rel = relative_data_path(data_dir, src)
     src.rename(dest)
+    if old_rel is not None:
+        drop_file_check(data_dir, "calibration", old_rel)
+    new_rel = relative_data_path(data_dir, dest)
+    if new_rel is not None:
+        drop_file_check(data_dir, "calibration", new_rel)
     return RenamePathResponse(ok=True, path=str(dest))
 
 
@@ -488,6 +501,13 @@ def rename_labeled_data_folder(
         raise HTTPException(
             status_code=500, detail="Could not update label CSV paths."
         ) from exc
+    data_dir = project.paths.data_dir
+    drop_file_check(data_dir, "labeled-data", f"labeled-data/{src.name}")
+    drop_file_check(data_dir, "labeled-data", f"labeled-data/{dest.name}")
+    for target, _original in written:
+        rel = relative_data_path(data_dir, target)
+        if rel is not None:
+            drop_file_check(data_dir, "labels", rel)
     return RenamePathResponse(ok=True, path=str(dest))
 
 
@@ -547,7 +567,7 @@ def _label_copy_issues(project: Project, dest: Path) -> list[str]:
     header = _label_header_issue(dest)
     if header:
         return [header]
-    issues, _warnings = _inspect_label_table(
+    issues, _warnings, _deps = _inspect_label_table(
         dest,
         project.paths.data_dir,
         list(project.config.keypoint_names),

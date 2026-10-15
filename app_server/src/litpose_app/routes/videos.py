@@ -26,6 +26,7 @@ from ..datatypes import Project
 from ..deps import ProjectInfoGetter
 from ..ignored_video_dirs import ignored_video_dirs
 from ..paths.project_videos import project_video_root
+from ..project_cache import drop_video_probe
 from ..tasks import transcode_fine
 
 logger = logging.getLogger(__name__)
@@ -617,7 +618,11 @@ def transcode_video_in_place(
     key = str(src)
 
     def _finalize() -> None:
+        final = src.with_suffix(".mp4")
         _replace_with_transcode(src, tmp)
+        drop_video_probe(project.paths.data_dir, final)
+        if final.resolve() != src.resolve():
+            drop_video_probe(project.paths.data_dir, src)
 
     _start_transcode_background(
         src.name,

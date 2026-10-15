@@ -16,6 +16,8 @@ import {
   FileCheckRow,
 } from './file-check-table.component';
 import {
+  applyCachedChecks,
+  fetchCachedFileChecks,
   FileCheckResult,
   joinPath,
   keepCurrentPathOrder,
@@ -185,14 +187,25 @@ export class ModelFilesPanelComponent implements OnInit {
     this.loading.set(true);
     try {
       const paths = await this.listModelDirs(modelDir);
+      const key = this.projectInfo.projectContext()?.key;
+      const cached = key
+        ? await fetchCachedFileChecks(
+            (method, params) => this.rpc.call(method, params),
+            key,
+            'models',
+          )
+        : [];
       this.rows.set(
-        paths.map((path) => ({
-          path,
-          detail: null,
-          issues: [],
-          warnings: [],
-          checked: false,
-        })),
+        applyCachedChecks(
+          paths.map((path) => ({
+            path,
+            detail: null,
+            issues: [],
+            warnings: [],
+            checked: false,
+          })),
+          cached,
+        ),
       );
       if (!paths.includes(this.selectedPath() ?? '')) {
         this.selectedPath.set(null);

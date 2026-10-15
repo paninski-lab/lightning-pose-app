@@ -2,6 +2,7 @@
 
 import tomli
 import tomli_w
+import yaml
 from fastapi.testclient import TestClient
 
 
@@ -72,3 +73,86 @@ def test_validate_calibration_toml_flags_missing_camera_field(
     assert "calibrations/backups/old.toml" not in items
     assert items["calibrations/sess.toml"]["issues"] == []
     assert items["calibrations/broken.toml"]["issues"]
+
+
+def _valid_label(data_dir):
+    image = data_dir / "labeled-data" / "sess_bot" / "img0001.png"
+    image.parent.mkdir(parents=True)
+    image.write_bytes(b"png")
+    csv = data_dir / "CollectedData_bot.csv"
+    csv.write_text(
+        "scorer,s,s\n"
+        "bodyparts,nose,nose\n"
+        "coords,x,y\n"
+        "labeled-data/sess_bot/img0001.png,1,2\n"
+    )
+    return csv, image
+
+
+def test_cached_ok_is_dropped_when_the_label_file_changes(client, register_project):
+    """A cached clean label file is not shown as OK after the CSV on disk is broken."""
+    data_dir = register_project("demo", views=["bot"], keypoints=["nose"])
+    csv, _image = _valid_label(data_dir)
+    checked = client.post(
+        "/app/v0/rpc/validateProjectFiles",
+        json={"projectKey": "demo", "sector": "labels"},
+    )
+    assert checked.status_code == 200, checked.text
+    assert checked.json()["items"][0]["issues"] == []
+    fresh = client.post(
+        "/app/v0/rpc/cachedProjectFileChecks",
+        json={"projectKey": "demo", "sector": "labels"},
+    )
+    assert fresh.status_code == 200, fresh.text
+    assert fresh.json()["items"] == [
+        {"path": "CollectedData_bot.csv", "issues": [], "warnings": []}
+    ]
+
+    csv.write_text("a,b\n1,2\n")
+    cached = client.post(
+        "/app/v0/rpc/cachedProjectFileChecks",
+        json={"projectKey": "demo", "sector": "labels"},
+    )
+    assert cached.status_code == 200, cached.text
+    ok = [
+        item
+        for item in cached.json()["items"]
+        if item["path"] == "CollectedData_bot.csv" and item["issues"] == []
+    ]
+    assert ok == []
+
+
+def test_cached_ok_is_dropped_when_a_labeled_image_disappears(client, register_project):
+    """Deleting a frame does not change the CSV, and the cached OK must not survive that."""
+    data_dir = register_project("demo", views=["bot"], keypoints=["nose"])
+    _csv, image = _valid_label(data_dir)
+    client.post(
+        "/app/v0/rpc/validateProjectFiles",
+        json={"projectKey": "demo", "sector": "labels"},
+    )
+    image.unlink()
+    cached = client.post(
+        "/app/v0/rpc/cachedProjectFileChecks",
+        json={"projectKey": "demo", "sector": "labels"},
+    )
+    assert cached.status_code == 200, cached.text
+    assert cached.json()["items"] == []
+
+
+def test_cached_ok_is_dropped_when_keypoints_change(client, register_project):
+    """The same CSV is not OK after project keypoints change."""
+    data_dir = register_project("demo", views=["bot"], keypoints=["nose"])
+    _valid_label(data_dir)
+    client.post(
+        "/app/v0/rpc/validateProjectFiles",
+        json={"projectKey": "demo", "sector": "labels"},
+    )
+    (data_dir / "project.yaml").write_text(
+        yaml.safe_dump({"view_names": ["bot"], "keypoint_names": ["tail"]})
+    )
+    cached = client.post(
+        "/app/v0/rpc/cachedProjectFileChecks",
+        json={"projectKey": "demo", "sector": "labels"},
+    )
+    assert cached.status_code == 200, cached.text
+    assert cached.json()["items"] == []

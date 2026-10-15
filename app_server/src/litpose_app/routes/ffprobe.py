@@ -7,13 +7,14 @@ import subprocess
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 router = APIRouter()
 
 
 from litpose_app import deps
 from litpose_app.deps import ProjectInfoGetter
+from litpose_app.project_cache import fresh_video_probe, store_video_probe
 
 
 class FFProbeRequest(BaseModel):
@@ -49,19 +50,32 @@ def ffprobe(
     request: FFProbeRequest,
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
 ) -> FFProbeResponse:
-    """Probe request.path with ffprobe and return video metadata after validating project scope."""
-    # Validate projectKey and obtain Project (not used further here)
-    _ = project_info_getter(request.projectKey)
+    """Probe request.path with ffprobe and return video metadata after validating project scope.
+
+    An mp4 inside the project data directory reuses a stored probe when the file's
+    size and modification time still match. A failed probe is not stored.
+    """
+    project = project_info_getter(request.projectKey)
     if request.path.suffix != ".mp4":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only mp4 files are supported.",
         )
 
+    cached = fresh_video_probe(project.paths.data_dir, request.path)
+    if cached is not None:
+        cached["file_path"] = str(request.path)
+        try:
+            return FFProbeResponse.model_validate(cached)
+        except ValidationError:
+            pass
+
     result = run_ffprobe(str(request.path))
-
     response = FFProbeResponse.model_validate(result)
-
+    if "error" not in result:
+        store_video_probe(
+            project.paths.data_dir, request.path, response.model_dump()
+        )
     return response
 
 

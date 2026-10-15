@@ -17,6 +17,7 @@ from starlette.concurrency import run_in_threadpool
 from litpose_app import deps
 from litpose_app.datatypes import Project
 from litpose_app.deps import ProjectInfoGetter
+from litpose_app.project_cache import drop_file_check, relative_data_path
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
 
 router = APIRouter()
@@ -191,6 +192,9 @@ async def commit_mvframe(
         """Replace each view's CSV with its temp file using os.replace (atomic per file)."""
         for vr, tmp_file_name in zip(request.views, tmp_file_names, strict=False):
             os.replace(tmp_file_name, vr.csvPath)
+            rel = relative_data_path(project_data_dir, vr.csvPath)
+            if rel is not None:
+                drop_file_check(project_data_dir, "labels", rel)
 
     return await run_in_threadpool(commit_changes)
 
