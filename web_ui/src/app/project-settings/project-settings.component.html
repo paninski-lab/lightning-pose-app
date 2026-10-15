@@ -115,6 +115,13 @@
                   | json
               }}
             </p>
+            @if (keypointNamesDiffer()) {
+              <p class="text-warning text-sm">
+                Existing label files still use the previous keypoint columns.
+                Recreate those files before labeling with these names. Saving
+                here does not rewrite them.
+              </p>
+            }
           </fieldset>
         </form>
       }
@@ -158,6 +165,12 @@
                 parseTextAsList(multiviewForm.controls["views"].value) | json
               }}
             </p>
+            @if (multiviewForm.controls["views"].invalid) {
+              <p class="text-error text-xs">
+                A multiview project needs at least two camera views. Leave this
+                blank for a single-view project.
+              </p>
+            }
           </fieldset>
         </form>
       }
@@ -194,7 +207,8 @@
           (click)="handleSaveClick()"
           [disabled]="
             (!projectInfoForm.dirty && !skeletonDirty()) ||
-            (skeletonDirty() && skeletonIssues().length > 0)
+            (skeletonDirty() && skeletonIssues().length > 0) ||
+            !isMultiviewFormValid()
           "
         >
           Save

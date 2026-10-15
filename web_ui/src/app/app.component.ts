@@ -80,6 +80,13 @@ export class AppComponent implements OnInit {
     () =>
       this.projectInfoService.projectContext()?.projectInfo?.model_dir ?? null,
   );
+  protected nativeWindows = computed(
+    () => this.projectInfoService.globalContext()?.nativeWindows === true,
+  );
+  protected ffmpegMissing = computed(() => {
+    const ctx = this.projectInfoService.globalContext();
+    return ctx != null && ctx.ffmpegAvailable === false;
+  });
   navLinks = computed(() => {
     const key = this.projectKey();
     if (!key) {

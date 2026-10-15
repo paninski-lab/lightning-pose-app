@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { ProjectInfoService } from '../project-info.service';
 import {
+  AbstractControl,
   FormBuilder,
   FormGroup,
   ReactiveFormsModule,
@@ -93,7 +94,7 @@ export class ProjectSettingsComponent implements OnInit {
         keypointNames: [''],
       }),
       multiview: this.fb.group({
-        views: [''],
+        views: ['', (control: AbstractControl) => this.rejectSingleCameraView(control)],
       }),
     });
 
@@ -191,6 +192,7 @@ export class ProjectSettingsComponent implements OnInit {
         );
         this.skeletonValue.set(projectInfo.skeleton ?? []);
         this.parsedKeypointNames.set(projectInfo.keypoint_names);
+        this.savedKeypointNames.set(projectInfo.keypoint_names);
         const key = this.projectKey();
         if (key) void this.refreshSkeletonFromServer(key);
       }
@@ -214,6 +216,7 @@ export class ProjectSettingsComponent implements OnInit {
   }
 
   protected async handleSaveClick() {
+    if (!this.isMultiviewFormValid()) return;
     this.saveSuccessMessage.set('');
     if (this.saveSuccessMessageClearTimerId) {
       clearInterval(this.saveSuccessMessageClearTimerId);
@@ -294,6 +297,7 @@ export class ProjectSettingsComponent implements OnInit {
         projectKey: key,
         projectInfo,
       });
+      this.savedKeypointNames.set(this.parsedKeypointNames());
       this.skeletonDirty.set(false);
       const fresh = this.projectInfoService.projectContext()?.projectInfo;
       if (fresh) {
@@ -315,6 +319,26 @@ export class ProjectSettingsComponent implements OnInit {
       .split(/\s+/)
       .filter(Boolean);
   }
+
+  /** Exactly one camera name is not a multiview project and not a single-view project. */
+  private rejectSingleCameraView(
+    control: AbstractControl,
+  ): { singleView: true } | null {
+    const names = this.parseTextAsList(String(control.value ?? ''));
+    return names.length === 1 ? { singleView: true } : null;
+  }
+
+  protected savedKeypointNames = signal<string[]>([]);
+  /** Edit mode: the textarea no longer matches the keypoints stored in project.yaml. */
+  protected keypointNamesDiffer = computed(() => {
+    if (this.setupMode()) return false;
+    const saved = this.savedKeypointNames();
+    const current = this.parsedKeypointNames();
+    return (
+      saved.length !== current.length ||
+      saved.some((name, index) => name !== current[index])
+    );
+  });
 
   protected getDefaultModelDir(dataDir: string): string {
     return dataDir ? `${dataDir.replace(/\/$/, '')}/models` : '';

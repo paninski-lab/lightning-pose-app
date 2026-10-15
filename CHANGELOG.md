@@ -8,6 +8,11 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 
 ### [2.4.2.3.dev0]
 
+* **Folder picker:** The path dropdown scrolls when a directory has more subfolders than fit on screen.
+* **Multiview:** A project with exactly one camera view cannot be created or saved. Leave camera views blank for a single-view project. Projects that already have one view still open.
+* **ffmpeg:** If ffmpeg or ffprobe is missing from PATH, a warning stays in the top bar. Videos will not open until both are installed.
+* **Windows:** On native Windows, the top bar says labeling works here and training, inference, and video processing should run in WSL.
+* **Keypoints:** Changing keypoint names warns that existing label files keep the old columns. Saving a label whose keypoint is not a column in that CSV shows an error and does not write the file.
 * **Buttons:** Text buttons that were blue are green, including Cancel, Back, Close, and OK. Red buttons are unchanged.
 * **Labeler:** The right-hand controls sit in a panel you can drag wider or narrower. The frame stays in the center. A large frame or a long side panel scrolls in place. The frame list stops when it meets the right-hand panel.
 * **Viewer:** Views, models, and the other controls sit in a panel you can drag wider or narrower. Videos stay in the center, with the playback bar along the bottom of that center region. Either side panel can cover a video tile, and both stop at the playback bar instead of running off the screen.
@@ -22,6 +27,8 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 * **View options:** **Image size** and **Video tile size** go up to 1200px.
 * **Labeler and Viewer:** The left and right panels scroll up and down only. A long name no longer adds a sideways scroll bar.
 * **Labeler:** **Keypoints** and **Multiview tools** fold open and closed. The help button sits next to **Multiview tools**.
+
+Tests: `test_create_and_update_reject_exactly_one_camera_view` (one view rejected; none and two accepted); `project-settings.component.spec.ts` (one camera view disables Save); `test_get_global_context_reports_ffmpeg_and_windows`; `test_save_mvframe_rejects_keypoint_missing_from_columns` (mismatched keypoint is not written); `test_save_mvframe_skips_blank_unlabeled_sidecar_lines` (blank unlabeled sidecar does not break save).
 
 ### [2.4.2.2] — 2026-10-12
 

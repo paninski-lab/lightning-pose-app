@@ -339,3 +339,70 @@ def test_project_without_skeleton_loads(client: TestClient, register_project):
         saved = yaml.safe_load(f)
     assert "skeleton" not in saved
     assert saved["keypoint_names"] == ["nose", "tail"]
+
+
+def test_create_and_update_reject_exactly_one_camera_view(
+    client: TestClient, register_project, tmp_path
+):
+    one_view = tmp_path / "one_view"
+    rejected = client.post(
+        "/app/v0/rpc/CreateNewProject",
+        json={
+            "projectKey": "one-view",
+            "data_dir": str(one_view),
+            "projectInfo": {"views": ["front"]},
+        },
+    )
+    assert rejected.status_code == 400
+    assert "at least two camera views" in rejected.json()["detail"]
+    assert not one_view.exists()
+
+    none = tmp_path / "no_views"
+    created_none = client.post(
+        "/app/v0/rpc/CreateNewProject",
+        json={
+            "projectKey": "no-views",
+            "data_dir": str(none),
+            "projectInfo": {"views": []},
+        },
+    )
+    assert created_none.status_code == 200
+    with open(none / "project.yaml") as f:
+        assert yaml.safe_load(f)["view_names"] == []
+
+    two = tmp_path / "two_views"
+    created_two = client.post(
+        "/app/v0/rpc/CreateNewProject",
+        json={
+            "projectKey": "two-views",
+            "data_dir": str(two),
+            "projectInfo": {"views": ["front", "side"]},
+        },
+    )
+    assert created_two.status_code == 200
+    with open(two / "project.yaml") as f:
+        assert yaml.safe_load(f)["view_names"] == ["front", "side"]
+
+    project_key = "existing"
+    data_dir = register_project(project_key, views=["front", "side"])
+    before = (data_dir / "project.yaml").read_text()
+    updated = client.post(
+        "/app/v0/rpc/UpdateProjectConfig",
+        json={
+            "projectKey": project_key,
+            "projectInfo": {"views": ["front"]},
+        },
+    )
+    assert updated.status_code == 400
+    assert (data_dir / "project.yaml").read_text() == before
+
+    cleared = client.post(
+        "/app/v0/rpc/UpdateProjectConfig",
+        json={
+            "projectKey": project_key,
+            "projectInfo": {"views": []},
+        },
+    )
+    assert cleared.status_code == 200
+    with open(data_dir / "project.yaml") as f:
+        assert yaml.safe_load(f)["view_names"] == []

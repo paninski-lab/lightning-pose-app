@@ -161,6 +161,21 @@ def _reject_invalid_skeleton(skeleton: Any, keypoint_names: list[str] | None) ->
         )
 
 
+def _reject_single_view(view_names: list[str] | None) -> None:
+    """Refuse a save with exactly one camera view. Empty means single-view. Load stays permissive."""
+    if view_names is None:
+        return
+    names = [name.strip() for name in view_names if name and name.strip()]
+    if len(names) == 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "A multiview project needs at least two camera views. "
+                "Leave views empty for a single-view project."
+            ),
+        )
+
+
 def _get_label_file_stats(csv_path: Path) -> LabelFileStats | None:
     """Return frame counts for csv_path by reading the CSV and its unlabeled sidecar."""
     try:
@@ -499,6 +514,8 @@ def update_project_config(
     requested_skeleton = request.projectInfo.model_dump(
         mode="json", exclude_unset=True, exclude={"data_dir", "model_dir", "ignored_video_dirs"}
     )
+    if "views" in requested_skeleton:
+        _reject_single_view(requested_skeleton["views"])
     if "skeleton" in requested_skeleton:
         names = requested_skeleton.get("keypoint_names")
         if names is None:
@@ -638,6 +655,7 @@ def create_new_project(
     Creates a new project directory structure and initializes project.yaml with schema_version 1.
     Adds the project paths to projects.toml.
     """
+    _reject_single_view(request.projectInfo.views)
     # Update projects.toml first
     pp_dict = {"data_dir": request.data_dir}
     if request.model_dir is not None:

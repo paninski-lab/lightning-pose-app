@@ -272,6 +272,8 @@ export interface GlobalContext {
   homeDir: string;
   versions: Record<string, string | null>;
   isEditable: Record<string, boolean>;
+  ffmpegAvailable: boolean;
+  nativeWindows: boolean;
 }
 /** Per-project context available to all project-scoped pages after the route resolver runs. */
 export interface ProjectContext {

@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 import pandas as pd
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 from starlette.concurrency import run_in_threadpool
 
@@ -110,6 +110,17 @@ def _modify_df(df: pd.DataFrame, changes: SaveFrameViewRequest) -> None:
         df.drop(changes.indexToChange, inplace=True)
         return
     kp_names = set(map(lambda x: x.name, changes.changedKeypoints))
+    bodyparts = {column[1] for column in df.columns.values}
+    missing = sorted(kp_names - bodyparts)
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "These keypoints are not columns in the label file: "
+                + ", ".join(missing)
+                + ". Recreate the label file so its columns match the project keypoints."
+            ),
+        )
     changedkps_by_name = {c.name: c for c in changes.changedKeypoints}
     columns = list(
         filter(lambda x: x[1] in kp_names and (x[2] in ["x", "y"]), df.columns.values)
