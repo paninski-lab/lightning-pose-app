@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from litpose_app import deps
+from litpose_app.config import Config
 from litpose_app.datatypes import Project
 from litpose_app.deps import ProjectInfoGetter
 from litpose_app.project_cache import (
@@ -98,19 +99,22 @@ def _session_stem_issue(stem: str, views: list[str], *, kind: str) -> str | None
     return None
 
 
-def _label_filename_issue(filename: str, views: list[str]) -> str | None:
-    stem = Path(filename).stem
-    if not views:
-        if stem in {"CollectedData", "CollectedData_test"}:
-            return None
-        return "Expected CollectedData.csv or CollectedData_test.csv."
-    if not stem.startswith("CollectedData_"):
-        return "Expected CollectedData_<view>.csv or CollectedData_<view>_test.csv."
-    rest = stem[len("CollectedData_") :]
-    view = rest[: -len("_test")] if rest.endswith("_test") else rest
-    if not view or view not in views:
-        return f"Unknown view in filename: {view or '(missing)'}."
-    return None
+def label_csv_rels(data_dir: Path, model_dir: Path | None, scope: str) -> list[Path]:
+    """CSV paths relative to data_dir, excluding the model directory and data_dir/models.
+
+    ``scope`` ``"root"`` is ``data_dir/*.csv``. ``"tree"`` is ``data_dir/**/*.csv``.
+    """
+    pattern = "**/*.csv" if scope == "tree" else "*.csv"
+    found: list[Path] = []
+    for entry in _rglob(str(data_dir), pattern=pattern, no_dirs=True):
+        rel = Path(entry["path"])
+        full = data_dir / rel
+        if _under(full, data_dir / "models") or (
+            model_dir is not None and _under(full, model_dir)
+        ):
+            continue
+        found.append(rel)
+    return found
 
 
 def _keypoint_warning(bodyparts: set[str], keypoints: list[str]) -> str | None:
@@ -129,13 +133,15 @@ def _keypoint_warning(bodyparts: set[str], keypoints: list[str]) -> str | None:
     return "Bodyparts do not match project keypoints (" + "; ".join(parts) + ")."
 
 
-def _label_header_issue(full: Path) -> str | None:
-    """Return a format problem, or None when each scorer and bodypart has x and y.
+def _label_header_messages(full: Path) -> tuple[str | None, str | None]:
+    """An issue when the file cannot be used, and a warning for incomplete bodyparts.
 
     A trailing pandas suffix on the scorer (``rick.1``) is ignored, so ``rick``
-    and ``rick.1`` count as the same scorer. The file is not rewritten.
+    and ``rick.1`` count as the same scorer. The file is not rewritten. An issue
+    means the header is not three rows, or no bodypart has both ``x`` and ``y``.
+    A warning means some bodyparts lack ``x`` or ``y`` while another has both.
     """
-    message = (
+    unreadable = (
         "Not a label CSV: need 3 header rows (scorer, bodyparts, coords) "
         "with x and y for each bodypart."
     )
@@ -143,9 +149,9 @@ def _label_header_issue(full: Path) -> str | None:
         df = pd.read_csv(full, header=[0, 1, 2], nrows=0)
         df = fix_empty_first_row(df)
     except Exception:
-        return message
+        return unreadable, None
     if not isinstance(df.columns, pd.MultiIndex) or df.columns.nlevels != 3:
-        return message
+        return unreadable, None
     coords_by_pair: dict[tuple[str, str], set[str]] = {}
     for col in df.columns:
         if col[2] not in ("x", "y"):
@@ -153,19 +159,23 @@ def _label_header_issue(full: Path) -> str | None:
         scorer = _PANDAS_SCORER_SUFFIX_RE.sub("", str(col[0]), count=1)
         bodypart = str(col[1])
         coords_by_pair.setdefault((scorer, bodypart), set()).add(str(col[2]))
-    if not coords_by_pair:
-        return message
-    incomplete: list[str] = []
-    seen: set[str] = set()
+    complete: set[str] = set()
+    incomplete: set[str] = set()
     for (_scorer, bodypart), coords in coords_by_pair.items():
-        if coords == {"x", "y"} or bodypart in seen:
-            continue
-        seen.add(bodypart)
-        incomplete.append(bodypart)
-    if incomplete:
-        shown = ", ".join(incomplete[:_ISSUE_LIMIT])
-        return f"Bodyparts missing x or y: {shown}."
-    return None
+        if coords == {"x", "y"}:
+            complete.add(bodypart)
+        else:
+            incomplete.add(bodypart)
+    missing_pair = sorted(incomplete - complete)
+    if not complete:
+        if missing_pair:
+            shown = ", ".join(missing_pair[:_ISSUE_LIMIT])
+            return f"Bodyparts missing x or y: {shown}.", None
+        return unreadable, None
+    if not missing_pair:
+        return None, None
+    shown = ", ".join(missing_pair[:_ISSUE_LIMIT])
+    return None, f"Bodyparts missing x or y: {shown}."
 
 
 def _inspect_label_table(
@@ -208,27 +218,26 @@ def _inspect_label_table(
         if not exists:
             missing.append(rel)
 
-    issues: list[str] = []
+    warnings: list[str] = []
     bad_msg = _summarize_paths(
         "Index paths do not match labeled-data/<dir>/<name><digits>.png or .jpg",
         bad,
     )
     if bad_msg:
-        issues.append(bad_msg)
+        warnings.append(bad_msg)
     missing_msg = _summarize_paths("Missing images", missing)
     if missing_msg:
-        issues.append(missing_msg)
+        warnings.append(missing_msg)
 
     bodyparts = {
         str(col[1])
         for col in df.columns
         if len(col) >= 3 and col[2] in ("x", "y")
     }
-    warnings: list[str] = []
     warning = _keypoint_warning(bodyparts, keypoints)
     if warning:
         warnings.append(warning)
-    return issues, warnings, deps
+    return [], warnings, deps
 
 
 def _check_context(project: Project) -> dict[str, list[str]]:
@@ -238,36 +247,28 @@ def _check_context(project: Project) -> dict[str, list[str]]:
 
 
 def _validate_labels(
-    project: Project, *, remember: bool = True
+    project: Project, scope: str, *, remember: bool = True
 ) -> tuple[list[FileCheck], dict[str, dict]]:
     data_dir = project.paths.data_dir
     model_dir = project.paths.model_dir
-    views = list(project.config.view_names)
     context = _check_context(project)
     items: list[FileCheck] = []
     records: dict[str, dict] = {}
-    entries = _rglob(str(data_dir), pattern="**/*.csv", no_dirs=True)
-    for entry in entries:
-        rel = Path(entry["path"])
+    for rel in label_csv_rels(data_dir, model_dir, scope):
         full = data_dir / rel
-        if _under(full, data_dir / "models") or (
-            model_dir is not None and _under(full, model_dir)
-        ):
-            continue
         issues: list[str] = []
         warnings: list[str] = []
         deps: list[dict] = []
-        name_issue = _label_filename_issue(rel.name, views)
-        if name_issue:
-            issues.append(name_issue)
-        header_issue = _label_header_issue(full)
+        header_issue, header_warning = _label_header_messages(full)
         if header_issue:
             issues.append(header_issue)
         else:
-            table_issues, table_warnings, deps = _inspect_label_table(
+            if header_warning:
+                warnings.append(header_warning)
+            _table_issues, table_warnings, deps = _inspect_label_table(
                 full, data_dir, list(project.config.keypoint_names)
             )
-            issues.extend(table_issues)
+            issues.extend(_table_issues)
             warnings.extend(table_warnings)
         rel_posix = rel.as_posix()
         items.append(FileCheck(path=rel_posix, issues=issues, warnings=warnings))
@@ -465,10 +466,11 @@ def _validate_models(project: Project) -> tuple[list[FileCheck], dict[str, dict]
 def validate_project_files(
     request: ValidateProjectFilesRequest,
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+    config: Config = Depends(deps.config),
 ) -> ValidateProjectFilesResponse:
     """Check one sector of the project and remember the results. Does not rewrite project files."""
     project: Project = project_info_getter(request.projectKey)
-    items, records = _validate_sector(project, request.sector)
+    items, records = _validate_sector(project, request.sector, config.LABEL_CSV_SCOPE)
     replace_file_checks(project.paths.data_dir, request.sector, records)
     return ValidateProjectFilesResponse(items=items)
 
@@ -493,10 +495,10 @@ def cached_project_file_checks(
 
 
 def _validate_sector(
-    project: Project, sector: str
+    project: Project, sector: str, scope: str
 ) -> tuple[list[FileCheck], dict[str, dict]]:
     if sector == "labels":
-        return _validate_labels(project)
+        return _validate_labels(project, scope)
     if sector == "labeled-data":
         return _validate_labeled_data(project)
     if sector == "calibration":

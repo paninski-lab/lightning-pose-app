@@ -33,9 +33,9 @@ import { rpcErrorMessage } from './file-listing';
       >
         <h3 class="text-xl font-bold">Load label file</h3>
         <p class="text-sm m-0">
-          This copies CollectedData CSV files into the data directory. A local
-          file is uploaded, and a server file is copied. The source file stays
-          where it is. An existing file is left unchanged.
+          This copies CSV files into the data directory. A local file is
+          uploaded, and a server file is copied. The source file stays where
+          it is. An existing file is left unchanged.
         </p>
         <app-file-source-chooser
           buttonLabel="Choose files"
@@ -159,6 +159,7 @@ export class LoadLabelDialogComponent implements AfterViewInit, OnDestroy {
     this.busy.set(true);
     const failures: string[] = [];
     const formatProblems: string[] = [];
+    const warnings: string[] = [];
     let saved = 0;
     for (const file of this.localFiles()) {
       const form = new FormData();
@@ -166,7 +167,7 @@ export class LoadLabelDialogComponent implements AfterViewInit, OnDestroy {
       form.append('file', file, file.name);
       try {
         const response = await firstValueFrom(
-          this.http.post<{ issues?: string[] }>(
+          this.http.post<{ issues?: string[]; warnings?: string[] }>(
             '/app/v0/rpc/importLabelUpload',
             form,
           ),
@@ -174,6 +175,9 @@ export class LoadLabelDialogComponent implements AfterViewInit, OnDestroy {
         saved += 1;
         if (response.issues?.length) {
           formatProblems.push(`${file.name}: ${response.issues.join(' ')}`);
+        }
+        if (response.warnings?.length) {
+          warnings.push(`${file.name}: ${response.warnings.join(' ')}`);
         }
       } catch (err) {
         failures.push(
@@ -186,10 +190,13 @@ export class LoadLabelDialogComponent implements AfterViewInit, OnDestroy {
         const response = (await this.rpc.call('importLabelFile', {
           projectKey: key,
           serverPath: file.path,
-        })) as { issues?: string[] };
+        })) as { issues?: string[]; warnings?: string[] };
         saved += 1;
         if (response.issues?.length) {
           formatProblems.push(`${file.name}: ${response.issues.join(' ')}`);
+        }
+        if (response.warnings?.length) {
+          warnings.push(`${file.name}: ${response.warnings.join(' ')}`);
         }
       } catch (err) {
         failures.push(
@@ -210,6 +217,12 @@ export class LoadLabelDialogComponent implements AfterViewInit, OnDestroy {
       this.toast.showToast({
         content: formatProblems.join(' '),
         variant: 'error',
+      });
+    }
+    if (warnings.length > 0) {
+      this.toast.showToast({
+        content: warnings.join(' '),
+        variant: 'warning',
       });
     }
     if (failures.length > 0) {

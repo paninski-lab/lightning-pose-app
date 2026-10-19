@@ -17,16 +17,15 @@ from litpose_app.config import Config
 from litpose_app.datatypes import Project
 from litpose_app.deps import ProjectInfoGetter
 from litpose_app.project_cache import drop_file_check, relative_data_path
-from litpose_app.routes.rglob import _rglob
 from litpose_app.routes.validate_files import (
     _MODEL_NAME_RE,
     _inspect_label_table,
-    _label_filename_issue,
-    _label_header_issue,
+    _label_header_messages,
     _session_stem_issue,
     _under,
     _validate_one_model,
     calibration_file_issues,
+    label_csv_rels,
 )
 
 router = APIRouter()
@@ -114,17 +113,13 @@ def _rewrite_index_field(text: str, old: str, new: str, *, prefix: bool) -> str:
     return "".join(rewritten)
 
 
-def _label_csvs(project: Project) -> list[Path]:
-    """Every CSV under the data directory except files in the model directory."""
+def _label_csvs(project: Project, scope: str) -> list[Path]:
+    """Label CSVs in scope, excluding the model directory and data_dir/models."""
     data_dir = project.paths.data_dir
-    model_dir = project.paths.model_dir
-    paths: list[Path] = []
-    for entry in _rglob(str(data_dir), pattern="**/*.csv", no_dirs=True):
-        full = data_dir / Path(entry["path"])
-        if model_dir is not None and _under(full, model_dir):
-            continue
-        paths.append(full)
-    return paths
+    return [
+        data_dir / rel
+        for rel in label_csv_rels(data_dir, project.paths.model_dir, scope)
+    ]
 
 
 def _path_after_move(path: Path, src: Path, dest: Path) -> Path:
@@ -161,9 +156,6 @@ def rename_label_file(
         raise HTTPException(status_code=400, detail="Enter a filename, not a path.")
     if Path(new_name).suffix.lower() != ".csv":
         raise HTTPException(status_code=400, detail="Expected a .csv filename.")
-    issue = _label_filename_issue(new_name, list(project.config.view_names))
-    if issue:
-        raise HTTPException(status_code=400, detail=issue)
     if new_name == src.name:
         return RenamePathResponse(ok=True, path=str(src))
     dest = src.parent / new_name
@@ -431,6 +423,7 @@ def import_calibration_upload(
 def rename_labeled_data_folder(
     request: RenameLabeledDataRequest,
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+    config: Config = Depends(deps.config),
 ) -> RenamePathResponse:
     """Rename a labeled-data child and update matching label CSV index paths.
 
@@ -471,7 +464,7 @@ def rename_labeled_data_folder(
         raise HTTPException(status_code=409, detail="A file with that name already exists.")
 
     prepared: list[tuple[Path, str, str]] = []
-    for csv in _label_csvs(project):
+    for csv in _label_csvs(project, config.LABEL_CSV_SCOPE):
         try:
             original = csv.read_text(encoding="utf-8")
         except UnicodeDecodeError as exc:
@@ -517,6 +510,7 @@ class ImportedFileResponse(BaseModel):
     ok: bool
     path: str
     issues: list[str] = []
+    warnings: list[str] = []
 
 
 class ImportServerPathRequest(BaseModel):
@@ -545,14 +539,13 @@ def _server_csv(server_path: str) -> Path:
     return src
 
 
-def _new_label_path(data_dir: Path, filename: str, views: list[str]) -> Path:
-    """Return data_dir/<filename> when the CollectedData name is free."""
+def _new_label_path(data_dir: Path, filename: str) -> Path:
+    """Return data_dir/<filename> when that .csv name is free."""
     name = Path(filename).name
-    issue = _label_filename_issue(name, views)
-    if issue or not name.lower().endswith(".csv"):
+    if not name.lower().endswith(".csv"):
         raise HTTPException(
             status_code=400,
-            detail=issue or "Expected a CollectedData CSV filename.",
+            detail="Expected a .csv filename.",
         )
     dest = data_dir / name
     if dest.exists():
@@ -562,24 +555,28 @@ def _new_label_path(data_dir: Path, filename: str, views: list[str]) -> Path:
     return dest
 
 
-def _label_copy_issues(project: Project, dest: Path) -> list[str]:
-    """Header and index problems. A keypoint mismatch stays a warning."""
-    header = _label_header_issue(dest)
-    if header:
-        return [header]
-    issues, _warnings, _deps = _inspect_label_table(
+def _label_copy_report(project: Project, dest: Path) -> tuple[list[str], list[str]]:
+    """Issues that hide the file, and warnings the labeler can still open past."""
+    header_issue, header_warning = _label_header_messages(dest)
+    if header_issue:
+        return [header_issue], []
+    warnings = [header_warning] if header_warning else []
+    table_issues, table_warnings, _deps = _inspect_label_table(
         dest,
         project.paths.data_dir,
         list(project.config.keypoint_names),
     )
-    return issues
+    warnings.extend(table_warnings)
+    return table_issues, warnings
 
 
 def _imported_label(project: Project, dest: Path) -> ImportedFileResponse:
+    issues, warnings = _label_copy_report(project, dest)
     return ImportedFileResponse(
         ok=True,
         path=dest.name,
-        issues=_label_copy_issues(project, dest),
+        issues=issues,
+        warnings=warnings,
     )
 
 
@@ -591,9 +588,7 @@ def import_label_file(
     """Copy a server CSV onto the data-directory root. Does not move the source."""
     project = project_info_getter(request.projectKey)
     src = _server_csv(request.serverPath)
-    dest = _new_label_path(
-        project.paths.data_dir, src.name, list(project.config.view_names)
-    )
+    dest = _new_label_path(project.paths.data_dir, src.name)
     with src.open("rb") as inp:
         _copy_into_new_file(dest, inp)
     return _imported_label(project, dest)
@@ -608,9 +603,7 @@ def import_label_upload(
     """Upload a local CSV onto the data-directory root."""
     project = project_info_getter(projectKey)
     filename = Path(file.filename or "").name
-    dest = _new_label_path(
-        project.paths.data_dir, filename, list(project.config.view_names)
-    )
+    dest = _new_label_path(project.paths.data_dir, filename)
     _copy_into_new_file(dest, file.file)
     return _imported_label(project, dest)
 
