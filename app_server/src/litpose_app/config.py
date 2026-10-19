@@ -4,6 +4,7 @@ Instead, prefer to inject `config: deps.config into the route using FastAPI's de
 See https://fastapi.tiangolo.com/tutorial/dependencies/."""
 
 import os
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -31,3 +32,7 @@ class Config(BaseModel):
     FMT_FRAME_INDEX_DIGITS: int = 8
     N_WORKERS: int = os.cpu_count()
     FRAME_EXTRACT_RESIZE_DIMS: int = 64
+
+    # "root": data_dir/*.csv. "tree": data_dir/**/*.csv.
+    # The File Manager label panel glob must match (*.csv or **/*.csv).
+    LABEL_CSV_SCOPE: Literal["root", "tree"] = "root"

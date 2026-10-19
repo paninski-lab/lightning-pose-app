@@ -156,3 +156,38 @@ def test_cached_ok_is_dropped_when_keypoints_change(client, register_project):
     )
     assert cached.status_code == 200, cached.text
     assert cached.json()["items"] == []
+
+
+def test_validate_label_csv_hides_only_unusable_files(client, register_project):
+    """A readable CSV with a missing image stays available. An unreadable one does not.
+
+    A file in a subdirectory is omitted while LABEL_CSV_SCOPE is root.
+    """
+    data_dir = register_project("demo", views=["bot"], keypoints=["nose"])
+    good = (
+        "scorer,s,s\n"
+        "bodyparts,nose,nose\n"
+        "coords,x,y\n"
+        "labeled-data/sess/img0001.png,1,2\n"
+    )
+    (data_dir / "CollectedData copy.csv").write_text(good)
+    (data_dir / "notes.csv").write_text("a,b\n1,2\n")
+    nested = data_dir / "extra"
+    nested.mkdir()
+    (nested / "CollectedData copy.csv").write_text(good)
+
+    resp = client.post(
+        "/app/v0/rpc/validateProjectFiles",
+        json={"projectKey": "demo", "sector": "labels"},
+    )
+    assert resp.status_code == 200, resp.text
+    items = {item["path"]: item for item in resp.json()["items"]}
+    assert "extra/CollectedData copy.csv" not in items
+    copied = items["CollectedData copy.csv"]
+    assert copied["issues"] == []
+    assert any("Missing images" in warning for warning in copied["warnings"])
+    assert items["notes.csv"]["issues"]
+
+    found = client.post("/app/v0/rpc/findLabelFiles", json={"projectKey": "demo"})
+    assert found.status_code == 200, found.text
+    assert found.json()["labelFiles"] == ["CollectedData copy.csv"]

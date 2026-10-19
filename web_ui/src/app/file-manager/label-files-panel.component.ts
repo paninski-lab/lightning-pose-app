@@ -59,24 +59,22 @@ import {
         </label>
         <div class="app-accordion-content text-sm">
           <p class="m-0">
-            This panel shows CSV files in the data directory, excluding files
-            in the model directory. A label file is usually
-            <code>CollectedData.csv</code>,
-            <code>CollectedData_test.csv</code>, or
-            <code>CollectedData_&lt;view&gt;.csv</code>.
+            This panel shows CSV files directly in the data directory. Files
+            in subfolders are not listed. The model directory is excluded.
           </p>
           <ul class="m-0 mt-2 flex list-disc flex-col gap-1 pl-5">
             <li>
-              <strong>Add Label File</strong> copies CollectedData CSV files
-              into the data directory. A local file is uploaded, and a server
-              file is copied. The source file stays where it is. An existing
-              file is left unchanged.
+              <strong>Add Label File</strong> copies CSV files into the data
+              directory. A local file is uploaded, and a server file is copied.
+              The source file stays where it is. An existing file is left
+              unchanged.
             </li>
             <li><strong>Refresh</strong> reloads this list.</li>
             <li>
-              <strong>Validate All</strong> looks at the filename, the three
-              header rows, and whether each row points to a frame in
-              <code>labeled-data/</code>.
+              <strong>Validate All</strong> checks whether each file can be
+              read as a label table. A missing frame, an unusual index path,
+              or a keypoint mismatch is a warning. A warning does not remove
+              the file from the labeler.
             </li>
             <li>
               <strong>Rename Selected</strong> changes the name of the selected
@@ -187,7 +185,7 @@ export class LabelFilesPanelComponent implements OnInit {
   );
 
   protected renameProblem = computed(() =>
-    labelFilenameIssue(this.renameValue().trim(), this.viewNames()),
+    labelFilenameIssue(this.renameValue().trim()),
   );
 
   protected renameUnchanged = computed(() => {
@@ -217,7 +215,9 @@ export class LabelFilesPanelComponent implements OnInit {
     try {
       const response = (await this.rpc.call('rglob', {
         baseDir: info.data_dir,
-        pattern: '**/*.csv',
+        // Match Config.LABEL_CSV_SCOPE in litpose_app/config.py.
+        // "root" is '*.csv'. "tree" is '**/*.csv'.
+        pattern: '*.csv',
         noDirs: true,
         stat: false,
       })) as RGlobResponse;
@@ -313,10 +313,6 @@ export class LabelFilesPanelComponent implements OnInit {
       });
     }
   }
-
-  private viewNames(): string[] {
-    return this.projectInfo.projectContext()?.projectInfo?.views ?? [];
-  }
 }
 
 function uncheckedRow(path: string, detail: string | null): FileCheckRow {
@@ -344,26 +340,12 @@ function isModelsCsv(rel: string, dataDir: string, modelDir: string): boolean {
   return isUnderDir(joinPath(dataDir, path), modelDir);
 }
 
-function labelFilenameIssue(filename: string, views: string[]): string | null {
+function labelFilenameIssue(filename: string): string | null {
   if (!filename || filename.includes('/') || filename.includes('\\')) {
     return 'Enter a filename, not a path.';
   }
   const dot = filename.lastIndexOf('.');
   const suffix = dot >= 0 ? filename.slice(dot) : '';
-  const expected = views.length
-    ? 'Expected CollectedData_<view>.csv or CollectedData_<view>_test.csv.'
-    : 'Expected CollectedData.csv or CollectedData_test.csv.';
-  if (suffix.toLowerCase() !== '.csv') return expected;
-  const stem = filename.slice(0, dot);
-  if (!views.length) {
-    if (stem === 'CollectedData' || stem === 'CollectedData_test') return null;
-    return expected;
-  }
-  if (!stem.startsWith('CollectedData_')) return expected;
-  const rest = stem.slice('CollectedData_'.length);
-  const view = rest.endsWith('_test') ? rest.slice(0, -'_test'.length) : rest;
-  if (!view || !views.includes(view)) {
-    return `Unknown view in filename: ${view || '(missing)'}.`;
-  }
+  if (suffix.toLowerCase() !== '.csv') return 'Expected a .csv filename.';
   return null;
 }

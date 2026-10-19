@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ValidationError
 
 from litpose_app import deps
+from litpose_app.config import Config
 from litpose_app.datatypes import ProjectPaths
 from litpose_app.deps import (
     ApplicationError,
@@ -28,8 +29,7 @@ from litpose_app.paths.project_videos import iter_project_mp4s
 from litpose_app.project import ProjectUtil
 from litpose_app.project_deletion import paths_to_delete, reject_forbidden_project_paths
 from litpose_app.routes.models import read_models_l1_from_base
-from litpose_app.routes.rglob import _rglob
-from litpose_app.routes.validate_files import _label_header_issue
+from litpose_app.routes.validate_files import _label_header_messages, label_csv_rels
 from litpose_app.skeleton import skeleton_problems
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
 
@@ -209,6 +209,7 @@ def _fetch_all_stats(
     project_key: str,
     project_util: ProjectUtil,
     project_info_getter: ProjectInfoGetter,
+    label_csv_scope: str,
 ) -> ProjectStats:
     """Collect sessions, label files, and model counts for project_key, returning a ProjectStats."""
     try:
@@ -258,20 +259,11 @@ def _fetch_all_stats(
                 session_keys.add(filename)
 
         # 2. Label files
-        csv_entries = _rglob(str(data_dir), pattern="*.csv", no_dirs=True)
-        candidate_csv_paths = [Path(e["path"]) for e in csv_entries]
-        # Filter out models
-        if model_dir and model_dir.is_relative_to(data_dir):
-            candidate_csv_paths = [
-                p
-                for p in candidate_csv_paths
-                if not (data_dir / p).is_relative_to(model_dir)
-            ]
-
         valid_label_files = []
-        for p in candidate_csv_paths:
-            if _label_header_issue(data_dir / p) is None:
-                valid_label_files.append(data_dir / p)
+        for rel in label_csv_rels(data_dir, model_dir, label_csv_scope):
+            issue, _warning = _label_header_messages(data_dir / rel)
+            if issue is None:
+                valid_label_files.append(data_dir / rel)
 
         label_files_stats_raw = []
         with ThreadPoolExecutor() as executor:
@@ -348,6 +340,7 @@ def _fetch_all_stats(
 def list_projects(
     project_util: ProjectUtil = Depends(deps.project_util),
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
+    config: Config = Depends(deps.config),
 ) -> ListProjectInfoResponse:
     """Lists all projects known to the server (from projects.toml).
 
@@ -362,7 +355,11 @@ def list_projects(
         with ThreadPoolExecutor() as executor:
             future_to_key = {
                 executor.submit(
-                    _fetch_all_stats, key, project_util, project_info_getter
+                    _fetch_all_stats,
+                    key,
+                    project_util,
+                    project_info_getter,
+                    config.LABEL_CSV_SCOPE,
                 ): key
                 for key in all_paths.keys()
             }
