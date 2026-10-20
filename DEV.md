@@ -67,6 +67,7 @@ The release change removes `.dev0` and renames the changelog heading from `### [
 2. On a **feature branch**:
    - In `app_server/pyproject.toml`, remove `.dev0` so `[project].version` is `X.Y.Z.W`.
    - In [CHANGELOG.md](CHANGELOG.md), rename `### [X.Y.Z.W.dev0]` to `### [X.Y.Z.W] — YYYY-MM-DD`. If there is no dev heading, add that dated heading at the top.
+   - In [README.md](README.md), point **Latest release (PyPI)** at the new dated changelog section. The **Development on `main`** line is updated on the next dev-version bump after the release merges.
    - Describe user-facing and development changes as needed. For each behavior change, name the test that covers it (spec or pytest file, and what it checks).
 3. Land that on **`origin/main`** (PR for version + changelog is typical).
 4. From a **clean** `main` matching `origin/main`:

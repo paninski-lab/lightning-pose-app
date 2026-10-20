@@ -6,6 +6,12 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 
 ## 📝 Release Notes
 
+### [2.4.2.4.dev0]
+
+* **Label files:** Any `.csv` directly in the data directory can be a label file. It is hidden from the Labeler and Viewer only when it cannot be read as a label table. A missing frame, an unusual index path, or a keypoint mismatch is a warning in File Manager, and the file stays usable.
+
+Tests: `test_validate_label_csv_hides_only_unusable_files` (a readable root CSV with a missing image stays in the label picker; a file that is not a label table does not; a CSV in a subdirectory is not listed).
+
 ### [2.4.2.3] — 2026-10-15
 
 * **File manager:** Validation results and video probe results are kept in `.project-cache` in the project data directory. Opening a file panel shows the last check when the file is unchanged. A changed file, a deleted frame, or a keypoint change is not shown as OK until Validate runs again. Checking a video skips ffprobe when the file is unchanged, and a replaced video is not treated as all-intra from the old result.
