@@ -39,6 +39,7 @@ from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
 
 from . import deps
+from .image_formats import browser_image_type, lp_only_format, lp_only_message
 from .migrations import run_migrations_for_all_projects
 from .rootconfig import RootConfig
 from .routes.labeler.multiview_autolabel import warm_up_anipose
@@ -165,33 +166,34 @@ async def debug_exception_handler(request: Request, exc: Exception) -> Response:
     )
 
 
+# Non-image files the files route serves. Images: see image_formats.
+_DATA_FILE_SUFFIXES = (".csv", ".mp4", ".unlabeled", ".jsonl", ".log")
+
+
 @app.get("/app/v0/files/{file_path:path}")
 async def read_file(request: Request, file_path: Path) -> Response:
     """Serve project data files (CSV, video, images) with allowlist extension enforcement."""
+    suffix = file_path.suffix.lower()
+    image_type = browser_image_type(file_path)
     # Prevent secrets like /etc/passwd and ~/.ssh/ from being leaked.
-    if file_path.suffix not in (
-        ".csv",
-        ".mp4",
-        ".png",
-        ".jpg",
-        ".unlabeled",
-        ".jsonl",
-        ".log",
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="File type not supported: " + file_path.suffix,
+    if image_type is None and suffix not in _DATA_FILE_SUFFIXES:
+        lp_only = lp_only_format(file_path)
+        detail = (
+            lp_only_message(lp_only)
+            if lp_only
+            else "File type not supported: " + file_path.suffix
         )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
     file_path = Path("/") / file_path
 
     # Prevent browser caching of data files (video and image caching are fine, (for now)).
     # no-cache: browser must check if its cached value is still valid (but can still use its cached value if so).
-    headers = (
-        {"Cache-Control": "no-cache"}
-        if file_path.suffix not in (".mp4", ".png", ".jpg")
-        else None
+    headers = None if image_type or suffix == ".mp4" else {"Cache-Control": "no-cache"}
+    # Set image types ourselves: mimetypes can be missing newer formats (AVIF)
+    # or be wrong on some systems. None lets FileResponse guess as before.
+    partial = functools.partial(
+        file_response, request, file_path, headers=headers, media_type=image_type
     )
-    partial = functools.partial(file_response, request, file_path, headers=headers)
     response = await anyio.to_thread.run_sync(partial)
     return response
 

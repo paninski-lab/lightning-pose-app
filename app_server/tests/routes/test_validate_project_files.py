@@ -191,3 +191,59 @@ def test_validate_label_csv_hides_only_unusable_files(client, register_project):
     found = client.post("/app/v0/rpc/findLabelFiles", json={"projectKey": "demo"})
     assert found.status_code == 200, found.text
     assert found.json()["labelFiles"] == ["CollectedData copy.csv"]
+
+
+def test_validate_accepts_every_lp_image_format_and_warns_for_lp_only(
+    client, register_project
+):
+    """#164: .JPG, .jpeg, .webp and .tif frames are frames; TIFF gets a can't-show warning."""
+    data_dir = register_project("demo", views=["bot"], keypoints=["nose"])
+    folder = data_dir / "labeled-data" / "sess_bot"
+    folder.mkdir(parents=True)
+    names = ["img0001.JPG", "img0002.jpeg", "img0003.webp", "img0004.tif"]
+    for name in names:
+        (folder / name).write_bytes(b"x")
+    (folder / "notes.txt").write_text("not a frame")
+    (data_dir / "CollectedData_bot.csv").write_text(
+        "scorer,s,s\nbodyparts,nose,nose\ncoords,x,y\n"
+        + "".join(f"labeled-data/sess_bot/{name},1,2\n" for name in names)
+    )
+
+    labels = client.post(
+        "/app/v0/rpc/validateProjectFiles",
+        json={"projectKey": "demo", "sector": "labels"},
+    ).json()["items"][0]
+    assert labels["issues"] == []
+    assert not any("do not match" in w for w in labels["warnings"])
+    tiff = [w for w in labels["warnings"] if w.startswith("TIFF frames")]
+    assert len(tiff) == 1 and "img0004.tif" in tiff[0]
+    assert "img0001.JPG" not in tiff[0]
+
+    folder_check = client.post(
+        "/app/v0/rpc/validateProjectFiles",
+        json={"projectKey": "demo", "sector": "labeled-data"},
+    ).json()["items"][0]
+    assert folder_check["issues"] == ["Unexpected file: notes.txt"]
+    assert len(folder_check["warnings"]) == 1
+    assert folder_check["warnings"][0].startswith("TIFF frames train in Lightning Pose")
+
+
+def test_cached_check_from_older_rules_is_dropped(client, register_project, monkeypatch):
+    """A result saved under older validation rules is not shown as current."""
+    from litpose_app import project_cache
+
+    data_dir = register_project("demo", views=["bot"], keypoints=["nose"])
+    _valid_label(data_dir)
+    client.post(
+        "/app/v0/rpc/validateProjectFiles",
+        json={"projectKey": "demo", "sector": "labels"},
+    )
+    monkeypatch.setattr(
+        project_cache, "FILE_CHECK_RULES", project_cache.FILE_CHECK_RULES + 1
+    )
+    cached = client.post(
+        "/app/v0/rpc/cachedProjectFileChecks",
+        json={"projectKey": "demo", "sector": "labels"},
+    )
+    assert cached.status_code == 200, cached.text
+    assert cached.json()["items"] == []

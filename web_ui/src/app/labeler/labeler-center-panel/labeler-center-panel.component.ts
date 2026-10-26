@@ -201,9 +201,8 @@ export class LabelerCenterPanelComponent implements OnChanges {
     if (contextImgPaths(frameView.imgPath) === null) {
       return 'The image file name has no frame number.';
     }
-    if (this.primaryZoomableElement()?.currentFrameMissing()) {
-      return "This frame's image could not be loaded.";
-    }
+    const frameMessage = this.primaryZoomableElement()?.currentFrameMessage();
+    if (frameMessage) return frameMessage;
     if (this.primaryZoomableElement()?.contextFramesMissing()) {
       return 'Context frames were not found.';
     }

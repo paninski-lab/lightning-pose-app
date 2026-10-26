@@ -37,3 +37,12 @@
     }
   </div>
 </app-zoomable-content>
+@if (currentFrameMessage(); as message) {
+  <div
+    role="status"
+    data-testid="frame-image-message"
+    class="absolute inset-0 flex items-center justify-center p-4 text-center text-xs bg-base-200/90 overflow-hidden pointer-events-none"
+  >
+    {{ message }}
+  </div>
+}

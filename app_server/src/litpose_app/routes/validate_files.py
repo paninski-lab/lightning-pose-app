@@ -17,6 +17,11 @@ from litpose_app import deps
 from litpose_app.config import Config
 from litpose_app.datatypes import Project
 from litpose_app.deps import ProjectInfoGetter
+from litpose_app.image_formats import (
+    FRAME_SUFFIX_PATTERN,
+    lp_only_format,
+    lp_only_message,
+)
 from litpose_app.project_cache import (
     dir_record,
     file_record,
@@ -32,8 +37,14 @@ router = APIRouter()
 
 _NAME_RE = re.compile(r"^[A-Za-z0-9_.\-]+$")
 _MODEL_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9-._]+$")
-_FRAME_RE = re.compile(r"[A-Za-z_-]+\d+\.(png|jpg)\Z")
-_LABEL_INDEX_RE = re.compile(r"labeled-data/[^/]+/[A-Za-z_-]+\d+\.(png|jpg)\Z")
+# Frame images in any format LP reads (image_formats), in any letter case.
+_FRAME_RE = re.compile(
+    rf"[A-Za-z_-]+\d+\.({FRAME_SUFFIX_PATTERN})\Z", re.IGNORECASE
+)
+_LABEL_INDEX_RE = re.compile(
+    rf"labeled-data/[^/]+/[A-Za-z_-]+\d+\.({FRAME_SUFFIX_PATTERN})\Z",
+    re.IGNORECASE,
+)
 # Pandas rewrites a repeated scorer as rick, rick.1, rick.2.
 _PANDAS_SCORER_SUFFIX_RE = re.compile(r"\.\d+\Z")
 _ISSUE_LIMIT = 8
@@ -74,6 +85,19 @@ def _summarize_paths(label: str, paths: list[str], limit: int = 5) -> str | None
     extra = len(paths) - limit
     suffix = f" (+{extra} more)" if extra > 0 else ""
     return f"{label}: {shown}{suffix}"
+
+
+def _lp_only_warnings(paths: list[str]) -> list[str]:
+    """One warning per format for frames LP reads but the browser cannot show."""
+    by_format: dict[str, list[str]] = {}
+    for path in paths:
+        name = lp_only_format(path)
+        if name:
+            by_format.setdefault(name, []).append(path)
+    return [
+        f"{lp_only_message(name)} {_summarize_paths('Frames', found)}"
+        for name, found in sorted(by_format.items())
+    ]
 
 
 def _under(path: Path, root: Path) -> bool:
@@ -220,7 +244,7 @@ def _inspect_label_table(
 
     warnings: list[str] = []
     bad_msg = _summarize_paths(
-        "Index paths do not match labeled-data/<dir>/<name><digits>.png or .jpg",
+        "Index paths do not match labeled-data/<dir>/<name><digits>.<image extension>",
         bad,
     )
     if bad_msg:
@@ -228,6 +252,7 @@ def _inspect_label_table(
     missing_msg = _summarize_paths("Missing images", missing)
     if missing_msg:
         warnings.append(missing_msg)
+    warnings.extend(_lp_only_warnings([dep["path"] for dep in deps]))
 
     bodyparts = {
         str(col[1])
@@ -240,7 +265,7 @@ def _inspect_label_table(
     return [], warnings, deps
 
 
-def _check_context(project: Project) -> dict[str, list[str]]:
+def _check_context(project: Project) -> dict[str, object]:
     return project_context(
         list(project.config.view_names), list(project.config.keypoint_names)
     )
@@ -308,14 +333,18 @@ def _validate_labeled_data(
         if name_issue:
             issues.append(name_issue)
         unexpected: list[str] = []
+        frames: list[str] = []
         for grandchild in sorted(child.iterdir(), key=lambda p: p.name.lower()):
             if grandchild.is_dir():
                 unexpected.append(f"Unexpected subdirectory: {grandchild.name}")
             elif _FRAME_RE.fullmatch(grandchild.name) is None:
                 unexpected.append(f"Unexpected file: {grandchild.name}")
+            else:
+                frames.append(grandchild.name)
         issues.extend(_cap(unexpected))
-        items.append(FileCheck(path=rel, issues=issues))
-        record = dir_record(child, issues=issues, warnings=[], context=context)
+        warnings = _lp_only_warnings(frames)
+        items.append(FileCheck(path=rel, issues=issues, warnings=warnings))
+        record = dir_record(child, issues=issues, warnings=warnings, context=context)
         if record is not None:
             records[rel] = record
     return items, records

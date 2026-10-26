@@ -266,4 +266,34 @@ describe('ImageLabelWidgetComponent context frames', () => {
       FILES + 'labeled-data/s/img00000044.png',
     );
   });
+
+  describe('frame image message', () => {
+    const message = () =>
+      fixture.nativeElement.querySelector(
+        '[data-testid="frame-image-message"]',
+      );
+
+    it('shows nothing while the frame loads normally', () => {
+      show('labeled-data/s/img00000042.png');
+      expect(message()).toBeNull();
+    });
+
+    it('says a TIFF frame cannot be shown, without waiting for it to fail', () => {
+      show('labeled-data/s/img00000042.tif');
+      expect(message()?.getAttribute('role')).toBe('status');
+      expect(message()?.textContent.trim()).toBe(
+        'TIFF frames train in Lightning Pose but cannot be shown in the browser. Convert them to PNG to label or review them here.',
+      );
+      expect(fixture.componentInstance.currentFrameMissing()).toBeTrue();
+    });
+
+    it('says the image could not be loaded when the current frame fails', () => {
+      show('labeled-data/s/img00000042.png');
+      images()[2].dispatchEvent(new Event('error'));
+      fixture.detectChanges();
+      expect(message()?.textContent.trim()).toBe(
+        "This frame's image could not be loaded.",
+      );
+    });
+  });
 });

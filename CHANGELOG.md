@@ -40,6 +40,10 @@ Tests: `keypoint-label-placement.spec.ts` "nearer another marker" (a corner 4px 
 
 Tests: `keypoint-container.component.spec.ts` "label outline" (outline width is a quarter of the font size at 2px and 8px); `keypoint-label-placement.spec.ts` `labelStrokePad` (placement pads by half the outline at each size).
 
+* **Image formats:** Labeled frames in any format that both Lightning Pose and the browser can read now show in the app, in any letter case: `.jpg`, `.jpeg`, `.jfif`, `.png`, `.apng`, `.bmp`, `.gif`, `.webp`, `.avif`. Before, only lowercase `.png` and `.jpg` showed, so frames like `img0001.JPG` were broken images. File Manager no longer flags these frames. Frames LP trains on but the browser cannot show (TIFF, PPM/PGM/PBM/PNM, TGA, JPEG 2000) get a File Manager warning, and the Labeler says so in place of the image. Validation results saved before this change are checked again.
+
+Tests: `test_read_file.py` (each browser format served in upper and lower case with its content type; TIFF and JPEG 2000 refused with the can't-show message; other files still refused; CSVs keep `no-cache`); `test_image_formats.py` (Pillow reads every listed format; lookups ignore case); `test_validate_project_files.py` (`.JPG`, `.jpeg`, `.webp` and `.tif` frames are accepted in a label CSV and in `labeled-data/`, TIFF gets one warning, other files are still unexpected; a result saved under older rules is dropped); `image-formats.spec.ts`; `image-label-widget.component.spec.ts` "frame image message" (a TIFF frame shows the message right away; a failed frame says it could not be loaded); `labeler-center-panel.component.spec.ts` (temporal context tip for a TIFF frame).
+
 ### [2.4.2.3] — 2026-10-15
 
 * **File manager:** Validation results and video probe results are kept in `.project-cache` in the project data directory. Opening a file panel shows the last check when the file is unchanged. A changed file, a deleted frame, or a keypoint change is not shown as OK until Validate runs again. Checking a video skips ffprobe when the file is unchanged, and a replaced video is not treated as all-intra from the old result.
