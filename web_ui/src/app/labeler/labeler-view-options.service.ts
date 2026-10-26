@@ -18,19 +18,33 @@ import {
   storedNumber,
   storedSkeletonThickness,
 } from '../components/skeleton-overlay/stored-number';
+import {
+  CONTEXT_CENTER_INDEX,
+  playContextSlot,
+  stepContextSlot,
+} from './temporal-context';
 
 const DEFAULT_BRIGHTNESS = 1;
 const DEFAULT_CONTRAST = 1;
 const DEFAULT_IMAGE_SIZE = 500;
 const UMAMI_DEBOUNCE_TIME_MS = 10000;
+const TEMPORAL_CONTEXT_PLAY_INTERVAL_MS = 300;
 
 @Injectable()
 /** Scoped service holding per-session labeler display options, persisted to localStorage. */
 export class LabelerViewOptionsService {
   private colorService = inject(ColorService);
   private destroyRef = inject(DestroyRef);
-  isShowingTemporalContext = signal(false);
-  temporalContextIndex = signal<number | null>(null);
+  /** True while temporal context plays through the five context frames. */
+  isPlayingTemporalContext = signal(false);
+  /** Visible context slot, 0 … 4 (n-2 … n+2). Slot 2 is the current frame. */
+  temporalContextIndex = signal(CONTEXT_CENTER_INDEX);
+  /** True when the image shown is not the still current frame, so keypoints are hidden. */
+  isShowingTemporalContext = computed(
+    () =>
+      this.isPlayingTemporalContext() ||
+      this.temporalContextIndex() !== CONTEXT_CENTER_INDEX,
+  );
 
   imgBrightnessScalar = signal(DEFAULT_BRIGHTNESS);
   imgContrastScalar = signal(DEFAULT_CONTRAST);
@@ -167,9 +181,7 @@ export class LabelerViewOptionsService {
         });
       });
 
-    this.destroyRef.onDestroy(() => {
-      this.temporalContextAbortController?.abort();
-    });
+    this.destroyRef.onDestroy(() => this.stopPlayTimer());
   }
 
   /** Reset keypoint size to the ColorService default. */
@@ -210,42 +222,54 @@ export class LabelerViewOptionsService {
     this.keypointOpacity.set(this.colorService.defaultOpacity);
   }
 
-  private temporalContextAbortController: AbortController | undefined;
-  /** Start the temporal context animation loop, cycling through nearby frames. */
-  handleShowTemporalContextClick() {
-    this.temporalContextAbortController = new AbortController();
+  private playTimer: ReturnType<typeof setInterval> | undefined;
+  private playDirection: 1 | -1 = 1;
 
-    this.isShowingTemporalContext.set(true);
-    this.beginTemporalContextLoop(this.temporalContextAbortController.signal);
+  /** Play through the context frames (−2 … +2 and back) from the visible slot. */
+  playTemporalContext() {
+    if (this.isPlayingTemporalContext()) return;
+    this.isPlayingTemporalContext.set(true);
+    this.playTimer = setInterval(() => {
+      const next = playContextSlot(
+        this.temporalContextIndex(),
+        this.playDirection,
+      );
+      this.playDirection = next.direction;
+      this.temporalContextIndex.set(next.slot);
+    }, TEMPORAL_CONTEXT_PLAY_INTERVAL_MS);
   }
 
-  /** Abort the temporal context animation loop and reset the visible index. */
-  handleStopTemporalContextClick() {
-    this.temporalContextAbortController?.abort();
-    this.isShowingTemporalContext.set(false);
+  /** Hold the visible context frame. */
+  pauseTemporalContext() {
+    this.stopPlayTimer();
+    this.isPlayingTemporalContext.set(false);
   }
 
-  private beginTemporalContextLoop(abortSignal: AbortSignal) {
-    let direction = 1;
-    const loop = async () => {
-      while (!abortSignal.aborted) {
-        this.temporalContextIndex.update((index) => {
-          const currentIndex = index ?? -1;
-          let nextIndex = currentIndex + direction;
+  toggleTemporalContextPlayback() {
+    if (this.isPlayingTemporalContext()) this.pauseTemporalContext();
+    else this.playTemporalContext();
+  }
 
-          if (nextIndex > 4) {
-            direction = -1;
-            nextIndex = 3;
-          } else if (nextIndex <= 0) {
-            direction = 1;
-            nextIndex = 0;
-          }
+  /** Pause and move one context frame back (-1) or forward (+1). */
+  stepTemporalContext(delta: -1 | 1) {
+    this.pauseTemporalContext();
+    this.temporalContextIndex.update((slot) => stepContextSlot(slot, delta));
+  }
 
-          return nextIndex;
-        });
-        await new Promise((resolve) => setTimeout(resolve, 300));
-      }
-    };
-    loop();
+  /** Pause on a context slot (0 … 4). */
+  jumpToTemporalContextSlot(slot: number) {
+    this.pauseTemporalContext();
+    this.temporalContextIndex.set(stepContextSlot(slot, 0));
+  }
+
+  /** Pause on the current frame, with keypoints shown. */
+  resetTemporalContext() {
+    this.jumpToTemporalContextSlot(CONTEXT_CENTER_INDEX);
+    this.playDirection = 1;
+  }
+
+  private stopPlayTimer() {
+    clearInterval(this.playTimer);
+    this.playTimer = undefined;
   }
 }

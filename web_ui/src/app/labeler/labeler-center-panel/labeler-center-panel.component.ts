@@ -30,6 +30,11 @@ import { ToastService } from '../../toast.service';
 import { firstValueFrom, Subject } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ImageLabelWidgetComponent } from '../image-label-widget/image-label-widget.component';
+import {
+  CONTEXT_SLOT_LABELS,
+  contextImgPaths,
+  contextShowingText,
+} from '../temporal-context';
 import { LoadCalibrationDialogComponent } from '../../file-manager/load-calibration-dialog.component';
 import { SkeletonViewOptionsComponent } from '../../components/skeleton-view-options/skeleton-view-options.component';
 import { isSkeletonDefinitionInvalid } from '../../components/skeleton-overlay/skeleton-validity';
@@ -98,6 +103,14 @@ export class LabelerCenterPanelComponent implements OnChanges {
   closeFrame = output<void>();
 
   constructor() {
+    // The controls are disabled without context, so stop playback and show
+    // the current frame (with keypoints) rather than leave it running.
+    effect(() => {
+      if (!this.hasTemporalContext()) {
+        untracked(() => this.viewOptions.resetTemporalContext());
+      }
+    });
+
     effect(() => {
       this.selectedView();
 
@@ -121,6 +134,9 @@ export class LabelerCenterPanelComponent implements OnChanges {
     }
 
     if (changes['frame']) {
+      // A new frame opens on itself, with keypoints shown.
+      this.viewOptions.resetTemporalContext();
+
       // Reset scale.
       if (this.primaryZoomableElement()?.zoomableContent()) {
         this.primaryZoomableElement()!
@@ -175,6 +191,32 @@ export class LabelerCenterPanelComponent implements OnChanges {
 
   protected selectedFrameView = computed(() =>
     this.getFrameView(this.selectedView()),
+  );
+  protected contextSlotLabels = CONTEXT_SLOT_LABELS;
+  /** Why temporal context can't be shown for the selected image, or null when it can. */
+  protected temporalContextUnavailableReason = computed((): string | null => {
+    const frameView = this.selectedFrameView();
+    if (!frameView) return null;
+    // LP builds no context when the file name has no frame number.
+    if (contextImgPaths(frameView.imgPath) === null) {
+      return 'The image file name has no frame number.';
+    }
+    if (this.primaryZoomableElement()?.currentFrameMissing()) {
+      return "This frame's image could not be loaded.";
+    }
+    if (this.primaryZoomableElement()?.contextFramesMissing()) {
+      return 'Context frames were not found.';
+    }
+    return null;
+  });
+  /** "Showing: …" text, naming the frame actually shown when a slot shows a substitute. */
+  protected contextShowingText = computed(() => {
+    const slot = this.viewOptions.temporalContextIndex();
+    const views = this.primaryZoomableElement()?.contextSlotViews();
+    return contextShowingText(slot, views?.[slot]);
+  });
+  protected hasTemporalContext = computed(
+    () => !!this.selectedFrameView() && !this.temporalContextUnavailableReason(),
   );
   protected getFrameView(view: string): FrameView | null {
     const frame = this.frame();

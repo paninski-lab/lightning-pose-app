@@ -6,6 +6,7 @@ import {
   ElementRef,
   inject,
   input,
+  linkedSignal,
   model,
   output,
   signal,
@@ -27,6 +28,12 @@ import {
   skeletonPairs,
 } from '../../components/skeleton-overlay/skeleton-validity';
 import { fittedMediaHeight } from '../../fitted-media-height';
+import {
+  CONTEXT_CENTER_INDEX,
+  ContextSlotView,
+  contextFrameOffsets,
+  contextImgPaths,
+} from '../temporal-context';
 
 @Component({
   selector: 'app-image-label-widget',
@@ -69,7 +76,7 @@ export class ImageLabelWidgetComponent {
   protected tileHeight = computed(() => {
     const size = this.viewOptions.imageSizePx();
     const loaded = this.loadedSize();
-    const srcs = this.temporalImgPaths(this.fv().imgPath);
+    const srcs = this.contextSrcs();
     // img.src is an absolute URL; the template binds the app path.
     const measured = loaded
       ? srcs.some(
@@ -171,38 +178,83 @@ export class ImageLabelWidgetComponent {
     );
   }
 
-  protected temporalImgPaths(kpImgPath: string): string[] {
-    // Match the pattern: capture everything before the index, the index digits, and the extension
-    const match = kpImgPath.match(/^(.+?)(\d+)(\.[^.]+)$/);
+  /** src of the current frame. */
+  private centerSrc = computed(() => this.imgPath(this.fv().imgPath));
 
-    if (!match) {
-      return [];
-    }
+  /**
+   * Image srcs that failed to load (for example past the end of the video).
+   * Cleared when another frame opens, so reopening a frame tries again.
+   */
+  private missingSrcs = linkedSignal<string, ReadonlySet<string>>({
+    source: () => this.fv().imgPath,
+    computation: () => new Set(),
+  });
 
-    const [, prefix, indexStr, extension] = match;
-    const currentIndex = parseInt(indexStr, 10);
-    const numDigits = indexStr.length;
+  /**
+   * Five context frames, n-2 … n+2, built as lightning-pose does. A frame that
+   * fails to load shows the current frame, as in LP training. A file name with
+   * no frame number has no context: just the current frame.
+   */
+  protected contextSrcs = computed((): string[] => {
+    const paths = contextImgPaths(this.fv().imgPath);
+    if (!paths) return [this.centerSrc()];
+    const missing = this.missingSrcs();
+    return paths
+      .map((p) => this.imgPath(p))
+      .map((src) => (missing.has(src) ? this.centerSrc() : src));
+  });
 
-    const result: string[] = [];
+  /** Slot shown: the temporal context slot (the current frame unless context is in use). */
+  protected visibleSlot = computed(() =>
+    this.contextSrcs().length === 1 ? 0 : this.viewOptions.temporalContextIndex(),
+  );
 
-    // Generate paths for index-2, index-1, index, index+1
-    for (let offset = -2; offset <= 2; offset++) {
-      const newIndex = currentIndex + offset;
+  /**
+   * True once every context frame other than the current one has failed to
+   * load, so there is no context to show (for example imported frames that
+   * were extracted without their neighbors).
+   */
+  contextFramesMissing = computed(() => {
+    const paths = contextImgPaths(this.fv().imgPath);
+    if (!paths) return false;
+    const center = this.centerSrc();
+    const missing = this.missingSrcs();
+    return paths
+      .map((p) => this.imgPath(p))
+      .filter((src) => src !== center)
+      .every((src) => missing.has(src));
+  });
 
-      // Omit negative indices
-      if (newIndex < 0) {
-        continue;
+  /** True when the current frame's own image failed to load. */
+  currentFrameMissing = computed(() =>
+    this.missingSrcs().has(this.centerSrc()),
+  );
+
+  /**
+   * What each context slot actually shows: its own frame, frame 0 for a slot
+   * before the start of the video, or the current frame for a frame that was
+   * not found. Null without a frame number.
+   */
+  contextSlotViews = computed((): ContextSlotView[] | null => {
+    const paths = contextImgPaths(this.fv().imgPath);
+    const offsets = contextFrameOffsets(this.fv().imgPath);
+    if (!paths || !offsets) return null;
+    const missing = this.missingSrcs();
+    return paths.map((p, slot) => {
+      const src = this.imgPath(p);
+      if (src !== this.centerSrc() && missing.has(src)) {
+        return { shownOffset: 0, substitute: 'not-found' };
       }
+      const ownOffset = slot - CONTEXT_CENTER_INDEX;
+      return offsets[slot] === ownOffset
+        ? { shownOffset: ownOffset, substitute: null }
+        : { shownOffset: offsets[slot], substitute: 'before-start' };
+    });
+  });
 
-      // Pad the new index with zeros to maintain the same number of digits
-      const paddedIndex = newIndex.toString().padStart(numDigits, '0');
-
-      // Construct the new path
-      const newPath = `${prefix}${paddedIndex}${extension}`;
-      result.push(this.imgPath(newPath));
-    }
-
-    return result;
+  protected onImageError(src: string) {
+    if (this.missingSrcs().has(src)) return;
+    this.missingSrcs.update((set) => new Set(set).add(src));
   }
 
   protected handleKeypointUpdated(keypointName: string, position: Point) {

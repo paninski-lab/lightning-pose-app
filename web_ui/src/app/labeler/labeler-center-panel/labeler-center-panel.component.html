@@ -359,33 +359,75 @@
               Temporal context
             </div>
             <div class="p-2">
-              @if (!viewOptions.isShowingTemporalContext()) {
-                <button
-                  class="btn btn-soft btn-primary btn-sm"
-                  (click)="viewOptions.handleShowTemporalContextClick()"
-                >
-                  <span class="material-icons">animation</span> Show
-                </button>
-              } @else {
-                <div class="flex items-center gap-4">
+              @let slot = viewOptions.temporalContextIndex();
+              @let playing = viewOptions.isPlayingTemporalContext();
+              <div
+                class="flex flex-col gap-1 w-fit"
+                [class.tooltip]="!!temporalContextUnavailableReason()"
+                [attr.data-tip]="temporalContextUnavailableReason()"
+              >
+                <div class="flex items-center gap-1">
                   <button
-                    class="btn btn-soft btn-primary btn-sm"
-                    (click)="viewOptions.handleStopTemporalContextClick()"
+                    class="btn btn-ghost btn-xs btn-square"
+                    aria-label="Previous context frame"
+                    [disabled]="!hasTemporalContext() || slot === 0"
+                    (click)="viewOptions.stepTemporalContext(-1)"
                   >
-                    <span class="material-icons">stop</span> Stop
+                    <span class="material-icons">chevron_left</span>
                   </button>
-                  <div class="grow flex gap-2">
-                    @for (i of [0, 1, 2, 3, 4]; track i) {
-                      <div
-                        class="status"
-                        [class.status-success]="
-                          i === viewOptions.temporalContextIndex()
-                        "
-                      ></div>
+                  <button
+                    class="btn btn-soft btn-primary btn-sm btn-square"
+                    [attr.aria-label]="
+                      playing ? 'Pause temporal context' : 'Play temporal context'
+                    "
+                    [disabled]="!hasTemporalContext()"
+                    (click)="viewOptions.toggleTemporalContextPlayback()"
+                  >
+                    <span class="material-icons">{{
+                      playing ? 'pause' : 'play_arrow'
+                    }}</span>
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-xs btn-square"
+                    aria-label="Next context frame"
+                    [disabled]="
+                      !hasTemporalContext() ||
+                      slot === contextSlotLabels.length - 1
+                    "
+                    (click)="viewOptions.stepTemporalContext(1)"
+                  >
+                    <span class="material-icons">chevron_right</span>
+                  </button>
+                  <div
+                    class="flex items-center gap-1 ml-2"
+                    [class.opacity-40]="!hasTemporalContext()"
+                  >
+                    @for (label of contextSlotLabels; track $index) {
+                      <button
+                        type="button"
+                        class="p-1 rounded cursor-pointer disabled:cursor-default"
+                        [attr.aria-label]="'Show context frame ' + label"
+                        [attr.aria-pressed]="$index === slot"
+                        [disabled]="!hasTemporalContext()"
+                        (click)="viewOptions.jumpToTemporalContextSlot($index)"
+                      >
+                        <span
+                          class="status block"
+                          [class.status-success]="$index === slot"
+                        ></span>
+                      </button>
                     }
                   </div>
                 </div>
-              }
+                <div
+                  class="text-xs"
+                  [class.opacity-70]="hasTemporalContext()"
+                  [class.opacity-40]="!hasTemporalContext()"
+                  data-testid="context-frame-label"
+                >
+                  {{ contextShowingText() }}
+                </div>
+              </div>
             </div>
             <div class="flex items-center gap-2 pt-2">
               <span class="material-icons text-sm!">aspect_ratio</span>

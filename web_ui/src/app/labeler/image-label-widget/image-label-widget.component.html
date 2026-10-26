@@ -5,21 +5,17 @@
   [interactivityDisabled]="zoomableInteractivityDisabled()"
 >
   <div #content class="relative">
-    @for (imSrc of temporalImgPaths(fv().imgPath); track $index) {
+    @for (imSrc of contextSrcs(); track $index) {
       <!-- img has max-w-none to override a bad default value of 100% -->
       <img
         #frameImage
         [src]="imSrc"
         (load)="onImageLoad($event)"
+        (error)="onImageError(imSrc)"
         class="max-w-none"
         [style.filter]="viewOptions.imgCssFilterString()"
         [alt]="imSrc"
-        [class.hidden]="
-          $index !==
-          (!viewOptions.isShowingTemporalContext()
-            ? 2
-            : viewOptions.temporalContextIndex())
-        "
+        [class.hidden]="$index !== visibleSlot()"
       />
     }
     @if (!viewOptions.isShowingTemporalContext()) {
