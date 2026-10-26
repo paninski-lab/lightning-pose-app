@@ -28,6 +28,18 @@ Tests: `test_file_transaction.py` (a failure replacing the first, a later, or a 
 
 Tests: `test_write_projects_toml_failure_keeps_old_registry` (a TOML write that fails partway leaves the old file and no temp file), `test_write_projects_toml_keeps_symlink`.
 
+* **Keypoint markers:** In the Labeler and the Viewer, markers are drawn at the exact keypoint position at every marker size and zoom. They no longer shift when the size changes, turn capsule-shaped, or have their cross off center. Dragging a keypoint moves it by exactly the pointer's movement.
+
+Tests: `keypoint-container.component.spec.ts` "markers" (circle centered on a fractional position with radius half the size, at sizes 5 and 10; the cross meets at the position; the selected ring; clicking a marker selects it; a drag moves the keypoint by exactly the pointer movement; Viewer markers keep their shadow).
+
+* **Keypoint labels:** In the Labeler and the Viewer, a keypoint's name avoids corners that sit nearer another keypoint's marker than its own, so close keypoints are less likely to be mixed up. Such a corner is used only when every corner is worse. On the fly-anipose-tiny labels (8,820 names, default sizes), names nearer another marker dropped from 17.4% to 8.6%.
+
+Tests: `keypoint-label-placement.spec.ts` "nearer another marker" (a corner 4px from another marker is skipped and the chosen corner is nearer its own marker; a farther marker keeps the lower-right; two markers a few pixels apart each get a name nearer their own marker); the existing corner-stickiness case now uses labels that overlap without a marker nearby.
+
+* **Keypoint labels:** The black outline around a keypoint name scales with the label size. Small labels (1–4px) no longer show large black spiky shapes when zoomed in; every size has the outline the default 8px label has.
+
+Tests: `keypoint-container.component.spec.ts` "label outline" (outline width is a quarter of the font size at 2px and 8px); `keypoint-label-placement.spec.ts` `labelStrokePad` (placement pads by half the outline at each size).
+
 ### [2.4.2.3] — 2026-10-15
 
 * **File manager:** Validation results and video probe results are kept in `.project-cache` in the project data directory. Opening a file panel shows the last check when the file is unchanged. A changed file, a deleted frame, or a keypoint change is not shown as OK until Validate runs again. Checking a video skips ffprobe when the file is unchanged, and a replaced video is not treated as all-intra from the old result.

@@ -3,13 +3,13 @@
 <div #dragBoundary class="absolute -inset-1"></div>-->
 <style>
   :host {
-    --selected-keypoint-border-width: 1px;
     --crosshair-stroke-color: rgba(128, 128, 128, 0.6);
     --inner-crosshair-stroke-color: rgba(220, 220, 220, 1);
   }
 
-  .selected-keypoint-border {
-    border: var(--selected-keypoint-border-width) solid yellow;
+  /* Viewer markers (no labeler options) keep a light shadow. */
+  .keypoint-markers-shadow circle {
+    filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.3));
   }
 
   /* Big crosshair (SVG overlay) */
@@ -32,15 +32,19 @@
     fill: var(--color-base-content);
     stroke: black;
     stroke-width: 2px;
+    stroke-linejoin: round;
     paint-order: stroke fill;
   }
 
   /*
     Stroke follows the letter shape. A text-shadow outline is a stack of
     square offsets, and an SVG filter would be its own layer inside the zoom.
+    The width is in em so it scales with the label: a fixed 2px stroke is as
+    thick as a 2-3px label, and its mitered corners showed as spikes. Keep in
+    step with LABEL_STROKE_EM, which pads the placement box.
   */
   .keypoint-label {
-    -webkit-text-stroke: 2px black;
+    -webkit-text-stroke: 0.25em black;
     paint-order: stroke fill;
     line-height: 1;
   }
@@ -82,6 +86,76 @@
       [opacity]="skeletonOpacity()"
     />
   }
+  <!--
+    Markers are drawn here in image coordinates. HTML boxes are snapped to
+    whole pixels before the zoom scale, which moved markers, made some
+    capsule-shaped, and put the cross off center (#169). The divs below are
+    only hit targets, tooltips and label anchors.
+  -->
+  @let markerRadius = keypointSize() / 2;
+  <svg
+    class="keypoint-markers absolute inset-0 w-full h-full pointer-events-none overflow-visible"
+    [class.keypoint-markers-shadow]="!labelerViewOptions()"
+    data-testid="keypoint-markers"
+    aria-hidden="true"
+  >
+    @for (keypoint of keypointModels(); track keypoint.id) {
+      @let markerSelected = keypoint.id === selectedKeypoint();
+      @if (
+        keypoint.position() !== null &&
+        !(markerSelected && selectedKeypointIsMoving()) &&
+        (!keypoint.isVisible || keypoint.isVisible())
+      ) {
+        @let p = keypoint.position();
+        <g [attr.data-kp-id]="keypoint.id">
+          <circle
+            [attr.cx]="p.x"
+            [attr.cy]="p.y"
+            [attr.r]="markerRadius"
+            [attr.fill]="
+              'rgba(' +
+              keypoint.color().join(',') +
+              ',' +
+              calculatedKeypointOpacity(keypoint.id) +
+              ')'
+            "
+          />
+          @if (markerSelected) {
+            <circle
+              class="keypoint-selected-ring"
+              [attr.cx]="p.x"
+              [attr.cy]="p.y"
+              [attr.r]="markerRadius - selectedKeypointBorderWidth / 2"
+              fill="none"
+              stroke="yellow"
+              [attr.stroke-width]="selectedKeypointBorderWidth"
+            />
+          }
+          @if (useCrossHairs()) {
+            <line
+              [attr.x1]="p.x - markerRadius"
+              [attr.y1]="p.y"
+              [attr.x2]="p.x + markerRadius"
+              [attr.y2]="p.y"
+              stroke="var(--inner-crosshair-stroke-color)"
+              [attr.stroke-width]="keypointSize() * 0.01"
+              stroke-opacity="0.5"
+            />
+            <line
+              [attr.x1]="p.x"
+              [attr.y1]="p.y - markerRadius"
+              [attr.x2]="p.x"
+              [attr.y2]="p.y + markerRadius"
+              stroke="var(--inner-crosshair-stroke-color)"
+              [attr.stroke-width]="keypointSize() * 0.01"
+              stroke-opacity="0.5"
+            />
+          }
+        </g>
+      }
+    }
+  </svg>
+
   @if (showCrosshair() && crosshairPosition()) {
     @let gap = keypointSize() / 2;
     <svg class="big-crosshair" aria-hidden="true">
@@ -199,17 +273,10 @@
         <app-dropdown-trigger>
           <div
             appDropdownTrigger
-            [class.selected-keypoint-border]="keypointIsSelected"
-            [style.--selected-keypoint-border-width]="
-              selectedKeypointBorderWidth + 'px'
-            "
-            [style.background-color]="
-              'rgba(' +
-              keypoint.color().join(',') +
-              ',' +
-              calculatedKeypointOpacity(keypoint.id) +
-              ')'
-            "
+            [attr.aria-label]="keypoint.id"
+            [attr.aria-pressed]="keypointIsSelected"
+            role="button"
+            data-testid="keypoint-hit-target"
             (click)="handleKeypointClick($event, keypoint)"
             (keydown.enter)="handleKeypointClick($event, keypoint)"
             (pointerdown)="handleKeypointPointerDown($event, keypoint)"
@@ -217,9 +284,6 @@
             [style.height.px]="keypointSize()"
             [style.width.px]="keypointSize()"
             class="rounded-full"
-            [ngClass]="{
-              'shadow-sm/30': labelerViewOptions() ? false : true,
-            }"
           >
             @if (enableKeypointLabels()) {
               @let spanOffset = labelSpanOffsets().get(keypoint.id);
@@ -233,33 +297,6 @@
                 [style.opacity]="calculatedKeypointLabelOpacity(keypoint.id)"
                 >{{ keypoint.id }}</span
               >
-            }
-            @if (useCrossHairs()) {
-              <svg
-                class="absolute inset-0 w-full h-full pointer-events-none"
-                viewBox="0 0 2 2"
-              >
-                <!-- Horizontal line -->
-                <line
-                  x1="0"
-                  y1="1"
-                  x2="2"
-                  y2="1"
-                  [attr.stroke]="'var(--inner-crosshair-stroke-color)'"
-                  stroke-width=".02"
-                  stroke-opacity="0.5"
-                />
-                <!-- Vertical line -->
-                <line
-                  x1="1"
-                  y1="0"
-                  x2="1"
-                  y2="2"
-                  [attr.stroke]="'var(--inner-crosshair-stroke-color)'"
-                  stroke-width=".02"
-                  stroke-opacity="0.5"
-                />
-              </svg>
             }
           </div>
         </app-dropdown-trigger>
