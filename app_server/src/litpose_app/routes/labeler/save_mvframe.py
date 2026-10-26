@@ -1,11 +1,15 @@
-"""RPC endpoint for atomically saving multi-view keypoint labels to CSV files."""
+"""RPC endpoint for saving multi-view keypoint labels to CSV files.
+
+One save writes every view's label CSV and unlabeled sidecar as a unit: all
+new files are staged and checked first, then committed with
+``replace_files``, which restores the originals if any step fails.
+"""
 
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
-import os
 import time
 from pathlib import Path
 
@@ -18,7 +22,9 @@ from litpose_app import deps
 from litpose_app.datatypes import Project
 from litpose_app.deps import ProjectInfoGetter
 from litpose_app.project_cache import drop_file_check, relative_data_path
+from litpose_app.utils.file_transaction import replace_files
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
+from litpose_app.utils.mv_label_file import label_files_lock
 
 router = APIRouter()
 lock = asyncio.Lock()
@@ -75,30 +81,42 @@ async def save_mvframe(
     """
     async with lock:
         project: Project = project_info_getter(request.projectKey)
+        await run_in_threadpool(_save_mvframe_sync, request, project.paths.data_dir)
 
-        if not request.unlabeledQueueDeletionOnly:
-            # Filter out views with no changed keypoints.
-            request = request.model_copy()
-            request.views = list(
-                filter(lambda v: v.changedKeypoints or v.delete, request.views)
-            )
 
-            if not request.views:
-                return
+def _save_mvframe_sync(request: SaveMvFrameRequest, data_dir: Path) -> None:
+    """Stage every changed CSV and sidecar, then commit them together."""
+    views = request.views
+    if not request.unlabeledQueueDeletionOnly:
+        # Only views with changed keypoints are written.
+        views = [v for v in views if v.changedKeypoints or v.delete]
+        if not views:
+            return
 
-            # Read files multithreaded and modify dataframes in memory.
-            read_df_results = await read_df_mvframe(request)
+    stamp = time.time_ns()
+    with label_files_lock:
+        staged: list[tuple[Path, Path]] = []
+        try:
+            if not request.unlabeledQueueDeletionOnly:
+                for vr in views:
+                    staged.append((_stage_csv(vr, stamp), vr.csvPath))
+            for vr in views:
+                tmp = _stage_sidecar_removal(vr, stamp)
+                if tmp is not None:
+                    staged.append((tmp, _sidecar_path(vr)))
+        except BaseException:
+            for tmp, _ in staged:
+                tmp.unlink(missing_ok=True)
+            raise
 
-            # Write to temp files multithreaded.
-            write_tmp_results = await write_df_tmp_mvframe(
-                request, read_df_results, project.paths.data_dir
-            )
-
-            # Rename all files (atomic for each file).
-            await commit_mvframe(request, write_tmp_results, project.paths.data_dir)
-
-        await remove_from_unlabeled_sidecar_files(project.paths.data_dir, request)
-    return
+        try:
+            replace_files(staged)
+        finally:
+            if not request.unlabeledQueueDeletionOnly:
+                for vr in views:
+                    rel = relative_data_path(data_dir, vr.csvPath)
+                    if rel is not None:
+                        drop_file_check(data_dir, "labels", rel)
 
 
 def _modify_df(df: pd.DataFrame, changes: SaveFrameViewRequest) -> None:
@@ -143,106 +161,53 @@ def _modify_df(df: pd.DataFrame, changes: SaveFrameViewRequest) -> None:
     df.loc[changes.indexToChange, columns] = new_values
 
 
-async def read_df_mvframe(request: SaveMvFrameRequest) -> list[pd.DataFrame]:
-    """Read each view's CSV into a DataFrame and apply the requested keypoint changes."""
-    def read_df_file_task(vr: SaveFrameViewRequest) -> pd.DataFrame:
-        """Read one view's CSV, apply modifications, and return the updated DataFrame."""
-        df = pd.read_csv(vr.csvPath, header=[0, 1, 2], index_col=0)
-        df = fix_empty_first_row(df)
-        _modify_df(df, vr)
-        return df
+def _stage_csv(vr: SaveFrameViewRequest, stamp: int) -> Path:
+    """Write the view's updated CSV next to it and check it reads back the same."""
+    df = pd.read_csv(vr.csvPath, header=[0, 1, 2], index_col=0)
+    df = fix_empty_first_row(df)
+    _modify_df(df, vr)
+    tmp = vr.csvPath.with_name(f"{vr.csvPath.name}.{stamp}.tmp")
+    try:
+        df.to_csv(tmp)
+        _check_staged_csv(tmp, df)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+    return tmp
 
-    result = []
-    for v in request.views:
-        r = run_in_threadpool(read_df_file_task, v)
-        result.append(r)
-    return await asyncio.gather(*result)
+
+def _check_staged_csv(tmp: Path, expected: pd.DataFrame) -> None:
+    """Raise if the staged CSV does not have the rows and columns that were written."""
+    staged = fix_empty_first_row(pd.read_csv(tmp, header=[0, 1, 2], index_col=0))
+    if list(staged.index) != list(expected.index) or list(staged.columns) != list(
+        expected.columns
+    ):
+        raise RuntimeError(f"Staged label file does not match what was written: {tmp}")
 
 
-async def write_df_tmp_mvframe(
-    request: SaveMvFrameRequest,
-    read_df_results: list[pd.DataFrame],
-    project_data_dir: Path,
-) -> list[str]:
+def _sidecar_path(vr: SaveFrameViewRequest) -> Path:
+    return vr.csvPath.with_suffix(".unlabeled.jsonl")
+
+
+def _stage_sidecar_removal(vr: SaveFrameViewRequest, stamp: int) -> Path | None:
+    """Stage the view's unlabeled sidecar without the saved frame.
+
+    Returns the temp file, or None when the sidecar is missing or has no entry
+    for the frame. Blank lines are skipped. See utils/mv_label_file.py for adding.
     """
-    Writes the read_df_results to temporary files, prefixed with the original file name.
-    """
-    timestamp = time.time_ns()
-    result = []
-
-    def write_df_to_tmp_file(v: SaveFrameViewRequest, d: pd.DataFrame) -> Path:
-        """Write DataFrame d to a timestamped temp file alongside the target CSV."""
-        tmp_file = v.csvPath.with_name(f"{v.csvPath.name}.{timestamp}.tmp")
-        d.to_csv(tmp_file)
-        return tmp_file
-
-    for vr, df in zip(request.views, read_df_results, strict=False):
-        r = run_in_threadpool(write_df_to_tmp_file, vr, df)
-        result.append(r)
-
-    return await asyncio.gather(*result)
-
-
-async def commit_mvframe(
-    request: SaveMvFrameRequest, tmp_file_names: list[str], project_data_dir: Path
-) -> None:
-    """Renames temp files to their original names (atomic per file)."""
-
-    def commit_changes() -> None:
-        """Replace each view's CSV with its temp file using os.replace (atomic per file)."""
-        for vr, tmp_file_name in zip(request.views, tmp_file_names, strict=False):
-            os.replace(tmp_file_name, vr.csvPath)
-            rel = relative_data_path(project_data_dir, vr.csvPath)
-            if rel is not None:
-                drop_file_check(project_data_dir, "labels", rel)
-
-    return await run_in_threadpool(commit_changes)
-
-
-async def remove_from_unlabeled_sidecar_files(
-    data_dir: Path, request: SaveMvFrameRequest
-) -> None:
-    """Remove the frames from the unlabeled sidecar files.
-
-    See also: utils.mv_label_file.py for the add version of this."""
-    timestamp = time.time_ns()
-
-    def remove_task(vr: SaveFrameViewRequest) -> Path | None:
-        """Remove the labeled frame from one view's unlabeled sidecar and return the temp file path."""
-        unlabeled_sidecar_file = vr.csvPath.with_suffix(".unlabeled.jsonl")
-        if not unlabeled_sidecar_file.exists():
-            return
-        lines = [
-            json.loads(line)
-            for line in unlabeled_sidecar_file.read_text().splitlines()
-            if line.strip()
-        ]
-        filtered_lines = [
-            line for line in lines if line.get("frame_path") != vr.indexToChange
-        ]
-
-        needs_save = False
-        if len(filtered_lines) != len(lines):
-            needs_save = True
-            lines = filtered_lines
-
-        if needs_save:
-            temp_file_name = f"{unlabeled_sidecar_file.name}.{timestamp}.tmp"
-            temp_file_path = unlabeled_sidecar_file.parent / temp_file_name
-
-            temp_file_path.write_text(
-                "\n".join(json.dumps(line) for line in lines) + "\n"
-            )
-            return temp_file_path
-        else:
-            return None
-
-    tasks = []
-    for vr in request.views:
-        tasks.append(run_in_threadpool(remove_task, vr))
-
-    results = await asyncio.gather(*tasks)
-
-    for vr, temp_file_path in zip(request.views, results, strict=False):
-        if temp_file_path is not None:
-            os.replace(temp_file_path, vr.csvPath.with_suffix(".unlabeled.jsonl"))
+    sidecar = _sidecar_path(vr)
+    if not sidecar.exists():
+        return None
+    lines = [
+        json.loads(line) for line in sidecar.read_text().splitlines() if line.strip()
+    ]
+    kept = [line for line in lines if line.get("frame_path") != vr.indexToChange]
+    if len(kept) == len(lines):
+        return None
+    tmp = sidecar.with_name(f"{sidecar.name}.{stamp}.tmp")
+    try:
+        tmp.write_text("\n".join(json.dumps(line) for line in kept) + "\n")
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+    return tmp

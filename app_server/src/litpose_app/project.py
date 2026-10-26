@@ -9,6 +9,7 @@ import tomli_w
 
 from litpose_app.datatypes import ProjectPaths
 from litpose_app.rootconfig import RootConfig
+from litpose_app.utils.file_transaction import write_atomic
 
 
 class ProjectUtil:
@@ -28,9 +29,14 @@ class ProjectUtil:
             return tomli.load(f)
 
     def _write_projects_toml(self, data: dict) -> None:
-        """Write data to the projects.toml file."""
-        with open(self.config.PROJECTS_TOML_PATH, "wb") as f:
-            tomli_w.dump(data, f)
+        """Write data to projects.toml through a temp file, so a failed write keeps the old file."""
+
+        def write(tmp: Path) -> None:
+            with open(tmp, "wb") as f:
+                tomli_w.dump(data, f)
+
+        # Resolve so a symlinked projects.toml keeps its link and the real file is replaced.
+        write_atomic(Path(self.config.PROJECTS_TOML_PATH).resolve(), write)
 
     ####################################
     # Functions for project management
