@@ -23,8 +23,16 @@ const CORNERS: LabelCorner[] = ['se', 'ne', 'sw', 'nw'];
 // A 1px graze is not an overlap, so jitter does not flip a corner.
 const OVERLAP_SLACK_PX = 2;
 
-// paint-order draws the 2px stroke under the fill, so about 1px shows outside the ink.
-export const LABEL_STROKE_PAD_PX = 1;
+/** Label outline width as a fraction of the font size (2px at the default 8px). */
+export const LABEL_STROKE_EM = 0.25;
+
+/**
+ * Outline that shows outside the letters: paint-order draws the stroke under
+ * the fill, so half its width is outside the ink.
+ */
+export function labelStrokePad(fontSizePx: number): number {
+  return (fontSizePx * LABEL_STROKE_EM) / 2;
+}
 
 interface Box {
   x: number;
@@ -104,6 +112,28 @@ function collisionArea(box: Box, labels: Box[], markers: Circle[]): number {
   return area;
 }
 
+// Another marker must be at least this much closer to a label than its own
+// marker before the label counts as nearer the other one.
+const NEARER_SLACK_PX = 0.5;
+
+function distanceToBox(box: Box, x: number, y: number): number {
+  const closestX = Math.max(box.x, Math.min(x, box.x + box.w));
+  const closestY = Math.max(box.y, Math.min(y, box.y + box.h));
+  return Math.hypot(x - closestX, y - closestY);
+}
+
+/**
+ * True when some other marker is closer to the label box than the label's own
+ * marker, so the name could be read as belonging to that other point (#154).
+ */
+function nearerOtherMarker(box: Box, own: Circle, others: Circle[]): boolean {
+  const ownDistance = distanceToBox(box, own.x, own.y);
+  return others.some(
+    (marker) =>
+      distanceToBox(box, marker.x, marker.y) + NEARER_SLACK_PX < ownDistance,
+  );
+}
+
 function frameReady(frame: LabelFrame): boolean {
   return frame.width > 0 && frame.height > 0;
 }
@@ -159,12 +189,14 @@ export function placeKeypointLabels(
     const previous = previousCorners.get(label.id);
     let chosen: LabelCorner | null = null;
 
+    const ownMarker = markers.get(label.id)!;
     const box = (corner: LabelCorner) => boxFor(label, corner, markerSize);
     const clear = (corner: LabelCorner) => {
       const candidate = box(corner);
       return (
         insideFrame(candidate, frame) &&
-        collisionArea(candidate, accepted, otherMarkers) === 0
+        collisionArea(candidate, accepted, otherMarkers) === 0 &&
+        !nearerOtherMarker(candidate, ownMarker, otherMarkers)
       );
     };
 
@@ -188,9 +220,14 @@ export function placeKeypointLabels(
       let bestArea = Infinity;
       for (const corner of CORNERS) {
         const candidate = box(corner);
+        // Sitting nearer another marker costs as much as covering the whole
+        // label, so such a corner wins only when every corner is worse.
         const area =
           collisionArea(candidate, accepted, otherMarkers) +
-          overflowArea(candidate, frame);
+          overflowArea(candidate, frame) +
+          (nearerOtherMarker(candidate, ownMarker, otherMarkers)
+            ? candidate.w * candidate.h
+            : 0);
         if (area < bestArea) {
           bestArea = area;
           best = corner;

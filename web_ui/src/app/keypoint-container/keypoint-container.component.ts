@@ -23,7 +23,6 @@ import {
 import { Point } from '@angular/cdk/drag-drop';
 import { LabelerViewOptionsService } from '../labeler/labeler-view-options.service';
 import { ViewerViewOptionsService } from '../viewer/viewer-view-options.service';
-import { NgClass } from '@angular/common';
 import {
   DropdownComponent,
   DropdownContentComponent,
@@ -31,9 +30,9 @@ import {
   DropdownTriggerDirective,
 } from '../components/dropdown/dropdown.component';
 import {
-  LABEL_STROKE_PAD_PX,
   LabelCorner,
   LabelFrame,
+  labelStrokePad,
   placeKeypointLabels,
 } from './keypoint-label-placement';
 
@@ -42,7 +41,7 @@ import {
   templateUrl: './keypoint-container.component.html',
   styleUrl: './keypoint-container.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgClass, DropdownComponent, DropdownTriggerComponent, DropdownContentComponent, DropdownTriggerDirective, SkeletonOverlayComponent],
+  imports: [DropdownComponent, DropdownTriggerComponent, DropdownContentComponent, DropdownTriggerDirective, SkeletonOverlayComponent],
 })
 export class KeypointContainerComponent {
   enableEditing = input<boolean>(false);
@@ -193,7 +192,7 @@ export class KeypointContainerComponent {
       for (const span of root.querySelectorAll<HTMLElement>('.keypoint-label')) {
         const id = span.dataset['kpId'];
         if (!id || !ids.includes(id)) continue;
-        const ink = inkBox(span);
+        const ink = inkBox(span, labelStrokePad(this.keypointLabelFontSize()));
         if (!ink) {
           complete = false;
           continue;
@@ -275,13 +274,14 @@ export class KeypointContainerComponent {
   protected labelSpanOffsets = computed(() => {
     const placed = this.labelOffsets();
     const measured = this.labelInk();
+    const pad = labelStrokePad(this.keypointLabelFontSize());
     const spans = new Map<string, { top: number; left: number }>();
     for (const [id, offset] of placed) {
       const ink = measured.get(id);
       if (!ink) continue;
       spans.set(id, {
-        left: offset.left + LABEL_STROKE_PAD_PX - ink.insetLeft,
-        top: offset.top + LABEL_STROKE_PAD_PX - ink.insetTop,
+        left: offset.left + pad - ink.insetLeft,
+        top: offset.top + pad - ink.insetTop,
       });
     }
     return spans;
@@ -333,41 +333,36 @@ export class KeypointContainerComponent {
   private mouseDownOffset = signal<Point>({ x: 0, y: 0 });
 
   protected crosshairPosition = computed((): Point | null => {
-    if (!this.mouseClientPosition()) return null;
+    const client = this.mouseClientPosition();
+    if (!client) return null;
     if (!this.mouseIsOverContainer()) return null;
+    const local = this.toLocal(client);
+    return {
+      x: local.x - this.mouseDownOffset().x,
+      y: local.y - this.mouseDownOffset().y,
+    };
+  });
 
+  /** Client (screen) coordinates to image coordinates inside the zoomed container. */
+  private toLocal(client: Point): Point {
     const containerElement = this.containerDiv().nativeElement as HTMLElement;
     const containerRect = containerElement.getBoundingClientRect();
 
-    // Calculate coordinates relative to the scaled container's top-left
-    const clientXRelativeToContainer =
-      this.mouseClientPosition()!.x - containerRect.left;
-    const clientYRelativeToContainer =
-      this.mouseClientPosition()!.y - containerRect.top;
-
-    // Get the unscaled dimensions of the container.
     // offsetWidth/Height reflect the dimensions before any CSS transforms like scale.
+    // Use DOM to calculate scale factor instead of using viewportCtx.scale()
+    // because during rapid scrolling, updating this computed lags behind the signal scale.
     const unscaledWidth = containerElement.offsetWidth;
     const unscaledHeight = containerElement.offsetHeight;
-
-    // Calculate the scale factors.
-    // If unscaledWidth/Height is 0, set scale to 1 to avoid division by zero.
-    // Note: Use DOM to calculate scale factor instead of using viewportCtx.scale()
-    // because during rapid scrolling, updating this computed lags behind the signal scale.
     const scaleX =
       unscaledWidth === 0 ? 1 : containerRect.width / unscaledWidth;
     const scaleY =
       unscaledHeight === 0 ? 1 : containerRect.height / unscaledHeight;
 
-    // Divide the scaled coordinates by the scale factor to get the unscaled local coordinates.
-    const unscaledX = clientXRelativeToContainer / scaleX;
-    const unscaledY = clientYRelativeToContainer / scaleY;
-
     return {
-      x: unscaledX - this.mouseDownOffset()!.x,
-      y: unscaledY - this.mouseDownOffset()!.y,
+      x: (client.x - containerRect.left) / scaleX,
+      y: (client.y - containerRect.top) / scaleY,
     };
-  });
+  }
 
   protected showCrosshair = computed(() => {
     return this.selectedKeypointIsMoving();
@@ -388,15 +383,13 @@ export class KeypointContainerComponent {
     ) {
       this.selectedKeypoint.set(keypoint.id);
       this.isMouseDownOnKeypoint.set(true);
+      // Where on the marker the pointer went down, from the keypoint's true
+      // position (the hit target box is pixel-snapped and can be off by a fraction).
+      const local = this.toLocal({ x: event.clientX, y: event.clientY });
+      const position = keypoint.position();
       this.mouseDownOffset.set({
-        x:
-          event.offsetX -
-          this.keypointSize() / 2 +
-          this.selectedKeypointBorderWidth,
-        y:
-          event.offsetY -
-          this.keypointSize() / 2 +
-          this.selectedKeypointBorderWidth,
+        x: local.x - position.x,
+        y: local.y - position.y,
       });
       event.stopPropagation();
     }
@@ -435,7 +428,7 @@ export class KeypointContainerComponent {
   }
 }
 
-function inkBox(span: HTMLElement): {
+function inkBox(span: HTMLElement, strokePad: number): {
   w: number;
   h: number;
   insetLeft: number;
@@ -451,8 +444,8 @@ function inkBox(span: HTMLElement): {
   const scale = spanRect.width / span.offsetWidth;
   if (!Number.isFinite(scale) || scale === 0) return null;
   return {
-    w: inkRect.width / scale + LABEL_STROKE_PAD_PX * 2,
-    h: inkRect.height / scale + LABEL_STROKE_PAD_PX * 2,
+    w: inkRect.width / scale + strokePad * 2,
+    h: inkRect.height / scale + strokePad * 2,
     insetLeft: (inkRect.left - spanRect.left) / scale,
     insetTop: (inkRect.top - spanRect.top) / scale,
   };
