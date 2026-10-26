@@ -84,9 +84,18 @@ def identity_matches(
     return current == digest
 
 
-def project_context(views: list[str], keypoints: list[str]) -> dict[str, list[str]]:
-    """Views and keypoints, order included, stored with a validation result."""
-    return {"views": list(views), "keypoints": list(keypoints)}
+# Bump when validation rules change, so results saved under the old rules are
+# not shown as current. 2: every image format LP reads is a frame (#164).
+FILE_CHECK_RULES = 2
+
+
+def project_context(views: list[str], keypoints: list[str]) -> dict[str, object]:
+    """Views, keypoints (order included) and the rules version, stored with a validation result."""
+    return {
+        "views": list(views),
+        "keypoints": list(keypoints),
+        "rules": FILE_CHECK_RULES,
+    }
 
 
 def file_record(
@@ -94,7 +103,7 @@ def file_record(
     *,
     issues: list[str],
     warnings: list[str],
-    context: dict[str, list[str]],
+    context: dict[str, object],
     deps: list[dict] | None = None,
 ) -> dict | None:
     """Identity plus the check result for one file. None when the file cannot be read."""
@@ -122,7 +131,7 @@ def dir_record(
     *,
     issues: list[str],
     warnings: list[str],
-    context: dict[str, list[str]],
+    context: dict[str, object],
 ) -> dict | None:
     """Directory mtime and sorted child names. A non-directory is stored as a file."""
     try:
@@ -149,7 +158,7 @@ def model_record(
     *,
     issues: list[str],
     warnings: list[str],
-    context: dict[str, list[str]],
+    context: dict[str, object],
 ) -> dict | None:
     """Model directory fingerprint. None when ``video_preds`` is too large to record."""
     try:

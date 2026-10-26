@@ -28,6 +28,7 @@ import {
   skeletonPairs,
 } from '../../components/skeleton-overlay/skeleton-validity';
 import { fittedMediaHeight } from '../../fitted-media-height';
+import { lpOnlyImageFormat, lpOnlyImageMessage } from '../../image-formats';
 import {
   CONTEXT_CENTER_INDEX,
   ContextSlotView,
@@ -42,6 +43,7 @@ import {
   templateUrl: './image-label-widget.component.html',
   styles: '',
   host: {
+    class: 'relative',
     '[style.height.px]': 'tileHeight()',
   },
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -225,10 +227,23 @@ export class ImageLabelWidgetComponent {
       .every((src) => missing.has(src));
   });
 
-  /** True when the current frame's own image failed to load. */
-  currentFrameMissing = computed(() =>
-    this.missingSrcs().has(this.centerSrc()),
+  /** Format name when the browser cannot show this frame's file type (TIFF, ...). */
+  private lpOnlyFormat = computed(() => lpOnlyImageFormat(this.fv().imgPath));
+
+  /** True when the current frame's own image failed to load, or cannot load. */
+  currentFrameMissing = computed(
+    () =>
+      this.lpOnlyFormat() !== null || this.missingSrcs().has(this.centerSrc()),
   );
+
+  /** Why the current frame is not shown, or null when it is. */
+  currentFrameMessage = computed((): string | null => {
+    const format = this.lpOnlyFormat();
+    if (format) return lpOnlyImageMessage(format);
+    return this.currentFrameMissing()
+      ? "This frame's image could not be loaded."
+      : null;
+  });
 
   /**
    * What each context slot actually shows: its own frame, frame 0 for a slot

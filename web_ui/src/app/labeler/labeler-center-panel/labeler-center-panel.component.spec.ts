@@ -231,11 +231,21 @@ describe('LabelerCenterPanelComponent temporal context', () => {
 
   it("says the frame's own image could not be loaded before blaming context frames", () => {
     showFrame('labeled-data/s/img00000042.png');
-    widget().currentFrameMissing.set(true);
+    widget().currentFrameMessage.set("This frame's image could not be loaded.");
     widget().contextFramesMissing.set(true);
     fixture.detectChanges();
     expectControlsDisabled();
     expect(tip()).toBe("This frame's image could not be loaded.");
+  });
+
+  it('says why a TIFF frame has no temporal context', () => {
+    showFrame('labeled-data/s/img00000042.tif');
+    widget().currentFrameMessage.set(
+      'TIFF frames train in Lightning Pose but cannot be shown in the browser. Convert them to PNG to label or review them here.',
+    );
+    fixture.detectChanges();
+    expectControlsDisabled();
+    expect(tip()).toContain('TIFF frames train in Lightning Pose');
   });
 
   it('disables the controls and explains why when the file name has no frame number', () => {
@@ -256,5 +266,6 @@ class ImageLabelWidgetStubComponent {
   zoomableContent = () => null;
   contextFramesMissing = signal(false);
   currentFrameMissing = signal(false);
+  currentFrameMessage = signal<string | null>(null);
   contextSlotViews = signal<ContextSlotView[] | null>(null);
 }
