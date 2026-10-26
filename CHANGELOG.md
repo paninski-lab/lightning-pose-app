@@ -20,6 +20,14 @@ Tests: `temporal-context.spec.ts` (frame 0 gives `[0, 0, 0, 1, 2]`, frame 1 give
 
 Tests: `temporal-context.spec.ts` (stepping stops at −2 and +2; playback runs −2 … +2 and back and continues from where it was paused); `labeler-center-panel.component.spec.ts` (step buttons, dot clicks, Play then Pause holds the frame, a new frame returns to current, controls disabled with a tip when the file name has no frame number, the frame's own image fails (that tip wins over context frames not found), or the context frames are not found, and playback stops then; the label names the substitute frame); `image-label-widget.component.spec.ts` (keypoints shown only when paused on the current frame; `contextFramesMissing` is true only when every frame but the current one fails to load, not at the end of a video; `contextSlotViews` marks before-start and not-found slots; `currentFrameMissing`; failed images are tried again when the frame is opened again). `temporal-context.spec.ts` also covers `contextFrameOffsets` and `contextShowingText`.
 
+* **Labeler saves:** A save writes every view's label file and labeling queue together. If any file fails to write, all of them are put back as they were, so one view can no longer end up with new labels while another keeps the old ones. If putting a file back also fails, the error names each affected file and the backup that holds its previous labels. A Labeler save and Extract Frames no longer overwrite each other's changes to the labeling queue.
+
+Tests: `test_file_transaction.py` (a failure replacing the first, a later, or a new file restores every file and leaves no temp or backup files; a restore that fails names the file and keeps its backup; a failed backup changes nothing); `test_save_mvframe.py` (multiview save succeeds and cleans up; a failure replacing either view's CSV or either sidecar leaves all four files byte-for-byte unchanged; an unrestorable failure keeps the backup; a rejected view leaves no temp files; deleting the last frame works; adding to the queue waits for a save).
+
+* **Project list:** `projects.toml` is written through a temp file, so a crash while saving it no longer empties the project list. A symlinked `projects.toml` stays a link.
+
+Tests: `test_write_projects_toml_failure_keeps_old_registry` (a TOML write that fails partway leaves the old file and no temp file), `test_write_projects_toml_keeps_symlink`.
+
 ### [2.4.2.3] — 2026-10-15
 
 * **File manager:** Validation results and video probe results are kept in `.project-cache` in the project data directory. Opening a file panel shows the last check when the file is unchanged. A changed file, a deleted frame, or a keypoint change is not shown as OK until Validate runs again. Checking a video skips ffprobe when the file is unchanged, and a replaced video is not treated as all-intra from the old result.

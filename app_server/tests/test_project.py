@@ -123,3 +123,41 @@ def test_get_project_paths_for_model(project_util: ProjectUtil):
     # Test for model not in any project
     with pytest.raises(RuntimeError):
         project_util.get_project_paths_for_model(model_dir=Path("/not/a/project/model"))
+
+
+def test_write_projects_toml_failure_keeps_old_registry(
+    project_util: ProjectUtil, monkeypatch
+):
+    """If the TOML dump fails partway, projects.toml is unchanged and no temp file is left."""
+    toml_path = Path(project_util.config.PROJECTS_TOML_PATH)
+    project_util.update_project_paths("keep", ProjectPaths(data_dir=Path("/data/keep")))
+    before = toml_path.read_bytes()
+
+    def broken_dump(data, f):
+        f.write(b"[half")
+        raise OSError("disk full")
+
+    monkeypatch.setattr(tomli_w, "dump", broken_dump)
+    with pytest.raises(OSError, match="disk full"):
+        project_util.update_project_paths(
+            "new", ProjectPaths(data_dir=Path("/data/new"))
+        )
+
+    assert toml_path.read_bytes() == before
+    assert [p.name for p in toml_path.parent.iterdir() if p.suffix == ".tmp"] == []
+    assert set(project_util.get_all_project_paths()) == {"keep"}
+
+
+def test_write_projects_toml_keeps_symlink(project_util: ProjectUtil, tmp_path: Path):
+    """A symlinked projects.toml stays a link; the file it points to is updated."""
+    toml_path = Path(project_util.config.PROJECTS_TOML_PATH)
+    real = tmp_path / "dotfiles" / "projects.toml"
+    real.parent.mkdir()
+    real.write_text("")
+    toml_path.unlink(missing_ok=True)
+    toml_path.symlink_to(real)
+
+    project_util.update_project_paths("p", ProjectPaths(data_dir=Path("/data/p")))
+
+    assert toml_path.is_symlink()
+    assert "/data/p" in real.read_text()
