@@ -195,6 +195,16 @@
                     {{ trainingForm.controls["epochs"].errors | json }}
                   </p>
                 }
+                @if (baseEpochSchedule() === null) {
+                  <p class="my-0! text-sm opacity-70" data-testid="epoch-schedule-hint">
+                    The base config counts in steps (max_steps), so the schedule
+                    comes from it. Edit configs/default.yaml to change it.
+                  </p>
+                } @else if (epochScheduleHint()) {
+                  <p class="my-0! text-sm opacity-70" data-testid="epoch-schedule-hint">
+                    {{ epochScheduleHint() }}
+                  </p>
+                }
               </fieldset>
               <fieldset class="fieldset my-4">
                 <h3 class="text-md mt-0!">Batch size</h3>
@@ -246,14 +256,26 @@
                     </div>
                   </div>
                   <div class="flex gap-4 items-center" formGroupName="pca_singleview">
-                    <label class="flex gap-2 cursor-pointer shrink-0">
-                      <input
-                        type="checkbox"
-                        class="checkbox"
-                        formControlName="enabled"
-                      />
-                      Pose PCA
-                    </label>
+                    <span
+                      class="shrink-0"
+                      [class.tooltip]="posePcaUnavailableReason()"
+                      [class.tooltip-right]="posePcaUnavailableReason()"
+                      [attr.data-tip]="posePcaUnavailableReason()"
+                    >
+                      <label
+                        class="flex gap-2"
+                        [class.cursor-pointer]="!posePcaUnavailableReason()"
+                        [class.opacity-50]="posePcaUnavailableReason()"
+                      >
+                        <input
+                          type="checkbox"
+                          class="checkbox"
+                          formControlName="enabled"
+                          aria-label="Pose PCA"
+                        />
+                        Pose PCA
+                      </label>
+                    </span>
                     <div class="grow">
                       <p class="m-0!">Log weight</p>
                       <input

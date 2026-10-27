@@ -499,6 +499,15 @@ export class SessionService {
     );
   }
 
+  /** Number of labeled frames in a label CSV, counted as LP reads it. */
+  async countLabeledFrames(csvPath: string): Promise<number> {
+    const response = (await this.rpc.call('countLabeledFrames', {
+      projectKey: this.getProjectKeyOrThrow(),
+      csvPath,
+    })) as { labeledFrames: number };
+    return response.labeledFrames;
+  }
+
   /** Fetch the bundled default single-view training config YAML. */
   async getDefaultYamlFile(): Promise<Record<string, unknown>> {
     return firstValueFrom(

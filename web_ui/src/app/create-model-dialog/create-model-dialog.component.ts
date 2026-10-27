@@ -45,6 +45,14 @@ import { SelectComponent } from '../components/dropdown/select.component';
 import { ToastService } from '../toast.service';
 import { PathDisplayComponent } from '../components/path-display/path-display.component';
 import { CameraCalibrationService } from '../camera-calibration.service';
+import {
+  describeEpochSchedule,
+  EpochSchedule,
+  epochSchedulePatch,
+  readEpochSchedule,
+  scaleEpochSchedule,
+} from './epoch-schedule';
+import { lpTrainFrameCount, minFramesForPosePca } from './pose-pca';
 
 @Component({
   selector: 'app-create-model-dialog',
@@ -188,6 +196,63 @@ class CreateModelDialogComponent {
   protected baseConfigPath = signal<string | null>(null);
   protected projectHasCalibrations = signal(false);
   protected useCameraCalibrations = signal(false);
+  /** Epoch-counted settings of the base config; null if it counts in steps, undefined while loading. */
+  protected baseEpochSchedule = signal<EpochSchedule | null | undefined>(
+    undefined,
+  );
+  private posePcaChoice = true;
+  /** Labeled frames in the chosen label file; null while unknown. */
+  protected labeledFrameCount = signal<number | null>(null);
+
+  private epochsAsSignal = toSignal(
+    this.trainingForm.controls['epochs'].valueChanges.pipe(
+      takeUntilDestroyed(),
+    ),
+    { initialValue: this.trainingForm.controls['epochs'].value as number },
+  );
+  private labelFileAsSignal = toSignal(
+    this.dataForm.controls['labelFile'].valueChanges.pipe(takeUntilDestroyed()),
+    {
+      initialValue: this.dataForm.controls['labelFile'].value as string | null,
+    },
+  );
+  private trainValSplitAsSignal = toSignal(
+    this.dataForm.controls['trainValSplit'].valueChanges.pipe(
+      takeUntilDestroyed(),
+    ),
+    {
+      initialValue: this.dataForm.controls['trainValSplit'].value as {
+        trainProb: number;
+        valProb: number;
+      },
+    },
+  );
+
+  /** The schedule the chosen number of epochs gives, for the hint under Epochs. */
+  protected epochScheduleHint = computed(() => {
+    const base = this.baseEpochSchedule();
+    const epochs = Number(this.epochsAsSignal());
+    if (!base || !Number.isInteger(epochs) || epochs < 1) return '';
+    return describeEpochSchedule(scaleEpochSchedule(base, epochs));
+  });
+
+  /**
+   * Why Pose PCA can't be used with the chosen label file and split, or null.
+   * Unknown counts (still loading, or the count failed) leave it enabled.
+   */
+  protected posePcaUnavailableReason = computed((): string | null => {
+    const labeled = this.labeledFrameCount();
+    const split = this.trainValSplitAsSignal();
+    if (labeled === null || !split?.trainProb || !split?.valProb) return null;
+    const numKeypoints =
+      this.projectInfoService.projectInfo.keypoint_names.length;
+    const { trainProb, valProb } = split;
+    if (lpTrainFrameCount(labeled, trainProb, valProb) >= 2 * numKeypoints) {
+      return null;
+    }
+    const needed = minFramesForPosePca(numKeypoints, trainProb, valProb);
+    return `Pose PCA needs at least ${needed} labeled frames for ${numKeypoints} keypoints (you have ${labeled}).`;
+  });
 
   private useTrueMultiviewModelAsSignal = toSignal(
     this.generalForm.controls['useTrueMultiviewModel'].valueChanges.pipe(
@@ -258,6 +323,16 @@ class CreateModelDialogComponent {
       .catch(() => {
         setBaseConfigToDefault();
       });
+    this.loadBaseConfig()
+      .then((baseConfig) => {
+        const schedule = readEpochSchedule(baseConfig);
+        this.baseEpochSchedule.set(schedule);
+        if (schedule === null) {
+          // A step-based base config: the Epochs field would not be written.
+          this.trainingForm.controls['epochs'].disable();
+        }
+      })
+      .catch(() => this.baseEpochSchedule.set(undefined));
 
     this.cameraCalibrationService.projectHasCalibrations().then((has) => {
       this.projectHasCalibrations.set(has);
@@ -276,6 +351,58 @@ class CreateModelDialogComponent {
         this.trainingForm.controls['augmentation'].setValue('dlc');
       }
     });
+    effect((onCleanup) => {
+      const csvPath = this.singleviewCsvPath(this.labelFileAsSignal());
+      this.labeledFrameCount.set(null);
+      if (!csvPath) return;
+      let stale = false;
+      onCleanup(() => (stale = true));
+      this.sessionService
+        .countLabeledFrames(csvPath)
+        .then((n) => {
+          if (!stale) this.labeledFrameCount.set(n);
+        })
+        .catch(() => {
+          // Leave Pose PCA enabled; LP reports the problem if training fails.
+        });
+    });
+    effect(() => {
+      // Pose PCA needs enough training frames; a disabled group is left out of the config.
+      const pca = (this.trainingForm.get('unsupervisedLosses') as FormGroup)
+        .controls['pca_singleview'];
+      const enabled = pca.get('enabled')!;
+      if (this.posePcaUnavailableReason()) {
+        if (pca.enabled) {
+          // Show it unchecked, and restore the user's choice if it becomes available.
+          this.posePcaChoice = enabled.value;
+          enabled.setValue(false);
+          pca.disable();
+        }
+      } else if (pca.disabled) {
+        pca.enable();
+        enabled.setValue(this.posePcaChoice);
+      }
+    });
+  }
+
+  /** CSV path of a single-view label file key; null for multiview projects. */
+  private singleviewCsvPath(labelFileKey: string | null): string | null {
+    if (!labelFileKey || this.isMultiviewProject()) return null;
+    const file = this.sessionService
+      .allLabelFiles()
+      .find((f) => f.key === labelFileKey);
+    return file?.views[0]?.csvPath ?? null;
+  }
+
+  /** The project's configs/default.yaml, or LPA's bundled default when there is none. */
+  private async loadBaseConfig(): Promise<Record<string, any>> {
+    const baseConfig = await this.sessionService.getYamlFile(
+      'configs/default.yaml',
+    );
+    if (baseConfig) return baseConfig;
+    return this.isMultiviewProject()
+      ? await this.sessionService.getDefaultMultiviewYamlFile()
+      : await this.sessionService.getDefaultYamlFile();
   }
 
   handleCloseClick() {
@@ -354,25 +481,19 @@ class CreateModelDialogComponent {
   private async generateYamlText(
     abortSignal?: AbortSignal,
   ): Promise<string | null> {
-    const defaultPath = 'configs/default.yaml';
     try {
-      let baseConfig = await this.sessionService.getYamlFile(defaultPath);
+      const baseConfig = await this.loadBaseConfig();
       if (abortSignal?.aborted) return null;
-
-      if (!baseConfig) {
-        if (this.isMultiviewProject()) {
-          baseConfig = await this.sessionService.getDefaultMultiviewYamlFile();
-        } else {
-          baseConfig = await this.sessionService.getDefaultYamlFile();
-        }
-      }
       // Combine values from all nested forms
       const formObject = {
         ...this.generalForm.value,
         ...this.dataForm.value,
         ...this.trainingForm.value,
       };
-      const patch = this.computeConfigPatch(formObject);
+      const patch = this.computeConfigPatch(
+        formObject,
+        readEpochSchedule(baseConfig),
+      );
       if (abortSignal?.aborted) return null;
 
       const merged = _.merge({}, baseConfig, patch);
@@ -414,6 +535,7 @@ class CreateModelDialogComponent {
         }>;
       }>;
     }>,
+    baseEpochSchedule: EpochSchedule | null = null,
   ): DeepPartial<ModelConfig> {
     const configPatchObject = {} as DeepPartial<ModelConfig>;
     const patches = [] as DeepPartial<ModelConfig>[];
@@ -533,12 +655,13 @@ class CreateModelDialogComponent {
       });
     }
     if (formObject.epochs) {
-      patches.push({
-        training: {
-          min_epochs: formObject.epochs,
-          max_epochs: formObject.epochs,
-        },
-      });
+      // Writes min/max epochs and scales the epoch-counted settings to match.
+      patches.push(
+        epochSchedulePatch(
+          baseEpochSchedule,
+          Number(formObject.epochs),
+        ) as DeepPartial<ModelConfig>,
+      );
     }
     if (formObject.labeledBatchSize) {
       patches.push({
