@@ -52,6 +52,10 @@ Tests: `epoch-schedule.spec.ts` (unchanged at 300; 150, 600, 50 and 100 scale as
 
 Tests: `pose-pca.spec.ts` (train counts match LP's `split_sizes_from_probabilities`; 17 keypoints at 95/5 needs 35 frames; 10 keypoints at 80/20 needs 24); `create-model-dialog.component.spec.ts` "Pose PCA needs enough frames" (34 frames: disabled, unchecked, tip text, `pca_singleview` left out of the config; 35 frames: available; changing the split disables it and changing back restores the check); `test_count_labeled_frames.py` (an all-empty first row is counted, as LP does; absolute and data-dir-relative paths; a path outside the data directory is refused).
 
+* **Extract frames on Windows:** Extracted frames are added to the labeling queue as `labeled-data/<session>_<view>/<name>.png`, with `/`. They used to be written with `\` on Windows, while other project files use `/` so a project can be copied to another OS. A queue that already holds `\` paths is read with `/`: the Labeler shows those frames at their `/` path, a frame already queued with `\` is not queued again, and saving the frame removes it from the queue.
+
+Tests: `test_extracted_frame_is_queued_with_forward_slashes` (a Windows-style path is queued with `/`); `test_queue_with_backslash_and_slash_entries_counts_the_frame_once` (adding the `/` spelling of a `\` entry leaves the queue unchanged, and saving the frame removes it); `test_queue_entry_reads_backslashes_as_slashes`; `label-file-fetcher.service.spec.ts` (a `\` queue entry opens at its `/` path).
+
 ### [2.4.2.3] — 2026-10-15
 
 * **File manager:** Validation results and video probe results are kept in `.project-cache` in the project data directory. Opening a file panel shows the last check when the file is unchanged. A changed file, a deleted frame, or a keypoint change is not shown as OK until Validate runs again. Checking a video skips ffprobe when the file is unchanged, and a replaced video is not treated as all-intra from the old result.
