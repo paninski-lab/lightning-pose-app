@@ -9,7 +9,7 @@ import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from litpose_app.utils.file_transaction import replace_files
 
@@ -36,10 +36,24 @@ class ExtractedFramePredictionList(BaseModel):
     predictions: list[ExtractedFramePredictionEntry]
 
 
+def queue_frame_path(frame_path: str) -> str:
+    """A queue frame path with ``/`` separators.
+
+    Project files store paths with ``/`` so a project copied to another OS still
+    works. Queues written on Windows before that was enforced may hold ``\\``.
+    """
+    return frame_path.replace("\\", "/")
+
+
 class LabelingQueueEntry(BaseModel):
     """One entry in the unlabeled-frame JSONL sidecar queue."""
     frame_path: str
     predictions: ExtractedFramePredictionList | None = None
+
+    @field_validator("frame_path")
+    @classmethod
+    def _posix_frame_path(cls, value: str) -> str:
+        return queue_frame_path(value)
 
 
 class AddToUnlabeledFileView(BaseModel):
@@ -73,11 +87,14 @@ def _add_to_unlabeled_sidecar_files(views: list[AddToUnlabeledFileView]) -> None
                 if line.strip()
             ]
 
-        existing_frame_paths = [e.frame_path for e in entries]
+        # Entries are read with / separators, so a frame queued once with \ and
+        # once with / counts once.
+        existing_frame_paths = {e.frame_path for e in entries}
         for entry in vr.entriesToAdd:
             if entry.frame_path not in existing_frame_paths:
                 needs_save = True
                 entries.append(entry)
+                existing_frame_paths.add(entry.frame_path)
 
         if needs_save:
             temp_file_name = f"{unlabeled_sidecar_file.name}.{timestamp}.tmp"

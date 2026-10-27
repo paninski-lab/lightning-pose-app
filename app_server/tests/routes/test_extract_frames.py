@@ -65,3 +65,31 @@ def test_extract_frames_rejects_frame_already_in_label_csv(client: TestClient, r
     assert response.status_code == 409, response.text
     assert index in response.json()["detail"]
     assert not (data_dir / "CollectedData_bot.unlabeled.jsonl").exists()
+
+
+def test_extracted_frame_is_queued_with_forward_slashes(tmp_path):
+    """On Windows, the queue gets labeled-data/<session>_<view>/<name>.png, not backslashes."""
+    import json
+    from pathlib import PureWindowsPath
+
+    from litpose_app.tasks.extract_frames import (
+        LabelFileView,
+        MVLabelFile,
+        _update_unlabeled_files,
+    )
+
+    csv = tmp_path / "CollectedData.csv"
+    data_dir = PureWindowsPath("C:/project")
+    frame = data_dir / "labeled-data" / "sess1_top" / "img00000042.png"
+    assert str(frame.relative_to(data_dir)) == r"labeled-data\sess1_top\img00000042.png"
+
+    _update_unlabeled_files(
+        data_dir,  # type: ignore[arg-type]
+        {"top": {42: frame}},  # type: ignore[dict-item]
+        MVLabelFile(views=[LabelFileView(csvPath=csv, viewName="top")]),
+    )
+
+    lines = csv.with_suffix(".unlabeled.jsonl").read_text().splitlines()
+    assert [json.loads(line)["frame_path"] for line in lines] == [
+        "labeled-data/sess1_top/img00000042.png"
+    ]

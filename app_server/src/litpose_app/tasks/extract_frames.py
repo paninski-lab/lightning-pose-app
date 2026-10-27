@@ -357,7 +357,8 @@ def _update_unlabeled_files(
             )
         for frame_idx in result[view_name]:
             e = LabelingQueueEntry(
-                frame_path=str(result[view_name][frame_idx].relative_to(data_dir)),
+                # as_posix: str() gives \ on Windows, which breaks the project on other OSes.
+                frame_path=result[view_name][frame_idx].relative_to(data_dir).as_posix(),
                 predictions=predictions.get(view_name),
             )
             entriesToAdd[view_name].append(e)

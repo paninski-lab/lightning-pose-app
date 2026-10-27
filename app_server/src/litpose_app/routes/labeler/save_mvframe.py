@@ -24,7 +24,7 @@ from litpose_app.deps import ProjectInfoGetter
 from litpose_app.project_cache import drop_file_check, relative_data_path
 from litpose_app.utils.file_transaction import replace_files
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
-from litpose_app.utils.mv_label_file import label_files_lock
+from litpose_app.utils.mv_label_file import label_files_lock, queue_frame_path
 
 router = APIRouter()
 lock = asyncio.Lock()
@@ -201,7 +201,12 @@ def _stage_sidecar_removal(vr: SaveFrameViewRequest, stamp: int) -> Path | None:
     lines = [
         json.loads(line) for line in sidecar.read_text().splitlines() if line.strip()
     ]
-    kept = [line for line in lines if line.get("frame_path") != vr.indexToChange]
+    saved = queue_frame_path(vr.indexToChange)
+    kept = [
+        line
+        for line in lines
+        if queue_frame_path(str(line.get("frame_path", ""))) != saved
+    ]
     if len(kept) == len(lines):
         return None
     tmp = sidecar.with_name(f"{sidecar.name}.{stamp}.tmp")

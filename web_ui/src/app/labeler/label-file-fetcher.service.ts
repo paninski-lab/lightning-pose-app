@@ -114,7 +114,8 @@ class LabelFileFetcherService {
             > = _.keyBy(line.predictions?.predictions, 'keypoint_name');
             return {
               viewName: r!.lfv.viewName,
-              imgPath: line.frame_path,
+              // Older versions wrote \ separators into queues on Windows.
+              imgPath: line.frame_path.replace(/\\/g, '/'),
               keypoints: allKeypoints.map((keypointName) => {
                 if (predictionsByKeypoint[keypointName]) {
                   return {

@@ -267,3 +267,45 @@ def test_extract_frames_queue_update_waits_for_a_save(tmp_path: Path):
     worker.join(timeout=5)
     assert done.is_set()
     assert csv.with_suffix(".unlabeled.jsonl").exists()
+
+
+def test_queue_with_backslash_and_slash_entries_counts_the_frame_once(tmp_path: Path):
+    """A frame queued with \\ (written on Windows) and requested again with / is not added
+    twice, and saving it removes every spelling from the queue."""
+    csv = tmp_path / "CollectedData.csv"
+    sidecar = csv.with_suffix(".unlabeled.jsonl")
+    windows = {"frame_path": "labeled-data\\v\\img1.png", "predictions": None}
+    other = {"frame_path": "labeled-data/v/img2.png", "predictions": None}
+    sidecar.write_text(json.dumps(windows) + "\n" + json.dumps(other) + "\n")
+    before = sidecar.read_bytes()
+
+    add_to_unlabeled_sidecar_files(
+        [
+            AddToUnlabeledFileView(
+                csvPath=csv,
+                entriesToAdd=[LabelingQueueEntry(frame_path="labeled-data/v/img1.png")],
+            )
+        ]
+    )
+    assert sidecar.read_bytes() == before
+
+    csv.write_text("header\n")
+    request = SaveMvFrameRequest(
+        projectKey="p",
+        views=[
+            SaveFrameViewRequest(
+                csvPath=csv,
+                indexToChange="labeled-data/v/img1.png",
+                changedKeypoints=[],
+            )
+        ],
+    )
+    request.unlabeledQueueDeletionOnly = True
+    _save_mvframe_sync(request, tmp_path)
+    remaining = [json.loads(line) for line in sidecar.read_text().splitlines() if line]
+    assert remaining == [other]
+
+
+def test_queue_entry_reads_backslashes_as_slashes():
+    entry = LabelingQueueEntry(frame_path="labeled-data\\v\\img1.png")
+    assert entry.frame_path == "labeled-data/v/img1.png"
