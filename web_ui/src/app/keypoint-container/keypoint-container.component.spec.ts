@@ -195,13 +195,21 @@ describe('KeypointContainerComponent markers', () => {
   });
 });
 
-describe('KeypointContainerComponent label outline', () => {
-  it('scales the outline with the label size', async () => {
+describe('KeypointContainerComponent labels', () => {
+  let fixture: ComponentFixture<KeypointContainerComponent>;
+  let fontSize: ReturnType<typeof signal<number>>;
+
+  beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [KeypointContainerComponent],
     }).compileComponents();
-    const fixture = TestBed.createComponent(KeypointContainerComponent);
-    const fontSize = signal(2);
+    fixture = TestBed.createComponent(KeypointContainerComponent);
+    fontSize = signal(2);
+    const host = fixture.nativeElement as HTMLElement;
+    host.style.display = 'block';
+    host.style.width = '200px';
+    host.style.height = '100px';
+    document.body.appendChild(host);
     fixture.componentRef.setInput('labelerViewOptions', {
       keypointSize: signal(10),
       keypointOpacity: signal(1),
@@ -209,18 +217,51 @@ describe('KeypointContainerComponent label outline', () => {
       keypointLabelFontSize: fontSize,
       enablePixelGrid: signal(false),
     } as unknown as LabelerViewOptionsService);
-    fixture.componentRef.setInput('keypointModels', [keypoint('nose', 10, 20)]);
+    fixture.componentRef.setInput('keypointModels', [keypoint('L1A', 40, 30)]);
     fixture.detectChanges();
+  });
 
-    const span: HTMLElement =
-      fixture.nativeElement.querySelector('.keypoint-label');
-    const strokeWidth = () =>
-      parseFloat(
-        getComputedStyle(span).getPropertyValue('-webkit-text-stroke-width'),
-      );
+  afterEach(() => (fixture.nativeElement as HTMLElement).remove());
+
+  const label = (): SVGTextElement =>
+    fixture.nativeElement.querySelector(
+      '[data-testid="keypoint-labels"] text[data-kp-id="L1A"]',
+    );
+
+  async function settle() {
+    // ResizeObserver reports the frame, then the label is measured and placed.
+    for (let i = 0; i < 5; i++) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      fixture.detectChanges();
+    }
+  }
+
+  it('draws names as SVG text with a round-joined outline under the letters', () => {
+    // An HTML text stroke drew pointed spikes at sharp letter corners.
+    const style = getComputedStyle(label());
+    expect(label().textContent!.trim()).toBe('L1A');
+    expect(style.strokeLinejoin).toBe('round');
+    // Chrome reports `stroke fill` as `stroke`: stroke first, then fill.
+    expect(style.paintOrder).toBe('stroke');
+    expect(style.stroke).toBe('rgb(0, 0, 0)');
+  });
+
+  it('scales the outline with the label size', () => {
+    const strokeWidth = () => parseFloat(getComputedStyle(label()).strokeWidth);
     expect(strokeWidth()).toBeCloseTo(0.5, 5);
     fontSize.set(8);
     fixture.detectChanges();
     expect(strokeWidth()).toBeCloseTo(2, 5);
+  });
+
+  it('places the name at the lower-right of its marker, in image coordinates', async () => {
+    await settle();
+    expect(label().style.visibility).toBe('');
+    const box = label().getBBox();
+    // Marker at (40, 30), radius 5: the name starts right of and below its center.
+    expect(box.x).toBeGreaterThan(40);
+    expect(box.y).toBeGreaterThan(30);
+    expect(box.x).toBeLessThan(46);
+    expect(box.y).toBeLessThan(36);
   });
 });

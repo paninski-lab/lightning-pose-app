@@ -23,15 +23,12 @@ const CORNERS: LabelCorner[] = ['se', 'ne', 'sw', 'nw'];
 // A 1px graze is not an overlap, so jitter does not flip a corner.
 const OVERLAP_SLACK_PX = 2;
 
-/** Label outline width as a fraction of the font size (2px at the default 8px). */
-export const LABEL_STROKE_EM = 0.25;
+/** Width of the label outline outside the letters, as a fraction of the font size (1px at 8px). */
+export const LABEL_OUTLINE_EM = 0.125;
 
-/**
- * Outline that shows outside the letters: paint-order draws the stroke under
- * the fill, so half its width is outside the ink.
- */
-export function labelStrokePad(fontSizePx: number): number {
-  return (fontSizePx * LABEL_STROKE_EM) / 2;
+/** Outline width outside the letters, in px, for padding a label's placement box. */
+export function labelOutlinePad(fontSizePx: number): number {
+  return fontSizePx * LABEL_OUTLINE_EM;
 }
 
 interface Box {

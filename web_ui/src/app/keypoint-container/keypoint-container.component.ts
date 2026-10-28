@@ -32,7 +32,8 @@ import {
 import {
   LabelCorner,
   LabelFrame,
-  labelStrokePad,
+  LABEL_OUTLINE_EM,
+  labelOutlinePad,
   placeKeypointLabels,
 } from './keypoint-label-placement';
 
@@ -189,10 +190,12 @@ export class KeypointContainerComponent {
       const root = this.containerDiv().nativeElement as HTMLElement;
       const next = new Map(measured);
       let complete = true;
-      for (const span of root.querySelectorAll<HTMLElement>('.keypoint-label')) {
-        const id = span.dataset['kpId'];
+      for (const text of root.querySelectorAll<SVGTextElement>(
+        'text.keypoint-label',
+      )) {
+        const id = text.dataset['kpId'];
         if (!id || !ids.includes(id)) continue;
-        const ink = inkBox(span, labelStrokePad(this.keypointLabelFontSize()));
+        const ink = inkBox(text, labelOutlinePad(this.keypointLabelFontSize()));
         if (!ink) {
           complete = false;
           continue;
@@ -270,22 +273,37 @@ export class KeypointContainerComponent {
     return placed.offsets;
   });
 
-  /** Span top/left. Empty until the frame and every ink box are known. */
-  protected labelSpanOffsets = computed(() => {
+  /**
+   * SVG text x/y (baseline start) in image coordinates. Placement offsets are
+   * from the marker's top-left corner. Empty until the frame and every ink box are known.
+   */
+  protected labelAnchors = computed(() => {
     const placed = this.labelOffsets();
     const measured = this.labelInk();
-    const pad = labelStrokePad(this.keypointLabelFontSize());
-    const spans = new Map<string, { top: number; left: number }>();
+    const pad = labelOutlinePad(this.keypointLabelFontSize());
+    const half = this.keypointSize() / 2;
+    const positions = new Map<string, Point>();
+    for (const kp of this.keypointModels()) {
+      const p = kp.position();
+      if (p) positions.set(kp.id, p);
+    }
+    const anchors = new Map<string, { x: number; y: number }>();
     for (const [id, offset] of placed) {
       const ink = measured.get(id);
-      if (!ink) continue;
-      spans.set(id, {
-        left: offset.left + pad - ink.insetLeft,
-        top: offset.top + pad - ink.insetTop,
+      const p = positions.get(id);
+      if (!ink || !p) continue;
+      anchors.set(id, {
+        x: p.x - half + offset.left + pad - ink.insetLeft,
+        y: p.y - half + offset.top + pad - ink.insetTop,
       });
     }
-    return spans;
+    return anchors;
   });
+
+  /** Centred stroke, so twice the width that shows outside the letters. */
+  protected labelStrokeWidth = computed(
+    () => 2 * LABEL_OUTLINE_EM * this.keypointLabelFontSize(),
+  );
 
   // Notifies parent of the user's intent to change keypoint position.
   keypointUpdated = output<{ kp: string; position: Point }>();
@@ -428,25 +446,32 @@ export class KeypointContainerComponent {
   }
 }
 
-function inkBox(span: HTMLElement, strokePad: number): {
+/**
+ * Text box of a label in image coordinates (getBBox ignores the zoom), padded
+ * by the outline, and where it sits relative to the text's x/y.
+ */
+function inkBox(
+  text: SVGTextElement,
+  outlinePad: number,
+): {
   w: number;
   h: number;
   insetLeft: number;
   insetTop: number;
 } | null {
-  if (span.offsetWidth === 0 || span.offsetHeight === 0) return null;
-  const spanRect = span.getBoundingClientRect();
-  if (spanRect.width === 0) return null;
-  const range = document.createRange();
-  range.selectNodeContents(span);
-  const inkRect = range.getBoundingClientRect();
-  if (inkRect.width === 0 || inkRect.height === 0) return null;
-  const scale = spanRect.width / span.offsetWidth;
-  if (!Number.isFinite(scale) || scale === 0) return null;
+  let box: DOMRect;
+  try {
+    box = text.getBBox();
+  } catch {
+    return null;
+  }
+  if (box.width === 0 || box.height === 0) return null;
+  const x = text.x.baseVal.length ? text.x.baseVal.getItem(0).value : 0;
+  const y = text.y.baseVal.length ? text.y.baseVal.getItem(0).value : 0;
   return {
-    w: inkRect.width / scale + strokePad * 2,
-    h: inkRect.height / scale + strokePad * 2,
-    insetLeft: (inkRect.left - spanRect.left) / scale,
-    insetTop: (inkRect.top - spanRect.top) / scale,
+    w: box.width + outlinePad * 2,
+    h: box.height + outlinePad * 2,
+    insetLeft: box.x - x,
+    insetTop: box.y - y,
   };
 }

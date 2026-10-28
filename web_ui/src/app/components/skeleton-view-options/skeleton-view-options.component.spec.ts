@@ -27,6 +27,19 @@ describe('SkeletonViewOptionsComponent', () => {
     expect(sliders().length).toBe(2);
   });
 
+  it('names the sliders Skeleton thickness and Skeleton opacity', () => {
+    fixture.componentRef.setInput('showSkeleton', true);
+    fixture.detectChanges();
+    expect(sliders().map((s) => s.getAttribute('aria-label'))).toEqual([
+      'Skeleton thickness',
+      'Skeleton opacity',
+    ]);
+    const text: string = fixture.nativeElement.textContent;
+    expect(text).toContain('Skeleton thickness');
+    expect(text).toContain('Skeleton opacity');
+    expect(text).not.toContain('Bone');
+  });
+
   it('disables the switch and hides the sliders when the skeleton is invalid', () => {
     fixture.componentRef.setInput('showSkeleton', true);
     fixture.componentRef.setInput('invalid', true);
