@@ -94,7 +94,7 @@ def get_mv_auto_labels(
     """Triangulate each keypoint across camera views and return reprojected 2-D positions."""
     # Read the toml files for this session.
     project: Project = project_info_getter(request.projectKey)
-    camera_group_toml_path = find_calibration_file(request.sessionKey, project, config)
+    camera_group_toml_path = find_calibration_file(request.sessionKey, project)
     if camera_group_toml_path is None:
         raise FileNotFoundError(
             f"Could not find calibration file for session {request.sessionKey}"

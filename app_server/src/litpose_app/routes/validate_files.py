@@ -14,6 +14,10 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from litpose_app import deps
+from litpose_app.calibration_paths import (
+    project_calibration_path,
+    session_calibration_files,
+)
 from litpose_app.config import Config
 from litpose_app.datatypes import Project
 from litpose_app.deps import ProjectInfoGetter
@@ -454,15 +458,10 @@ def _validate_calibrations(
     data_dir = project.paths.data_dir
     views = list(project.config.view_names)
     context = _check_context(project)
-    paths: list[Path] = []
-    root_file = data_dir / "calibration.toml"
-    if root_file.is_file():
-        paths.append(root_file)
-    cal_dir = data_dir / "calibrations"
-    if cal_dir.is_dir():
-        for child in sorted(cal_dir.iterdir(), key=lambda p: p.name.lower()):
-            if child.is_file() and child.suffix == ".toml":
-                paths.append(child)
+    project_file = project_calibration_path(data_dir)
+    paths = ([project_file] if project_file.is_file() else []) + session_calibration_files(
+        data_dir
+    )
     items: list[FileCheck] = []
     records: dict[str, dict] = {}
     for path in paths:
