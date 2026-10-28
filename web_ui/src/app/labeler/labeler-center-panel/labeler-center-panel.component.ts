@@ -145,21 +145,35 @@ export class LabelerCenterPanelComponent implements OnChanges {
       }
     }
 
-    // Unlabeled frames should start from the first view and keypoint.
-    if (
-      changes['frame'] &&
-      this.frame() &&
-      mvf(this.frame()!).isFromUnlabeledSet
-    ) {
-      this._selectedView.set(null);
-      this.selectFirstKeypoint();
+    // Unlabeled frames, and a frame reached by Next or Save and next from
+    // the last view, start from the first view.
+    if (changes['frame'] && this.frame()) {
+      const advanced = this.openNextFrameOnFirstView;
+      this.openNextFrameOnFirstView = false;
+      if (advanced || mvf(this.frame()!).isFromUnlabeledSet) {
+        this._selectedView.set(null);
+        this.selectKeypointForView();
+      }
     }
   }
 
-  private selectFirstKeypoint() {
-    this.selectedKeypoint.set(
-      this.selectedFrameView()?.keypoints[0]?.keypointName ?? null,
-    );
+  /** Set when Next or Save and next leaves the last view, so the next frame opens on its first view. */
+  private openNextFrameOnFirstView = false;
+
+  /**
+   * Selects the keypoint for a newly shown view: the same keypoint when
+   * "Keep selected keypoint" is on and the view has it, otherwise the first.
+   */
+  private selectKeypointForView() {
+    const keypoints = this.selectedFrameView()?.keypoints ?? [];
+    const current = this.selectedKeypoint();
+    if (
+      this.viewOptions.keepSelectedKeypoint() &&
+      keypoints.some((kp) => kp.keypointName === current)
+    ) {
+      return;
+    }
+    this.selectedKeypoint.set(keypoints[0]?.keypointName ?? null);
   }
 
   protected sessionKey = computed(() => {
@@ -228,7 +242,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
 
   handleViewClickFromFilmstrip(viewName: string) {
     this._selectedView.set(viewName);
-    this.selectFirstKeypoint();
+    this.selectKeypointForView();
   }
 
   // Set to a random value if you need to bust cache of computed signals.
@@ -337,12 +351,21 @@ export class LabelerCenterPanelComponent implements OnChanges {
     );
   });
 
-  protected hasNextView = computed(() => {
+  protected hasNextView = computed(() => !!this.nextFrameView());
+
+  private nextFrameView = computed((): FrameView | null => {
     const frame = this.frame();
     const frameView = this.selectedFrameView();
-    if (!frame || !frameView) return false;
-    return frame.views[frame.views.indexOf(frameView) + 1] !== undefined;
+    if (!frame || !frameView) return null;
+    return frame.views[frame.views.indexOf(frameView) + 1] ?? null;
   });
+
+  /** Next is active when there is another view of this frame or another frame. */
+  protected isNextDisabled = computed(
+    () =>
+      (!this.hasNextView() && !this.hasNextFrame()) ||
+      this.disableInteractions(),
+  );
 
   protected isSaveAndNextDisabled = computed(() => {
     return (
@@ -365,8 +388,16 @@ export class LabelerCenterPanelComponent implements OnChanges {
     return 'Remove frame from label file';
   }
 
+  /** Shows the next view of this frame, or the next frame from the last view. Does not save. */
   protected handleNext() {
-    if (!this.hasNextFrame() || this.disableInteractions()) return;
+    if (this.isNextDisabled()) return;
+    const nextView = this.nextFrameView();
+    if (nextView) {
+      this._selectedView.set(nextView.viewName);
+      this.selectKeypointForView();
+      return;
+    }
+    this.openNextFrameOnFirstView = true;
     this.nextFrame.emit();
   }
 
@@ -404,13 +435,15 @@ export class LabelerCenterPanelComponent implements OnChanges {
     }
 
     this.isSaving.set(true);
-    const frameView = this.selectedFrameView()!;
-    const nextFrameView = frame.views[frame.views.indexOf(frameView) + 1];
+    const nextFrameView = this.nextFrameView();
 
     this.sessionService
       .saveMVFrame(labelFile, frame, deletion)
       .then(() => {
         this.isSaving.set(false);
+        if (shouldContinue && !nextFrameView) {
+          this.openNextFrameOnFirstView = true;
+        }
         this.saved.emit({
           labelFile,
           frame,
@@ -423,7 +456,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
         if (shouldContinue && nextFrameView) {
           this._selectedView.set(nextFrameView.viewName);
         }
-        this.selectFirstKeypoint();
+        this.selectKeypointForView();
       })
       .catch((error) => {
         this.isSaving.set(false);

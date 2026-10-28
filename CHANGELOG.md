@@ -94,6 +94,14 @@ Tests: `skeleton-view-options.component.spec.ts` (the slider names and labels, n
 
 Tests: `labeler-view-options.service.spec.ts` (with nothing saved, opacity starts at 0.5 and Reset returns to 0.5; a saved opacity is kept).
 
+* **Labeler Next:** In a multiview project, **Next →** shows the next view of the same frame, and moves to the next frame only from the last view, like **Save and next**. It still does not save. When Next or Save and next moves on from the last view, the next frame opens on its first view (a labeled frame used to open on the view you were on). Single-view projects work as before. Closes #152.
+
+Tests: `labeler-center-panel.component.spec.ts` "Next and keypoint selection" (Next walks top → side → front, then asks for the next frame, which opens on its first view, with no save; from a single view it asks for the next frame; it is inactive on the last view of the last frame; Save and next from the last view opens the next frame on its first view).
+
+* **Labeler: Keep selected keypoint.** A new **Keep selected keypoint** switch in View options. When on, the selected keypoint stays selected when you change view (filmstrip, Next, Save and next) and when the next frame opens, including a frame from the remaining list, so you can label one body part through every view. Off by default (the first keypoint is selected, as before). The setting is remembered in the browser. Closes #153.
+
+Tests: `labeler-center-panel.component.spec.ts` "selects the first keypoint on a new view unless Keep selected keypoint is on" (off: the first keypoint after Next; on: the same keypoint on the next view and on a remaining frame); `labeler-view-options.service.spec.ts` "keep selected keypoint" (off by default, saved when turned on, on again after a reload).
+
 ### [2.4.2.3] — 2026-10-15
 
 * **File manager:** Validation results and video probe results are kept in `.project-cache` in the project data directory. Opening a file panel shows the last check when the file is unchanged. A changed file, a deleted frame, or a keypoint change is not shown as OK until Validate runs again. Checking a video skips ffprobe when the file is unchanged, and a replaced video is not treated as all-intra from the old result.

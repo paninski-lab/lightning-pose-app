@@ -36,3 +36,33 @@ describe('LabelerViewOptionsService keypoint opacity', () => {
     expect(options.keypointOpacity()).toBe(0.2);
   });
 });
+
+describe('LabelerViewOptionsService keep selected keypoint', () => {
+  const KEY = 'labeler-view-options.keepSelectedKeypoint';
+  let saved: string | null;
+
+  beforeEach(() => {
+    saved = localStorage.getItem(KEY);
+    localStorage.removeItem(KEY);
+    TestBed.configureTestingModule({
+      providers: [LabelerViewOptionsService],
+    });
+  });
+
+  afterEach(() => {
+    if (saved === null) localStorage.removeItem(KEY);
+    else localStorage.setItem(KEY, saved);
+  });
+
+  it('is off by default and comes back on after a reload once turned on', () => {
+    const options = TestBed.inject(LabelerViewOptionsService);
+    expect(options.keepSelectedKeypoint()).toBeFalse();
+
+    options.keepSelectedKeypoint.set(true);
+    TestBed.tick();
+    expect(localStorage.getItem(KEY)).toBe('true');
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [LabelerViewOptionsService] });
+    expect(TestBed.inject(LabelerViewOptionsService).keepSelectedKeypoint()).toBeTrue();
+  });
+});

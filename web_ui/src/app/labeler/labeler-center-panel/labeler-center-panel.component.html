@@ -193,13 +193,15 @@
             <span class="material-icons">arrow_forward</span>
           </button>
         </div>
-        <button
-          class="btn btn-soft btn-primary w-full mt-2"
-          [class.btn-disabled]="!hasNextFrame() || disableInteractions()"
-          (click)="handleNext()"
-        >
-          Next →
-        </button>
+        <div class="tooltip tooltip-bottom w-full" data-tip="Next view, or the next frame from the last view. Does not save.">
+          <button
+            class="btn btn-soft btn-primary w-full mt-2"
+            [class.btn-disabled]="isNextDisabled()"
+            (click)="handleNext()"
+          >
+            Next →
+          </button>
+        </div>
         <button
           class="btn btn-soft btn-primary w-full mt-2"
           [class.btn-disabled]="!canRevert()"
@@ -623,6 +625,21 @@
               <input
                 type="checkbox"
                 [(ngModel)]="viewOptions.enableKeypointLabels"
+                class="toggle toggle-sm"
+              />
+            </div>
+            <div class="flex items-center gap-2 pt-2">
+              <span class="material-icons text-sm!">push_pin</span>
+              Keep selected keypoint
+            </div>
+            <div
+              class="pl-2 flex items-center tooltip tooltip-left w-fit"
+              data-tip="Keep the same keypoint selected when the view or frame changes"
+            >
+              <input
+                type="checkbox"
+                aria-label="Keep selected keypoint"
+                [(ngModel)]="viewOptions.keepSelectedKeypoint"
                 class="toggle toggle-sm"
               />
             </div>
