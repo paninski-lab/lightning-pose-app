@@ -35,15 +35,15 @@ The Viewer frame and time fields stay custom (`.jump-field`). DaisyUI `input` is
 
 ## Tests
 
-Write or update tests in the same change as the behavior. A UI change that renames a control, tip, or shortcut is not done until the spec asserts the current markup and behavior, not the old copy.
+Write or update tests in the same change as the behavior. A spec should fail when something a user does breaks, not when wording changes. A control renamed in its role or `aria-label`, or a changed shortcut, needs the spec updated to match. A change to tip, button, or help wording alone needs no test.
 
 - Backend: `cd app_server && pytest --ignore=tests/test_predict_wrapper.py`. Skip `test_predict_wrapper.py` unless you mean to; it needs a GPU-oriented env and is excluded from CI.
 - UI you touched: `cd web_ui && npx ng lint` and a targeted `npx ng test --no-watch --browsers=ChromeHeadless --include=<spec>`. Run the full UI suite when the change is shared (a component under `components/`, global styles, or keyboard/routing used by more than one page).
-- Prefer specs next to the code (`*.spec.ts`). Assert what a user can do: clicks, keyboard, typed frame/time, slider bounds. Query by role or `aria-label`, and assert `data-tip` text when the tip is part of the change.
+- Prefer specs next to the code (`*.spec.ts`). Assert what a user can do: clicks, keyboard, typed frame/time, slider bounds. Query by role or `aria-label`. Do not assert `data-tip` text, button copy, or class lists unless that text or class is the fix.
 - Delete a spec that only covered a method which moved to a child. Do not keep a parent test alive with stubs for behavior the parent no longer owns. For a parent with heavy children, stub those children (`TestBed.overrideComponent`), as in `labeler-page.component.spec.ts`.
 - Components that use `ProjectInfoService` must mock it. Do not let tests hit the real router resolver or RPC client.
 
-When you describe the change in [CHANGELOG.md](CHANGELOG.md), [BUGS.md](BUGS.md), or a `feature_plans/*.md` note, name the test that covers it (file, and the behavior it checks). A user-facing bullet without a corresponding test note is incomplete.
+When you describe the change in [CHANGELOG.md](CHANGELOG.md), [BUGS.md](BUGS.md), or a `feature_plans/*.md` note, name the test that covers it (file, and the behavior it checks). A user-facing bullet without a corresponding test note is incomplete. For a wording-only change, the note says so ("wording only, no test").
 
 ## Tools
 
@@ -118,7 +118,7 @@ Lightning Pose App's UI (`web_ui/`) is built on modern Angular (v20+), Tailwind 
 
 - **Signal Inputs in Specs**: Set signal inputs using `fixture.componentRef.setInput('propName', value)`.
 - **Mocks & Isolation**: Mock `ProjectInfoService`, `RpcService`, and `SessionService` in unit tests. Never make live network or RPC calls in tests.
-- **User-Centric Assertions**: Query elements by accessibility role, label, or data attribute. Assert actual visible text, active classes, disabled states, and emitted outputs.
+- **User-Centric Assertions**: Query elements by accessibility role, label, or data attribute. Assert disabled states, emitted outputs, and keyboard behavior. Assert visible text or classes only when they are the behavior (for example an error message or the `text-error` state).
 
 ## Curated Angular References
 
