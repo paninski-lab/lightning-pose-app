@@ -18,11 +18,7 @@ class Config(BaseModel):
     # Name of the directory in data_dir where extract frames will output to
     LABELED_DATA_DIRNAME: str = "labeled-data"
 
-    # Name of the directory in data_dir containing session-specific calibration files
-    CALIBRATIONS_DIRNAME: str = "calibrations"
-    CALIBRATION_BACKUPS_DIRNAME: str = "calibration_backups"
-
-    GLOBAL_CALIBRATION_PATH: str = "calibration.toml"
+    # Calibration file locations are defined in calibration_paths.py.
 
     ###
     # Frame extraction config

@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from litpose_app import deps
+from litpose_app.calibration_paths import calibration_backup_path
 from litpose_app.config import Config
 from litpose_app.datatypes import Project
 from litpose_app.deps import ProjectInfoGetter
@@ -97,7 +98,7 @@ def bundle_adjust(
 
 def _bundle_adjust_impl(request: BundleAdjustRequest, project: Project, config: Config) -> dict:
     """Load calibration, read label CSVs, run bundle adjustment, and return a result dict."""
-    camera_group_toml_path = find_calibration_file(request.sessionKey, project, config)
+    camera_group_toml_path = find_calibration_file(request.sessionKey, project)
     if camera_group_toml_path is None:
         raise FileNotFoundError(
             f"Could not find calibration file for {request.sessionKey}"
@@ -178,15 +179,13 @@ def save_calibration_for_session(
         f.flush()
         CameraGroup.load(f.name)
 
-    session_level_calibration_path = get_session_level_calibration_path(request.sessionKey, project, config)
+    session_level_calibration_path = get_session_level_calibration_path(
+        request.sessionKey, project
+    )
 
     if session_level_calibration_path.exists():
-        backup_path = (
-                project.paths.data_dir
-                / config.CALIBRATIONS_DIRNAME
-                / "backups"
-                / session_level_calibration_path.name
-                .replace(".toml",f"_og-{datetime.now().strftime('%Y%m%d-%H%M%S')}.toml")
+        backup_path = calibration_backup_path(
+            project.paths.data_dir, request.sessionKey, datetime.now()
         )
         backup_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(session_level_calibration_path, backup_path)

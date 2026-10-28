@@ -4,28 +4,24 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ...config import Config
+from ...calibration_paths import project_calibration_path, session_calibration_path
 from ...datatypes import Project
 
 
-def get_session_level_calibration_path(
-    session_key: str, project: Project, config: Config
-) -> Path:
+def get_session_level_calibration_path(session_key: str, project: Project) -> Path:
     """Return the expected path for the session-level calibration TOML file."""
-    return project.paths.data_dir / config.CALIBRATIONS_DIRNAME / f"{session_key}.toml"
+    return session_calibration_path(project.paths.data_dir, session_key)
 
 
-def find_calibration_file(
-    session_key: str, project: Project, config: Config
-) -> None | Path:
-    """Return the session-level calibration path if it exists, falling back to the global one."""
-    session_level_path = get_session_level_calibration_path(session_key, project, config)
+def find_calibration_file(session_key: str, project: Project) -> None | Path:
+    """Return the session calibration if it exists, else the project calibration, as LP does."""
+    session_level_path = get_session_level_calibration_path(session_key, project)
     if session_level_path.is_file():
         return session_level_path
 
-    global_calibrations_path = project.paths.data_dir / config.GLOBAL_CALIBRATION_PATH
-    if global_calibrations_path.is_file():
-        return global_calibrations_path
+    project_path = project_calibration_path(project.paths.data_dir)
+    if project_path.is_file():
+        return project_path
 
     return None
 

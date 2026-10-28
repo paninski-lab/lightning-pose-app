@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import re
 import shutil
 import tempfile
 from pathlib import Path
@@ -13,6 +12,12 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from litpose_app import deps
+from litpose_app.calibration_paths import (
+    is_session_calibration,
+    project_calibration_path,
+    session_calibration_filename_issue,
+    session_calibration_path,
+)
 from litpose_app.config import Config
 from litpose_app.datatypes import Project
 from litpose_app.deps import ProjectInfoGetter
@@ -29,8 +34,6 @@ from litpose_app.routes.validate_files import (
 )
 
 router = APIRouter()
-_SESSION_STEM_RE = re.compile(r"^[A-Za-z0-9_.\-]+$")
-_GLOBAL_CALIBRATION_PATH = Config().GLOBAL_CALIBRATION_PATH
 _CalibrationDestination = Literal["project", "session"]
 
 
@@ -187,31 +190,19 @@ def rename_calibration_file(
     """Rename calibrations/<session>.toml. The project file calibration.toml stays put."""
     project = project_info_getter(request.projectKey)
     data_dir = project.paths.data_dir.resolve()
-    cal_dir = data_dir / "calibrations"
     src = Path(request.path).resolve()
-    if not src.is_file() or src.parent != cal_dir:
+    if not is_session_calibration(data_dir, src):
         raise HTTPException(
             status_code=400,
             detail="Choose a calibration file inside calibrations/.",
         )
+    issue = session_calibration_filename_issue(request.newFilename)
+    if issue:
+        raise HTTPException(status_code=400, detail=issue)
     new_name = request.newFilename.strip()
-    if (
-        not new_name
-        or new_name in {".", ".."}
-        or "/" in new_name
-        or "\\" in new_name
-        or Path(new_name).suffix.lower() != ".toml"
-    ):
-        raise HTTPException(status_code=400, detail="Enter a session filename ending in .toml.")
-    stem = Path(new_name).stem
-    if not stem or not _SESSION_STEM_RE.fullmatch(stem):
-        raise HTTPException(
-            status_code=400,
-            detail="Session id may use letters, digits, and . _ -.",
-        )
     if new_name == src.name:
         return RenamePathResponse(ok=True, path=str(src))
-    dest = cal_dir / new_name
+    dest = session_calibration_path(data_dir, Path(new_name).stem)
     if dest.exists():
         raise HTTPException(status_code=409, detail="A file with that name already exists.")
     old_rel = relative_data_path(data_dir, src)
@@ -241,36 +232,26 @@ class ImportCalibrationFileRequest(BaseModel):
     overwrite: bool = False
 
 
-def _calibration_filename_issue(filename: str) -> str | None:
-    """The stem is the session id and uses the same character rule as rename."""
-    name = filename.strip()
-    if (
-        not name
-        or name in {".", ".."}
-        or "/" in name
-        or "\\" in name
-        or Path(name).suffix.lower() != ".toml"
-    ):
-        return "Enter a session filename ending in .toml."
-    stem = Path(name).stem
-    if not stem or not _SESSION_STEM_RE.fullmatch(stem):
-        return "Session id may use letters, digits, and . _ -."
-    return None
+def _session_calibration_dest(project: Project, filename: str) -> Path:
+    """calibrations/<session>.toml for a filename whose stem is the session id.
+
+    Raises 400 when the filename breaks the session id rule.
+    """
+    issue = session_calibration_filename_issue(filename)
+    if issue:
+        raise HTTPException(status_code=400, detail=issue)
+    return session_calibration_path(project.paths.data_dir, Path(filename.strip()).stem)
 
 
-def _new_calibration_path(data_dir: Path, filename: str) -> Path:
+def _new_calibration_path(project: Project, filename: str) -> Path:
     """Return calibrations/<filename>, creating the folder when it is missing.
 
     An existing destination raises 409 before the folder is created for a new name.
     """
-    issue = _calibration_filename_issue(filename)
-    if issue:
-        raise HTTPException(status_code=400, detail=issue)
-    dest_dir = data_dir / "calibrations"
-    dest = dest_dir / Path(filename.strip()).name
+    dest = _session_calibration_dest(project, filename)
     if dest.exists():
         raise HTTPException(status_code=409, detail="A file with that name already exists.")
-    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest.parent.mkdir(parents=True, exist_ok=True)
     return dest
 
 
@@ -323,7 +304,7 @@ def _import_one_calibration(
     if destination == "project":
         if Path(filename).suffix.lower() != ".toml":
             raise HTTPException(status_code=400, detail="Choose a .toml file.")
-        dest = data_dir / _GLOBAL_CALIBRATION_PATH
+        dest = project_calibration_path(data_dir)
         if overwrite:
             _replace_file(dest, source)
         elif dest.exists():
@@ -338,13 +319,10 @@ def _import_one_calibration(
             status_code=400, detail="Choose a project file or a session file."
         )
     if overwrite:
-        issue = _calibration_filename_issue(filename)
-        if issue:
-            raise HTTPException(status_code=400, detail=issue)
-        dest = data_dir / "calibrations" / Path(filename.strip()).name
+        dest = _session_calibration_dest(project, filename)
         _replace_file(dest, source)
         return _imported_calibration(project, dest)
-    dest = _new_calibration_path(data_dir, filename)
+    dest = _new_calibration_path(project, filename)
     _copy_into_new_file(dest, source)
     return _imported_calibration(project, dest)
 
