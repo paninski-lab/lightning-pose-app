@@ -18,6 +18,7 @@ import {
   selector: 'app-skeleton-view-options',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    @let unavailable = invalid() || noPairs();
     <div class="flex items-center gap-2 pt-2">
       <svg viewBox="0 0 24 24" class="h-4 w-4" aria-hidden="true">
         <circle cx="5" cy="8" r="2.2" fill="currentColor" />
@@ -38,17 +39,21 @@ import {
     <div class="pl-2 flex items-center">
       <input
         type="checkbox"
-        class="toggle toggle-sm"
+        class="toggle toggle-sm toggle-primary"
         aria-label="Show skeleton"
-        [checked]="invalid() ? false : showSkeleton()"
-        [disabled]="invalid()"
+        [checked]="unavailable ? false : showSkeleton()"
+        [disabled]="unavailable"
         (change)="onToggle($event)"
       />
     </div>
     @if (invalid()) {
       <div class="pl-2 text-error text-xs">Skeleton definition is invalid.</div>
+    } @else if (noPairs()) {
+      <div class="pl-2 opacity-60 text-xs">
+        No skeleton pairs defined. Add them in project settings.
+      </div>
     }
-    @if (showSkeleton() && !invalid()) {
+    @if (showSkeleton() && !unavailable) {
       <div class="flex items-center gap-2 pt-2">
         <span class="material-icons text-sm!">line_weight</span>
         Skeleton thickness
@@ -74,9 +79,11 @@ import {
           <span class="material-icons text-sm!">restart_alt</span>
         </button>
       </div>
-      <div class="pl-2 opacity-60 text-xs">
-        {{ formatThickness(thickness()) }}
-      </div>
+      @if (showValues()) {
+        <div class="pl-2 opacity-60 text-xs">
+          {{ formatThickness(thickness()) }}
+        </div>
+      }
       <div class="flex items-center gap-2 pt-2">
         <span class="material-icons text-sm!">opacity</span>
         Skeleton opacity
@@ -102,7 +109,9 @@ import {
           <span class="material-icons text-sm!">restart_alt</span>
         </button>
       </div>
-      <div class="pl-2 opacity-60 text-xs">{{ opacity() }}</div>
+      @if (showValues()) {
+        <div class="pl-2 opacity-60 text-xs">{{ opacity() }}</div>
+      }
     }
   `,
 })
@@ -116,13 +125,17 @@ export class SkeletonViewOptionsComponent {
   thickness = model(DEFAULT_SKELETON_THICKNESS);
   opacity = model(DEFAULT_SKELETON_OPACITY);
   invalid = input(false);
+  /** The project defines no skeleton pairs: the switch shows off, and the saved setting is left as it was. */
+  noPairs = input(false);
+  /** Show the current thickness and opacity under the sliders (the page's Show slider numbers setting). */
+  showValues = input(true);
   thicknessIsDefault = input(false);
   opacityIsDefault = input(false);
   resetThickness = output<void>();
   resetOpacity = output<void>();
 
   protected onToggle(event: Event) {
-    if (this.invalid()) return;
+    if (this.invalid() || this.noPairs()) return;
     this.showSkeleton.set((event.target as HTMLInputElement).checked);
   }
 

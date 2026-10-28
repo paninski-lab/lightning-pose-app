@@ -114,28 +114,41 @@
         class="app-accordion-title flex justify-between items-center px-2 pb-1"
       >
         <h1>Keypoints</h1>
-        <span class="flex items-center gap-1">
-          @if (frame()) {
-            <!-- Inside the accordion label: stop the click from toggling the panel. -->
-            <button
-              type="button"
-              class="btn btn-ghost btn-xs"
-              aria-label="Clear all keypoints in this view"
-              [disabled]="!canClearView()"
-              (click)="
-                $event.preventDefault();
-                $event.stopPropagation();
-                handleClearView()
-              "
-            >
-              <span class="material-icons text-sm!">clear_all</span>
-              Clear view
-            </button>
-          }
-          <span class="app-accordion-icon"></span>
-        </span>
+        <span class="app-accordion-icon"></span>
       </label>
       <div class="app-accordion-content">
+      @if (frame()) {
+        <!-- Outside the scrolling list so it stays in place. The accordion body
+             clips anything past the panel edges, so the tip opens below,
+             starts at the label's left edge, and is kept narrow. -->
+        <div
+          class="bg-base-100 flex justify-between items-center gap-2 px-2 py-1 border-b border-base-content/10"
+          data-testid="keypoint-tools"
+        >
+          <label
+            class="flex items-center gap-2 cursor-pointer tooltip tooltip-bottom tooltip-start before:max-w-56"
+            data-tip="Keep the selected keypoint when switching views and frames."
+          >
+            <input
+              type="checkbox"
+              aria-label="Keep selected keypoint"
+              [(ngModel)]="viewOptions.keepSelectedKeypoint"
+              class="toggle toggle-xs toggle-primary"
+            />
+            <span class="text-xs">Keep selected</span>
+          </label>
+          <button
+            type="button"
+            class="btn btn-error btn-soft btn-xs"
+            aria-label="Clear values in this view"
+            [disabled]="!canClearView()"
+            (click)="handleClearView()"
+          >
+            <span class="material-icons text-sm!">close</span>
+            Clear values
+          </button>
+        </div>
+      }
       <div class="panel-content overflow-x-hidden overflow-y-auto max-h-100">
         @if (selectedFrameView(); as fv) {
           <ul>
@@ -173,7 +186,11 @@
       @if (frame(); as frame2) {
         @let lbfl = labelFile()!;
         <div class="flex gap-2">
-          <div class="tooltip flex-1" [attr.data-tip]="saveTooltip">
+          <div
+            class="flex-1"
+            [class.tooltip]="!!saveDisabledReason()"
+            [attr.data-tip]="saveDisabledReason() || null"
+          >
             <button
               class="btn btn-soft btn-primary w-full"
               [class.btn-disabled]="isSaveDisabled()"
@@ -198,8 +215,9 @@
           </div>
         </div>
         <div
-          class="tooltip tooltip-bottom w-full"
-          [attr.data-tip]="saveAndContinueTooltip"
+          class="tooltip-bottom w-full"
+          [class.tooltip]="!!saveAndNextDisabledReason()"
+          [attr.data-tip]="saveAndNextDisabledReason() || null"
         >
           <button
             class="btn btn-soft btn-primary w-full mt-2"
@@ -214,8 +232,9 @@
         </div>
         <div class="flex gap-2 mt-2">
           <div
-            class="tooltip tooltip-bottom flex-1"
-            data-tip="Previous view, or the last view of the previous frame. Does not save."
+            class="tooltip-bottom flex-1"
+            [class.tooltip]="!!backDisabledReason()"
+            [attr.data-tip]="backDisabledReason() || null"
           >
             <button
               class="btn btn-soft btn-primary w-full"
@@ -226,8 +245,9 @@
             </button>
           </div>
           <div
-            class="tooltip tooltip-bottom flex-1"
-            data-tip="Next view, or the next frame from the last view. Does not save."
+            class="tooltip-bottom flex-1"
+            [class.tooltip]="!!nextDisabledReason()"
+            [attr.data-tip]="nextDisabledReason() || null"
           >
             <button
               class="btn btn-soft btn-primary w-full"
@@ -238,13 +258,19 @@
             </button>
           </div>
         </div>
-        <button
-          class="btn btn-soft btn-primary w-full mt-2"
-          [class.btn-disabled]="!canRevert()"
-          (click)="handleRevert()"
+        <div
+          class="tooltip-bottom w-full mt-2"
+          [class.tooltip]="!!revertDisabledReason()"
+          [attr.data-tip]="revertDisabledReason() || null"
         >
-          Revert changes ↫
-        </button>
+          <button
+            class="btn btn-soft btn-primary w-full"
+            [class.btn-disabled]="!canRevert()"
+            (click)="handleRevert()"
+          >
+            Revert changes ↫
+          </button>
+        </div>
       }
     </div>
     @if (frame(); as frame2) {
@@ -451,278 +477,309 @@
         </label>
         <div class="overflow-x-hidden overflow-y-auto app-accordion-content">
           <div class="panel-content p-2!">
-            <div class="flex items-center gap-2">
-              <span class="material-icons text-sm!">animation</span>
-              Temporal context
-            </div>
-            <div class="p-2">
-              @let slot = viewOptions.temporalContextIndex();
-              @let playing = viewOptions.isPlayingTemporalContext();
-              <div
-                class="flex flex-col gap-1 w-fit"
-                [class.tooltip]="!!temporalContextUnavailableReason()"
-                [attr.data-tip]="temporalContextUnavailableReason()"
-              >
-                <div class="flex items-center gap-1">
-                  <button
-                    class="btn btn-ghost btn-xs btn-square"
-                    aria-label="Previous context frame"
-                    [disabled]="!hasTemporalContext() || slot === 0"
-                    (click)="viewOptions.stepTemporalContext(-1)"
-                  >
-                    <span class="material-icons">chevron_left</span>
-                  </button>
-                  <button
-                    class="btn btn-soft btn-primary btn-sm btn-square"
-                    [attr.aria-label]="
-                      playing ? 'Pause temporal context' : 'Play temporal context'
-                    "
-                    [disabled]="!hasTemporalContext()"
-                    (click)="viewOptions.toggleTemporalContextPlayback()"
-                  >
-                    <span class="material-icons">{{
-                      playing ? 'pause' : 'play_arrow'
-                    }}</span>
-                  </button>
-                  <button
-                    class="btn btn-ghost btn-xs btn-square"
-                    aria-label="Next context frame"
-                    [disabled]="
-                      !hasTemporalContext() ||
-                      slot === contextSlotLabels.length - 1
-                    "
-                    (click)="viewOptions.stepTemporalContext(1)"
-                  >
-                    <span class="material-icons">chevron_right</span>
-                  </button>
-                  <div
-                    class="flex items-center gap-1 ml-2"
-                    [class.opacity-40]="!hasTemporalContext()"
-                  >
-                    @for (label of contextSlotLabels; track $index) {
-                      <button
-                        type="button"
-                        class="p-1 rounded cursor-pointer disabled:cursor-default"
-                        [attr.aria-label]="'Show context frame ' + label"
-                        [attr.aria-pressed]="$index === slot"
-                        [disabled]="!hasTemporalContext()"
-                        (click)="viewOptions.jumpToTemporalContextSlot($index)"
-                      >
-                        <span
-                          class="status block"
-                          [class.status-success]="$index === slot"
-                        ></span>
-                      </button>
+            <div role="group" aria-label="Context">
+              <div class="flex items-center gap-2">
+                <span class="material-icons text-sm!">animation</span>
+                Temporal context
+              </div>
+              <div class="p-2">
+                @let slot = viewOptions.temporalContextIndex();
+                @let playing = viewOptions.isPlayingTemporalContext();
+                <div
+                  class="flex flex-col gap-1 w-fit"
+                  [class.tooltip]="!!temporalContextUnavailableReason()"
+                  [attr.data-tip]="temporalContextUnavailableReason()"
+                >
+                  <div class="flex items-center gap-1">
+                    <button
+                      class="btn btn-ghost btn-xs btn-square"
+                      aria-label="Previous context frame"
+                      [disabled]="!hasTemporalContext() || slot === 0"
+                      (click)="viewOptions.stepTemporalContext(-1)"
+                    >
+                      <span class="material-icons">chevron_left</span>
+                    </button>
+                    <button
+                      class="btn btn-soft btn-primary btn-sm btn-square"
+                      [attr.aria-label]="
+                        playing ? 'Pause temporal context' : 'Play temporal context'
+                      "
+                      [disabled]="!hasTemporalContext()"
+                      (click)="viewOptions.toggleTemporalContextPlayback()"
+                    >
+                      <span class="material-icons">{{
+                        playing ? 'pause' : 'play_arrow'
+                      }}</span>
+                    </button>
+                    <button
+                      class="btn btn-ghost btn-xs btn-square"
+                      aria-label="Next context frame"
+                      [disabled]="
+                        !hasTemporalContext() ||
+                        slot === contextSlotLabels.length - 1
+                      "
+                      (click)="viewOptions.stepTemporalContext(1)"
+                    >
+                      <span class="material-icons">chevron_right</span>
+                    </button>
+                    <div
+                      class="flex items-center gap-1 ml-2"
+                      [class.opacity-40]="!hasTemporalContext()"
+                    >
+                      @for (label of contextSlotLabels; track $index) {
+                        <button
+                          type="button"
+                          class="p-1 rounded cursor-pointer disabled:cursor-default"
+                          [attr.aria-label]="'Show context frame ' + label"
+                          [attr.aria-pressed]="$index === slot"
+                          [disabled]="!hasTemporalContext()"
+                          (click)="viewOptions.jumpToTemporalContextSlot($index)"
+                        >
+                          <span
+                            class="status block"
+                            [class.status-success]="$index === slot"
+                          ></span>
+                        </button>
+                      }
+                    </div>
+                    @if (viewOptions.isShowingTemporalContext()) {
+                      <!-- Bright on purpose: keypoints are hidden until the current frame is back. -->
+                      <span class="tooltip tooltip-left" data-tip="Back to the current frame">
+                        <button
+                          type="button"
+                          class="btn btn-warning btn-xs btn-square ml-1"
+                          aria-label="Back to the current frame"
+                          data-testid="context-reset"
+                          (click)="viewOptions.resetTemporalContext()"
+                        >
+                          <span class="material-icons text-base!">restart_alt</span>
+                        </button>
+                      </span>
                     }
                   </div>
-                  @if (viewOptions.isShowingTemporalContext()) {
-                    <!-- Bright on purpose: keypoints are hidden until the current frame is back. -->
-                    <span class="tooltip tooltip-left" data-tip="Back to the current frame">
-                      <button
-                        type="button"
-                        class="btn btn-warning btn-xs btn-square ml-1"
-                        aria-label="Back to the current frame"
-                        data-testid="context-reset"
-                        (click)="viewOptions.resetTemporalContext()"
-                      >
-                        <span class="material-icons text-base!">restart_alt</span>
-                      </button>
-                    </span>
-                  }
-                </div>
-                <div
-                  class="text-xs"
-                  [class.opacity-70]="hasTemporalContext()"
-                  [class.opacity-40]="!hasTemporalContext()"
-                  data-testid="context-frame-label"
-                >
-                  {{ contextShowingText() }}
+                  <div
+                    class="text-xs"
+                    [class.opacity-70]="hasTemporalContext()"
+                    [class.opacity-40]="!hasTemporalContext()"
+                    data-testid="context-frame-label"
+                  >
+                    {{ contextShowingText() }}
+                  </div>
                 </div>
               </div>
             </div>
-            <div class="flex items-center gap-2 pt-2">
-              <span class="material-icons text-sm!">aspect_ratio</span>
-              Image size
-            </div>
-            <div class="pl-2 flex items-center">
-              <input
-                type="range"
-                min="200"
-                max="1600"
-                step="10"
-                aria-label="Image size"
-                [(ngModel)]="viewOptions.imageSizePx"
-                class="range range-xs flex-1 min-w-0"
-              />
-              <button
-                class="btn btn-ghost btn-xs tooltip"
-                data-tip="Reset"
-                [disabled]="viewOptions.isImageSizeDefault()"
-                (click)="viewOptions.resetImageSize()"
-              >
-                <span class="material-icons text-sm!">restart_alt</span>
-              </button>
-            </div>
-            <div class="pl-2 opacity-60 text-xs">
-              {{ viewOptions.imageSizePx() }}px
-            </div>
-            <div class="flex items-center gap-2 pt-2">
-              <span class="material-icons text-sm!">brightness_medium</span>
-              Image brightness
-            </div>
-            <div class="pl-2 flex items-center">
-              <input
-                type="range"
-                min="0"
-                max="2"
-                step=".02"
-                aria-label="Image brightness"
-                [(ngModel)]="viewOptions.imgBrightnessScalar"
-                class="range range-xs flex-1 min-w-0"
-              /><button
-                class="btn btn-ghost btn-xs tooltip"
-                data-tip="Reset"
-                [disabled]="viewOptions.isBrightnessDefault()"
-                (click)="viewOptions.resetBrightness()"
-              >
-                <span class="material-icons text-sm!">restart_alt</span>
-              </button>
-            </div>
-            <div class="flex items-center gap-2 pt-2">
-              <span class="material-icons text-sm!">contrast</span>
-              Image contrast
-            </div>
-            <div class="pl-2 flex items-center">
-              <input
-                type="range"
-                min="0"
-                max="2"
-                step=".02"
-                aria-label="Image contrast"
-                [(ngModel)]="viewOptions.imgContrastScalar"
-                class="range range-xs flex-1 min-w-0"
-              /><button
-                class="btn btn-ghost btn-xs tooltip"
-                data-tip="Reset"
-                [disabled]="viewOptions.isContrastDefault()"
-                (click)="viewOptions.resetContrast()"
-              >
-                <span class="material-icons text-sm!">restart_alt</span>
-              </button>
-            </div>
-            <div class="flex items-center gap-2 pt-2">
-              <span class="material-icons text-sm!">opacity</span>
-              Keypoint opacity
-            </div>
-            <div class="pl-2 flex items-center">
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step=".005"
-                aria-label="Keypoint opacity"
-                [(ngModel)]="viewOptions.keypointOpacity"
-                class="range range-xs flex-1 min-w-0"
-              /><button
-                class="btn btn-ghost btn-xs tooltip"
-                data-tip="Reset"
-                [disabled]="viewOptions.isOpacityDefault()"
-                (click)="viewOptions.resetOpacity()"
-              >
-                <span class="material-icons text-sm!">restart_alt</span>
-              </button>
-            </div>
-            <div class="flex items-center gap-2 pt-2">
-              <span class="material-icons text-sm!">ads_click</span>
-              Keypoint size
-            </div>
-            <div class="pl-2 flex items-center">
-              <input
-                type="range"
-                min="1"
-                max="25"
-                step="1"
-                [(ngModel)]="viewOptions.keypointSize"
-                class="range range-xs flex-1 min-w-0"
-              /><button
-                class="btn btn-ghost btn-xs tooltip"
-                data-tip="Reset"
-                [disabled]="viewOptions.isSizeDefault()"
-                (click)="viewOptions.resetKeypointSize()"
-              >
-                <span class="material-icons text-sm!">restart_alt</span>
-              </button>
-            </div>
-            <div class="flex items-center gap-2 pt-2">
-              <span class="material-icons text-sm!">label</span>
-              Keypoint labels
-            </div>
-            <div class="pl-2 flex items-center">
-              <input
-                type="checkbox"
-                [(ngModel)]="viewOptions.enableKeypointLabels"
-                class="toggle toggle-sm"
-              />
-            </div>
-            <div class="flex items-center gap-2 pt-2">
-              <span class="material-icons text-sm!">push_pin</span>
-              Keep selected keypoint
-            </div>
-            <div
-              class="pl-2 flex items-center tooltip tooltip-left w-fit"
-              data-tip="Keep the same keypoint selected when the view or frame changes"
-            >
-              <input
-                type="checkbox"
-                aria-label="Keep selected keypoint"
-                [(ngModel)]="viewOptions.keepSelectedKeypoint"
-                class="toggle toggle-sm"
-              />
-            </div>
-            @if (viewOptions.enableKeypointLabels()) {
+            <div class="divider my-1"></div>
+            <div role="group" aria-label="Image">
+              <div class="flex items-center gap-2">
+                <span class="material-icons text-sm!">aspect_ratio</span>
+                Image size
+              </div>
+              <div class="pl-2 flex items-center">
+                <input
+                  type="range"
+                  min="200"
+                  max="1600"
+                  step="10"
+                  aria-label="Image size"
+                  [(ngModel)]="viewOptions.imageSizePx"
+                  class="range range-xs flex-1 min-w-0"
+                />
+                <button
+                  class="btn btn-ghost btn-xs tooltip"
+                  data-tip="Reset"
+                  [disabled]="viewOptions.isImageSizeDefault()"
+                  (click)="viewOptions.resetImageSize()"
+                >
+                  <span class="material-icons text-sm!">restart_alt</span>
+                </button>
+              </div>
+              @if (viewOptions.showSliderNumbers()) {
+                <div class="pl-2 opacity-60 text-xs">{{ viewOptions.imageSizePx() }}px</div>
+              }
               <div class="flex items-center gap-2 pt-2">
-                <span class="material-icons text-sm!">format_size</span>
-                Keypoint label size
+                <span class="material-icons text-sm!">brightness_medium</span>
+                Image brightness
+              </div>
+              <div class="pl-2 flex items-center">
+                <input
+                  type="range"
+                  min="0"
+                  max="2"
+                  step=".02"
+                  aria-label="Image brightness"
+                  [(ngModel)]="viewOptions.imgBrightnessScalar"
+                  class="range range-xs flex-1 min-w-0"
+                /><button
+                  class="btn btn-ghost btn-xs tooltip"
+                  data-tip="Reset"
+                  [disabled]="viewOptions.isBrightnessDefault()"
+                  (click)="viewOptions.resetBrightness()"
+                >
+                  <span class="material-icons text-sm!">restart_alt</span>
+                </button>
+              </div>
+              @if (viewOptions.showSliderNumbers()) {
+                <div class="pl-2 opacity-60 text-xs">{{ viewOptions.imgBrightnessScalar() | number: '1.0-2' }}</div>
+              }
+              <div class="flex items-center gap-2 pt-2">
+                <span class="material-icons text-sm!">contrast</span>
+                Image contrast
+              </div>
+              <div class="pl-2 flex items-center">
+                <input
+                  type="range"
+                  min="0"
+                  max="2"
+                  step=".02"
+                  aria-label="Image contrast"
+                  [(ngModel)]="viewOptions.imgContrastScalar"
+                  class="range range-xs flex-1 min-w-0"
+                /><button
+                  class="btn btn-ghost btn-xs tooltip"
+                  data-tip="Reset"
+                  [disabled]="viewOptions.isContrastDefault()"
+                  (click)="viewOptions.resetContrast()"
+                >
+                  <span class="material-icons text-sm!">restart_alt</span>
+                </button>
+              </div>
+              @if (viewOptions.showSliderNumbers()) {
+                <div class="pl-2 opacity-60 text-xs">{{ viewOptions.imgContrastScalar() | number: '1.0-2' }}</div>
+              }
+            </div>
+            <div class="divider my-1"></div>
+            <div role="group" aria-label="Keypoints">
+              <div class="flex items-center gap-2">
+                <span class="material-icons text-sm!">opacity</span>
+                Keypoint opacity
+              </div>
+              <div class="pl-2 flex items-center">
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step=".005"
+                  aria-label="Keypoint opacity"
+                  [(ngModel)]="viewOptions.keypointOpacity"
+                  class="range range-xs flex-1 min-w-0"
+                /><button
+                  class="btn btn-ghost btn-xs tooltip"
+                  data-tip="Reset"
+                  [disabled]="viewOptions.isOpacityDefault()"
+                  (click)="viewOptions.resetOpacity()"
+                >
+                  <span class="material-icons text-sm!">restart_alt</span>
+                </button>
+              </div>
+              @if (viewOptions.showSliderNumbers()) {
+                <div class="pl-2 opacity-60 text-xs">{{ viewOptions.keypointOpacity() | number: '1.0-3' }}</div>
+              }
+              <div class="flex items-center gap-2 pt-2">
+                <span class="material-icons text-sm!">ads_click</span>
+                Keypoint size
               </div>
               <div class="pl-2 flex items-center">
                 <input
                   type="range"
                   min="1"
-                  max="10"
+                  max="25"
                   step="1"
-                  [(ngModel)]="viewOptions.keypointLabelFontSize"
+                  aria-label="Keypoint size"
+                  [(ngModel)]="viewOptions.keypointSize"
                   class="range range-xs flex-1 min-w-0"
                 /><button
                   class="btn btn-ghost btn-xs tooltip"
                   data-tip="Reset"
-                  [disabled]="viewOptions.isLabelFontSizeDefault()"
-                  (click)="viewOptions.resetLabelFontSize()"
+                  [disabled]="viewOptions.isSizeDefault()"
+                  (click)="viewOptions.resetKeypointSize()"
                 >
                   <span class="material-icons text-sm!">restart_alt</span>
                 </button>
               </div>
-            }
-            <app-skeleton-view-options
-              [showSkeleton]="viewOptions.showSkeleton()"
-              (showSkeletonChange)="viewOptions.showSkeleton.set($event)"
-              [thickness]="viewOptions.skeletonThickness()"
-              (thicknessChange)="viewOptions.skeletonThickness.set($event)"
-              [opacity]="viewOptions.skeletonOpacity()"
-              (opacityChange)="viewOptions.skeletonOpacity.set($event)"
-              [invalid]="skeletonInvalid()"
-              [thicknessIsDefault]="viewOptions.isSkeletonThicknessDefault()"
-              [opacityIsDefault]="viewOptions.isSkeletonOpacityDefault()"
-              (resetThickness)="viewOptions.resetSkeletonThickness()"
-              (resetOpacity)="viewOptions.resetSkeletonOpacity()"
-            />
-            <div class="flex items-center gap-2 pt-2">
+              @if (viewOptions.showSliderNumbers()) {
+                <div class="pl-2 opacity-60 text-xs">{{ viewOptions.keypointSize() }}px</div>
+              }
+              <div class="flex items-center gap-2 pt-2">
+                <span class="material-icons text-sm!">label</span>
+                Keypoint labels
+              </div>
+              <div class="pl-2 flex items-center">
+                <input
+                  type="checkbox"
+                  aria-label="Keypoint labels"
+                  [(ngModel)]="viewOptions.enableKeypointLabels"
+                  class="toggle toggle-sm toggle-primary"
+                />
+              </div>
+              @if (viewOptions.enableKeypointLabels()) {
+                <div class="flex items-center gap-2 pt-2">
+                  <span class="material-icons text-sm!">format_size</span>
+                  Keypoint label size
+                </div>
+                <div class="pl-2 flex items-center">
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    step="1"
+                    aria-label="Keypoint label size"
+                    [(ngModel)]="viewOptions.keypointLabelFontSize"
+                    class="range range-xs flex-1 min-w-0"
+                  /><button
+                    class="btn btn-ghost btn-xs tooltip"
+                    data-tip="Reset"
+                    [disabled]="viewOptions.isLabelFontSizeDefault()"
+                    (click)="viewOptions.resetLabelFontSize()"
+                  >
+                    <span class="material-icons text-sm!">restart_alt</span>
+                  </button>
+                </div>
+                @if (viewOptions.showSliderNumbers()) {
+                  <div class="pl-2 opacity-60 text-xs">{{ viewOptions.keypointLabelFontSize() }}px</div>
+                }
+              }
+            </div>
+            <div class="divider my-1"></div>
+            <!-- -mt-2 offsets the widget's own top padding so the gap matches the other groups. -->
+            <div role="group" aria-label="Skeleton" class="-mt-2">
+              <app-skeleton-view-options
+                [showSkeleton]="viewOptions.showSkeleton()"
+                (showSkeletonChange)="viewOptions.showSkeleton.set($event)"
+                [thickness]="viewOptions.skeletonThickness()"
+                (thicknessChange)="viewOptions.skeletonThickness.set($event)"
+                [opacity]="viewOptions.skeletonOpacity()"
+                (opacityChange)="viewOptions.skeletonOpacity.set($event)"
+                [invalid]="skeletonInvalid()"
+                [noPairs]="noSkeletonPairs()"
+                [showValues]="viewOptions.showSliderNumbers()"
+                [thicknessIsDefault]="viewOptions.isSkeletonThicknessDefault()"
+                [opacityIsDefault]="viewOptions.isSkeletonOpacityDefault()"
+                (resetThickness)="viewOptions.resetSkeletonThickness()"
+                (resetOpacity)="viewOptions.resetSkeletonOpacity()"
+              />
+            </div>
+            <div class="divider my-1"></div>
+            <div class="flex items-center gap-2">
               <span class="material-icons text-sm!">grid_on</span>
               Pixel grid overlay
             </div>
             <div class="pl-2 flex items-center">
               <input
                 type="checkbox"
+                aria-label="Pixel grid overlay"
                 [(ngModel)]="viewOptions.enablePixelGrid"
+                class="toggle toggle-sm toggle-primary"
+              />
+            </div>
+            <div class="flex items-center gap-2 pt-2">
+              <span class="material-icons text-sm!">tag</span>
+              Show slider numbers
+            </div>
+            <div class="pl-2 flex items-center">
+              <input
+                type="checkbox"
+                aria-label="Show slider numbers"
+                [(ngModel)]="viewOptions.showSliderNumbers"
                 class="toggle toggle-sm toggle-primary"
               />
             </div>

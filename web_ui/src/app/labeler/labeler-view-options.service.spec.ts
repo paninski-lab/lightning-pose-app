@@ -66,3 +66,33 @@ describe('LabelerViewOptionsService keep selected keypoint', () => {
     expect(TestBed.inject(LabelerViewOptionsService).keepSelectedKeypoint()).toBeTrue();
   });
 });
+
+describe('LabelerViewOptionsService show slider numbers', () => {
+  const KEY = 'labeler-view-options.showSliderNumbers';
+  let saved: string | null;
+
+  beforeEach(() => {
+    saved = localStorage.getItem(KEY);
+    localStorage.removeItem(KEY);
+    TestBed.configureTestingModule({
+      providers: [LabelerViewOptionsService],
+    });
+  });
+
+  afterEach(() => {
+    if (saved === null) localStorage.removeItem(KEY);
+    else localStorage.setItem(KEY, saved);
+  });
+
+  it('is off by default and comes back on after a reload once turned on', () => {
+    const options = TestBed.inject(LabelerViewOptionsService);
+    expect(options.showSliderNumbers()).toBeFalse();
+
+    options.showSliderNumbers.set(true);
+    TestBed.tick();
+    expect(localStorage.getItem(KEY)).toBe('true');
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [LabelerViewOptionsService] });
+    expect(TestBed.inject(LabelerViewOptionsService).showSliderNumbers()).toBeTrue();
+  });
+});

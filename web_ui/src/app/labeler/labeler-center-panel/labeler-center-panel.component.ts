@@ -37,7 +37,10 @@ import {
 } from '../temporal-context';
 import { LoadCalibrationDialogComponent } from '../../file-manager/load-calibration-dialog.component';
 import { SkeletonViewOptionsComponent } from '../../components/skeleton-view-options/skeleton-view-options.component';
-import { isSkeletonDefinitionInvalid } from '../../components/skeleton-overlay/skeleton-validity';
+import {
+  isSkeletonDefinitionInvalid,
+  skeletonPairs,
+} from '../../components/skeleton-overlay/skeleton-validity';
 import { SplitAreaComponent, SplitComponent } from 'angular-split';
 import {
   DropdownComponent,
@@ -78,6 +81,11 @@ export class LabelerCenterPanelComponent implements OnChanges {
     if (!info) return false;
     return isSkeletonDefinitionInvalid(info.skeleton, info.keypoint_names);
   });
+  protected noSkeletonPairs = computed(
+    () =>
+      skeletonPairs(this.projectInfoService.projectContext()?.projectInfo?.skeleton)
+        .length === 0,
+  );
   protected isMultiview = computed(() => {
     return (
       (this.projectInfoService.projectContext()?.projectInfo?.views?.length ??
@@ -321,17 +329,6 @@ export class LabelerCenterPanelComponent implements OnChanges {
     }
   }
 
-  protected get saveTooltip(): string {
-    if (!this.isSaveDisabled()) return '';
-    return 'No changes to save.';
-  }
-
-  protected get saveAndContinueTooltip(): string {
-    if (this.isSaveDisabled()) return 'No changes to save.';
-    if (this.isSaveAndNextDisabled()) return 'Already on last frame.';
-    return 'Save and advance to next frame or view.';
-  }
-
   // export to template
   protected readonly mvf = mvf;
 
@@ -407,6 +404,38 @@ export class LabelerCenterPanelComponent implements OnChanges {
     const frame = this.frame();
     if (!frame || this.disableInteractions()) return false;
     return mvf(frame).hasRevertibleEdits;
+  });
+
+  // Frame buttons have a tooltip only while inactive, saying why.
+  private busyReason = computed(() => {
+    if (this.isSaving()) return 'Saving…';
+    if (this.isMVAutoLabeling()) return 'Labeling the other views…';
+    return '';
+  });
+
+  protected saveDisabledReason = computed(() => {
+    if (!this.isSaveDisabled()) return '';
+    return this.busyReason() || 'No changes to save.';
+  });
+
+  protected saveAndNextDisabledReason = computed(() => {
+    if (!this.isSaveAndNextDisabled()) return '';
+    return this.saveDisabledReason() || 'Already on the last view of the last frame.';
+  });
+
+  protected backDisabledReason = computed(() => {
+    if (!this.isBackDisabled()) return '';
+    return this.busyReason() || 'Already on the first view of the first frame.';
+  });
+
+  protected nextDisabledReason = computed(() => {
+    if (!this.isNextDisabled()) return '';
+    return this.busyReason() || 'Already on the last view of the last frame.';
+  });
+
+  protected revertDisabledReason = computed(() => {
+    if (this.canRevert()) return '';
+    return this.busyReason() || 'No changes to revert.';
   });
 
   protected removeFrameTooltip(): string {

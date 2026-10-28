@@ -280,132 +280,161 @@
               class="bg-base-100 text-sm overflow-x-hidden overflow-y-auto app-accordion-content"
             >
               <div class="panel-content p-2!">
-                <div class="flex items-center gap-2">
-                  <span class="material-icons text-sm!">aspect_ratio</span>
-                  Video tile size
-                </div>
-                <div class="pl-2 flex items-center">
-                  <input
-                    type="range"
-                    min="200"
-                    max="1200"
-                    step="10"
-                    [(ngModel)]="viewOptions.videoTileSizePx"
-                    class="range range-xs flex-1 min-w-0"
-                  />
-                  <button
-                    class="btn btn-ghost btn-xs tooltip"
-                    data-tip="Reset"
-                    [disabled]="viewOptions.isVideoTileSizeDefault()"
-                    (click)="viewOptions.resetVideoTileSize()"
-                  >
-                    <span class="material-icons text-sm!">restart_alt</span>
-                  </button>
-                </div>
-                <div class="pl-2 opacity-60 text-xs">
-                  {{ viewOptions.videoTileSizePx() }}px
-                </div>
-                <div class="flex items-center gap-2 pt-2">
-                  <span class="material-icons text-sm!">opacity</span>
-                  Keypoint opacity
-                </div>
-                <div class="pl-2 flex items-center">
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    [(ngModel)]="viewOptions.keypointOpacity"
-                    class="range range-xs flex-1 min-w-0"
-                  />
-                  <button
-                    class="btn btn-ghost btn-xs tooltip"
-                    data-tip="Reset"
-                    [disabled]="viewOptions.isOpacityDefault()"
-                    (click)="viewOptions.resetOpacity()"
-                  >
-                    <span class="material-icons text-sm!">restart_alt</span>
-                  </button>
-                </div>
-                <div class="pl-2 opacity-60 text-xs">
-                  {{ viewOptions.keypointOpacity() }}
-                </div>
-                <div class="flex items-center gap-2 pt-2">
-                  <span class="material-icons text-sm!">ads_click</span>
-                  Keypoint size
-                </div>
-                <div class="pl-2 flex items-center">
-                  <input
-                    type="range"
-                    min="1"
-                    max="25"
-                    step="1"
-                    [(ngModel)]="viewOptions.keypointSize"
-                    class="range range-xs flex-1 min-w-0"
-                  />
-                  <button
-                    class="btn btn-ghost btn-xs tooltip"
-                    data-tip="Reset"
-                    [disabled]="viewOptions.isSizeDefault()"
-                    (click)="viewOptions.resetKeypointSize()"
-                  >
-                    <span class="material-icons text-sm!">restart_alt</span>
-                  </button>
-                </div>
-                <div class="pl-2 opacity-60 text-xs">
-                  {{ viewOptions.keypointSize() }}px
-                </div>
-                <div class="flex items-center gap-2 pt-2">
-                  <span class="material-icons text-sm!">label</span>
-                  Keypoint labels
-                </div>
-                <div class="pl-2 flex items-center">
-                  <input
-                    type="checkbox"
-                    [(ngModel)]="viewOptions.enableKeypointLabels"
-                    class="toggle toggle-sm"
-                  />
-                </div>
-                @if (viewOptions.enableKeypointLabels()) {
-                  <div class="flex items-center gap-2 pt-2">
-                    <span class="material-icons text-sm!">format_size</span>
-                    Keypoint label size
+                <div role="group" aria-label="Image">
+                  <div class="flex items-center gap-2">
+                    <span class="material-icons text-sm!">aspect_ratio</span>
+                    Video tile size
                   </div>
                   <div class="pl-2 flex items-center">
                     <input
                       type="range"
-                      min="1"
-                      max="8"
-                      step="1"
-                      [(ngModel)]="viewOptions.keypointLabelFontSize"
+                      min="200"
+                      max="1200"
+                      step="10"
+                      aria-label="Video tile size"
+                      [(ngModel)]="viewOptions.videoTileSizePx"
                       class="range range-xs flex-1 min-w-0"
                     />
                     <button
                       class="btn btn-ghost btn-xs tooltip"
                       data-tip="Reset"
-                      [disabled]="viewOptions.isLabelFontSizeDefault()"
-                      (click)="viewOptions.resetLabelFontSize()"
+                      [disabled]="viewOptions.isVideoTileSizeDefault()"
+                      (click)="viewOptions.resetVideoTileSize()"
                     >
                       <span class="material-icons text-sm!">restart_alt</span>
                     </button>
                   </div>
-                  <div class="pl-2 opacity-60 text-xs">
-                    {{ viewOptions.keypointLabelFontSize() }}px
+                  @if (viewOptions.showSliderNumbers()) {
+                    <div class="pl-2 opacity-60 text-xs">{{ viewOptions.videoTileSizePx() }}px</div>
+                  }
+                </div>
+                <div class="divider my-1"></div>
+                <div role="group" aria-label="Keypoints">
+                  <div class="flex items-center gap-2">
+                    <span class="material-icons text-sm!">opacity</span>
+                    Keypoint opacity
                   </div>
-                }
-                <app-skeleton-view-options
-                  [showSkeleton]="viewOptions.showSkeleton()"
-                  (showSkeletonChange)="viewOptions.showSkeleton.set($event)"
-                  [thickness]="viewOptions.skeletonThickness()"
-                  (thicknessChange)="viewOptions.skeletonThickness.set($event)"
-                  [opacity]="viewOptions.skeletonOpacity()"
-                  (opacityChange)="viewOptions.skeletonOpacity.set($event)"
-                  [invalid]="skeletonInvalid()"
-                  [thicknessIsDefault]="viewOptions.isSkeletonThicknessDefault()"
-                  [opacityIsDefault]="viewOptions.isSkeletonOpacityDefault()"
-                  (resetThickness)="viewOptions.resetSkeletonThickness()"
-                  (resetOpacity)="viewOptions.resetSkeletonOpacity()"
-                />
+                  <div class="pl-2 flex items-center">
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      aria-label="Keypoint opacity"
+                      [(ngModel)]="viewOptions.keypointOpacity"
+                      class="range range-xs flex-1 min-w-0"
+                    />
+                    <button
+                      class="btn btn-ghost btn-xs tooltip"
+                      data-tip="Reset"
+                      [disabled]="viewOptions.isOpacityDefault()"
+                      (click)="viewOptions.resetOpacity()"
+                    >
+                      <span class="material-icons text-sm!">restart_alt</span>
+                    </button>
+                  </div>
+                  @if (viewOptions.showSliderNumbers()) {
+                    <div class="pl-2 opacity-60 text-xs">{{ viewOptions.keypointOpacity() }}</div>
+                  }
+                  <div class="flex items-center gap-2 pt-2">
+                    <span class="material-icons text-sm!">ads_click</span>
+                    Keypoint size
+                  </div>
+                  <div class="pl-2 flex items-center">
+                    <input
+                      type="range"
+                      min="1"
+                      max="25"
+                      step="1"
+                      aria-label="Keypoint size"
+                      [(ngModel)]="viewOptions.keypointSize"
+                      class="range range-xs flex-1 min-w-0"
+                    />
+                    <button
+                      class="btn btn-ghost btn-xs tooltip"
+                      data-tip="Reset"
+                      [disabled]="viewOptions.isSizeDefault()"
+                      (click)="viewOptions.resetKeypointSize()"
+                    >
+                      <span class="material-icons text-sm!">restart_alt</span>
+                    </button>
+                  </div>
+                  @if (viewOptions.showSliderNumbers()) {
+                    <div class="pl-2 opacity-60 text-xs">{{ viewOptions.keypointSize() }}px</div>
+                  }
+                  <div class="flex items-center gap-2 pt-2">
+                    <span class="material-icons text-sm!">label</span>
+                    Keypoint labels
+                  </div>
+                  <div class="pl-2 flex items-center">
+                    <input
+                      type="checkbox"
+                      aria-label="Keypoint labels"
+                      [(ngModel)]="viewOptions.enableKeypointLabels"
+                      class="toggle toggle-sm toggle-primary"
+                    />
+                  </div>
+                  @if (viewOptions.enableKeypointLabels()) {
+                    <div class="flex items-center gap-2 pt-2">
+                      <span class="material-icons text-sm!">format_size</span>
+                      Keypoint label size
+                    </div>
+                    <div class="pl-2 flex items-center">
+                      <input
+                        type="range"
+                        min="1"
+                        max="8"
+                        step="1"
+                        aria-label="Keypoint label size"
+                        [(ngModel)]="viewOptions.keypointLabelFontSize"
+                        class="range range-xs flex-1 min-w-0"
+                      />
+                      <button
+                        class="btn btn-ghost btn-xs tooltip"
+                        data-tip="Reset"
+                        [disabled]="viewOptions.isLabelFontSizeDefault()"
+                        (click)="viewOptions.resetLabelFontSize()"
+                      >
+                        <span class="material-icons text-sm!">restart_alt</span>
+                      </button>
+                    </div>
+                    @if (viewOptions.showSliderNumbers()) {
+                      <div class="pl-2 opacity-60 text-xs">{{ viewOptions.keypointLabelFontSize() }}px</div>
+                    }
+                  }
+                </div>
+                <div class="divider my-1"></div>
+                <!-- -mt-2 offsets the widget's own top padding so the gap matches the other groups. -->
+                <div role="group" aria-label="Skeleton" class="-mt-2">
+                  <app-skeleton-view-options
+                    [showSkeleton]="viewOptions.showSkeleton()"
+                    (showSkeletonChange)="viewOptions.showSkeleton.set($event)"
+                    [thickness]="viewOptions.skeletonThickness()"
+                    (thicknessChange)="viewOptions.skeletonThickness.set($event)"
+                    [opacity]="viewOptions.skeletonOpacity()"
+                    (opacityChange)="viewOptions.skeletonOpacity.set($event)"
+                    [invalid]="skeletonInvalid()"
+                    [noPairs]="noSkeletonPairs()"
+                    [showValues]="viewOptions.showSliderNumbers()"
+                    [thicknessIsDefault]="viewOptions.isSkeletonThicknessDefault()"
+                    [opacityIsDefault]="viewOptions.isSkeletonOpacityDefault()"
+                    (resetThickness)="viewOptions.resetSkeletonThickness()"
+                    (resetOpacity)="viewOptions.resetSkeletonOpacity()"
+                  />
+                </div>
+                <div class="divider my-1"></div>
+                <div class="flex items-center gap-2">
+                  <span class="material-icons text-sm!">tag</span>
+                  Show slider numbers
+                </div>
+                <div class="pl-2 flex items-center">
+                  <input
+                    type="checkbox"
+                    aria-label="Show slider numbers"
+                    [(ngModel)]="viewOptions.showSliderNumbers"
+                    class="toggle toggle-sm toggle-primary"
+                  />
+                </div>
               </div>
             </div>
           </div>

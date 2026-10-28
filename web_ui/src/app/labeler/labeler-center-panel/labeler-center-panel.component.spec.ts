@@ -342,6 +342,125 @@ describe('LabelerCenterPanelComponent side panel', () => {
     expect(actions.textContent).toContain('Revert changes');
   });
 
+  it('puts Keep selected and Clear values above the keypoint list, outside the header', () => {
+    const el: HTMLElement = fixture.nativeElement;
+    const tools = el.querySelector('[data-testid="keypoint-tools"]')!;
+    const header = el.querySelector('label[for="app-accordion-keypoints"]')!;
+    const list = el.querySelector('.panel-content ul')!;
+    expect(
+      tools.querySelector('input[aria-label="Keep selected keypoint"]'),
+    ).not.toBeNull();
+    expect(
+      tools.querySelector('button[aria-label="Clear values in this view"]'),
+    ).not.toBeNull();
+    expect(header.querySelector('button')).toBeNull();
+    expect(
+      tools.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      el.querySelectorAll('input[aria-label="Keep selected keypoint"]').length,
+    ).toBe(1);
+  });
+
+  it('groups View options into Context, Image, Keypoints and Skeleton, with the pixel grid on its own', () => {
+    const el: HTMLElement = fixture.nativeElement;
+    const groups = Array.from(el.querySelectorAll('[role="group"]'));
+    expect(groups.map((g) => g.getAttribute('aria-label'))).toEqual([
+      'Context',
+      'Image',
+      'Keypoints',
+      'Skeleton',
+    ]);
+    const group = (name: string) =>
+      groups.find((g) => g.getAttribute('aria-label') === name)!;
+    expect(
+      group('Context').querySelector('[aria-label="Play temporal context"]'),
+    ).not.toBeNull();
+    for (const label of ['Image size', 'Image brightness', 'Image contrast']) {
+      expect(group('Image').querySelector(`[aria-label="${label}"]`))
+        .withContext(label)
+        .not.toBeNull();
+    }
+    for (const label of [
+      'Keypoint opacity',
+      'Keypoint size',
+      'Keypoint labels',
+    ]) {
+      expect(group('Keypoints').querySelector(`[aria-label="${label}"]`))
+        .withContext(label)
+        .not.toBeNull();
+    }
+    expect(
+      group('Skeleton').querySelector('[aria-label="Show skeleton"]'),
+    ).not.toBeNull();
+    const grid = el.querySelector('input[aria-label="Pixel grid overlay"]')!;
+    expect(grid.closest('[role="group"]')).toBeNull();
+    expect(
+      group('Skeleton').compareDocumentPosition(grid) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('shows Show skeleton off when the project defines no skeleton pairs', () => {
+    // This describe's project info has no skeleton key.
+    const toggle: HTMLInputElement = fixture.nativeElement.querySelector(
+      'input[aria-label="Show skeleton"]',
+    );
+    expect(toggle.checked).toBeFalse();
+    expect(toggle.disabled).toBeTrue();
+  });
+
+  it('Show slider numbers shows the View options values only while on', () => {
+    const options = fixture.debugElement.injector.get(
+      LabelerViewOptionsService,
+    );
+    const before = options.showSliderNumbers();
+    const KEY = 'labeler-view-options.showSliderNumbers';
+    const stored = localStorage.getItem(KEY);
+    const el: HTMLElement = fixture.nativeElement;
+    const imageGroup = () => el.querySelector('[role="group"][aria-label="Image"]')!;
+    const toggle: HTMLInputElement = el.querySelector(
+      'input[aria-label="Show slider numbers"]',
+    )!;
+    try {
+      options.showSliderNumbers.set(false);
+      fixture.detectChanges();
+      expect(toggle.checked).toBeFalse();
+      expect(imageGroup().textContent).not.toContain(
+        `${options.imageSizePx()}px`,
+      );
+
+      toggle.click();
+      fixture.detectChanges();
+      expect(options.showSliderNumbers()).toBeTrue();
+      expect(imageGroup().textContent).toContain(`${options.imageSizePx()}px`);
+    } finally {
+      options.showSliderNumbers.set(before);
+      fixture.detectChanges();
+      if (stored === null) localStorage.removeItem(KEY);
+      else localStorage.setItem(KEY, stored);
+    }
+  });
+
+  it('shows every switch in the side panel in the primary (green) style', () => {
+    const el: HTMLElement = fixture.nativeElement;
+    const toggles: HTMLInputElement[] = Array.from(
+      el.querySelectorAll('input.toggle'),
+    );
+    expect(toggles.map((t) => t.getAttribute('aria-label'))).toEqual([
+      'Keep selected keypoint',
+      'Keypoint labels',
+      'Show skeleton',
+      'Pixel grid overlay',
+      'Show slider numbers',
+    ]);
+    for (const t of toggles) {
+      expect(t.classList)
+        .withContext(t.getAttribute('aria-label')!)
+        .toContain('toggle-primary');
+    }
+  });
+
   it('lets the image and keypoint sliders reach their wider limits', () => {
     expect([slider('Image size').min, slider('Image size').max]).toEqual([
       '200',
@@ -520,6 +639,36 @@ describe('LabelerCenterPanelComponent Next and keypoint selection', () => {
     expect(actionButton('Next →').classList).toContain('btn-disabled');
   });
 
+  it('frame buttons have a tooltip only while inactive, saying why; Delete always has one', () => {
+    const tip = (text: string) =>
+      actionButton(text).closest('.tooltip')?.getAttribute('data-tip') ?? null;
+    const deleteTip = () =>
+      fixture.nativeElement
+        .querySelector('[data-testid="frame-actions"] .btn-error')
+        .closest('.tooltip')
+        .getAttribute('data-tip');
+
+    // Edited, with frames before and after: everything is active.
+    fixture.componentRef.setInput('hasPreviousFrame', true);
+    open(makeFrame('f1', ['top'], { editedView: 'top' }));
+    for (const text of ['Save', 'Save and next', '← Back', 'Next →', 'Revert changes']) {
+      expect(tip(text)).withContext(text).toBeNull();
+    }
+    expect(deleteTip()).toBeTruthy();
+
+    // Unedited, and the only frame: all but Delete are inactive.
+    fixture.componentRef.setInput('hasPreviousFrame', false);
+    open(makeFrame('f2', ['top']), false);
+    for (const text of ['Save', 'Save and next', '← Back', 'Next →', 'Revert changes']) {
+      expect(actionButton(text).classList).withContext(text).toContain('btn-disabled');
+      expect(tip(text)).withContext(text).toBeTruthy();
+    }
+    expect(tip('Save')).toBe('No changes to save.');
+    expect(tip('Next →')).toBe('Already on the last view of the last frame.');
+    expect(tip('← Back')).toBe('Already on the first view of the first frame.');
+    expect(deleteTip()).toBeTruthy();
+  });
+
   it('Save and next from the last view opens the next frame on its first view', async () => {
     const events: { shouldAdvanceFrame: boolean }[] = [];
     fixture.componentInstance.saved.subscribe((e) => events.push(e));
@@ -569,12 +718,12 @@ describe('LabelerCenterPanelComponent Next and keypoint selection', () => {
     expect(actionButton('← Back').classList).toContain('btn-disabled');
   });
 
-  it('Clear view empties the selected view only, without saving', () => {
+  it('Clear values empties the selected view only, without saving', () => {
     const frame = makeFrame('f1', ['top', 'side']);
     open(frame);
     const clear = (): HTMLButtonElement =>
       fixture.nativeElement.querySelector(
-        'button[aria-label="Clear all keypoints in this view"]',
+        'button[aria-label="Clear values in this view"]',
       );
     expect(clear().disabled).toBeFalse();
 

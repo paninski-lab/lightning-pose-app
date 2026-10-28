@@ -9,6 +9,8 @@ const meta: Meta<SkeletonViewOptionsComponent> = {
     thickness: 2,
     opacity: 1,
     invalid: false,
+    noPairs: false,
+    showValues: true,
     thicknessIsDefault: true,
     opacityIsDefault: true,
   },
@@ -25,4 +27,12 @@ export const Hidden: Story = {
 
 export const Invalid: Story = {
   args: { invalid: true, showSkeleton: true },
+};
+
+export const NoPairs: Story = {
+  args: { noPairs: true, showSkeleton: true },
+};
+
+export const WithoutValues: Story = {
+  args: { showValues: false },
 };

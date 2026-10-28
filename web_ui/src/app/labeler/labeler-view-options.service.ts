@@ -92,6 +92,10 @@ export class LabelerViewOptionsService {
       DEFAULT_SKELETON_OPACITY,
     ),
   );
+  /** Show each slider's value under it in View options. */
+  showSliderNumbers = signal(
+    storedFlag('labeler-view-options.showSliderNumbers', false),
+  );
   isSkeletonThicknessDefault = computed(
     () => this.skeletonThickness() === DEFAULT_SKELETON_THICKNESS,
   );
@@ -153,6 +157,12 @@ export class LabelerViewOptionsService {
     );
     effect(() =>
       localStorage.setItem(
+        'labeler-view-options.showSliderNumbers',
+        String(this.showSliderNumbers()),
+      ),
+    );
+    effect(() =>
+      localStorage.setItem(
         'labeler-view-options.keepSelectedKeypoint',
         String(this.keepSelectedKeypoint()),
       ),
@@ -170,6 +180,7 @@ export class LabelerViewOptionsService {
       toObservable(this.showSkeleton),
       toObservable(this.skeletonThickness),
       toObservable(this.skeletonOpacity),
+      toObservable(this.showSliderNumbers),
       toObservable(this.keepSelectedKeypoint),
     )
       .pipe(
@@ -189,6 +200,7 @@ export class LabelerViewOptionsService {
           showSkeleton: this.showSkeleton(),
           skeletonThickness: this.skeletonThickness(),
           skeletonOpacity: this.skeletonOpacity(),
+          showSliderNumbers: this.showSliderNumbers(),
           keepSelectedKeypoint: this.keepSelectedKeypoint(),
         });
       });

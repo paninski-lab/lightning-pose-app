@@ -45,7 +45,10 @@ import { RunModelInferenceDialogComponent } from '../../run-model-inference-dial
 import { SessionImportComponent } from '../../session-import/session-import.component';
 import { LoadCalibrationDialogComponent } from '../../file-manager/load-calibration-dialog.component';
 import { SkeletonViewOptionsComponent } from '../../components/skeleton-view-options/skeleton-view-options.component';
-import { isSkeletonDefinitionInvalid } from '../../components/skeleton-overlay/skeleton-validity';
+import {
+  isSkeletonDefinitionInvalid,
+  skeletonPairs,
+} from '../../components/skeleton-overlay/skeleton-validity';
 import {
   clampSplitPane,
   gutterPixels,
@@ -100,6 +103,11 @@ export class ViewerPageComponent implements OnInit {
     if (!info) return false;
     return isSkeletonDefinitionInvalid(info.skeleton, info.keypoint_names);
   });
+  protected noSkeletonPairs = computed(
+    () =>
+      skeletonPairs(this.projectInfoService.projectContext()?.projectInfo?.skeleton)
+        .length === 0,
+  );
   projectInfoService = inject(ProjectInfoService);
   sessionService = inject(SessionService);
   loadingService = inject(LoadingService);
