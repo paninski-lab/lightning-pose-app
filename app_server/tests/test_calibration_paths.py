@@ -11,8 +11,8 @@ from litpose_app.calibration_paths import (
     calibration_backup_path,
     is_session_calibration,
     project_calibration_path,
-    session_calibration_files,
     session_calibration_filename_issue,
+    session_calibration_files,
     session_calibration_path,
 )
 
