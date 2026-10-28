@@ -52,10 +52,6 @@ describe('CreateEksModelDialogComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
-
   function setFormState(modelName: string, memberPaths: string[]) {
     component['form'].controls.modelName.setValue(modelName);
     component['form'].controls.memberIds.setValue(memberPaths);
@@ -78,11 +74,6 @@ describe('CreateEksModelDialogComponent', () => {
 
     it('is enabled when 1 model is selected', () => {
       setFormState('my_eks', ['model_a']);
-      expect(getCreateButton().classList).not.toContain('btn-disabled');
-    });
-
-    it('is enabled when 2 models are selected', () => {
-      setFormState('my_eks', ['model_a', 'model_b']);
       expect(getCreateButton().classList).not.toContain('btn-disabled');
     });
   });

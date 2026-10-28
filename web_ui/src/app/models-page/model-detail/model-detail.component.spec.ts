@@ -25,10 +25,6 @@ describe('ModelDetailComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
-
   it('should show TensorBoard instructions when activeTab is "tensorboard"', () => {
     component.activeTab.set('tensorboard');
     fixture.detectChanges();

@@ -18,10 +18,6 @@ describe('ProjectSettingsComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
-
   it('disables save when exactly one camera view is entered', () => {
     const multiviewTab = [...fixture.nativeElement.querySelectorAll('a')].find(
       (el: HTMLElement) => el.textContent?.includes('Multiview'),

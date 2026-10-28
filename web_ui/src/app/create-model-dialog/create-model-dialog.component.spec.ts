@@ -94,13 +94,6 @@ async function createComponent(
   return fixture;
 }
 
-describe('CreateModelDialogComponent', () => {
-  it('should create', async () => {
-    const fixture = await createComponent([]);
-    expect(fixture.componentInstance).toBeTruthy();
-  });
-});
-
 const MULTIVIEW_LOSSES_ON = {
   multiviewLosses: {
     supervised_reprojection_heatmap_mse: { enabled: true, logWeight: 3.0 },

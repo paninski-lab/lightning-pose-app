@@ -33,10 +33,6 @@ describe('BundleAdjustDialogComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
-
   it('names the backup file after a run', () => {
     component['baResponse'].set({
       camList: ['top', 'side'],

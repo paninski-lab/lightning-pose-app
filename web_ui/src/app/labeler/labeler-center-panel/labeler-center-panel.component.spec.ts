@@ -10,25 +10,6 @@ import { MVFrame } from '../frame.model';
 import { ContextSlotView } from '../temporal-context';
 import { LabelerViewOptionsService } from '../labeler-view-options.service';
 
-describe('LabelerCenterPanelComponent', () => {
-  let component: LabelerCenterPanelComponent;
-  let fixture: ComponentFixture<LabelerCenterPanelComponent>;
-
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [LabelerCenterPanelComponent],
-    }).compileComponents();
-
-    fixture = TestBed.createComponent(LabelerCenterPanelComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
-
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
-});
-
 describe('LabelerCenterPanelComponent temporal context', () => {
   let fixture: ComponentFixture<LabelerCenterPanelComponent>;
 

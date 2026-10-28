@@ -88,7 +88,7 @@ Tests: `labeler-center-panel.component.spec.ts` "side panel" (the buttons come a
 
 * **Skeleton wording:** The skeleton sliders in the Labeler and the Viewer are named **Skeleton thickness** and **Skeleton opacity** (were "Bone …"). The skeleton settings page says "Each pair will be connected with a line in the Labeler and the Viewer."
 
-Tests: `skeleton-view-options.component.spec.ts` (the slider names and labels, no "Bone"); `project-skeleton.component.spec.ts` (the new sentence).
+Tests: `skeleton-view-options.component.spec.ts` (the slider names and labels, no "Bone"). The settings-page sentence is wording only and has no test.
 
 * **Labeler:** Keypoints start at opacity 0.5 (was 0.15), and the opacity Reset button goes back to 0.5. An opacity you already set in this browser is kept. The Viewer's default (1) is unchanged.
 

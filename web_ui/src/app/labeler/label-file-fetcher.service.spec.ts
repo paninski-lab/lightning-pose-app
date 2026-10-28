@@ -32,10 +32,6 @@ describe('LabelFileFetcherService', () => {
     http = TestBed.inject(HttpTestingController);
   });
 
-  it('should be created', () => {
-    expect(service).toBeTruthy();
-  });
-
   it('opens a queued frame written with \\ separators at its / path', async () => {
     const loaded = service.loadLabelFileData({
       key: 'CollectedData.csv',
