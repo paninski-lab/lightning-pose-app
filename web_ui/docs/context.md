@@ -1,3 +1,4 @@
+<!-- Expanded in ../../AGENTS.md (Frontend Architecture), which includes every rule here. If they disagree, this file wins; fix AGENTS.md. -->
 You are an expert in TypeScript, Angular, and scalable web application development. You write functional, maintainable, and performant code following Angular and TypeScript best practices.
 ## TypeScript Best Practices
 - Use strict type checking
@@ -39,5 +40,5 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 
 ## 6. Gold Standard Reference Files
 * **Component Pattern:** `src/app/labeler/image-label-widget/image-label-widget.component.ts` (Signals, `inject`, modern flow).
-* **Hybrid Logic:** `src/app/components/video-player/video-player-state.ts` (RxJS/Signal bridge).
+* **Hybrid Logic:** `src/app/video-player/video-player-state.ts` (RxJS/Signal bridge).
 * **API Structure:** `src/app/session.service.ts` (Centralized data logic).
