@@ -122,6 +122,39 @@ describe('LabelerCenterPanelComponent temporal context', () => {
     expect(contextLabel()).toBe('Showing: +1');
   });
 
+  it('shows a Back to the current frame button only away from the current frame', () => {
+    showFrame('labeled-data/s/img00000042.png');
+    const reset = () => button('Back to the current frame');
+    expect(reset()).toBeNull();
+
+    click('Show context frame +2');
+    expect(reset().classList).toContain('btn-warning');
+    expect(reset().textContent!.trim()).toBe('restart_alt');
+    const tip = reset().closest('[data-tip]')!;
+    expect(tip.getAttribute('data-tip')).toBe('Back to the current frame');
+    // Opens to the left: centered, the right side panel's edge cuts it off.
+    expect(tip.classList).toContain('tooltip-left');
+    click('Back to the current frame');
+    expect(contextLabel()).toBe('Showing: current');
+    expect(reset()).toBeNull();
+  });
+
+  it('shows the Back button while playing and stops playback with one click', () => {
+    jasmine.clock().install();
+    try {
+      showFrame('labeled-data/s/img00000042.png');
+      click('Play temporal context');
+      jasmine.clock().tick(1000);
+      fixture.detectChanges();
+      click('Back to the current frame');
+      expect(viewOptions().isPlayingTemporalContext()).toBeFalse();
+      expect(contextLabel()).toBe('Showing: current');
+      expect(button('Back to the current frame')).toBeNull();
+    } finally {
+      jasmine.clock().uninstall();
+    }
+  });
+
   it('jumps to a context frame when its dot is clicked', () => {
     showFrame('labeled-data/s/img00000042.png');
     click('Show context frame −2');
@@ -252,6 +285,94 @@ describe('LabelerCenterPanelComponent temporal context', () => {
     showFrame('labeled-data/s/frame_a.png');
     expectControlsDisabled();
     expect(tip()).toBe('The image file name has no frame number.');
+  });
+});
+
+describe('LabelerCenterPanelComponent side panel', () => {
+  let fixture: ComponentFixture<LabelerCenterPanelComponent>;
+
+  beforeEach(async () => {
+    const projectInfo = jasmine.createSpyObj(
+      'ProjectInfoService',
+      ['projectContext'],
+      { projectInfo: { data_dir: 'data', views: [] } },
+    );
+    projectInfo.projectContext.and.returnValue(null);
+    const calibration = jasmine.createSpyObj('CameraCalibrationService', [
+      'getCalibrationStatus',
+    ]);
+    calibration.getCalibrationStatus.and.resolveTo('none');
+
+    await TestBed.configureTestingModule({
+      imports: [LabelerCenterPanelComponent],
+      providers: [
+        { provide: ProjectInfoService, useValue: projectInfo },
+        { provide: CameraCalibrationService, useValue: calibration },
+      ],
+    })
+      .overrideComponent(LabelerCenterPanelComponent, {
+        remove: { imports: [ImageLabelWidgetComponent] },
+        add: { imports: [ImageLabelWidgetStubComponent] },
+      })
+      .compileComponents();
+
+    fixture = TestBed.createComponent(LabelerCenterPanelComponent);
+    fixture.componentRef.setInput('numLabeledFramesGetter', () => 0);
+    fixture.componentRef.setInput('labelFile', {
+      key: 'CollectedData',
+      views: [{ viewName: 'main', csvPath: 'CollectedData.csv' }],
+    });
+    const frame: MVFrame = {
+      key: 'f',
+      views: [
+        {
+          viewName: 'main',
+          imgPath: 'labeled-data/s/img00000042.png',
+          keypoints: [],
+          originalKeypoints: [],
+        },
+      ],
+    };
+    fixture.componentRef.setInput('frame', frame);
+    fixture.detectChanges();
+  });
+
+  function slider(label: string): HTMLInputElement {
+    return fixture.nativeElement.querySelector(
+      `input[type="range"][aria-label="${label}"]`,
+    );
+  }
+
+  it('puts Save, Next and Revert right under the keypoint list, before View options', () => {
+    const el: HTMLElement = fixture.nativeElement;
+    const titles = Array.from(el.querySelectorAll('.app-accordion-title h1'));
+    const keypoints = titles.find((h) => h.textContent!.trim() === 'Keypoints')!;
+    const viewOptions = titles.find(
+      (h) => h.textContent!.trim() === 'View options',
+    )!;
+    const actions = el.querySelector('[data-testid="frame-actions"]')!;
+    const before = Node.DOCUMENT_POSITION_PRECEDING;
+    const after = Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(actions.compareDocumentPosition(keypoints) & before).toBeTruthy();
+    expect(actions.compareDocumentPosition(viewOptions) & after).toBeTruthy();
+    expect(actions.textContent).toContain('Save and next');
+    expect(actions.textContent).toContain('Next →');
+    expect(actions.textContent).toContain('Revert changes');
+  });
+
+  it('lets the image and keypoint sliders reach their wider limits', () => {
+    expect([slider('Image size').min, slider('Image size').max]).toEqual([
+      '200',
+      '1600',
+    ]);
+    expect([
+      slider('Image brightness').min,
+      slider('Image brightness').max,
+    ]).toEqual(['0', '2']);
+    expect([slider('Image contrast').min, slider('Image contrast').max]).toEqual(
+      ['0', '2'],
+    );
+    expect(slider('Keypoint opacity').max).toBe('1');
   });
 });
 

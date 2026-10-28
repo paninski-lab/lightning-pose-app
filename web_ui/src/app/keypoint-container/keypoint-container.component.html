@@ -37,16 +37,19 @@
   }
 
   /*
-    Stroke follows the letter shape. A text-shadow outline is a stack of
-    square offsets, and an SVG filter would be its own layer inside the zoom.
-    The width is in em so it scales with the label: a fixed 2px stroke is as
-    thick as a 2-3px label, and its mitered corners showed as spikes. Keep in
-    step with LABEL_STROKE_EM, which pads the placement box.
+    Keypoint names are SVG text: only SVG strokes take a round line join. An
+    HTML -webkit-text-stroke joins sharp letter corners with long pointed
+    miters (spikes at the tips of "1", "2", "A"), and a text-shadow ring has
+    its offsets rounded to whole pixels before the zoom, so its edge steps.
+    The stroke is centred on the outline, so twice LABEL_OUTLINE_EM wide, and
+    paint-order draws it under the letters.
   */
-  .keypoint-label {
-    -webkit-text-stroke: 0.25em black;
+  .keypoint-labels text {
+    fill: var(--color-base-content);
+    stroke: black;
+    stroke-linejoin: round;
     paint-order: stroke fill;
-    line-height: 1;
+    white-space: pre;
   }
 </style>
 
@@ -156,6 +159,34 @@
     }
   </svg>
 
+  @if (enableKeypointLabels()) {
+    <!-- Names, placed by placeKeypointLabels; above the markers, never clickable. -->
+    <svg
+      class="keypoint-labels absolute inset-0 w-full h-full pointer-events-none overflow-visible select-none"
+      data-testid="keypoint-labels"
+      aria-hidden="true"
+    >
+      @for (keypoint of keypointModels(); track keypoint.id) {
+        @if (
+          keypoint.position() !== null &&
+          !(keypoint.id === selectedKeypoint() && selectedKeypointIsMoving()) &&
+          (!keypoint.isVisible || keypoint.isVisible())
+        ) {
+          @let anchor = labelAnchors().get(keypoint.id);
+          <text
+            class="keypoint-label"
+            [attr.data-kp-id]="keypoint.id"
+            [attr.x]="anchor?.x ?? 0"
+            [attr.y]="anchor?.y ?? 0"
+            [style.font-size.px]="keypointLabelFontSize()"
+            [style.stroke-width.px]="labelStrokeWidth()"
+            [style.visibility]="anchor ? null : 'hidden'"
+            [style.opacity]="calculatedKeypointLabelOpacity(keypoint.id)"
+          >{{ keypoint.id }}</text>
+        }
+      }
+    </svg>
+  }
   @if (showCrosshair() && crosshairPosition()) {
     @let gap = keypointSize() / 2;
     <svg class="big-crosshair" aria-hidden="true">
@@ -285,19 +316,6 @@
             [style.width.px]="keypointSize()"
             class="rounded-full"
           >
-            @if (enableKeypointLabels()) {
-              @let spanOffset = labelSpanOffsets().get(keypoint.id);
-              <span
-                class="keypoint-label text-nowrap pointer-events-none absolute select-none"
-                [attr.data-kp-id]="keypoint.id"
-                [style.font-size.px]="keypointLabelFontSize()"
-                [style.visibility]="spanOffset ? null : 'hidden'"
-                [style.top.px]="spanOffset?.top ?? 0"
-                [style.left.px]="spanOffset?.left ?? 0"
-                [style.opacity]="calculatedKeypointLabelOpacity(keypoint.id)"
-                >{{ keypoint.id }}</span
-              >
-            }
           </div>
         </app-dropdown-trigger>
         @if (keypoint.hoverText()) {

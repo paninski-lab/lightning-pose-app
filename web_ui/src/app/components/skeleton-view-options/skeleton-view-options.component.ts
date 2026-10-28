@@ -51,13 +51,13 @@ import {
     @if (showSkeleton() && !invalid()) {
       <div class="flex items-center gap-2 pt-2">
         <span class="material-icons text-sm!">line_weight</span>
-        Bone thickness
+        Skeleton thickness
       </div>
       <div class="pl-2 flex items-center">
         <input
           type="range"
           class="range range-xs flex-1 min-w-0"
-          aria-label="Bone thickness"
+          aria-label="Skeleton thickness"
           [attr.min]="minThickness"
           [attr.max]="maxThickness"
           [attr.step]="thicknessStep"
@@ -79,13 +79,13 @@ import {
       </div>
       <div class="flex items-center gap-2 pt-2">
         <span class="material-icons text-sm!">opacity</span>
-        Bone opacity
+        Skeleton opacity
       </div>
       <div class="pl-2 flex items-center">
         <input
           type="range"
           class="range range-xs flex-1 min-w-0"
-          aria-label="Bone opacity"
+          aria-label="Skeleton opacity"
           min="0"
           max="1"
           step="0.05"

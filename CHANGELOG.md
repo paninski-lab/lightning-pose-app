@@ -74,6 +74,22 @@ Tests: `project-settings.component.spec.ts` "view and keypoint name checks" (new
 
 Tests: `test_calibration_routes.py` (the session calibration is found before `calibration.toml`; saving a session calibration backs up into `calibrations/backups/` and not `calibration_backups/`; import writes `calibrations/sess.toml` and `calibration.toml`; rename writes `calibrations/mouse1.toml`, and `mouse2.TOML` becomes `mouse2.toml`; renaming `calibration.toml` is refused); `test_calibration_paths.py` (the three paths, including the backup name bundle adjustment writes; the session listing skips `backups/` and non-`.toml` files; the session id rule).
 
+* **Labeler:** While the image shows a context frame instead of the current frame (another dot, or playing), a bright, warning-colored **Back to the current frame** button appears to the right of the temporal context dots. One click stops playback and shows the current frame and its keypoints again. It also reminds you that you're not looking at the current frame.
+
+Tests: `labeler-center-panel.component.spec.ts` (the button is hidden on the current frame, appears with the warning color and its tip after picking +2, and returns to current; while playing, one click stops playback and returns to current).
+
+* **Keypoint labels:** In the Labeler and the Viewer, keypoint names are drawn as SVG text with a round-cornered black outline. The outline no longer has pointed spikes at sharp letter corners (the tips of "1", "2", "A"), at any zoom. Label size, opacity and placement are unchanged.
+
+Tests: `keypoint-container.component.spec.ts` "labels" (names are SVG text with a round-joined black outline drawn under the letters; the outline is a quarter of the font size, 0.5px at 2px and 2px at 8px; a name is placed at the lower-right of its marker in image coordinates); `keypoint-label-placement.spec.ts` "label outline" (placement padding).
+
+* **Labeler side panel:** Save, Save and next, Next and Revert now sit right under the keypoint list, above Multiview tools and View options. In View options, image size goes up to 1600px (was 1200px), image brightness and contrast both run 0–2 (were 0.3–1.7 and 0.5–1.5; 1 is still unchanged), and keypoint opacity goes up to 1 (was 0.6).
+
+Tests: `labeler-center-panel.component.spec.ts` "side panel" (the buttons come after Keypoints and before View options; the Image size, Image brightness, Image contrast and Keypoint opacity sliders have the new limits).
+
+* **Skeleton wording:** The skeleton sliders in the Labeler and the Viewer are named **Skeleton thickness** and **Skeleton opacity** (were "Bone …"). The skeleton settings page says "Each pair will be connected with a line in the Labeler and the Viewer."
+
+Tests: `skeleton-view-options.component.spec.ts` (the slider names and labels, no "Bone"); `project-skeleton.component.spec.ts` (the new sentence).
+
 ### [2.4.2.3] — 2026-10-15
 
 * **File manager:** Validation results and video probe results are kept in `.project-cache` in the project data directory. Opening a file panel shows the last check when the file is unchanged. A changed file, a deleted frame, or a keypoint change is not shown as OK until Validate runs again. Checking a video skips ffprobe when the file is unchanged, and a replaced video is not treated as all-intra from the old result.

@@ -1,6 +1,6 @@
 import {
   LabelFrame,
-  labelStrokePad,
+  labelOutlinePad,
   placeKeypointLabels,
 } from './keypoint-label-placement';
 
@@ -195,9 +195,9 @@ describe('placeKeypointLabels', () => {
   });
 });
 
-describe('labelStrokePad', () => {
-  it('pads by half the outline, which scales with the font', () => {
-    expect(labelStrokePad(8)).toBe(1);
-    expect(labelStrokePad(2)).toBe(0.25);
+describe('label outline', () => {
+  it('pads the placement box by the outline width', () => {
+    expect(labelOutlinePad(8)).toBe(1);
+    expect(labelOutlinePad(2)).toBe(0.25);
   });
 });

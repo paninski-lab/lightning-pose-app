@@ -150,6 +150,65 @@
       </div>
       </div>
     </div>
+    <div class="m-4 mt-0" data-testid="frame-actions">
+      @if (frame(); as frame2) {
+        @let lbfl = labelFile()!;
+        <div class="flex gap-2">
+          <div class="tooltip flex-1" [attr.data-tip]="saveTooltip">
+            <button
+              class="btn btn-soft btn-primary w-full"
+              [class.btn-disabled]="isSaveDisabled()"
+              (click)="handleSaveClick(lbfl, frame2, false)"
+              (keydown.enter)="handleSaveClick(lbfl, frame2, false)"
+            >
+              <span class="material-icons">save</span> Save
+            </button>
+          </div>
+          <div
+            class="tooltip tooltip-left"
+            [attr.data-tip]="removeFrameTooltip()"
+          >
+            <button
+              class="btn btn-error btn-soft w-full"
+              [class.btn-disabled]="isSaving()"
+              (click)="handleSaveClick(lbfl, frame2, false, true)"
+              (keydown.enter)="handleSaveClick(lbfl, frame2, false, true)"
+            >
+              <span class="material-icons">delete</span>
+            </button>
+          </div>
+        </div>
+        <div
+          class="tooltip tooltip-bottom w-full"
+          [attr.data-tip]="saveAndContinueTooltip"
+        >
+          <button
+            class="btn btn-soft btn-primary w-full mt-2"
+            [class.btn-disabled]="isSaveAndNextDisabled()"
+            (click)="handleSaveClick(lbfl, frame2, true)"
+            (keydown.enter)="handleSaveClick(lbfl, frame2, true)"
+          >
+            <span class="material-icons">save</span>
+            Save and next
+            <span class="material-icons">arrow_forward</span>
+          </button>
+        </div>
+        <button
+          class="btn btn-soft btn-primary w-full mt-2"
+          [class.btn-disabled]="!hasNextFrame() || disableInteractions()"
+          (click)="handleNext()"
+        >
+          Next →
+        </button>
+        <button
+          class="btn btn-soft btn-primary w-full mt-2"
+          [class.btn-disabled]="!canRevert()"
+          (click)="handleRevert()"
+        >
+          Revert changes ↫
+        </button>
+      }
+    </div>
     @if (frame(); as frame2) {
       @let lbfl = labelFile()!;
       @if (isMultiview()) {
@@ -418,6 +477,20 @@
                       </button>
                     }
                   </div>
+                  @if (viewOptions.isShowingTemporalContext()) {
+                    <!-- Bright on purpose: keypoints are hidden until the current frame is back. -->
+                    <span class="tooltip tooltip-left" data-tip="Back to the current frame">
+                      <button
+                        type="button"
+                        class="btn btn-warning btn-xs btn-square ml-1"
+                        aria-label="Back to the current frame"
+                        data-testid="context-reset"
+                        (click)="viewOptions.resetTemporalContext()"
+                      >
+                        <span class="material-icons text-base!">restart_alt</span>
+                      </button>
+                    </span>
+                  }
                 </div>
                 <div
                   class="text-xs"
@@ -437,8 +510,9 @@
               <input
                 type="range"
                 min="200"
-                max="1200"
+                max="1600"
                 step="10"
+                aria-label="Image size"
                 [(ngModel)]="viewOptions.imageSizePx"
                 class="range range-xs flex-1 min-w-0"
               />
@@ -461,9 +535,10 @@
             <div class="pl-2 flex items-center">
               <input
                 type="range"
-                min="0.3"
-                max="1.7"
+                min="0"
+                max="2"
                 step=".02"
+                aria-label="Image brightness"
                 [(ngModel)]="viewOptions.imgBrightnessScalar"
                 class="range range-xs flex-1 min-w-0"
               /><button
@@ -482,9 +557,10 @@
             <div class="pl-2 flex items-center">
               <input
                 type="range"
-                min="0.5"
-                max="1.5"
+                min="0"
+                max="2"
                 step=".02"
+                aria-label="Image contrast"
                 [(ngModel)]="viewOptions.imgContrastScalar"
                 class="range range-xs flex-1 min-w-0"
               /><button
@@ -504,8 +580,9 @@
               <input
                 type="range"
                 min="0"
-                max="0.6"
+                max="1"
                 step=".005"
+                aria-label="Keypoint opacity"
                 [(ngModel)]="viewOptions.keypointOpacity"
                 class="range range-xs flex-1 min-w-0"
               /><button
@@ -600,65 +677,6 @@
         </div>
       </div>
     }
-    <div class="m-4">
-      @if (frame(); as frame2) {
-        @let lbfl = labelFile()!;
-        <div class="flex gap-2">
-          <div class="tooltip flex-1" [attr.data-tip]="saveTooltip">
-            <button
-              class="btn btn-soft btn-primary w-full"
-              [class.btn-disabled]="isSaveDisabled()"
-              (click)="handleSaveClick(lbfl, frame2, false)"
-              (keydown.enter)="handleSaveClick(lbfl, frame2, false)"
-            >
-              <span class="material-icons">save</span> Save
-            </button>
-          </div>
-          <div
-            class="tooltip tooltip-left"
-            [attr.data-tip]="removeFrameTooltip()"
-          >
-            <button
-              class="btn btn-error btn-soft w-full"
-              [class.btn-disabled]="isSaving()"
-              (click)="handleSaveClick(lbfl, frame2, false, true)"
-              (keydown.enter)="handleSaveClick(lbfl, frame2, false, true)"
-            >
-              <span class="material-icons">delete</span>
-            </button>
-          </div>
-        </div>
-        <div
-          class="tooltip tooltip-bottom w-full"
-          [attr.data-tip]="saveAndContinueTooltip"
-        >
-          <button
-            class="btn btn-soft btn-primary w-full mt-2"
-            [class.btn-disabled]="isSaveAndNextDisabled()"
-            (click)="handleSaveClick(lbfl, frame2, true)"
-            (keydown.enter)="handleSaveClick(lbfl, frame2, true)"
-          >
-            <span class="material-icons">save</span>
-            Save and next
-            <span class="material-icons">arrow_forward</span>
-          </button>
-        </div>
-        <button
-          class="btn btn-soft btn-primary w-full mt-2"
-          [class.btn-disabled]="!hasNextFrame() || disableInteractions()"
-          (click)="handleNext()"
-        >
-          Next →
-        </button>
-        <button
-          class="btn btn-soft btn-primary w-full mt-2"
-          [class.btn-disabled]="!canRevert()"
-          (click)="handleRevert()"
-        >
-          Revert changes ↫
-        </button>
-      }
-    </div>
   </div>
   </as-split-area>
 </as-split>
