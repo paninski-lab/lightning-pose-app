@@ -17,6 +17,7 @@ import {
   DropdownTriggerDirective,
 } from '../components/dropdown/dropdown.component';
 import { PathDisplayComponent } from '../components/path-display/path-display.component';
+import { LocalStorageService } from '../local-storage.service';
 
 @Component({
   selector: 'app-home-page',
@@ -38,6 +39,7 @@ import { PathDisplayComponent } from '../components/path-display/path-display.co
 })
 export class HomePageComponent implements OnInit {
   protected projectInfo = inject(ProjectInfoService);
+  protected localStorageService = inject(LocalStorageService);
   protected projectToDelete = signal<ListProjectItem | null>(null);
   protected projectToUpdatePaths = signal<ListProjectItem | null>(null);
   protected showAddExistingDialog = signal(false);
