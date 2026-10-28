@@ -98,6 +98,14 @@ Tests: `labeler-view-options.service.spec.ts` (with nothing saved, opacity start
 
 Tests: `labeler-center-panel.component.spec.ts` "Next and keypoint selection" (Next walks top → side → front, then asks for the next frame, which opens on its first view, with no save; from a single view it asks for the next frame; it is inactive on the last view of the last frame; Save and next from the last view opens the next frame on its first view).
 
+* **Labeler Back:** A new **← Back** button beside **Next →** mirrors it: it shows the previous view of the same frame, and from the first view opens the previous frame on its last view. It does not save; edits stay on the frame you leave. It is inactive on the first view of the first frame. Closes #147.
+
+Tests: `labeler-center-panel.component.spec.ts` "Back walks the views back, then opens the previous frame on its last view, without saving" (front → side → top, then asks for the previous frame, which opens on front; no save; inactive on the first frame); `labeler-page.component.spec.ts` "Back from the first remaining frame opens the last labeled frame without saving, and is unavailable on the first frame".
+
+* **Labeler: Clear view.** A **Clear view** button in the Keypoints panel header unplaces every keypoint in the selected view, leaving the other views alone. Nothing is saved until **Save**, and **Revert changes** brings the points back. It is inactive when the view has no placed keypoints. Closes #151.
+
+Tests: `frame.model.spec.ts` "FVUtils.clearKeypoints" (empties one view, marks the frame edited, leaves the other view unchanged, Revert restores it); `labeler-center-panel.component.spec.ts` "Clear view empties the selected view only, without saving".
+
 * **Labeler: Keep selected keypoint.** A new **Keep selected keypoint** switch in View options. When on, the selected keypoint stays selected when you change view (filmstrip, Next, Save and next) and when the next frame opens, including a frame from the remaining list, so you can label one body part through every view. Off by default (the first keypoint is selected, as before). The setting is remembered in the browser. Closes #153.
 
 Tests: `labeler-center-panel.component.spec.ts` "selects the first keypoint on a new view unless Keep selected keypoint is on" (off: the first keypoint after Next; on: the same keypoint on the next view and on a remaining frame); `labeler-view-options.service.spec.ts` "keep selected keypoint" (off by default, saved when turned on, on again after a reload).

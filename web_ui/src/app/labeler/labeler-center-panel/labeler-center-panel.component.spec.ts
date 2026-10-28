@@ -538,6 +538,57 @@ describe('LabelerCenterPanelComponent Next and keypoint selection', () => {
     expect(shownImage()).toBe('f2_top.png');
   });
 
+  it('Back walks the views back, then opens the previous frame on its last view, without saving', () => {
+    const previousFrame = jasmine.createSpy('previousFrame');
+    fixture.componentInstance.previousFrame.subscribe(previousFrame);
+    fixture.componentRef.setInput('hasPreviousFrame', true);
+    open(makeFrame('f2', ['top', 'side', 'front']));
+    clickNext();
+    clickNext();
+    expect(shownImage()).toBe('f2_front.png');
+
+    actionButton('← Back').click();
+    fixture.detectChanges();
+    expect(shownImage()).toBe('f2_side.png');
+    actionButton('← Back').click();
+    fixture.detectChanges();
+    expect(shownImage()).toBe('f2_top.png');
+    expect(previousFrame).not.toHaveBeenCalled();
+
+    actionButton('← Back').click();
+    fixture.detectChanges();
+    expect(previousFrame).toHaveBeenCalledTimes(1);
+    open(makeFrame('f1', ['top', 'side', 'front']));
+    expect(shownImage()).toBe('f1_front.png');
+    expect(session.saveMVFrame).not.toHaveBeenCalled();
+
+    // On the first view of the first frame there is nowhere to go back to.
+    fixture.componentRef.setInput('hasPreviousFrame', false);
+    open(makeFrame('f0', ['top', 'side', 'front'], { unlabeled: true }));
+    expect(shownImage()).toBe('f0_top.png');
+    expect(actionButton('← Back').classList).toContain('btn-disabled');
+  });
+
+  it('Clear view empties the selected view only, without saving', () => {
+    const frame = makeFrame('f1', ['top', 'side']);
+    open(frame);
+    const clear = (): HTMLButtonElement =>
+      fixture.nativeElement.querySelector(
+        'button[aria-label="Clear all keypoints in this view"]',
+      );
+    expect(clear().disabled).toBeFalse();
+
+    clear().click();
+    fixture.detectChanges();
+    expect(frame.views[0].keypoints.every((kp) => isNaN(kp.x))).toBeTrue();
+    expect(frame.views[1].keypoints.every((kp) => !isNaN(kp.x))).toBeTrue();
+    expect(clear().disabled).toBeTrue();
+    expect(actionButton('Revert changes').classList).not.toContain(
+      'btn-disabled',
+    );
+    expect(session.saveMVFrame).not.toHaveBeenCalled();
+  });
+
   it('selects the first keypoint on a new view unless Keep selected keypoint is on', () => {
     open(makeFrame('f1', ['top', 'side', 'front']));
     selectKeypoint('tail');

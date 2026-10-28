@@ -111,10 +111,29 @@
       />
       <label
         for="app-accordion-keypoints"
-        class="app-accordion-title flex justify-between px-2 pb-1"
+        class="app-accordion-title flex justify-between items-center px-2 pb-1"
       >
         <h1>Keypoints</h1>
-        <span class="app-accordion-icon"></span>
+        <span class="flex items-center gap-1">
+          @if (frame()) {
+            <!-- Inside the accordion label: stop the click from toggling the panel. -->
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs"
+              aria-label="Clear all keypoints in this view"
+              [disabled]="!canClearView()"
+              (click)="
+                $event.preventDefault();
+                $event.stopPropagation();
+                handleClearView()
+              "
+            >
+              <span class="material-icons text-sm!">clear_all</span>
+              Clear view
+            </button>
+          }
+          <span class="app-accordion-icon"></span>
+        </span>
       </label>
       <div class="app-accordion-content">
       <div class="panel-content overflow-x-hidden overflow-y-auto max-h-100">
@@ -193,14 +212,31 @@
             <span class="material-icons">arrow_forward</span>
           </button>
         </div>
-        <div class="tooltip tooltip-bottom w-full" data-tip="Next view, or the next frame from the last view. Does not save.">
-          <button
-            class="btn btn-soft btn-primary w-full mt-2"
-            [class.btn-disabled]="isNextDisabled()"
-            (click)="handleNext()"
+        <div class="flex gap-2 mt-2">
+          <div
+            class="tooltip tooltip-bottom flex-1"
+            data-tip="Previous view, or the last view of the previous frame. Does not save."
           >
-            Next →
-          </button>
+            <button
+              class="btn btn-soft btn-primary w-full"
+              [class.btn-disabled]="isBackDisabled()"
+              (click)="handleBack()"
+            >
+              ← Back
+            </button>
+          </div>
+          <div
+            class="tooltip tooltip-bottom flex-1"
+            data-tip="Next view, or the next frame from the last view. Does not save."
+          >
+            <button
+              class="btn btn-soft btn-primary w-full"
+              [class.btn-disabled]="isNextDisabled()"
+              (click)="handleNext()"
+            >
+              Next →
+            </button>
+          </div>
         </div>
         <button
           class="btn btn-soft btn-primary w-full mt-2"

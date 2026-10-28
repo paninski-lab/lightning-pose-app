@@ -1,4 +1,4 @@
-import { mvf, MVFrame } from './frame.model';
+import { fv, mvf, MVFrame } from './frame.model';
 
 describe('MVFUtils.revertEdits', () => {
   it('reverts labeled frames to saved keypoints and clears unlabeled frames', () => {
@@ -44,5 +44,46 @@ describe('MVFUtils.revertEdits', () => {
     ]);
     expect(unlabeled.views[0].originalKeypoints).toBeNull();
     expect(unlabeledFrame.hasRevertibleEdits).toBe(false);
+  });
+});
+
+describe('FVUtils.clearKeypoints', () => {
+  it('empties one view, marks the frame edited, leaves other views alone, and Revert restores it', () => {
+    const top = [
+      { keypointName: 'nose', x: 1, y: 2 },
+      { keypointName: 'tail', x: 3, y: 4 },
+    ];
+    const side = [{ keypointName: 'nose', x: 5, y: 6 }];
+    const frame: MVFrame = {
+      key: 'f',
+      views: [
+        {
+          viewName: 'top',
+          imgPath: 't.png',
+          keypoints: structuredClone(top),
+          originalKeypoints: structuredClone(top),
+        },
+        {
+          viewName: 'side',
+          imgPath: 's.png',
+          keypoints: structuredClone(side),
+          originalKeypoints: structuredClone(side),
+        },
+      ],
+    };
+
+    expect(mvf(frame).hasChanges).toBeFalse();
+    fv(frame.views[0]).clearKeypoints();
+
+    expect(frame.views[0].keypoints.map((kp) => [kp.x, kp.y])).toEqual([
+      [NaN, NaN],
+      [NaN, NaN],
+    ]);
+    expect(fv(frame.views[0]).hasPlacedKeypoints).toBeFalse();
+    expect(frame.views[1].keypoints).toEqual(side);
+    expect(mvf(frame).hasChanges).toBeTrue();
+
+    mvf(frame).revertEdits();
+    expect(frame.views[0].keypoints).toEqual(top);
   });
 });
