@@ -406,3 +406,33 @@ def test_create_and_update_reject_exactly_one_camera_view(
     assert cleared.status_code == 200
     with open(data_dir / "project.yaml") as f:
         assert yaml.safe_load(f)["view_names"] == []
+
+
+def test_create_rejects_underscore_view_and_update_allows_it(
+    client: TestClient, register_project, tmp_path
+):
+    """A new project can't have _ in a view name; an existing one can still be saved."""
+    data_dir = tmp_path / "underscore"
+    rejected = client.post(
+        "/app/v0/rpc/CreateNewProject",
+        json={
+            "projectKey": "underscore",
+            "data_dir": str(data_dir),
+            "projectInfo": {"views": ["cam_top", "cam-side"]},
+        },
+    )
+    assert rejected.status_code == 400
+    assert rejected.json()["detail"] == (
+        "View names can't contain _ (cam_top), because video and folder names are "
+        "split at the last _. Use - instead (for example cam-top)."
+    )
+    assert not data_dir.exists()
+
+    existing = register_project("existing", views=["front", "side"])
+    updated = client.post(
+        "/app/v0/rpc/UpdateProjectConfig",
+        json={"projectKey": "existing", "projectInfo": {"views": ["cam_top", "side"]}},
+    )
+    assert updated.status_code == 200
+    with open(existing / "project.yaml") as f:
+        assert yaml.safe_load(f)["view_names"] == ["cam_top", "side"]

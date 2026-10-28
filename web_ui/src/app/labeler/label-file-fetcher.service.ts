@@ -14,6 +14,7 @@ import {
   ExtractedFramePredictionEntry,
   ExtractedFramePredictionList,
 } from '../extract-frames-request';
+import { framePathKey } from '../utils/session-view';
 
 @Injectable({
   providedIn: 'root',
@@ -136,7 +137,7 @@ class LabelFileFetcherService {
             };
           })
           .filter((x): x is FrameView => x !== null);
-        const key = views[0].imgPath.replace(views[0].viewName, '*');
+        const key = framePathKey(views[0].imgPath, views[0].viewName);
         return { key, views };
       });
     });
@@ -225,7 +226,7 @@ class LabelFileFetcherService {
         const views = Object.values(framesPerView)
           .map((frameViews) => frameViews[i])
           .filter((x) => x != null);
-        const key = views[0].imgPath.replace(views[0].viewName, '*');
+        const key = framePathKey(views[0].imgPath, views[0].viewName);
         return {
           key,
           views,

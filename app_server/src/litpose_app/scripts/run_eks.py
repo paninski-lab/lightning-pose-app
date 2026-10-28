@@ -75,9 +75,10 @@ def main() -> None:
         verbose=True,
     )
 
-    # Extract session name from first input file (assumes pattern "{session}_{view}.csv")
-    first_input = Path(args.input_files[0])
-    session_name = first_input.stem.rsplit("_", 1)[0]
+    # Extract session name from first input file ("{session}_{view}.csv")
+    from litpose_app.session_view import session_of
+
+    session_name = session_of(Path(args.input_files[0]).stem, args.camera_names)
 
     # NOTE: EKS outputs files with the "multicam_{view}_results.csv" naming structure by default.
     # This script works around that by renaming them to "{session}_{view}.csv".

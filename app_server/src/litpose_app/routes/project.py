@@ -30,6 +30,12 @@ from litpose_app.project import ProjectUtil
 from litpose_app.project_deletion import paths_to_delete, reject_forbidden_project_paths
 from litpose_app.routes.models import read_models_l1_from_base
 from litpose_app.routes.validate_files import _label_header_messages, label_csv_rels
+from litpose_app.session_view import (
+    session_of,
+    split_session_view,
+    view_underscore_message,
+    views_with_underscore,
+)
 from litpose_app.skeleton import skeleton_problems
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
 
@@ -161,6 +167,16 @@ def _reject_invalid_skeleton(skeleton: Any, keypoint_names: list[str] | None) ->
         )
 
 
+def _reject_underscore_view(view_names: list[str] | None) -> None:
+    """Refuse a new project whose view names contain ``_``. Existing projects only get a warning."""
+    names = views_with_underscore([n.strip() for n in view_names or [] if n])
+    if names:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=view_underscore_message(names),
+        )
+
+
 def _reject_single_view(view_names: list[str] | None) -> None:
     """Refuse a save with exactly one camera view. Empty means single-view. Load stays permissive."""
     if view_names is None:
@@ -245,18 +261,8 @@ def _fetch_all_stats(
         mp4_paths = list(
             iter_project_mp4s(data_dir, ignored_video_dirs(project_key))
         )
-        # Simple grouping logic: replace view name with *
-        session_keys = set()
-        for p in mp4_paths:
-            filename = Path(p).name
-            view_found = False
-            for v in views:
-                if v in filename:
-                    session_keys.add(filename.replace(v, "*"))
-                    view_found = True
-                    break
-            if not view_found:
-                session_keys.add(filename)
+        # Videos of one session differ only in the view after the last "_".
+        session_keys = {session_of(Path(p).stem, views) for p in mp4_paths}
 
         # 2. Label files
         valid_label_files = []
@@ -279,10 +285,9 @@ def _fetch_all_stats(
         grouped_stats: dict[str, LabelFileStats] = {}
         for s in label_files_stats_raw:
             name = s.name
-            for v in views:
-                if v in name:
-                    name = name.replace(v, "*")
-                    break
+            parts = split_session_view(Path(name).stem, views)
+            if parts is not None:
+                name = f"{parts[0]}_*{Path(name).suffix}"
             if name not in grouped_stats:
                 grouped_stats[name] = LabelFileStats(
                     name=name,
@@ -653,6 +658,7 @@ def create_new_project(
     Adds the project paths to projects.toml.
     """
     _reject_single_view(request.projectInfo.views)
+    _reject_underscore_view(request.projectInfo.views)
     # Update projects.toml first
     pp_dict = {"data_dir": request.data_dir}
     if request.model_dir is not None:

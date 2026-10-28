@@ -27,6 +27,7 @@ from ..deps import ProjectInfoGetter
 from ..ignored_video_dirs import ignored_video_dirs
 from ..paths.project_videos import project_video_root
 from ..project_cache import drop_video_probe
+from ..session_view import rsplit_session_view
 from ..tasks import transcode_fine
 
 logger = logging.getLogger(__name__)
@@ -67,11 +68,12 @@ def parse_session_view(
             status_code=400,
             detail="Filename must be of the form session_view.ext",
         )
-    session, _, view = stem.rpartition("_")
-    if not session or not view:
+    parts = rsplit_session_view(stem)
+    if parts is None:
         raise HTTPException(
             status_code=400, detail="Invalid session/view in filename."
         )
+    session, view = parts
     return session, view, ext
 
 

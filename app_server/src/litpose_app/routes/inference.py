@@ -27,6 +27,7 @@ from ..datatypes import Project
 from ..deps import ProjectInfoGetter
 from ..ignored_video_dirs import ignored_video_dirs
 from ..paths.project_videos import iter_project_mp4s
+from ..session_view import session_of
 from ..utils.gpu_lock import gpu_lock_blocking, read_gpu_task
 
 logger = logging.getLogger(__name__)
@@ -215,16 +216,11 @@ class InferPlan:
 # -----------------------------
 
 def _derive_sessions(video_paths: list[Path], view_names: list[str]) -> list[str]:
-    """Derive unique session keys from video paths by stripping camera name suffixes."""
+    """Unique sessions of ``video_paths``, in order (see ``session_view.session_of``)."""
     sessions: list[str] = []
     seen: set = set()
     for vp in video_paths:
-        stem = vp.stem
-        session = stem
-        for cam in view_names:
-            if stem.endswith(f"_{cam}"):
-                session = stem[: -len(f"_{cam}")]
-                break
+        session = session_of(vp.stem, view_names)
         if session not in seen:
             seen.add(session)
             sessions.append(session)
@@ -239,12 +235,7 @@ def _session_to_videos(
     """Map session name → list of video paths by globbing data_dir."""
     result: dict[str, list[Path]] = {}
     for vp in iter_project_mp4s(data_dir, ignored):
-        stem = vp.stem
-        session = stem
-        for cam in view_names:
-            if stem.endswith(f"_{cam}"):
-                session = stem[: -len(f"_{cam}")]
-                break
+        session = session_of(vp.stem, view_names)
         result.setdefault(session, []).append(vp)
     return result
 
@@ -321,13 +312,7 @@ def _build_infer_plan(
         target_sessions = _derive_sessions(explicit_videos, view_names)
         sess_to_vids: dict[str, list[Path]] = {}
         for vp in explicit_videos:
-            stem = vp.stem
-            session = stem
-            for cam in view_names:
-                if stem.endswith(f"_{cam}"):
-                    session = stem[: -len(f"_{cam}")]
-                    break
-            sess_to_vids.setdefault(session, []).append(vp)
+            sess_to_vids.setdefault(session_of(vp.stem, view_names), []).append(vp)
     else:
         sess_to_vids = _session_to_videos(
             data_base, view_names, ignored_video_dirs(project.project_key)

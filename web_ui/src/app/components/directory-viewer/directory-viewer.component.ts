@@ -14,6 +14,7 @@ import { DenseListboxComponent } from '../dense-listbox/dense-listbox.component'
 import { DenseListboxItemComponent } from '../dense-listbox/dense-listbox-item.component';
 
 import { ProjectInfoService } from '../../project-info.service';
+import { sessionViewKey } from '../../utils/session-view';
 
 interface RGlobResponse {
   entries: { path: string; type?: 'dir' | 'file' }[];
@@ -137,15 +138,8 @@ export class DirectoryViewerComponent {
 
   private getGroupedPath(path: string, views: string[]): string {
     const parts = path.split('/');
-    const filename = parts.at(-1)!;
-    const viewName = views.find((v) => filename.includes(v));
-
-    if (!viewName) {
-      return path;
-    }
-
-    const groupedFilename = filename.replace(viewName, '*');
-    return [...parts.slice(0, -1), groupedFilename].join('/');
+    const split = sessionViewKey(parts.at(-1)!, views);
+    return split ? [...parts.slice(0, -1), split.key].join('/') : path;
   }
 
   private async fetchEntries(basePath: string) {
