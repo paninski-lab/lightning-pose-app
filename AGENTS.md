@@ -35,15 +35,15 @@ The Viewer frame and time fields stay custom (`.jump-field`). DaisyUI `input` is
 
 ## Tests
 
-Write or update tests in the same change as the behavior. A UI change that renames a control, tip, or shortcut is not done until the spec asserts the current markup and behavior, not the old copy.
+Write or update tests in the same change as the behavior. A spec should fail when something a user does breaks, not when wording changes. A control renamed in its role or `aria-label`, or a changed shortcut, needs the spec updated to match. A change to tip, button, or help wording alone needs no test.
 
 - Backend: `cd app_server && pytest --ignore=tests/test_predict_wrapper.py`. Skip `test_predict_wrapper.py` unless you mean to; it needs a GPU-oriented env and is excluded from CI.
 - UI you touched: `cd web_ui && npx ng lint` and a targeted `npx ng test --no-watch --browsers=ChromeHeadless --include=<spec>`. Run the full UI suite when the change is shared (a component under `components/`, global styles, or keyboard/routing used by more than one page).
-- Prefer specs next to the code (`*.spec.ts`). Assert what a user can do: clicks, keyboard, typed frame/time, slider bounds. Query by role or `aria-label`, and assert `data-tip` text when the tip is part of the change.
+- Prefer specs next to the code (`*.spec.ts`). Assert what a user can do: clicks, keyboard, typed frame/time, slider bounds. Query by role or `aria-label`. Do not assert `data-tip` text, button copy, or class lists unless that text or class is the fix.
 - Delete a spec that only covered a method which moved to a child. Do not keep a parent test alive with stubs for behavior the parent no longer owns. For a parent with heavy children, stub those children (`TestBed.overrideComponent`), as in `labeler-page.component.spec.ts`.
 - Components that use `ProjectInfoService` must mock it. Do not let tests hit the real router resolver or RPC client.
 
-When you describe the change in [CHANGELOG.md](CHANGELOG.md), [BUGS.md](BUGS.md), or a `feature_plans/*.md` note, name the test that covers it (file, and the behavior it checks). A user-facing bullet without a corresponding test note is incomplete.
+When you describe the change in [CHANGELOG.md](CHANGELOG.md), [BUGS.md](BUGS.md), or a `feature_plans/*.md` note, name the test that covers it (file, and the behavior it checks). A user-facing bullet without a corresponding test note is incomplete. For a wording-only change, the note says so ("wording only, no test").
 
 ## Tools
 
@@ -52,6 +52,15 @@ Do not install or enable additional tools unless asked.
 # Frontend Architecture & Modern Angular Standards
 
 Lightning Pose App's UI (`web_ui/`) is built on modern Angular (v20+), Tailwind CSS 4, and DaisyUI 5. Code must follow modern Angular idioms, prioritizing signals, modularity, and high testability.
+
+This section is the frontend standard. It includes every rule in [`web_ui/docs/context.md`](web_ui/docs/context.md) (Karan Sikka's guidance); if the two ever disagree, follow `context.md` and fix this section. `CLAUDE.md` holds stack facts and gotchas, not style rules.
+
+New and edited code follows this standard. Do not rewrite untouched legacy code inside a feature PR; that is #157.
+
+## TypeScript
+
+- Use strict type checking.
+- Prefer type inference when the type is obvious.
 
 ## Component Architecture & Boundaries
 
@@ -62,12 +71,12 @@ Lightning Pose App's UI (`web_ui/`) is built on modern Angular (v20+), Tailwind 
 - **Dumb (Presentational) Components**:
   - Live in `src/app/components/` when reusable across features, or as child subcomponents within a feature directory when feature-specific.
   - Purely presentational: communicate strictly through signal inputs (`input()`, `input.required()`), two-way models (`model()`), and event outputs (`output()`).
-  - Never inject domain backend services (`RpcService`, `ProjectInfoService`) directly into reusable presentational components.
+  - Prefer presentational components that get data through inputs. A reusable picker that must load its own data may inject `RpcService`, `SessionService`, or `ProjectInfoService` (for example `path-editable`, `server-video-picker`, `base-session-picker`, `directory-viewer`, `video-group-import`, `active-task-indicator`).
   - Reusable components under `components/` **must** have a companion Storybook story (`*.stories.ts`).
 - **Single Responsibility & Collocation**:
   - Keep components small and focused on a single concern.
   - Collocate files: `foo.component.ts`, `foo.component.html`, `foo.spec.ts`, and optionally `foo.stories.ts` side-by-side.
-  - Prefer inline templates (`template: ...`) for small components (< 30 lines of HTML). Use external template files for larger markup.
+  - Prefer inline templates (`template: ...`) for small components (< 30 lines of HTML). Use external template files for larger markup, with paths relative to the component `.ts` file.
   - Do not create a new component to wrap a trivial DaisyUI element (e.g. a simple button or badge).
 
 ## Modern Angular Patterns (Angular v20+)
@@ -92,17 +101,29 @@ Lightning Pose App's UI (`web_ui/`) is built on modern Angular (v20+), Tailwind 
   - Use `@let` syntax for template variable aliases instead of complex repeated expressions or `*ngIf="expr as val"` workarounds.
   - Use native property bindings for styling: `[class.active]="isActive()"`, `[class]="classString()"`, `[style.width.px]="width()"`. Do not use `ngClass` or `ngStyle`.
   - Do NOT use `@HostBinding` or `@HostListener` decorators. Define host bindings and event listeners inside the component decorator's `host` object.
+  - Keep templates simple. Do not assume globals such as `new Date()` are available in templates.
+- **Forms**:
+  - Prefer Reactive forms over template-driven ones for new forms. Existing template-driven `ngModel` bindings (for example the View options sliders) stay unless the PR is about that form.
+  - Do not adopt Angular's experimental Signal Forms yet.
 - **Dependency Injection**:
   - Always use the `inject()` function instead of constructor parameter injection.
+- **Subscriptions**:
+  - End manual subscriptions with `takeUntilDestroyed()`, or expose the stream with `toSignal()`.
+- **Security**:
+  - Never set `innerHTML` or call `bypassSecurityTrust*` with user or file data. The one `innerHTML` use (`highlight.directive.ts`) sets highlight.js output, which escapes its input.
 
 ## State Management Stack
 
-- **Local State**: Component-level `signal()` and `computed()`.
+- **Local State**: Component-level `signal()` and `computed()`. Keep state transformations pure and predictable.
 - **Feature / Shared State**:
-  - `@ngrx/signals` (`signalStore` / `signalState`) or an `@Injectable()` service holding signals.
-  - Provide feature stores at the feature component root or module route level when lifetime should be scoped to that view.
+  - Use a service for signal state that is reused across components.
+  - Use `signal()` for simple state and ngrx `signalState` (`@ngrx/signals`) for complex state. Do not use ngrx store. `@ngrx/signals` is installed; no code uses it yet.
+- **Services**:
+  - Design each service around a single responsibility.
+  - Use `providedIn: 'root'` for singleton services.
+  - Provide a service at a component when its state belongs to that view, so each page gets a fresh instance (for example `EnabledViewsKeypointsService` at `ViewerPageComponent`).
 - **Async Event Streams & Bridging**:
-  - Use RxJS `Subject` / `BehaviorSubject` for event-driven streams, debouncing, polling, or WebSocket/SSE connections.
+  - Use RxJS `Subject` / `BehaviorSubject` for event-driven streams, debouncing, polling, or WebSocket/SSE connections, and `BehaviorSubject` for synchronous event-driven logic (`effect()` runs asynchronously).
   - Use `toSignal()` to expose RxJS observable streams to signal-based templates and computed properties.
   - Use `toObservable()` when bridging signal values into RxJS operators.
 
@@ -114,11 +135,17 @@ Lightning Pose App's UI (`web_ui/`) is built on modern Angular (v20+), Tailwind 
   - Use Tailwind CSS 4 utility classes for flexbox, grid, spacing, and alignment.
   - Exceptions: The Viewer frame and time fields stay custom (`.jump-field`) because DaisyUI `input` is too tall for that tight toolbar. The seek slider uses DaisyUI `range`.
 
+## Reference files
+
+- **Component pattern:** `web_ui/src/app/labeler/image-label-widget/image-label-widget.component.ts` (signals, `inject`, modern control flow).
+- **RxJS / signal bridge:** `web_ui/src/app/video-player/video-player-state.ts`.
+- **API structure:** `web_ui/src/app/session.service.ts` (centralized data logic).
+
 ## Testing Signal Components
 
 - **Signal Inputs in Specs**: Set signal inputs using `fixture.componentRef.setInput('propName', value)`.
 - **Mocks & Isolation**: Mock `ProjectInfoService`, `RpcService`, and `SessionService` in unit tests. Never make live network or RPC calls in tests.
-- **User-Centric Assertions**: Query elements by accessibility role, label, or data attribute. Assert actual visible text, active classes, disabled states, and emitted outputs.
+- **User-Centric Assertions**: Query elements by accessibility role, label, or data attribute. Assert disabled states, emitted outputs, and keyboard behavior. Assert visible text or classes only when they are the behavior (for example an error message or the `text-error` state).
 
 ## Curated Angular References
 

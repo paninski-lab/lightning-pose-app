@@ -103,11 +103,13 @@ Label CSV saves (`save_mvframe.py`) and status updates (`train_scheduler.py`) wr
 
 ## Angular patterns
 
+The frontend style standard is the Frontend Architecture section of [AGENTS.md](AGENTS.md), which follows `web_ui/docs/context.md`. This section lists facts about how the app is built.
+
 ### Standalone components, OnPush everywhere
 Every component is standalone (declares its own `imports` array). `ChangeDetectionStrategy.OnPush` is the default.
 
 ### Zoneless — signals drive change detection
-No `zone.js` in production. Use `signal()`, `computed()`, `effect()`. Templates must use signal-based bindings; imperative `detectChanges()` calls are rare.
+No `zone.js` in the app (`provideZonelessChangeDetection()`). `zone.js` stays a dependency because the Karma tests load `zone.js/testing` (`angular.json` test polyfills). Use `signal()`, `computed()`, `effect()`. Templates must use signal-based bindings; imperative `detectChanges()` calls are rare.
 
 ### State pattern: Signals + RxJS bridge
 Services expose data as both a `BehaviorSubject` (for reactive pipelines) and `toSignal()` (for templates). Example in `ProjectInfoService`: `allViews$` (Observable) + `allViews` (signal).
