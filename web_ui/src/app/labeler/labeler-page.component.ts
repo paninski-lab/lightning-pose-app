@@ -145,6 +145,13 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     return index >= 0 && index < frames.length - 1;
   });
 
+  protected hasPreviousFrame = computed(() => {
+    const frames = this.labelFileData();
+    const frameKey = this.frameKey();
+    if (!frames || frameKey == null) return false;
+    return frames.findIndex((f) => f.key === frameKey) > 0;
+  });
+
   ngOnChanges(changes: SimpleChanges) {
     if (changes['labelFileKey']) {
       this.loadLabelFileData(this.selectedLabelFile()).catch((error) => {
@@ -234,16 +241,26 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   }
 
   protected handleNextFrame() {
+    this.openFrameAtOffset(1);
+  }
+
+  protected handlePreviousFrame() {
+    this.openFrameAtOffset(-1);
+  }
+
+  /** Opens the frame `offset` places away in the combined list (labeled, then remaining). Does not save. */
+  private openFrameAtOffset(offset: number) {
     const frames = this.labelFileData();
     const frameKey = this.frameKey();
     if (!frames || frameKey == null) return;
     const index = frames.findIndex((frame) => frame.key === frameKey);
-    const nextFrameKey = frames[index + 1]?.key;
-    if (!nextFrameKey) return;
+    if (index < 0) return;
+    const targetKey = frames[index + offset]?.key;
+    if (!targetKey) return;
     this.router.navigate([], {
       queryParams: {
         labelFileKey: this.labelFileKey(),
-        frameKey: nextFrameKey,
+        frameKey: targetKey,
       },
     });
   }

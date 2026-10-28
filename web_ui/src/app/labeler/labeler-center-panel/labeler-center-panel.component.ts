@@ -14,7 +14,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { LabelerViewOptionsService } from '../labeler-view-options.service';
-import { FrameView, mvf, MVFrame } from '../frame.model';
+import { FrameView, fv, mvf, MVFrame } from '../frame.model';
 import { LKeypoint, lkp } from '../types';
 import { DecimalPipe } from '@angular/common';
 import { ProjectInfoService } from '../../project-info.service';
@@ -37,7 +37,10 @@ import {
 } from '../temporal-context';
 import { LoadCalibrationDialogComponent } from '../../file-manager/load-calibration-dialog.component';
 import { SkeletonViewOptionsComponent } from '../../components/skeleton-view-options/skeleton-view-options.component';
-import { isSkeletonDefinitionInvalid } from '../../components/skeleton-overlay/skeleton-validity';
+import {
+  isSkeletonDefinitionInvalid,
+  skeletonPairs,
+} from '../../components/skeleton-overlay/skeleton-validity';
 import { SplitAreaComponent, SplitComponent } from 'angular-split';
 import {
   DropdownComponent,
@@ -78,6 +81,11 @@ export class LabelerCenterPanelComponent implements OnChanges {
     if (!info) return false;
     return isSkeletonDefinitionInvalid(info.skeleton, info.keypoint_names);
   });
+  protected noSkeletonPairs = computed(
+    () =>
+      skeletonPairs(this.projectInfoService.projectContext()?.projectInfo?.skeleton)
+        .length === 0,
+  );
   protected isMultiview = computed(() => {
     return (
       (this.projectInfoService.projectContext()?.projectInfo?.views?.length ??
@@ -88,6 +96,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
   labelFile = input<MVLabelFile | null>(null);
   frame = input<MVFrame | null>(null);
   hasNextFrame = input(false);
+  hasPreviousFrame = input(false);
   numLabeledFramesGetter = input.required<() => number>();
 
   primaryZoomableElement =
@@ -100,6 +109,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
     deletion?: boolean;
   }>();
   nextFrame = output<void>();
+  previousFrame = output<void>();
   closeFrame = output<void>();
 
   constructor() {
@@ -145,21 +155,41 @@ export class LabelerCenterPanelComponent implements OnChanges {
       }
     }
 
-    // Unlabeled frames should start from the first view and keypoint.
-    if (
-      changes['frame'] &&
-      this.frame() &&
-      mvf(this.frame()!).isFromUnlabeledSet
-    ) {
-      this._selectedView.set(null);
-      this.selectFirstKeypoint();
+    // A frame reached by Back opens on its last view. Unlabeled frames, and
+    // a frame reached by Next or Save and next, start from the first view.
+    if (changes['frame'] && this.frame()) {
+      const openOn = this.openFrameOn;
+      this.openFrameOn = null;
+      if (openOn === 'last') {
+        this._selectedView.set(this.frame()!.views.at(-1)?.viewName ?? null);
+        this.selectKeypointForView();
+      } else if (openOn === 'first' || mvf(this.frame()!).isFromUnlabeledSet) {
+        this._selectedView.set(null);
+        this.selectKeypointForView();
+      }
     }
   }
 
-  private selectFirstKeypoint() {
-    this.selectedKeypoint.set(
-      this.selectedFrameView()?.keypoints[0]?.keypointName ?? null,
-    );
+  /**
+   * Which view the next frame opens on: 'first' after Next or Save and next
+   * leaves the last view, 'last' after Back leaves the first view.
+   */
+  private openFrameOn: 'first' | 'last' | null = null;
+
+  /**
+   * Selects the keypoint for a newly shown view: the same keypoint when
+   * "Keep selected keypoint" is on and the view has it, otherwise the first.
+   */
+  private selectKeypointForView() {
+    const keypoints = this.selectedFrameView()?.keypoints ?? [];
+    const current = this.selectedKeypoint();
+    if (
+      this.viewOptions.keepSelectedKeypoint() &&
+      keypoints.some((kp) => kp.keypointName === current)
+    ) {
+      return;
+    }
+    this.selectedKeypoint.set(keypoints[0]?.keypointName ?? null);
   }
 
   protected sessionKey = computed(() => {
@@ -228,7 +258,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
 
   handleViewClickFromFilmstrip(viewName: string) {
     this._selectedView.set(viewName);
-    this.selectFirstKeypoint();
+    this.selectKeypointForView();
   }
 
   // Set to a random value if you need to bust cache of computed signals.
@@ -299,17 +329,6 @@ export class LabelerCenterPanelComponent implements OnChanges {
     }
   }
 
-  protected get saveTooltip(): string {
-    if (!this.isSaveDisabled()) return '';
-    return 'No changes to save.';
-  }
-
-  protected get saveAndContinueTooltip(): string {
-    if (this.isSaveDisabled()) return 'No changes to save.';
-    if (this.isSaveAndNextDisabled()) return 'Already on last frame.';
-    return 'Save and advance to next frame or view.';
-  }
-
   // export to template
   protected readonly mvf = mvf;
 
@@ -337,11 +356,41 @@ export class LabelerCenterPanelComponent implements OnChanges {
     );
   });
 
-  protected hasNextView = computed(() => {
+  protected hasNextView = computed(() => !!this.nextFrameView());
+
+  private nextFrameView = computed(() => this.frameViewAtOffset(1));
+  private previousFrameView = computed(() => this.frameViewAtOffset(-1));
+
+  private frameViewAtOffset(offset: number): FrameView | null {
     const frame = this.frame();
     const frameView = this.selectedFrameView();
-    if (!frame || !frameView) return false;
-    return frame.views[frame.views.indexOf(frameView) + 1] !== undefined;
+    if (!frame || !frameView) return null;
+    return frame.views[frame.views.indexOf(frameView) + offset] ?? null;
+  }
+
+  /** Next is active when there is another view of this frame or another frame. */
+  protected isNextDisabled = computed(
+    () =>
+      (!this.hasNextView() && !this.hasNextFrame()) ||
+      this.disableInteractions(),
+  );
+
+  /** Back is active when there is an earlier view of this frame or an earlier frame. */
+  protected isBackDisabled = computed(
+    () =>
+      (!this.previousFrameView() && !this.hasPreviousFrame()) ||
+      this.disableInteractions(),
+  );
+
+  /** Clear view is active when the selected view has a placed keypoint. */
+  protected canClearView = computed(() => {
+    this.cacheBuster();
+    const frameView = this.selectedFrameView();
+    return (
+      !!frameView &&
+      !this.disableInteractions() &&
+      fv(frameView).hasPlacedKeypoints
+    );
   });
 
   protected isSaveAndNextDisabled = computed(() => {
@@ -357,6 +406,38 @@ export class LabelerCenterPanelComponent implements OnChanges {
     return mvf(frame).hasRevertibleEdits;
   });
 
+  // Frame buttons have a tooltip only while inactive, saying why.
+  private busyReason = computed(() => {
+    if (this.isSaving()) return 'Saving…';
+    if (this.isMVAutoLabeling()) return 'Labeling the other views…';
+    return '';
+  });
+
+  protected saveDisabledReason = computed(() => {
+    if (!this.isSaveDisabled()) return '';
+    return this.busyReason() || 'No changes to save.';
+  });
+
+  protected saveAndNextDisabledReason = computed(() => {
+    if (!this.isSaveAndNextDisabled()) return '';
+    return this.saveDisabledReason() || 'Already on the last view of the last frame.';
+  });
+
+  protected backDisabledReason = computed(() => {
+    if (!this.isBackDisabled()) return '';
+    return this.busyReason() || 'Already on the first view of the first frame.';
+  });
+
+  protected nextDisabledReason = computed(() => {
+    if (!this.isNextDisabled()) return '';
+    return this.busyReason() || 'Already on the last view of the last frame.';
+  });
+
+  protected revertDisabledReason = computed(() => {
+    if (this.canRevert()) return '';
+    return this.busyReason() || 'No changes to revert.';
+  });
+
   protected removeFrameTooltip(): string {
     const frame = this.frame();
     if (frame && mvf(frame).isFromUnlabeledSet) {
@@ -365,9 +446,39 @@ export class LabelerCenterPanelComponent implements OnChanges {
     return 'Remove frame from label file';
   }
 
+  /** Shows the next view of this frame, or the next frame from the last view. Does not save. */
   protected handleNext() {
-    if (!this.hasNextFrame() || this.disableInteractions()) return;
+    if (this.isNextDisabled()) return;
+    const nextView = this.nextFrameView();
+    if (nextView) {
+      this._selectedView.set(nextView.viewName);
+      this.selectKeypointForView();
+      return;
+    }
+    this.openFrameOn = 'first';
     this.nextFrame.emit();
+  }
+
+  /** Shows the previous view of this frame, or the last view of the previous frame from the first view. Does not save. */
+  protected handleBack() {
+    if (this.isBackDisabled()) return;
+    const previousView = this.previousFrameView();
+    if (previousView) {
+      this._selectedView.set(previousView.viewName);
+      this.selectKeypointForView();
+      return;
+    }
+    this.openFrameOn = 'last';
+    this.previousFrame.emit();
+  }
+
+  /** Unplaces every keypoint in the selected view. Not saved until Save; Revert undoes it. */
+  protected handleClearView() {
+    const frameView = this.selectedFrameView();
+    if (!frameView || !this.canClearView()) return;
+    fv(frameView).clearKeypoints();
+    this.selectKeypointForView();
+    this.cacheBuster.set(Math.random());
   }
 
   protected handleRevert() {
@@ -404,13 +515,15 @@ export class LabelerCenterPanelComponent implements OnChanges {
     }
 
     this.isSaving.set(true);
-    const frameView = this.selectedFrameView()!;
-    const nextFrameView = frame.views[frame.views.indexOf(frameView) + 1];
+    const nextFrameView = this.nextFrameView();
 
     this.sessionService
       .saveMVFrame(labelFile, frame, deletion)
       .then(() => {
         this.isSaving.set(false);
+        if (shouldContinue && !nextFrameView) {
+          this.openFrameOn = 'first';
+        }
         this.saved.emit({
           labelFile,
           frame,
@@ -423,7 +536,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
         if (shouldContinue && nextFrameView) {
           this._selectedView.set(nextFrameView.viewName);
         }
-        this.selectFirstKeypoint();
+        this.selectKeypointForView();
       })
       .catch((error) => {
         this.isSaving.set(false);

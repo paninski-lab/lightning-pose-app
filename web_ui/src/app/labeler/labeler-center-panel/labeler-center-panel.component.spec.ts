@@ -9,6 +9,7 @@ import { CameraCalibrationService } from '../../camera-calibration.service';
 import { MVFrame } from '../frame.model';
 import { ContextSlotView } from '../temporal-context';
 import { LabelerViewOptionsService } from '../labeler-view-options.service';
+import { SessionService } from '../../session.service';
 
 describe('LabelerCenterPanelComponent temporal context', () => {
   let fixture: ComponentFixture<LabelerCenterPanelComponent>;
@@ -341,6 +342,125 @@ describe('LabelerCenterPanelComponent side panel', () => {
     expect(actions.textContent).toContain('Revert changes');
   });
 
+  it('puts Keep selected and Clear values above the keypoint list, outside the header', () => {
+    const el: HTMLElement = fixture.nativeElement;
+    const tools = el.querySelector('[data-testid="keypoint-tools"]')!;
+    const header = el.querySelector('label[for="app-accordion-keypoints"]')!;
+    const list = el.querySelector('.panel-content ul')!;
+    expect(
+      tools.querySelector('input[aria-label="Keep selected keypoint"]'),
+    ).not.toBeNull();
+    expect(
+      tools.querySelector('button[aria-label="Clear values in this view"]'),
+    ).not.toBeNull();
+    expect(header.querySelector('button')).toBeNull();
+    expect(
+      tools.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      el.querySelectorAll('input[aria-label="Keep selected keypoint"]').length,
+    ).toBe(1);
+  });
+
+  it('groups View options into Context, Image, Keypoints and Skeleton, with the pixel grid on its own', () => {
+    const el: HTMLElement = fixture.nativeElement;
+    const groups = Array.from(el.querySelectorAll('[role="group"]'));
+    expect(groups.map((g) => g.getAttribute('aria-label'))).toEqual([
+      'Context',
+      'Image',
+      'Keypoints',
+      'Skeleton',
+    ]);
+    const group = (name: string) =>
+      groups.find((g) => g.getAttribute('aria-label') === name)!;
+    expect(
+      group('Context').querySelector('[aria-label="Play temporal context"]'),
+    ).not.toBeNull();
+    for (const label of ['Image size', 'Image brightness', 'Image contrast']) {
+      expect(group('Image').querySelector(`[aria-label="${label}"]`))
+        .withContext(label)
+        .not.toBeNull();
+    }
+    for (const label of [
+      'Keypoint opacity',
+      'Keypoint size',
+      'Keypoint labels',
+    ]) {
+      expect(group('Keypoints').querySelector(`[aria-label="${label}"]`))
+        .withContext(label)
+        .not.toBeNull();
+    }
+    expect(
+      group('Skeleton').querySelector('[aria-label="Show skeleton"]'),
+    ).not.toBeNull();
+    const grid = el.querySelector('input[aria-label="Pixel grid overlay"]')!;
+    expect(grid.closest('[role="group"]')).toBeNull();
+    expect(
+      group('Skeleton').compareDocumentPosition(grid) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('shows Show skeleton off when the project defines no skeleton pairs', () => {
+    // This describe's project info has no skeleton key.
+    const toggle: HTMLInputElement = fixture.nativeElement.querySelector(
+      'input[aria-label="Show skeleton"]',
+    );
+    expect(toggle.checked).toBeFalse();
+    expect(toggle.disabled).toBeTrue();
+  });
+
+  it('Show slider numbers shows the View options values only while on', () => {
+    const options = fixture.debugElement.injector.get(
+      LabelerViewOptionsService,
+    );
+    const before = options.showSliderNumbers();
+    const KEY = 'labeler-view-options.showSliderNumbers';
+    const stored = localStorage.getItem(KEY);
+    const el: HTMLElement = fixture.nativeElement;
+    const imageGroup = () => el.querySelector('[role="group"][aria-label="Image"]')!;
+    const toggle: HTMLInputElement = el.querySelector(
+      'input[aria-label="Show slider numbers"]',
+    )!;
+    try {
+      options.showSliderNumbers.set(false);
+      fixture.detectChanges();
+      expect(toggle.checked).toBeFalse();
+      expect(imageGroup().textContent).not.toContain(
+        `${options.imageSizePx()}px`,
+      );
+
+      toggle.click();
+      fixture.detectChanges();
+      expect(options.showSliderNumbers()).toBeTrue();
+      expect(imageGroup().textContent).toContain(`${options.imageSizePx()}px`);
+    } finally {
+      options.showSliderNumbers.set(before);
+      fixture.detectChanges();
+      if (stored === null) localStorage.removeItem(KEY);
+      else localStorage.setItem(KEY, stored);
+    }
+  });
+
+  it('shows every switch in the side panel in the primary (green) style', () => {
+    const el: HTMLElement = fixture.nativeElement;
+    const toggles: HTMLInputElement[] = Array.from(
+      el.querySelectorAll('input.toggle'),
+    );
+    expect(toggles.map((t) => t.getAttribute('aria-label'))).toEqual([
+      'Keep selected keypoint',
+      'Keypoint labels',
+      'Show skeleton',
+      'Pixel grid overlay',
+      'Show slider numbers',
+    ]);
+    for (const t of toggles) {
+      expect(t.classList)
+        .withContext(t.getAttribute('aria-label')!)
+        .toContain('toggle-primary');
+    }
+  });
+
   it('lets the image and keypoint sliders reach their wider limits', () => {
     expect([slider('Image size').min, slider('Image size').max]).toEqual([
       '200',
@@ -354,6 +474,292 @@ describe('LabelerCenterPanelComponent side panel', () => {
       ['0', '2'],
     );
     expect(slider('Keypoint opacity').max).toBe('1');
+  });
+});
+
+describe('LabelerCenterPanelComponent Next and keypoint selection', () => {
+  const KEEP_KEY = 'labeler-view-options.keepSelectedKeypoint';
+  let fixture: ComponentFixture<LabelerCenterPanelComponent>;
+  let session: jasmine.SpyObj<SessionService>;
+  let saved: string | null;
+
+  const NAMES = ['nose', 'ear', 'tail'];
+
+  /** A frame with the given views; image files are named <key>_<view>.png. */
+  function makeFrame(
+    key: string,
+    views: string[],
+    opts: { unlabeled?: boolean; editedView?: string } = {},
+  ): MVFrame {
+    return {
+      key,
+      views: views.map((viewName) => {
+        const keypoints = NAMES.map((keypointName, i) => ({
+          keypointName,
+          x: opts.unlabeled ? NaN : i,
+          y: opts.unlabeled ? NaN : i,
+        }));
+        return {
+          viewName,
+          imgPath: `labeled-data/s/${key}_${viewName}.png`,
+          keypoints:
+            viewName === opts.editedView
+              ? keypoints.map((kp) => ({ ...kp, x: kp.x + 5 }))
+              : keypoints,
+          originalKeypoints: opts.unlabeled ? null : keypoints,
+        };
+      }),
+    };
+  }
+
+  beforeEach(async () => {
+    saved = localStorage.getItem(KEEP_KEY);
+    localStorage.removeItem(KEEP_KEY);
+    const projectInfo = jasmine.createSpyObj(
+      'ProjectInfoService',
+      ['projectContext'],
+      { projectInfo: { data_dir: 'data', views: [] } },
+    );
+    projectInfo.projectContext.and.returnValue(null);
+    const calibration = jasmine.createSpyObj('CameraCalibrationService', [
+      'getCalibrationStatus',
+    ]);
+    calibration.getCalibrationStatus.and.resolveTo('none');
+    session = jasmine.createSpyObj('SessionService', ['saveMVFrame']);
+    session.saveMVFrame.and.resolveTo();
+
+    await TestBed.configureTestingModule({
+      imports: [LabelerCenterPanelComponent],
+      providers: [
+        { provide: ProjectInfoService, useValue: projectInfo },
+        { provide: CameraCalibrationService, useValue: calibration },
+        { provide: SessionService, useValue: session },
+      ],
+    })
+      .overrideComponent(LabelerCenterPanelComponent, {
+        remove: { imports: [ImageLabelWidgetComponent] },
+        add: { imports: [ImageLabelWidgetStubComponent] },
+      })
+      .compileComponents();
+
+    fixture = TestBed.createComponent(LabelerCenterPanelComponent);
+    fixture.componentRef.setInput('numLabeledFramesGetter', () => 0);
+    fixture.componentRef.setInput('labelFile', {
+      key: 'CollectedData',
+      views: [{ viewName: 'top', csvPath: 'CollectedData_top.csv' }],
+    });
+  });
+
+  afterEach(() => {
+    if (saved === null) localStorage.removeItem(KEEP_KEY);
+    else localStorage.setItem(KEEP_KEY, saved);
+  });
+
+  function open(frame: MVFrame, hasNextFrame = true) {
+    fixture.componentRef.setInput('hasNextFrame', hasNextFrame);
+    fixture.componentRef.setInput('frame', frame);
+    fixture.detectChanges();
+  }
+
+  function actionButton(text: string): HTMLButtonElement {
+    const buttons: HTMLButtonElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll(
+        '[data-testid="frame-actions"] button',
+      ),
+    );
+    return buttons.find((b) => b.textContent!.includes(text))!;
+  }
+
+  function clickNext() {
+    actionButton('Next →').click();
+    fixture.detectChanges();
+  }
+
+  /** File name of the image in the main view's header, e.g. "f1_side.png". */
+  function shownImage(): string {
+    const spans: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('span.truncate'),
+    );
+    return spans
+      .map((el) => el.textContent!.trim())
+      .find((text) => !text.includes('/'))!;
+  }
+
+  function keypointRow(name: string): HTMLElement {
+    const rows: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('li'),
+    );
+    return rows.find(
+      (li) => li.querySelector('span')!.textContent!.trim() === name,
+    )!;
+  }
+
+  /** Name of the highlighted row in the keypoint list. */
+  function selectedKeypoint(): string {
+    return fixture.nativeElement
+      .querySelector('li.bg-sky-700 span')
+      .textContent.trim();
+  }
+
+  function selectKeypoint(name: string) {
+    keypointRow(name).click();
+    fixture.detectChanges();
+  }
+
+  it('Next walks the views of a frame, then opens the next frame on its first view, without saving', () => {
+    const nextFrame = jasmine.createSpy('nextFrame');
+    fixture.componentInstance.nextFrame.subscribe(nextFrame);
+    open(makeFrame('f1', ['top', 'side', 'front']));
+    expect(shownImage()).toBe('f1_top.png');
+
+    clickNext();
+    expect(shownImage()).toBe('f1_side.png');
+    clickNext();
+    expect(shownImage()).toBe('f1_front.png');
+    expect(nextFrame).not.toHaveBeenCalled();
+
+    clickNext();
+    expect(nextFrame).toHaveBeenCalledTimes(1);
+    open(makeFrame('f2', ['top', 'side', 'front']));
+    expect(shownImage()).toBe('f2_top.png');
+    expect(session.saveMVFrame).not.toHaveBeenCalled();
+  });
+
+  it('Next opens the next frame from a single view, and is inactive on the last view of the last frame', () => {
+    const nextFrame = jasmine.createSpy('nextFrame');
+    fixture.componentInstance.nextFrame.subscribe(nextFrame);
+    open(makeFrame('f1', ['top']));
+    clickNext();
+    expect(nextFrame).toHaveBeenCalledTimes(1);
+
+    open(makeFrame('f2', ['top', 'side']), false);
+    expect(actionButton('Next →').classList).not.toContain('btn-disabled');
+    clickNext();
+    expect(shownImage()).toBe('f2_side.png');
+    expect(actionButton('Next →').classList).toContain('btn-disabled');
+  });
+
+  it('frame buttons have a tooltip only while inactive, saying why; Delete always has one', () => {
+    const tip = (text: string) =>
+      actionButton(text).closest('.tooltip')?.getAttribute('data-tip') ?? null;
+    const deleteTip = () =>
+      fixture.nativeElement
+        .querySelector('[data-testid="frame-actions"] .btn-error')
+        .closest('.tooltip')
+        .getAttribute('data-tip');
+
+    // Edited, with frames before and after: everything is active.
+    fixture.componentRef.setInput('hasPreviousFrame', true);
+    open(makeFrame('f1', ['top'], { editedView: 'top' }));
+    for (const text of ['Save', 'Save and next', '← Back', 'Next →', 'Revert changes']) {
+      expect(tip(text)).withContext(text).toBeNull();
+    }
+    expect(deleteTip()).toBeTruthy();
+
+    // Unedited, and the only frame: all but Delete are inactive.
+    fixture.componentRef.setInput('hasPreviousFrame', false);
+    open(makeFrame('f2', ['top']), false);
+    for (const text of ['Save', 'Save and next', '← Back', 'Next →', 'Revert changes']) {
+      expect(actionButton(text).classList).withContext(text).toContain('btn-disabled');
+      expect(tip(text)).withContext(text).toBeTruthy();
+    }
+    expect(tip('Save')).toBe('No changes to save.');
+    expect(tip('Next →')).toBe('Already on the last view of the last frame.');
+    expect(tip('← Back')).toBe('Already on the first view of the first frame.');
+    expect(deleteTip()).toBeTruthy();
+  });
+
+  it('Save and next from the last view opens the next frame on its first view', async () => {
+    const events: { shouldAdvanceFrame: boolean }[] = [];
+    fixture.componentInstance.saved.subscribe((e) => events.push(e));
+    open(makeFrame('f1', ['top', 'side'], { editedView: 'side' }));
+    clickNext();
+    expect(shownImage()).toBe('f1_side.png');
+
+    actionButton('Save and next').click();
+    // Let the save promise and its .then() run.
+    await session.saveMVFrame.calls.mostRecent().returnValue;
+    await Promise.resolve();
+    expect(session.saveMVFrame).toHaveBeenCalledTimes(1);
+    expect(events[0].shouldAdvanceFrame).toBeTrue();
+
+    open(makeFrame('f2', ['top', 'side']));
+    expect(shownImage()).toBe('f2_top.png');
+  });
+
+  it('Back walks the views back, then opens the previous frame on its last view, without saving', () => {
+    const previousFrame = jasmine.createSpy('previousFrame');
+    fixture.componentInstance.previousFrame.subscribe(previousFrame);
+    fixture.componentRef.setInput('hasPreviousFrame', true);
+    open(makeFrame('f2', ['top', 'side', 'front']));
+    clickNext();
+    clickNext();
+    expect(shownImage()).toBe('f2_front.png');
+
+    actionButton('← Back').click();
+    fixture.detectChanges();
+    expect(shownImage()).toBe('f2_side.png');
+    actionButton('← Back').click();
+    fixture.detectChanges();
+    expect(shownImage()).toBe('f2_top.png');
+    expect(previousFrame).not.toHaveBeenCalled();
+
+    actionButton('← Back').click();
+    fixture.detectChanges();
+    expect(previousFrame).toHaveBeenCalledTimes(1);
+    open(makeFrame('f1', ['top', 'side', 'front']));
+    expect(shownImage()).toBe('f1_front.png');
+    expect(session.saveMVFrame).not.toHaveBeenCalled();
+
+    // On the first view of the first frame there is nowhere to go back to.
+    fixture.componentRef.setInput('hasPreviousFrame', false);
+    open(makeFrame('f0', ['top', 'side', 'front'], { unlabeled: true }));
+    expect(shownImage()).toBe('f0_top.png');
+    expect(actionButton('← Back').classList).toContain('btn-disabled');
+  });
+
+  it('Clear values empties the selected view only, without saving', () => {
+    const frame = makeFrame('f1', ['top', 'side']);
+    open(frame);
+    const clear = (): HTMLButtonElement =>
+      fixture.nativeElement.querySelector(
+        'button[aria-label="Clear values in this view"]',
+      );
+    expect(clear().disabled).toBeFalse();
+
+    clear().click();
+    fixture.detectChanges();
+    expect(frame.views[0].keypoints.every((kp) => isNaN(kp.x))).toBeTrue();
+    expect(frame.views[1].keypoints.every((kp) => !isNaN(kp.x))).toBeTrue();
+    expect(clear().disabled).toBeTrue();
+    expect(actionButton('Revert changes').classList).not.toContain(
+      'btn-disabled',
+    );
+    expect(session.saveMVFrame).not.toHaveBeenCalled();
+  });
+
+  it('selects the first keypoint on a new view unless Keep selected keypoint is on', () => {
+    open(makeFrame('f1', ['top', 'side', 'front']));
+    selectKeypoint('tail');
+    clickNext();
+    expect(selectedKeypoint()).toBe('nose');
+
+    const keep: HTMLInputElement = fixture.nativeElement.querySelector(
+      'input[aria-label="Keep selected keypoint"]',
+    );
+    expect(keep.checked).toBeFalse();
+    keep.click();
+    fixture.detectChanges();
+    selectKeypoint('tail');
+    clickNext();
+    expect(shownImage()).toBe('f1_front.png');
+    expect(selectedKeypoint()).toBe('tail');
+
+    // Also on the next frame, including one from the remaining list.
+    clickNext();
+    open(makeFrame('f2', ['top', 'side', 'front'], { unlabeled: true }));
+    expect(shownImage()).toBe('f2_top.png');
+    expect(selectedKeypoint()).toBe('tail');
   });
 });
 

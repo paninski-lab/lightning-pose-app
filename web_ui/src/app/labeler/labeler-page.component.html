@@ -162,9 +162,11 @@
         [labelFile]="loadedLabelFile()"
         [frame]="selectedFrame()"
         [hasNextFrame]="hasNextFrame()"
+        [hasPreviousFrame]="hasPreviousFrame()"
         [numLabeledFramesGetter]="getNumLabeledFramesGetter"
         (saved)="handleSaved($event)"
         (nextFrame)="handleNextFrame()"
+        (previousFrame)="handlePreviousFrame()"
         (closeFrame)="handleCloseFrame()"
         (newLabelFile)="extractFramesDialogOpen.set(true)"
       ></app-labeler-center-panel>

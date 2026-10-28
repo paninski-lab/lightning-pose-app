@@ -46,6 +46,10 @@ export class ViewerViewOptionsService {
   skeletonOpacity = signal(
     storedNumber('viewer-view-options.skeletonOpacity', DEFAULT_SKELETON_OPACITY),
   );
+  /** Show each slider's value under it in View options. */
+  showSliderNumbers = signal(
+    storedFlag('viewer-view-options.showSliderNumbers', false),
+  );
   isSkeletonThicknessDefault = computed(
     () => this.skeletonThickness() === DEFAULT_SKELETON_THICKNESS,
   );
@@ -108,6 +112,12 @@ export class ViewerViewOptionsService {
         String(this.skeletonOpacity()),
       ),
     );
+    effect(() =>
+      localStorage.setItem(
+        'viewer-view-options.showSliderNumbers',
+        String(this.showSliderNumbers()),
+      ),
+    );
 
     merge(
       toObservable(this.videoTileSizePx),
@@ -119,6 +129,7 @@ export class ViewerViewOptionsService {
       toObservable(this.showSkeleton),
       toObservable(this.skeletonThickness),
       toObservable(this.skeletonOpacity),
+      toObservable(this.showSliderNumbers),
     )
       .pipe(debounceTime(UMAMI_DEBOUNCE_TIME_MS), takeUntilDestroyed())
       .subscribe(() => {
@@ -132,6 +143,7 @@ export class ViewerViewOptionsService {
           showSkeleton: this.showSkeleton(),
           skeletonThickness: this.skeletonThickness(),
           skeletonOpacity: this.skeletonOpacity(),
+          showSliderNumbers: this.showSliderNumbers(),
         });
       });
   }

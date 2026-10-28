@@ -33,6 +33,20 @@ export class FVUtils {
     );
   }
 
+  /** True when at least one keypoint in this view is placed. */
+  get hasPlacedKeypoints(): boolean {
+    return this.frameView.keypoints.some((kp) => !lkp(kp).isNaN());
+  }
+
+  /** Unplaces every keypoint in this view. Nothing is saved; Revert undoes it. */
+  clearKeypoints(): void {
+    this.frameView.keypoints = this.frameView.keypoints.map((kp) => ({
+      ...kp,
+      x: NaN,
+      y: NaN,
+    }));
+  }
+
   get changedKeypoints(): LKeypoint[] {
     return this.frameView.keypoints.filter((kp) => {
       const okp =

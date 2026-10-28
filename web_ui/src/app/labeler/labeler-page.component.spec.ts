@@ -31,9 +31,11 @@ class StubLabelerCenterPanelComponent {
   labelFile = input<MVLabelFile | null>(null);
   frame = input<unknown>(null);
   hasNextFrame = input(false);
+  hasPreviousFrame = input(false);
   numLabeledFramesGetter = input<unknown>(null);
   saved = output<unknown>();
   nextFrame = output<void>();
+  previousFrame = output<void>();
   closeFrame = output<void>();
   newLabelFile = output<void>();
 }
@@ -354,5 +356,37 @@ describe('LabelerPageComponent — handleSaved frame advance', () => {
         queryParams: { labelFileKey: labelFile.key, frameKey: 'remaining' },
       }),
     );
+  });
+
+  it('Back from the first remaining frame opens the last labeled frame without saving, and is unavailable on the first frame', () => {
+    const first = makeFrame('first');
+    const labeled = makeFrame('labeled');
+    const remaining = makeFrame('remaining');
+    remaining.views[0].originalKeypoints = null;
+    remaining.views[0].keypoints = [{ keypointName: 'nose', x: 7, y: 7 }];
+    setFrames([first, labeled, remaining]);
+    const page = component as unknown as {
+      handlePreviousFrame: () => void;
+      hasPreviousFrame: () => boolean;
+    };
+
+    fixture.componentRef.setInput('frameKey', 'remaining');
+    expect(page.hasPreviousFrame()).toBeTrue();
+    page.handlePreviousFrame();
+    expect(remaining.views[0].keypoints).toEqual([
+      { keypointName: 'nose', x: 7, y: 7 },
+    ]);
+    expect(navigateSpy).toHaveBeenCalledWith(
+      [],
+      jasmine.objectContaining({
+        queryParams: { labelFileKey: labelFile.key, frameKey: 'labeled' },
+      }),
+    );
+
+    navigateSpy.calls.reset();
+    fixture.componentRef.setInput('frameKey', 'first');
+    expect(page.hasPreviousFrame()).toBeFalse();
+    page.handlePreviousFrame();
+    expect(navigateSpy).not.toHaveBeenCalled();
   });
 });

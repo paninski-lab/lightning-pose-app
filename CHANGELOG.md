@@ -94,6 +94,42 @@ Tests: `skeleton-view-options.component.spec.ts` (the slider names and labels, n
 
 Tests: `labeler-view-options.service.spec.ts` (with nothing saved, opacity starts at 0.5 and Reset returns to 0.5; a saved opacity is kept).
 
+* **Labeler Next:** In a multiview project, **Next →** shows the next view of the same frame, and moves to the next frame only from the last view, like **Save and next**. It still does not save. When Next or Save and next moves on from the last view, the next frame opens on its first view (a labeled frame used to open on the view you were on). Single-view projects work as before. Closes #152.
+
+Tests: `labeler-center-panel.component.spec.ts` "Next and keypoint selection" (Next walks top → side → front, then asks for the next frame, which opens on its first view, with no save; from a single view it asks for the next frame; it is inactive on the last view of the last frame; Save and next from the last view opens the next frame on its first view).
+
+* **Labeler Back:** A new **← Back** button beside **Next →** mirrors it: it shows the previous view of the same frame, and from the first view opens the previous frame on its last view. It does not save; edits stay on the frame you leave. It is inactive on the first view of the first frame. Closes #147.
+
+Tests: `labeler-center-panel.component.spec.ts` "Back walks the views back, then opens the previous frame on its last view, without saving" (front → side → top, then asks for the previous frame, which opens on front; no save; inactive on the first frame); `labeler-page.component.spec.ts` "Back from the first remaining frame opens the last labeled frame without saving, and is unavailable on the first frame".
+
+* **Labeler: Clear values.** A red **Clear values** button (✕) at the top of the open Keypoints panel unplaces every keypoint in the selected view, leaving the other views alone. Nothing is saved until **Save**, and **Revert changes** brings the points back. It is inactive when the view has no placed keypoints. Closes #151.
+
+Tests: `frame.model.spec.ts` "FVUtils.clearKeypoints" (empties one view, marks the frame edited, leaves the other view unchanged, Revert restores it); `labeler-center-panel.component.spec.ts` "Clear values empties the selected view only, without saving".
+
+* **Labeler: Keep selected keypoint.** A new **Keep selected** switch at the top of the open Keypoints panel, beside **Clear values** and above the keypoint list. When on, the selected keypoint stays selected when you change view (filmstrip, Next, Save and next) and when the next frame opens, including a frame from the remaining list, so you can label one body part through every view. Off by default (the first keypoint is selected, as before). The setting is remembered in the browser. Closes #153.
+
+Tests: `labeler-center-panel.component.spec.ts` "selects the first keypoint on a new view unless Keep selected keypoint is on" (off: the first keypoint after Next; on: the same keypoint on the next view and on a remaining frame); `labeler-view-options.service.spec.ts` "keep selected keypoint" (off by default, saved when turned on, on again after a reload).
+
+* **Show skeleton (Labeler and Viewer):** when the project defines no skeleton pairs (no `skeleton` key, or an empty list), the switch shows off and is inactive, with a note to add pairs in project settings. It used to show on with nothing to draw. The saved setting is not changed, so a project with pairs still opens with the switch the way you left it (on by default).
+
+Tests: `skeleton-view-options.component.spec.ts` "shows the switch off and disabled when there are no skeleton pairs, without changing the saved setting" (off and inactive with no pairs, no sliders, back on once pairs exist, no change emitted); `labeler-center-panel.component.spec.ts` "shows Show skeleton off when the project defines no skeleton pairs".
+
+* **View options, Labeler and Viewer: Show slider numbers.** A new **Show slider numbers** switch at the bottom of View options, off by default and remembered in the browser per page. When on, every View options slider shows its value under it (image or video tile size, brightness, contrast, keypoint opacity and size, label size, skeleton thickness and opacity). When off, none do; the image size, video tile size, keypoint and skeleton numbers that used to show all the time are hidden until you turn it on.
+
+Tests: `labeler-view-options.service.spec.ts` "show slider numbers" (off by default, saved when turned on, on again after a reload); `labeler-center-panel.component.spec.ts` "Show slider numbers shows the View options values only while on"; `skeleton-view-options.component.spec.ts` "shows the thickness and opacity values unless showValues is off". The Viewer has no page spec; it uses the same switch and the same skeleton input.
+
+* **View options switches are green.** Keep selected, Keypoint labels and Show skeleton now use the same green (primary) style as Pixel grid overlay. Test: `labeler-center-panel.component.spec.ts` "shows every switch in the side panel in the primary (green) style".
+
+* **Viewer View options** now match the Labeler's layout: video tile size, then keypoint settings, then skeleton settings, with a divider between groups and **Show slider numbers** last after its own divider. The Viewer sliders and the Keypoint labels switch got `aria-label`s. No test (the Viewer page has no spec).
+
+* **Labeler frame buttons:** **Save**, **Save and next**, **← Back**, **Next →** and **Revert changes** show a tooltip only while inactive, saying why (for example "No changes to save." or "Already on the last view of the last frame."). The always-on tips on Save and next, Back and Next are gone. The delete button keeps its tooltip.
+
+Tests: `labeler-center-panel.component.spec.ts` "frame buttons have a tooltip only while inactive, saying why; Delete always has one" (no tip on any active button; each inactive button has a reason; Delete has a tip in both states).
+
+* **Labeler View options** are grouped into context, image, keypoint and skeleton settings, with a divider between groups. **Pixel grid overlay** stays last, after its own divider. The settings and their saved values are unchanged.
+
+Tests: `labeler-center-panel.component.spec.ts` "puts Keep selected and Clear values above the keypoint list, outside the header" (both controls are in the bar above the list, the panel header has no button, the switch appears once); "groups View options into Context, Image, Keypoints and Skeleton, with the pixel grid on its own" (each control is in its group, the pixel grid is in none and comes after Skeleton).
+
 ### [2.4.2.3] — 2026-10-15
 
 * **File manager:** Validation results and video probe results are kept in `.project-cache` in the project data directory. Opening a file panel shows the last check when the file is unchanged. A changed file, a deleted frame, or a keypoint change is not shown as OK until Validate runs again. Checking a video skips ffprobe when the file is unchanged, and a replaced video is not treated as all-intra from the old result.

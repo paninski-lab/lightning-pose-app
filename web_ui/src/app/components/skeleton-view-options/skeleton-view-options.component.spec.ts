@@ -55,4 +55,43 @@ describe('SkeletonViewOptionsComponent', () => {
     );
     expect(sliders().length).toBe(0);
   });
+
+  it('shows the switch off and disabled when there are no skeleton pairs, without changing the saved setting', () => {
+    const changes: boolean[] = [];
+    fixture.componentInstance.showSkeleton.subscribe((v) => changes.push(v));
+    fixture.componentRef.setInput('showSkeleton', true);
+    fixture.componentRef.setInput('noPairs', true);
+    fixture.detectChanges();
+
+    const toggle: HTMLInputElement = fixture.nativeElement.querySelector(
+      'input[aria-label="Show skeleton"]',
+    );
+    expect(toggle.checked).toBeFalse();
+    expect(toggle.disabled).toBeTrue();
+    expect(sliders().length).toBe(0);
+
+    // Once the project has pairs, the saved setting (on) shows again.
+    fixture.componentRef.setInput('noPairs', false);
+    fixture.detectChanges();
+    expect(toggle.checked).toBeTrue();
+    expect(toggle.disabled).toBeFalse();
+    expect(sliders().length).toBe(2);
+    expect(changes).toEqual([]);
+  });
+
+  it('shows the thickness and opacity values unless showValues is off', () => {
+    fixture.componentRef.setInput('showSkeleton', true);
+    fixture.componentRef.setInput('thickness', 2.5);
+    fixture.componentRef.setInput('opacity', 0.75);
+    fixture.detectChanges();
+    const text = () => fixture.nativeElement.textContent as string;
+    expect(text()).toContain('2.5px');
+    expect(text()).toContain('0.75');
+
+    fixture.componentRef.setInput('showValues', false);
+    fixture.detectChanges();
+    expect(text()).not.toContain('2.5px');
+    expect(text()).not.toContain('0.75');
+    expect(sliders().length).toBe(2);
+  });
 });
