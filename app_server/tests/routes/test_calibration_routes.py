@@ -52,7 +52,7 @@ def test_saving_a_session_calibration_backs_up_into_calibrations_backups(
     assert response.status_code == 200
     backups = sorted(p.name for p in (data_dir / "calibrations" / "backups").iterdir())
     assert len(backups) == 1
-    assert re.fullmatch(r"mouse1_og-\d{8}-\d{6}\.toml", backups[0])
+    assert re.fullmatch(r"mouse1\.\d{8}-\d{6}\.toml", backups[0])
     assert not (data_dir / "calibration_backups").exists()
 
 

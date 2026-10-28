@@ -68,7 +68,9 @@ Tests: `session-view.spec.ts` (last `_`; `cam1`/`cam10`; `stop_top`; unknown vie
 
 Tests: `project-settings.component.spec.ts` "view and keypoint name checks" (new project with `cam_top`: error text and Save disabled, enabled after `cam-top`; existing project: warning and Save enabled; `Top`/`top` views; `Nose`/`nose` keypoints); `name-checks.spec.ts`; `view-underscore-notice.spec.ts` (both panels show the notice for `cam_top` and nothing without); `test_create_rejects_underscore_view_and_update_allows_it`.
 
-* **Calibration files:** A session calibration renamed or imported with an upper-case extension (`mouse1.TOML`) is saved as `calibrations/mouse1.toml`, the name Lightning Pose looks for. Calibration paths (`calibrations/<session>.toml`, `calibration.toml`, and the backups bundle adjustment writes to `calibrations/backups/<session>_og-<date>-<time>.toml`) are now defined in one place in the app. No files move.
+* **Calibration files:** A session calibration renamed or imported with an upper-case extension (`mouse1.TOML`) is saved as `calibrations/mouse1.toml`, the name Lightning Pose looks for. Calibration paths (`calibrations/<session>.toml`, `calibration.toml`, and the backups in `calibrations/backups/`) are now defined in one place in the app. No files move.
+
+* **Bundle adjustment:** The backup of a replaced session calibration is named `calibrations/backups/<session>.<date>-<time>.toml` (for example `mouse1.20261028-101500.toml`). It used to be `<session>_og-<date>-<time>.toml`; existing backups keep their names. The dialog shows the new name.
 
 Tests: `test_calibration_routes.py` (the session calibration is found before `calibration.toml`; saving a session calibration backs up into `calibrations/backups/` and not `calibration_backups/`; import writes `calibrations/sess.toml` and `calibration.toml`; rename writes `calibrations/mouse1.toml`, and `mouse2.TOML` becomes `mouse2.toml`; renaming `calibration.toml` is refused); `test_calibration_paths.py` (the three paths, including the backup name bundle adjustment writes; the session listing skips `backups/` and non-`.toml` files; the session id rule).
 

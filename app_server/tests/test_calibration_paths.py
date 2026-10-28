@@ -20,16 +20,15 @@ from litpose_app.calibration_paths import (
 def test_paths(tmp_path: Path):
     assert session_calibration_path(tmp_path, "mouse1") == tmp_path / "calibrations/mouse1.toml"
     assert project_calibration_path(tmp_path) == tmp_path / "calibration.toml"
-    # The name bundle adjustment has always written.
     assert calibration_backup_path(
         tmp_path, "mouse1", datetime(2026, 10, 28, 10, 15, 0)
-    ) == tmp_path / "calibrations/backups/mouse1_og-20261028-101500.toml"
+    ) == tmp_path / "calibrations/backups/mouse1.20261028-101500.toml"
 
 
 def test_session_files_skip_backups_and_other_files(tmp_path: Path):
     assert session_calibration_files(tmp_path) == []
     (tmp_path / "calibrations" / "backups").mkdir(parents=True)
-    for name in ("b.toml", "A.toml", "notes.txt", "backups/a_og-20261028-101500.toml"):
+    for name in ("b.toml", "A.toml", "notes.txt", "backups/a.20261028-101500.toml"):
         (tmp_path / "calibrations" / name).write_text("")
     assert session_calibration_files(tmp_path) == [
         tmp_path / "calibrations/A.toml",
@@ -37,7 +36,7 @@ def test_session_files_skip_backups_and_other_files(tmp_path: Path):
     ]
     assert is_session_calibration(tmp_path, tmp_path / "calibrations/A.toml")
     assert not is_session_calibration(
-        tmp_path, tmp_path / "calibrations/backups/a_og-20261028-101500.toml"
+        tmp_path, tmp_path / "calibrations/backups/a.20261028-101500.toml"
     )
     assert not is_session_calibration(tmp_path, tmp_path / "calibrations/missing.toml")
 

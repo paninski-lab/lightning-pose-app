@@ -16,7 +16,8 @@ from pathlib import Path
 CALIBRATIONS_DIR = "calibrations"
 PROJECT_CALIBRATION_FILE = "calibration.toml"
 BACKUPS_DIR = "backups"
-# A backup is <session>_og-<YYYYmmdd-HHMMSS>.toml.
+# A backup is <session>.<YYYYmmdd-HHMMSS>.toml. A dot, not "_", so the name
+# doesn't look like a <session>_<view> name. Older backups are <session>_og-<stamp>.toml.
 BACKUP_STAMP_FORMAT = "%Y%m%d-%H%M%S"
 
 _SESSION_ID_RE = re.compile(r"^[A-Za-z0-9_.\-]+$")
@@ -33,9 +34,9 @@ def project_calibration_path(data_dir: Path) -> Path:
 
 
 def calibration_backup_path(data_dir: Path, session: str, when: datetime) -> Path:
-    """``calibrations/backups/<session>_og-<YYYYmmdd-HHMMSS>.toml``."""
+    """``calibrations/backups/<session>.<YYYYmmdd-HHMMSS>.toml``."""
     stamp = when.strftime(BACKUP_STAMP_FORMAT)
-    return data_dir / CALIBRATIONS_DIR / BACKUPS_DIR / f"{session}_og-{stamp}.toml"
+    return data_dir / CALIBRATIONS_DIR / BACKUPS_DIR / f"{session}.{stamp}.toml"
 
 
 def session_calibration_files(data_dir: Path) -> list[Path]:
