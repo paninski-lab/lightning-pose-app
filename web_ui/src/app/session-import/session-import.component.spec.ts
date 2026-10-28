@@ -31,10 +31,6 @@ describe('SessionImportComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
-    expect(fixture.componentInstance).toBeTruthy();
-  });
-
   it('keeps Choose videos on the local file input until Server files is checked', () => {
     const root = fixture.nativeElement as HTMLElement;
     const checkbox = root.querySelector(

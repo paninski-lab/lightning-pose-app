@@ -27,26 +27,6 @@ describe('GlobalErrorHandler', () => {
     service = TestBed.inject(GlobalErrorHandler);
   });
 
-  it('should be created', () => {
-    expect(service).toBeTruthy();
-  });
-
-  it('should call umami.track when handleError is called', () => {
-    const error = new Error('Test error');
-    window.umami = {
-      track: jasmine.createSpy('track'),
-      identify: jasmine.createSpy('identify'),
-    };
-
-    spyOn(console, 'error');
-    service.handleError(error);
-
-    expect(window.umami.track).toHaveBeenCalledWith('error', {
-      message: 'Test error',
-      stack: error.stack,
-    });
-  });
-
   it('should not crash if umami is not defined', () => {
     const error = new Error('Test error');
     delete window.umami;

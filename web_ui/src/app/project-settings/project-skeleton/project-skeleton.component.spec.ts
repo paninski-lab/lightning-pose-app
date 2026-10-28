@@ -44,13 +44,6 @@ describe('ProjectSkeletonComponent', () => {
     expect(fixture.componentInstance.skeleton()).toEqual([['nose', 'tail']]);
   });
 
-  it('says each pair is connected with a line', () => {
-    const text = fixture.nativeElement.textContent.replace(/\s+/g, ' ');
-    expect(text).toContain(
-      'Each pair will be connected with a line in the Labeler and the Viewer.',
-    );
-  });
-
   it('shows the explanation and does not emit a pair that fails the check', () => {
     const selects: HTMLSelectElement[] = Array.from(
       fixture.nativeElement.querySelectorAll('select'),

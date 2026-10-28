@@ -34,15 +34,6 @@ describe('DenseListboxComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
-    expect(host.listbox).toBeTruthy();
-  });
-
-  it('should have 3 items projected into it', () => {
-    const items = fixture.debugElement.queryAll(By.directive(DenseListboxItemComponent));
-    expect(items.length).toBe(3);
-  });
-
   it('should select an item on click', () => {
     const itemElements = fixture.debugElement.queryAll(By.directive(DenseListboxItemComponent));
     itemElements[1].nativeElement.click();

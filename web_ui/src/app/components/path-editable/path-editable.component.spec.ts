@@ -30,23 +30,17 @@ describe('PathEditableComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
-
   it('should start editing with the current path', () => {
     component['startEditing']();
     expect(component['isEditing']()).toBeTrue();
     expect(component['editPath']()).toBe('/home/user');
   });
 
-
   it('should navigate when a subdirectory is selected', () => {
     component['startEditing']();
     component['onSubdirSelect']('newdir');
     expect(component['editPath']()).toBe('/home/user/newdir');
   });
-
 
   it('should clear newDirName when navigating via subdirectory selection', () => {
     fixture.componentRef.setInput('newDirMode', true);
@@ -55,7 +49,6 @@ describe('PathEditableComponent', () => {
     component['onSubdirSelect']('subdir');
     expect(component['newDirName']()).toBe('');
   });
-
 
   it('should open dropdown when subdirectories are found', async () => {
     component['startEditing']();
