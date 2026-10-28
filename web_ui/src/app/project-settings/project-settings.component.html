@@ -115,6 +115,11 @@
                   | json
               }}
             </p>
+            @if (keypointCaseMessage()) {
+              <p class="text-warning text-sm" data-testid="keypoint-case-message">
+                {{ keypointCaseMessage() }}
+              </p>
+            }
             @if (keypointNamesDiffer()) {
               <p class="text-warning text-sm">
                 Existing label files still use the previous keypoint columns.
@@ -141,16 +146,15 @@
               <em>leave blank if this is a single view project.</em>
             </p>
             <p class="m-0!">
-              Used to group multiview files. Sessions are identified by removing
-              the view name from the video filename. Label CSV files are
-              similarly grouped.
+              Used to group multiview files. A video is named
+              <code>&lt;session&gt;_&lt;view&gt;.mp4</code>: the view is the
+              part after the last <code>_</code>. Label CSV files and
+              labeled-data folders are grouped the same way.
             </p>
             <p class="m-0!">
-              Filenames should embed the view name delimited by underscore or
-              hyphen. For example,
-              <code>video_01_front.mp4</code> or
-              <code>video_01-front.mp4</code> are valid, but not
-              <code>video_01front.mp4</code>.
+              For example, <code>video_01_front.mp4</code> is session
+              <code>video_01</code>, view <code>front</code>. View names can't
+              contain <code>_</code>; use <code>-</code> instead.
             </p>
             <textarea
               class="textarea w-full"
@@ -165,10 +169,25 @@
                 parseTextAsList(multiviewForm.controls["views"].value) | json
               }}
             </p>
-            @if (multiviewForm.controls["views"].invalid) {
+            @if (multiviewForm.controls["views"].hasError("singleView")) {
               <p class="text-error text-xs">
                 A multiview project needs at least two camera views. Leave this
                 blank for a single-view project.
+              </p>
+            }
+            @if (viewUnderscoreMessage()) {
+              <p
+                class="text-xs"
+                [class.text-error]="setupMode()"
+                [class.text-warning]="!setupMode()"
+                data-testid="view-underscore-message"
+              >
+                {{ viewUnderscoreMessage() }}
+              </p>
+            }
+            @if (viewCaseMessage()) {
+              <p class="text-warning text-xs" data-testid="view-case-message">
+                {{ viewCaseMessage() }}
               </p>
             }
           </fieldset>

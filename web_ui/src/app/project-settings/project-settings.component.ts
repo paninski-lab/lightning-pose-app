@@ -26,6 +26,11 @@ import { PathEditableComponent } from '../components/path-editable/path-editable
 import { ModelDirInputComponent } from '../components/model-dir-input/model-dir-input.component';
 import { ProjectSkeletonComponent } from './project-skeleton/project-skeleton.component';
 import { skeletonProblems } from '../components/skeleton-overlay/skeleton-validity';
+import { caseOnlyDuplicates, describeCaseDuplicates } from './name-checks';
+import {
+  viewsWithUnderscore,
+  viewUnderscoreMessage,
+} from '../utils/session-view';
 
 @Component({
   selector: 'app-project-settings',
@@ -71,6 +76,25 @@ export class ProjectSettingsComponent implements OnInit {
     { key: 'multiview', icon: 'camera_alt', text: 'Multiview' },
   ]);
   protected parsedKeypointNames = signal<string[]>([]);
+  protected parsedViewNames = signal<string[]>([]);
+  /** View names with `_`: an error when creating a project, a warning when editing one. */
+  protected viewUnderscoreMessage = computed(() => {
+    const names = viewsWithUnderscore(this.parsedViewNames());
+    return names.length ? viewUnderscoreMessage(names) : '';
+  });
+  protected viewCaseMessage = computed(() => {
+    const groups = caseOnlyDuplicates(this.parsedViewNames());
+    return groups.length
+      ? `View names ${describeCaseDuplicates(groups)} differ only in letter case. ` +
+          'They name the same file on macOS and Windows.'
+      : '';
+  });
+  protected keypointCaseMessage = computed(() => {
+    const groups = caseOnlyDuplicates(this.parsedKeypointNames());
+    return groups.length
+      ? `Keypoint names ${describeCaseDuplicates(groups)} differ only in letter case.`
+      : '';
+  });
   protected skeletonValue = signal<unknown>([]);
   protected skeletonDirty = signal(false);
   protected skeletonIssues = computed(() =>
@@ -94,7 +118,13 @@ export class ProjectSettingsComponent implements OnInit {
         keypointNames: [''],
       }),
       multiview: this.fb.group({
-        views: ['', (control: AbstractControl) => this.rejectSingleCameraView(control)],
+        views: [
+          '',
+          [
+            (control: AbstractControl) => this.rejectSingleCameraView(control),
+            (control: AbstractControl) => this.rejectUnderscoreOnCreate(control),
+          ],
+        ],
       }),
     });
 
@@ -111,6 +141,9 @@ export class ProjectSettingsComponent implements OnInit {
     });
     this.keypointsForm.get('keypointNames')?.valueChanges.subscribe((val) => {
       this.parsedKeypointNames.set(this.parseTextAsList(val ?? ''));
+    });
+    this.multiviewForm.get('views')?.valueChanges.subscribe((val) => {
+      this.parsedViewNames.set(this.parseTextAsList(val ?? ''));
     });
 
     effect(() => {
@@ -326,6 +359,18 @@ export class ProjectSettingsComponent implements OnInit {
   ): { singleView: true } | null {
     const names = this.parseTextAsList(String(control.value ?? ''));
     return names.length === 1 ? { singleView: true } : null;
+  }
+
+  /**
+   * A new project can't have `_` in a view name. An existing one can still be
+   * saved, so a user isn't locked out of their project; the form warns instead.
+   */
+  private rejectUnderscoreOnCreate(
+    control: AbstractControl,
+  ): { underscoreView: true } | null {
+    if (!this.setupMode()) return null;
+    const names = this.parseTextAsList(String(control.value ?? ''));
+    return viewsWithUnderscore(names).length ? { underscoreView: true } : null;
   }
 
   protected savedKeypointNames = signal<string[]>([]);

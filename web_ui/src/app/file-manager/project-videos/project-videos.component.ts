@@ -16,6 +16,10 @@ import { ToastService } from '../../toast.service';
 import { SessionImportComponent } from '../../session-import/session-import.component';
 import { parseVideoFilename } from '../../video-import/filename';
 import {
+  viewsWithUnderscore,
+  viewUnderscoreMessage,
+} from '../../utils/session-view';
+import {
   isProjectVideoDir,
   PROJECT_VIDEO_TREE_GLOB,
 } from '../../project-video-paths';
@@ -81,6 +85,14 @@ export class ProjectVideosComponent implements OnInit {
   protected importOpen = signal(false);
   protected processAllConfirm = signal(false);
 
+  /** Files can't be matched to a view name with `_`; say why they show as Unknown view. */
+  protected viewUnderscoreNotice = computed(() => {
+    const names = viewsWithUnderscore(this.viewNames());
+    return names.length
+      ? `${viewUnderscoreMessage(names)} Files for those views show as Unknown view ` +
+          'until the views are renamed in Project settings.'
+      : '';
+  });
   protected selectedRow = computed(() => {
     const path = this.selectedPath();
     return this.rows().find((row) => row.path === path) ?? null;

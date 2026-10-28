@@ -13,6 +13,11 @@ import {
   AlertHeaderComponent,
 } from '../components/alert-dialog/alert-dialog.component';
 import { ProjectInfoService } from '../project-info.service';
+import {
+  rsplitSessionView,
+  viewsWithUnderscore,
+  viewUnderscoreMessage,
+} from '../utils/session-view';
 import { RpcService } from '../rpc.service';
 import { ToastService } from '../toast.service';
 import {
@@ -44,6 +49,15 @@ const FRAME_NAME = /[A-Za-z_-]+\d+\.(png|jpg)$/;
     <section class="card bg-base-200">
       <div class="card-body gap-3">
         <h2 class="card-title">Labeled Image Folders</h2>
+        @if (viewUnderscoreNotice()) {
+          <div
+            role="alert"
+            class="alert alert-warning text-sm"
+            data-testid="view-underscore-notice"
+          >
+            {{ viewUnderscoreNotice() }}
+          </div>
+        }
         <input
           type="checkbox"
           id="app-accordion-fm-labeled-data"
@@ -172,6 +186,14 @@ export class LabeledDataPanelComponent implements OnInit {
   protected renameValue = signal('');
   private details = new Map<string, string>();
 
+  /** Files can't be matched to a view name with `_`; say why they show as Unknown view. */
+  protected viewUnderscoreNotice = computed(() => {
+    const names = viewsWithUnderscore(this.viewNames());
+    return names.length
+      ? `${viewUnderscoreMessage(names)} Files for those views show as Unknown view ` +
+          'until the views are renamed in Project settings.'
+      : '';
+  });
   protected selectedRow = computed(
     () => this.rows().find((row) => row.path === this.selectedPath()) ?? null,
   );
@@ -352,10 +374,8 @@ function sessionStemIssue(stem: string, views: string[]): string | null {
   if (!stem.includes('_')) {
     return 'Directory name must be of the form session_view.';
   }
-  const split = stem.lastIndexOf('_');
-  const session = stem.slice(0, split);
-  const view = stem.slice(split + 1);
-  if (!session || !view) return 'Invalid session/view in directory name.';
-  if (!views.includes(view)) return `Unknown view: ${view}`;
+  const parts = rsplitSessionView(stem);
+  if (!parts) return 'Invalid session/view in directory name.';
+  if (!views.includes(parts.view)) return `Unknown view: ${parts.view}`;
   return null;
 }

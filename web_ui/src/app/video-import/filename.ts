@@ -1,3 +1,5 @@
+import { rsplitSessionView } from '../utils/session-view';
+
 const ALLOWED_FILENAME = /^[a-zA-Z0-9\-_.]+$/;
 
 export interface ParsedVideoName {
@@ -31,13 +33,14 @@ export function parseVideoFilename(
     if (baseName.indexOf('_') === -1) {
       error = 'Filename must be of the form session_view.ext';
     } else {
-      const lastUnderscore = baseName.lastIndexOf('_');
-      sessionKey = baseName.substring(0, lastUnderscore);
-      view = baseName.substring(lastUnderscore + 1);
-      if (!sessionKey) {
+      const parts = rsplitSessionView(baseName);
+      if (baseName.startsWith('_')) {
         error = 'Missing session name before underscore';
-      } else if (!view) {
+      } else if (!parts) {
         error = 'Missing view name after underscore';
+      } else {
+        sessionKey = parts.session;
+        view = parts.view;
       }
     }
   } else {

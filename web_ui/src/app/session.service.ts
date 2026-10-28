@@ -25,6 +25,7 @@ import {
 import _ from 'lodash';
 import { ModelListResponse } from './modelconf';
 import { PROJECT_VIDEO_MP4_GLOB } from './project-video-paths';
+import { sessionViewKey } from './utils/session-view';
 
 type SessionModelMap = Record<string, string[]>;
 
@@ -266,17 +267,12 @@ export class SessionService {
 
     for (const path of paths) {
       const parts = path.split('/');
-      const filename = parts.at(-1)!;
-      let viewName = views.find((v) => filename.includes(v));
-      if (!viewName) {
-        viewName = 'unknown';
-      }
-
-      // Remove the view name to get the base session key
-      const pathKey =
-        viewName == 'unknown'
-          ? path
-          : [...parts.slice(0, -1), filename.replace(viewName, '*')].join('/');
+      // The view is the part after the last "_"; a name without a project view stays on its own.
+      const split = sessionViewKey(parts.at(-1)!, views);
+      const viewName = split?.view ?? 'unknown';
+      const pathKey = split
+        ? [...parts.slice(0, -1), split.key].join('/')
+        : path;
 
       if (!pathKeyToItsFiles.has(pathKey)) {
         pathKeyToItsFiles.set(pathKey, []);
@@ -379,16 +375,12 @@ export class SessionService {
         const modelKey = match[1];
         const sessionView = match[2];
 
-        let sessionKey: string;
-        let viewName = this.projectInfoService
-          .allViews()
-          .find((v) => sessionView.includes(v));
-        if (!viewName) {
-          sessionKey = sessionView;
-          viewName = 'unknown';
-        } else {
-          sessionKey = sessionView.replace(viewName, '*');
-        }
+        const split = sessionViewKey(
+          sessionView,
+          this.projectInfoService.allViews(),
+        );
+        const sessionKey = split?.key ?? sessionView;
+        const viewName = split?.view ?? 'unknown';
 
         // Parse out key metadata.
         return {

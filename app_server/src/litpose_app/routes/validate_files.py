@@ -31,6 +31,7 @@ from litpose_app.project_cache import (
     replace_file_checks,
 )
 from litpose_app.routes.rglob import _rglob
+from litpose_app.session_view import rsplit_session_view
 from litpose_app.utils.fix_empty_first_row import fix_empty_first_row
 
 router = APIRouter()
@@ -115,9 +116,10 @@ def _session_stem_issue(stem: str, views: list[str], *, kind: str) -> str | None
         return None
     if "_" not in stem:
         return f"{kind.capitalize()} name must be of the form session_view."
-    session, _, view = stem.rpartition("_")
-    if not session or not view:
+    parts = rsplit_session_view(stem)
+    if parts is None:
         return f"Invalid session/view in {kind} name."
+    _session, view = parts
     if view not in views:
         return f"Unknown view: {view}"
     return None
