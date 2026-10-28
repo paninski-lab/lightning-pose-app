@@ -8,5 +8,5 @@ import { hexToRgb, tailwindHexColors } from './tailwindcolors';
 export class ColorService {
   defaultColor = hexToRgb(tailwindHexColors['green']['500']);
   defaultSize = 10;
-  defaultOpacity = 0.15;
+  defaultOpacity = 0.5;
 }
