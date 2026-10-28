@@ -115,6 +115,21 @@ describe('HomePageComponent', () => {
     expect(localStorage.getItem('showProjectDetails')).toBe('false');
   });
 
+  it('keeps the page width and uses three columns on wide screens with details off', () => {
+    setUp();
+    const section = el.querySelector('section')!;
+    const grid = el.querySelector('[data-testid="project-grid"]')!;
+    expect(section.classList).toContain('w-full');
+    expect(grid.classList).not.toContain('lg:grid-cols-3');
+
+    toggle().click();
+    fixture.detectChanges();
+
+    expect(section.classList).toContain('w-full');
+    expect(grid.classList).toContain('md:grid-cols-2');
+    expect(grid.classList).toContain('lg:grid-cols-3');
+  });
+
   it('starts with details off when it was turned off before', () => {
     localStorage.setItem('showProjectDetails', 'false');
     setUp();
