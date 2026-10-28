@@ -8,6 +8,10 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 
 ### [2.4.2.4.dev0]
 
+* **Projects page:** A **Show details** toggle next to **New Project**. Turned off, each project card shows only its name and the Sessions / Labels / Models row; data and model directories, views, keypoints and labeling progress are hidden. A stats error and the card's options menu still show. The setting is on by default and is remembered in the browser.
+
+Tests: `home-page.component.spec.ts` (details shown by default; turning the toggle off hides paths, views, keypoints and labeling progress, keeps the name and stats row, and is remembered; a page opened after turning it off starts with details off; the stats error and options menu stay with details off).
+
 * **Label files:** Any `.csv` directly in the data directory can be a label file. It is hidden from the Labeler and Viewer only when it cannot be read as a label table. A missing frame, an unusual index path, or a keypoint mismatch is a warning in File Manager, and the file stays usable.
 
 Tests: `test_validate_label_csv_hides_only_unusable_files` (a readable root CSV with a missing image stays in the label picker; a file that is not a label table does not; a CSV in a subdirectory is not listed).
