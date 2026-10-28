@@ -90,6 +90,10 @@ Tests: `labeler-center-panel.component.spec.ts` "side panel" (the buttons come a
 
 Tests: `skeleton-view-options.component.spec.ts` (the slider names and labels, no "Bone"). The settings-page sentence is wording only and has no test.
 
+* **Labeler:** Keypoints start at opacity 0.5 (was 0.15), and the opacity Reset button goes back to 0.5. An opacity you already set in this browser is kept. The Viewer's default (1) is unchanged.
+
+Tests: `labeler-view-options.service.spec.ts` (with nothing saved, opacity starts at 0.5 and Reset returns to 0.5; a saved opacity is kept).
+
 ### [2.4.2.3] — 2026-10-15
 
 * **File manager:** Validation results and video probe results are kept in `.project-cache` in the project data directory. Opening a file panel shows the last check when the file is unchanged. A changed file, a deleted frame, or a keypoint change is not shown as OK until Validate runs again. Checking a video skips ffprobe when the file is unchanged, and a replaced video is not treated as all-intra from the old result.
