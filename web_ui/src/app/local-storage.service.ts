@@ -16,4 +16,17 @@ export class LocalStorageService {
     this._hasSeenDiscordTooltip.set(value);
     localStorage.setItem('hasSeenDiscordTooltip', String(value));
   }
+
+  // Projects page "Show details" toggle. On unless the user turned it off.
+  private _showProjectDetails = signal<boolean>(
+    localStorage.getItem('showProjectDetails') !== 'false',
+  );
+
+  showProjectDetails = this._showProjectDetails.asReadonly();
+
+  /** Persist value and update the showProjectDetails signal. */
+  setShowProjectDetails(value: boolean): void {
+    this._showProjectDetails.set(value);
+    localStorage.setItem('showProjectDetails', String(value));
+  }
 }

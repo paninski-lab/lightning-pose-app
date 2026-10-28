@@ -45,34 +45,46 @@
         </app-dropdown-content>
       </app-dropdown>
     } @else {
-      <app-dropdown #newProjectDropdown>
-        <app-dropdown-trigger>
-          <button appDropdownTrigger class="btn btn-soft btn-primary mb-4">
-            New Project
-            <span class="material-icons">arrow_drop_down</span>
-          </button>
-        </app-dropdown-trigger>
-        <app-dropdown-content>
-          <ul class="menu p-2 w-56">
-            <li>
-              <a [routerLink]="['/']" [queryParams]="{ createProject: true }">
-                <span class="material-icons">add</span>
-                From Scratch
-              </a>
-            </li>
-            <li>
-              <a
-                (click)="
-                  showAddExistingDialog.set(true); newProjectDropdown.close()
-                "
-              >
-                <span class="material-icons">folder_open</span>
-                Add Existing
-              </a>
-            </li>
-          </ul>
-        </app-dropdown-content>
-      </app-dropdown>
+      @let showDetails = localStorageService.showProjectDetails();
+      <div class="flex items-center justify-between gap-4 mb-4">
+        <app-dropdown #newProjectDropdown>
+          <app-dropdown-trigger>
+            <button appDropdownTrigger class="btn btn-soft btn-primary">
+              New Project
+              <span class="material-icons">arrow_drop_down</span>
+            </button>
+          </app-dropdown-trigger>
+          <app-dropdown-content>
+            <ul class="menu p-2 w-56">
+              <li>
+                <a [routerLink]="['/']" [queryParams]="{ createProject: true }">
+                  <span class="material-icons">add</span>
+                  From Scratch
+                </a>
+              </li>
+              <li>
+                <a
+                  (click)="
+                    showAddExistingDialog.set(true); newProjectDropdown.close()
+                  "
+                >
+                  <span class="material-icons">folder_open</span>
+                  Add Existing
+                </a>
+              </li>
+            </ul>
+          </app-dropdown-content>
+        </app-dropdown>
+        <label class="label cursor-pointer gap-2 text-sm">
+          <input
+            type="checkbox"
+            class="toggle toggle-sm"
+            [checked]="showDetails"
+            (change)="localStorageService.setShowProjectDetails(!showDetails)"
+          />
+          Show details
+        </label>
+      </div>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
         @for (p of projectInfo.projects(); track p.data_dir) {
           <div
@@ -128,29 +140,31 @@
               </h2>
 
               <!-- Paths -->
-              <div
-                class="flex flex-col gap-3 text-sm mt-2 border-b border-base-200 pb-4"
-              >
-                <div>
-                  <div class="text-xs font-bold uppercase opacity-50">
-                    Data Dir
-                  </div>
-                  <span class="break-all">
-                    <code class="opacity-100">{{ p.data_dir }}</code>
-                  </span>
-                </div>
-
-                @if (p.model_dir) {
+              @if (showDetails) {
+                <div
+                  class="flex flex-col gap-3 text-sm mt-2 border-b border-base-200 pb-4"
+                >
                   <div>
                     <div class="text-xs font-bold uppercase opacity-50">
-                      Model Dir
+                      Data Dir
                     </div>
                     <span class="break-all">
-                      <code class="opacity-100">{{ p.model_dir }}</code>
+                      <code class="opacity-100">{{ p.data_dir }}</code>
                     </span>
                   </div>
-                }
-              </div>
+
+                  @if (p.model_dir) {
+                    <div>
+                      <div class="text-xs font-bold uppercase opacity-50">
+                        Model Dir
+                      </div>
+                      <span class="break-all">
+                        <code class="opacity-100">{{ p.model_dir }}</code>
+                      </span>
+                    </div>
+                  }
+                </div>
+              }
 
               @if (p.stats) {
                 @if (p.stats.error) {
@@ -159,41 +173,43 @@
                   </div>
                 } @else {
                   <div class="flex flex-col gap-4">
-                    <!-- Views -->
-                    <div>
-                      <div class="text-xs font-bold uppercase opacity-50">
-                        @if (p.stats.view_names.length === 0) {
-                          Single view project
-                        } @else {
-                          Views
-                        }
+                    @if (showDetails) {
+                      <!-- Views -->
+                      <div>
+                        <div class="text-xs font-bold uppercase opacity-50">
+                          @if (p.stats.view_names.length === 0) {
+                            Single view project
+                          } @else {
+                            Views
+                          }
+                        </div>
+                        <div class="flex flex-wrap gap-1 mt-1">
+                          @for (view of p.stats.view_names; track view) {
+                            <div
+                              class="badge badge-ghost bg-base-100 group-hover:bg-base-200 transition-colors text-xs"
+                            >
+                              {{ view }}
+                            </div>
+                          }
+                        </div>
                       </div>
-                      <div class="flex flex-wrap gap-1 mt-1">
-                        @for (view of p.stats.view_names; track view) {
-                          <div
-                            class="badge badge-ghost bg-base-100 group-hover:bg-base-200 transition-colors text-xs"
-                          >
-                            {{ view }}
-                          </div>
-                        }
-                      </div>
-                    </div>
 
-                    <!-- Keypoints -->
-                    <div>
-                      <div class="text-xs font-bold uppercase opacity-50">
-                        Keypoints
+                      <!-- Keypoints -->
+                      <div>
+                        <div class="text-xs font-bold uppercase opacity-50">
+                          Keypoints
+                        </div>
+                        <div class="flex flex-wrap gap-1 mt-1">
+                          @for (kp of p.stats.keypoint_names; track kp) {
+                            <div
+                              class="badge badge-ghost bg-base-100 group-hover:bg-base-200 transition-colors text-xs"
+                            >
+                              {{ kp }}
+                            </div>
+                          }
+                        </div>
                       </div>
-                      <div class="flex flex-wrap gap-1 mt-1">
-                        @for (kp of p.stats.keypoint_names; track kp) {
-                          <div
-                            class="badge badge-ghost bg-base-100 group-hover:bg-base-200 transition-colors text-xs"
-                          >
-                            {{ kp }}
-                          </div>
-                        }
-                      </div>
-                    </div>
+                    }
 
                     <!-- Counts -->
                     <div
@@ -231,7 +247,7 @@
                     </div>
 
                     <!-- Labeling Progress -->
-                    @if (p.stats.label_files_stats.length > 0) {
+                    @if (showDetails && p.stats.label_files_stats.length > 0) {
                       <div>
                         <div
                           class="text-xs font-bold uppercase opacity-50 mb-1"
