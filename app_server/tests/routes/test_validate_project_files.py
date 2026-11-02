@@ -247,3 +247,55 @@ def test_cached_check_from_older_rules_is_dropped(client, register_project, monk
     )
     assert cached.status_code == 200, cached.text
     assert cached.json()["items"] == []
+
+
+def test_validate_models_accepts_lp_metric_bbox_and_labeled_video_files(
+    client: TestClient, register_project
+):
+    """Files LP writes beside predictions are not flagged; misnamed ones still are."""
+    data_dir = register_project("demo", views=["top", "bot"], keypoints=["nose"])
+    model = data_dir / "models" / "m1"
+    preds = model / "video_preds"
+    (preds / "labeled_videos").mkdir(parents=True)
+    (model / "config.yaml").write_text("data: {}\n")
+    for name in (
+        "180605_000_bot.csv",
+        "180605_000_bot_temporal_norm.csv",
+        "180605_000_bot_pca_singleview_error.csv",
+        "180605_000_bot_pca_multiview_error.csv",
+        "180605_000_bot_bbox.csv",
+        # metric file for a view the project doesn't have
+        "180605_000_side_temporal_norm.csv",
+    ):
+        (preds / name).write_text("")
+    (preds / "labeled_videos" / "180605_000_bot_labeled.mp4").write_bytes(b"")
+    (preds / "extra").mkdir()
+
+    resp = client.post(
+        "/app/v0/rpc/validateProjectFiles",
+        json={"projectKey": "demo", "sector": "models"},
+    )
+    assert resp.status_code == 200, resp.text
+    items = {item["path"]: item for item in resp.json()["items"]}
+    issues = items["m1"]["issues"]
+    assert issues == [
+        "180605_000_side_temporal_norm.csv: Unknown view: side",
+        "Unexpected subdirectory: extra",
+    ]
+
+
+def test_validate_models_view_named_like_an_lp_suffix(client: TestClient, register_project):
+    """A view called bbox keeps its own prediction files valid."""
+    data_dir = register_project("demo", views=["top", "bbox"], keypoints=["nose"])
+    model = data_dir / "models" / "m1"
+    (model / "video_preds").mkdir(parents=True)
+    (model / "config.yaml").write_text("data: {}\n")
+    (model / "video_preds" / "sess_bbox.csv").write_text("")
+
+    resp = client.post(
+        "/app/v0/rpc/validateProjectFiles",
+        json={"projectKey": "demo", "sector": "models"},
+    )
+    assert resp.status_code == 200, resp.text
+    items = {item["path"]: item for item in resp.json()["items"]}
+    assert items["m1"]["issues"] == []

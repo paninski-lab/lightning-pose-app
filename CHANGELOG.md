@@ -8,6 +8,10 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 
 ### [2.4.2.4.dev0]
 
+* **File Manager:** The model check no longer flags files LP writes into `video_preds/` beside each prediction CSV: `<video>_temporal_norm.csv`, `<video>_pca_singleview_error.csv`, `<video>_pca_multiview_error.csv` and `<video>_pixel_error.csv` (metrics), `<video>_bbox.csv` (`litpose create_bbox`), and the `labeled_videos/` folder. Before, a metric file was reported as "Unknown view: norm" (or `error`, `bbox`). The prediction name in front of the suffix is still checked, so a metric file for a view the project doesn't have is still reported. A view that is itself named like a suffix (for example `bbox`) keeps its own prediction files valid.
+
+Tests: `tests/routes/test_validate_project_files.py` (`test_validate_models_accepts_lp_metric_bbox_and_labeled_video_files`: LP metric, bbox and labeled-video files pass, an unknown view in a metric file and an unknown subdirectory are still reported; fails on the old code. `test_validate_models_view_named_like_an_lp_suffix`: a project view named `bbox` keeps `sess_bbox.csv` valid).
+
 * **Projects page:** A **Show details** toggle next to **New Project**. Turned off, each project card shows only its name and the Sessions / Labels / Models row; data and model directories, views, keypoints and labeling progress are hidden. A stats error and the card's options menu still show. The page keeps its width, and wide windows fit three cards per row instead of two. The setting is on by default and is remembered in the browser.
 
 Tests: `home-page.component.spec.ts` (details shown by default; turning the toggle off hides paths, views, keypoints and labeling progress, keeps the name and stats row, and is remembered; a page opened after turning it off starts with details off; the stats error and options menu stay with details off; the page stays full width and the card grid uses three columns on wide screens only with details off).
