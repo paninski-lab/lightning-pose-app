@@ -258,11 +258,16 @@ export interface EnsembleMember {
   id: string;
 }
 
+/** EKS smoother; nonlinear needs a multiview project and camera calibration. */
+export type EksSmoother = 'linear' | 'nonlinear';
+
 export interface EnsembleConfig {
   members: EnsembleMember[];
   view_names: string[];
   smooth_param: number;
   quantile_keep_pca: number;
+  /** Missing in ensemble.yaml files written before #150 (linear). */
+  smoother?: EksSmoother;
 }
 
 export interface ModelListResponseEntry {

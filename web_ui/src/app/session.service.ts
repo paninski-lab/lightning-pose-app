@@ -23,7 +23,7 @@ import {
   GetMVAutoLabelsResponse,
 } from './labeler/mv-autolabel';
 import _ from 'lodash';
-import { ModelListResponse } from './modelconf';
+import { EksSmoother, ModelListResponse } from './modelconf';
 import { PROJECT_VIDEO_MP4_GLOB } from './project-video-paths';
 import { sessionViewKey } from './utils/session-view';
 
@@ -663,6 +663,7 @@ export class SessionService {
     view_names: string[];
     smooth_param: number;
     quantile_keep_pca: number;
+    smoother: EksSmoother;
   }): Promise<void> {
     await this.rpc.call('createEksModel', {
       projectKey: this.getProjectKeyOrThrow(),

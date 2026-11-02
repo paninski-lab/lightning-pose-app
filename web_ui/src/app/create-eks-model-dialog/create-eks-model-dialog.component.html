@@ -60,6 +60,48 @@
         >
           Select at least one model
         </p>
+        @let memberCount = form.controls.memberIds.value.length;
+        @if (memberCount > 0 && memberCount % 2 === 0) {
+          <p class="my-1! text-warning" role="status">
+            EKS works best with an <em>odd</em> number of ensemble members.
+          </p>
+        }
+      </fieldset>
+
+      <fieldset class="fieldset my-2">
+        <h3 class="text-md mt-0">Smoother</h3>
+        <div
+          class="flex flex-col gap-2 mt-1"
+          role="radiogroup"
+          aria-label="Smoother"
+        >
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              class="radio radio-sm"
+              value="linear"
+              formControlName="smoother"
+            />
+            <span>Linear</span>
+          </label>
+          <label
+            class="flex items-center gap-2"
+            [class.cursor-pointer]="!nonlinearBlockedReason()"
+            [class.opacity-60]="nonlinearBlockedReason()"
+          >
+            <input
+              type="radio"
+              class="radio radio-sm"
+              value="nonlinear"
+              formControlName="smoother"
+              [attr.disabled]="nonlinearBlockedReason() ? '' : null"
+            />
+            <span>Nonlinear (uses camera calibration)</span>
+            @if (nonlinearBlockedReason(); as reason) {
+              <span class="badge badge-sm badge-ghost">{{ reason }}</span>
+            }
+          </label>
+        </div>
       </fieldset>
 
       <fieldset class="fieldset my-2">
@@ -74,16 +116,18 @@
               min="0"
             />
           </div>
-          <div class="grow">
-            <p class="m-0!">Quantile keep PCA (%)</p>
-            <input
-              type="number"
-              class="input w-full"
-              formControlName="quantileKeepPca"
-              min="0"
-              max="100"
-            />
-          </div>
+          @if (isMultiviewProject) {
+            <div class="grow">
+              <p class="m-0!">Quantile keep PCA (%)</p>
+              <input
+                type="number"
+                class="input w-full"
+                formControlName="quantileKeepPca"
+                min="0"
+                max="100"
+              />
+            </div>
+          }
         </div>
       </fieldset>
     </form>

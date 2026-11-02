@@ -33,6 +33,21 @@ def project_calibration_path(data_dir: Path) -> Path:
     return data_dir / PROJECT_CALIBRATION_FILE
 
 
+def calibration_for_session(data_dir: Path, session: str) -> Path | None:
+    """The calibration LP uses for ``session``: its own file, else the project file, else None."""
+    for path in (session_calibration_path(data_dir, session), project_calibration_path(data_dir)):
+        if path.is_file():
+            return path
+    return None
+
+
+def project_has_calibrations(data_dir: Path) -> bool:
+    """Whether the project has ``calibration.toml`` or any session calibration."""
+    return project_calibration_path(data_dir).is_file() or bool(
+        session_calibration_files(data_dir)
+    )
+
+
 def calibration_backup_path(data_dir: Path, session: str, when: datetime) -> Path:
     """``calibrations/backups/<session>.<YYYYmmdd-HHMMSS>.toml``."""
     stamp = when.strftime(BACKUP_STAMP_FORMAT)

@@ -18,6 +18,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from litpose_app import deps
+from litpose_app.calibration_paths import project_has_calibrations
 from litpose_app.datatypes import Project
 from litpose_app.deps import ProjectInfoGetter
 from litpose_app.project import ProjectUtil
@@ -279,6 +280,9 @@ class CreateEksModelRequest(BaseModel):
     view_names: list[str]
     smooth_param: float = 1000.0
     quantile_keep_pca: float = 50.0
+    # Nonlinear projects through the camera calibration; it needs a multiview
+    # project with calibration files. Single-view projects use linear.
+    smoother: Literal['linear', 'nonlinear'] = 'linear'
 
 
 class CreateEksModelResponse(BaseModel):
@@ -299,6 +303,18 @@ def create_eks_model(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Project model_dir is not configured.",
         )
+
+    if request.smoother == 'nonlinear':
+        if len(project.config.view_names or []) < 2:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nonlinear EKS needs a multiview project.",
+            )
+        if not project_has_calibrations(Path(project.paths.data_dir)):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nonlinear EKS needs calibration.toml or calibrations/<session>.toml.",
+            )
 
     model_dir = Path(project.paths.model_dir / request.modelName).resolve()
 
@@ -323,6 +339,7 @@ def create_eks_model(
         "view_names": request.view_names,
         "smooth_param": request.smooth_param,
         "quantile_keep_pca": request.quantile_keep_pca,
+        "smoother": request.smoother,
         "creation_datetime": datetime.now().isoformat(),
     }
     (model_dir / "ensemble.yaml").write_text(yaml.dump(ensemble_data, default_flow_style=False))
