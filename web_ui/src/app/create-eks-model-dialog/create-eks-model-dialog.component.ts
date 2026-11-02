@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   inject,
   OnInit,
   output,
@@ -11,10 +12,11 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { CameraCalibrationService } from '../camera-calibration.service';
 import { ProjectInfoService } from '../project-info.service';
 import { SessionService } from '../session.service';
 import { ToastService } from '../toast.service';
-import { ModelListResponseEntry } from '../modelconf';
+import { EksSmoother, ModelListResponseEntry } from '../modelconf';
 import { fileNameValidator } from '../utils/validators';
 
 @Component({
@@ -30,8 +32,20 @@ export class CreateEksModelDialogComponent implements OnInit {
   private projectInfoService = inject(ProjectInfoService);
   private sessionService = inject(SessionService);
   private toastService = inject(ToastService);
+  private cameraCalibrationService = inject(CameraCalibrationService);
 
   protected availableModels = signal<ModelListResponseEntry[]>([]);
+  protected projectHasCalibrations = signal(false);
+
+  protected isMultiviewProject =
+    this.projectInfoService.projectInfo.views.length > 1;
+
+  /** Why Nonlinear can't be chosen, or null when it can. */
+  protected nonlinearBlockedReason = computed(() => {
+    if (!this.isMultiviewProject) return 'Needs a multiview project';
+    if (!this.projectHasCalibrations()) return 'Needs camera calibration';
+    return null;
+  });
 
   protected form = this.fb.group({
     modelName: ['', [Validators.required, fileNameValidator]],
@@ -41,9 +55,15 @@ export class CreateEksModelDialogComponent implements OnInit {
       50.0,
       [Validators.required, Validators.min(0), Validators.max(100)],
     ],
+    smoother: ['linear' as EksSmoother],
   });
 
   async ngOnInit() {
+    if (this.isMultiviewProject) {
+      this.cameraCalibrationService
+        .projectHasCalibrations()
+        .then((has) => this.projectHasCalibrations.set(has));
+    }
     const resp = await this.sessionService.listModels();
     this.availableModels.set(
       resp.models.filter(
@@ -74,13 +94,14 @@ export class CreateEksModelDialogComponent implements OnInit {
   async onCreateClick() {
     if (this.form.invalid) return;
 
-    const { modelName, memberIds, smoothParam, quantileKeepPca } = this.form
-      .value as {
-      modelName: string;
-      memberIds: string[];
-      smoothParam: number;
-      quantileKeepPca: number;
-    };
+    const { modelName, memberIds, smoothParam, quantileKeepPca, smoother } =
+      this.form.value as {
+        modelName: string;
+        memberIds: string[];
+        smoothParam: number;
+        quantileKeepPca: number;
+        smoother: EksSmoother;
+      };
 
     const viewNames = this.projectInfoService.projectInfo.views;
 
@@ -90,6 +111,7 @@ export class CreateEksModelDialogComponent implements OnInit {
       view_names: viewNames,
       smooth_param: smoothParam,
       quantile_keep_pca: quantileKeepPca,
+      smoother: this.nonlinearBlockedReason() ? 'linear' : smoother,
     });
 
     this.toastService.showToast({
