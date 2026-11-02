@@ -23,12 +23,14 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from .. import deps
+from ..calibration_paths import calibration_for_session
 from ..datatypes import Project
 from ..deps import ProjectInfoGetter
 from ..ignored_video_dirs import ignored_video_dirs
 from ..paths.project_videos import iter_project_mp4s
 from ..session_view import session_of
 from ..utils.gpu_lock import gpu_lock_blocking, read_gpu_task
+from .validate_files import calibration_file_issues
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -202,6 +204,7 @@ class InferStep:
     member_of: Path | None = None          # parent EKS model dir, for kind='member'
     member_dirs: list[Path] = field(default_factory=list)   # for kind='eks'
     ensemble_config: dict = field(default_factory=dict)     # for kind='member' and 'eks'
+    calibration: Path | None = None        # for nonlinear kind='eks'; None when the session has none
 
 
 @dataclass
@@ -385,6 +388,11 @@ def _build_infer_plan(
             ):
                 skipped_count += 1
             else:
+                calibration = (
+                    calibration_for_session(data_base, session)
+                    if _is_nonlinear(ensemble_config)
+                    else None
+                )
                 steps.append(InferStep(
                     kind="eks",
                     model_dir=eks_model_dir,
@@ -392,6 +400,7 @@ def _build_infer_plan(
                     video_paths=sess_to_vids.get(session, []),
                     member_dirs=member_dirs,
                     ensemble_config=ensemble_config,
+                    calibration=calibration,
                 ))
 
     return InferPlan(steps=steps, skipped_count=skipped_count)
@@ -401,39 +410,91 @@ def _build_infer_plan(
 # Execution
 # -----------------------------
 
-def _run_eks_step(task_id: str, step: InferStep) -> bool:
-    """Run EKS smoother for a single (model, session) pair. Returns True on success."""
+def _is_nonlinear(ensemble_config: dict) -> bool:
+    """Whether an EKS model uses the nonlinear (calibrated) smoother. Older ensemble.yaml files are linear."""
+    return ensemble_config.get("smoother", "linear") == "nonlinear"
+
+
+def _eks_input_files(step: InferStep) -> list[Path]:
+    """Member prediction CSVs for one EKS step: member × view, or one per member for single-view."""
+    view_names: list[str] = step.ensemble_config.get("view_names", [])
+    files: list[Path] = []
+    for member_dir in step.member_dirs:
+        preds = member_dir / "video_preds"
+        if view_names:
+            files.extend(preds / f"{step.session}_{cam}.csv" for cam in view_names)
+        else:
+            files.append(preds / f"{step.session}.csv")
+    return files
+
+
+def _eks_command(step: InferStep, input_files: list[Path]) -> list[str]:
+    """The run_eks.py command line for one EKS step."""
     ensemble_config = step.ensemble_config
     view_names: list[str] = ensemble_config.get("view_names", [])
     smooth_param: float = ensemble_config.get("smooth_param", 1000.0)
     quantile_keep_pca: float = ensemble_config.get("quantile_keep_pca", 50.0)
-
-    eks_video_preds_dir = step.model_dir / "video_preds"
-    eks_video_preds_dir.mkdir(parents=True, exist_ok=True)
     eks_script = Path(__file__).parent.parent / "scripts" / "run_eks.py"
-
-    input_files: list[str] = []
-    for member_dir in step.member_dirs:
-        for cam in view_names:
-            pred_file = member_dir / "video_preds" / f"{step.session}_{cam}.csv"
-            if not pred_file.exists():
-                _append_log(task_id, f"[error] Missing prediction file: {pred_file}")
-                return False
-            input_files.append(str(pred_file))
 
     cmd = [
         sys.executable, str(eks_script),
-        "--save_dir", str(eks_video_preds_dir),
-        "--camera_names", *view_names,
+        "--save_dir", str(step.model_dir / "video_preds"),
         "--smooth_param", str(smooth_param),
         "--quantile_keep_pca", str(quantile_keep_pca),
-        "--input_files", *input_files,
     ]
-    ret = _run_subprocess_with_logging(task_id, cmd)
+    if view_names:
+        cmd += ["--camera_names", *view_names]
+    if step.calibration is not None:
+        cmd += [
+            "--calibration", str(step.calibration),
+            "--save_3d_dir", str(step.model_dir / "video_preds_3d"),
+        ]
+    cmd += ["--input_files", *[str(f) for f in input_files]]
+    return cmd
+
+
+class _EksResult:
+    """Outcome of one EKS step."""
+
+    OK = "ok"
+    FAILED = "failed"
+    NO_CALIBRATION = "no_calibration"
+
+
+def _run_eks_step(task_id: str, step: InferStep) -> str:
+    """Run EKS smoother for a single (model, session) pair. Returns an ``_EksResult`` value."""
+    if _is_nonlinear(step.ensemble_config) and step.calibration is None:
+        _append_log(
+            task_id,
+            f"[warning] Nonlinear EKS skipped {step.session}: no calibrations/{step.session}.toml "
+            "and no calibration.toml",
+        )
+        return _EksResult.NO_CALIBRATION
+
+    if step.calibration is not None:
+        # EKS takes the cameras in file order without checking names; LP refuses a mismatch.
+        issues = calibration_file_issues(
+            step.calibration, step.ensemble_config.get("view_names", [])
+        )
+        if issues:
+            _append_log(
+                task_id,
+                f"[error] Nonlinear EKS on {step.session}: {step.calibration.name}: {issues[0]}",
+            )
+            return _EksResult.FAILED
+
+    input_files = _eks_input_files(step)
+    for pred_file in input_files:
+        if not pred_file.exists():
+            _append_log(task_id, f"[error] Missing prediction file: {pred_file}")
+            return _EksResult.FAILED
+
+    (step.model_dir / "video_preds").mkdir(parents=True, exist_ok=True)
+    ret = _run_subprocess_with_logging(task_id, _eks_command(step, input_files))
     if ret != 0:
         _append_log(task_id, f"[error] EKS smoother failed for {step.model_dir.name} on {step.session}")
-        return False
-    return True
+        return _EksResult.FAILED
+    return _EksResult.OK
 
 
 def _start_batch_inference_background(task_id: str, plan: InferPlan, project_key: str) -> Future:
@@ -478,6 +539,8 @@ def _is_cancelled(task_id: str) -> bool:
 def _run_steps(task_id: str, steps: list[InferStep], total: int) -> None:
     """Execute each inference step in order, logging progress and collecting errors."""
     errors: list[str] = []
+    # Nonlinear EKS model name → sessions it skipped for lack of a calibration file.
+    no_calibration: dict[str, list[str]] = {}
     for i, step in enumerate(steps):
         if _is_cancelled(task_id):
             return
@@ -511,7 +574,10 @@ def _run_steps(task_id: str, steps: list[InferStep], total: int) -> None:
                 _append_log(task_id, f"[error] {err_msg}")
                 errors.append(err_msg)
         else:
-            if not _run_eks_step(task_id, step):
+            result = _run_eks_step(task_id, step)
+            if result == _EksResult.NO_CALIBRATION:
+                no_calibration.setdefault(step.model_dir.name, []).append(step.session)
+            elif result == _EksResult.FAILED:
                 if _is_cancelled(task_id):
                     return
                 err_msg = f"EKS smoother failed for {step.model_dir.name} on {step.session}"
@@ -522,6 +588,22 @@ def _run_steps(task_id: str, steps: list[InferStep], total: int) -> None:
     if _is_cancelled(task_id):
         return
 
+    # Only set when sessions were skipped, so the last step message stays otherwise.
+    final: dict = {}
+    if no_calibration:
+        _append_log(
+            task_id,
+            "=== Nonlinear EKS did not run on these sessions: no calibrations/<session>.toml "
+            "and no calibration.toml ===",
+        )
+        for model_name, skipped in no_calibration.items():
+            _append_log(task_id, f"{model_name}: {', '.join(skipped)}")
+        count = sum(len(v) for v in no_calibration.values())
+        final["message"] = (
+            f"Nonlinear EKS skipped {count} session{'s' if count != 1 else ''} "
+            "with no calibration (listed at the end of the log)"
+        )
+
     if errors:
         summary = f"{len(errors)} steps failed: " + "; ".join(errors[:3])
         if len(errors) > 3:
@@ -530,11 +612,17 @@ def _run_steps(task_id: str, steps: list[InferStep], total: int) -> None:
             task_id,
             status=InferenceStatus.COMPLETED,
             completed=total,
-            error=summary
+            error=summary,
+            **final,
         )
         _append_log(task_id, f"=== Inference completed with {len(errors)} errors ===")
     else:
-        set_status(task_id, status=InferenceStatus.COMPLETED, completed=total)
+        set_status(
+            task_id,
+            status=InferenceStatus.COMPLETED,
+            completed=total,
+            **final,
+        )
         _append_log(task_id, "=== Inference completed ===")
 
 

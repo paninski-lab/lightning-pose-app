@@ -4,6 +4,7 @@ import { CreateEksModelDialogComponent } from './create-eks-model-dialog.compone
 import { ProjectInfoService } from '../project-info.service';
 import { SessionService } from '../session.service';
 import { ToastService } from '../toast.service';
+import { CameraCalibrationService } from '../camera-calibration.service';
 import { ModelListResponseEntry } from '../modelconf';
 
 function makeModel(name: string): ModelListResponseEntry {
@@ -20,7 +21,7 @@ describe('CreateEksModelDialogComponent', () => {
   let fixture: ComponentFixture<CreateEksModelDialogComponent>;
   let mockSessionService: jasmine.SpyObj<SessionService>;
 
-  beforeEach(async () => {
+  async function setup(views: string[], hasCalibrations: boolean) {
     mockSessionService = jasmine.createSpyObj('SessionService', [
       'listModels',
       'createEksModel',
@@ -30,14 +31,22 @@ describe('CreateEksModelDialogComponent', () => {
     );
 
     const mockProjectInfoService = {
-      projectInfo: { views: ['top', 'bot'], keypoint_names: [], data_dir: '', model_dir: '' },
+      projectInfo: { views, keypoint_names: [], data_dir: '', model_dir: '' },
     };
+    const mockCalibrationService = jasmine.createSpyObj(
+      'CameraCalibrationService',
+      ['projectHasCalibrations'],
+    );
+    mockCalibrationService.projectHasCalibrations.and.returnValue(
+      Promise.resolve(hasCalibrations),
+    );
 
     await TestBed.configureTestingModule({
       imports: [CreateEksModelDialogComponent],
       providers: [
         { provide: SessionService, useValue: mockSessionService },
         { provide: ProjectInfoService, useValue: mockProjectInfoService },
+        { provide: CameraCalibrationService, useValue: mockCalibrationService },
         {
           provide: ToastService,
           useValue: jasmine.createSpyObj('ToastService', ['showToast']),
@@ -50,7 +59,7 @@ describe('CreateEksModelDialogComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-  });
+  }
 
   function setFormState(modelName: string, memberPaths: string[]) {
     component['form'].controls.modelName.setValue(modelName);
@@ -66,7 +75,22 @@ describe('CreateEksModelDialogComponent', () => {
     return create!.nativeElement;
   }
 
+  function getSmootherRadio(value: 'linear' | 'nonlinear'): HTMLInputElement {
+    return fixture.debugElement.query(
+      By.css(
+        `[role="radiogroup"][aria-label="Smoother"] input[value="${value}"]`,
+      ),
+    ).nativeElement;
+  }
+
+  /** Text beside the Nonlinear option (its reason tag when disabled). */
+  function nonlinearLabelText(): string {
+    return getSmootherRadio('nonlinear').closest('label')!.textContent ?? '';
+  }
+
   describe('Create button disabled state', () => {
+    beforeEach(() => setup(['top', 'bot'], true));
+
     it('is disabled when 0 models are selected', () => {
       setFormState('my_eks', []);
       expect(getCreateButton().classList).toContain('btn-disabled');
@@ -75,6 +99,49 @@ describe('CreateEksModelDialogComponent', () => {
     it('is enabled when 1 model is selected', () => {
       setFormState('my_eks', ['model_a']);
       expect(getCreateButton().classList).not.toContain('btn-disabled');
+    });
+  });
+
+  describe('Smoother choice', () => {
+    it('single-view project: Linear only, Nonlinear says it needs multiview', async () => {
+      await setup([], true);
+      expect(getSmootherRadio('linear').checked).toBeTrue();
+      expect(getSmootherRadio('nonlinear').disabled).toBeTrue();
+      expect(nonlinearLabelText()).toContain('multiview');
+    });
+
+    it('multiview project without calibration: Nonlinear says it needs calibration', async () => {
+      await setup(['top', 'bot'], false);
+      expect(getSmootherRadio('nonlinear').disabled).toBeTrue();
+      expect(nonlinearLabelText()).toContain('calibration');
+    });
+
+    it('single-view project creates a linear EKS model', async () => {
+      await setup([], false);
+      mockSessionService.createEksModel.and.returnValue(Promise.resolve());
+      setFormState('my_eks', ['model_a']);
+      getCreateButton().click();
+      await fixture.whenStable();
+      expect(mockSessionService.createEksModel).toHaveBeenCalledWith(
+        jasmine.objectContaining({ view_names: [], smoother: 'linear' }),
+      );
+    });
+
+    it('multiview project with calibration can create a nonlinear EKS model', async () => {
+      await setup(['top', 'bot'], true);
+      mockSessionService.createEksModel.and.returnValue(Promise.resolve());
+      expect(getSmootherRadio('nonlinear').disabled).toBeFalse();
+      setFormState('my_eks', ['model_a']);
+      getSmootherRadio('nonlinear').click();
+      fixture.detectChanges();
+      getCreateButton().click();
+      await fixture.whenStable();
+      expect(mockSessionService.createEksModel).toHaveBeenCalledWith(
+        jasmine.objectContaining({
+          view_names: ['top', 'bot'],
+          smoother: 'nonlinear',
+        }),
+      );
     });
   });
 });
