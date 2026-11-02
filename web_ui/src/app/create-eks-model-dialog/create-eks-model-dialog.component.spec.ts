@@ -27,7 +27,13 @@ describe('CreateEksModelDialogComponent', () => {
       'createEksModel',
     ]);
     mockSessionService.listModels.and.returnValue(
-      Promise.resolve({ models: [makeModel('model_a'), makeModel('model_b')] }),
+      Promise.resolve({
+        models: [
+          makeModel('model_a'),
+          makeModel('model_b'),
+          makeModel('model_c'),
+        ],
+      }),
     );
 
     const mockProjectInfoService = {
@@ -99,6 +105,36 @@ describe('CreateEksModelDialogComponent', () => {
     it('is enabled when 1 model is selected', () => {
       setFormState('my_eks', ['model_a']);
       expect(getCreateButton().classList).not.toContain('btn-disabled');
+    });
+  });
+
+  describe('Odd number of members', () => {
+    beforeEach(() => setup(['top', 'bot'], true));
+
+    function clickMember(name: string) {
+      const box = fixture.debugElement
+        .queryAll(By.css('input[type="checkbox"]'))
+        .find((el) =>
+          el.nativeElement.closest('label')?.textContent?.includes(name),
+        );
+      expect(box).withContext(name).toBeDefined();
+      box!.nativeElement.click();
+      fixture.detectChanges();
+    }
+
+    function warning(): HTMLElement | null {
+      return fixture.nativeElement.querySelector('[role="status"]');
+    }
+
+    it('warns with an even number of members, without blocking Create', () => {
+      component['form'].controls.modelName.setValue('my_eks');
+      clickMember('model_a');
+      expect(warning()).toBeNull();
+      clickMember('model_b');
+      expect(warning()).not.toBeNull();
+      expect(getCreateButton().classList).not.toContain('btn-disabled');
+      clickMember('model_c');
+      expect(warning()).toBeNull();
     });
   });
 

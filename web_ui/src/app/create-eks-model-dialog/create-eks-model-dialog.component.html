@@ -60,6 +60,12 @@
         >
           Select at least one model
         </p>
+        @let memberCount = form.controls.memberIds.value.length;
+        @if (memberCount > 0 && memberCount % 2 === 0) {
+          <p class="my-1! text-warning" role="status">
+            EKS works best with an <em>odd</em> number of ensemble members.
+          </p>
+        }
       </fieldset>
 
       <fieldset class="fieldset my-2">

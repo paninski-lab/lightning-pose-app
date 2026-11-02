@@ -50,6 +50,20 @@ def _plot_one(args: tuple) -> None:
     )
 
 
+def _enable_jax_x64() -> None:
+    """Run EKS in 64-bit floats. Must run before eks is imported.
+
+    JAX defaults to 32-bit. With a large smooth_param and members that agree
+    closely (small ensemble variance), 32-bit EKS 4.6 returns NaN for whole
+    keypoints. 64-bit gave no NaNs at about the same run time (#150).
+    """
+    try:
+        import jax
+    except ImportError:
+        return  # the eks import below reports the missing package
+    jax.config.update("jax_enable_x64", True)
+
+
 def main() -> None:
     """Parse CLI arguments and run the EKS smoother, saving smoothed CSVs to save_dir."""
     parser = argparse.ArgumentParser(description="Run EKS smoother")
@@ -65,6 +79,8 @@ def main() -> None:
     parser.add_argument("--calibration", default=None, help="Calibration .toml; runs the nonlinear multiview smoother")
     parser.add_argument("--save_3d_dir", default=None, help="With --calibration, save the 3D estimates here as {session}.csv")
     args = parser.parse_args()
+
+    _enable_jax_x64()
 
     if len(args.camera_names) < 2:
         if args.calibration:
