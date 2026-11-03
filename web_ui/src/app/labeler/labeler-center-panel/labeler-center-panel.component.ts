@@ -292,7 +292,8 @@ export class LabelerCenterPanelComponent implements OnChanges {
       item === keypoint ? { ...keypoint, ...newKp } : item,
     );
 
-    if (lkp(keypoint).isNaN()) {
+    // With "Keep selected keypoint" on, the placed keypoint stays selected.
+    if (lkp(keypoint).isNaN() && !this.viewOptions.keepSelectedKeypoint()) {
       this.selectNextUnlabeledKeypoint(keypointName);
     }
     this.cacheBuster.set(Math.random());
