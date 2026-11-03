@@ -56,6 +56,8 @@ export class ImageLabelWidgetComponent {
   fv = input.required<FrameView>();
   /** Bumped when keypoints are replaced in place so OnPush redraws markers. */
   revision = input(0);
+  /** Bumped by the Labeler's Refresh so images load again instead of from the browser cache. */
+  imageReload = input(0);
   selectedKeypoint = model<string | null>(null);
   disableInteractions = input<boolean>(false);
   zoomableInteractivityDisabled = input<boolean>(false);
@@ -172,11 +174,13 @@ export class ImageLabelWidgetComponent {
   }
 
   protected imgPath(kpImgPath: string): string {
+    const reload = this.imageReload();
     return (
       '/app/v0/files/' +
       this.projectInfoService.projectInfo.data_dir +
       '/' +
-      kpImgPath
+      kpImgPath +
+      (reload ? `?reload=${reload}` : '')
     );
   }
 
@@ -185,10 +189,11 @@ export class ImageLabelWidgetComponent {
 
   /**
    * Image srcs that failed to load (for example past the end of the video).
-   * Cleared when another frame opens, so reopening a frame tries again.
+   * Cleared when another frame opens or the Labeler is refreshed, so the
+   * images are tried again.
    */
   private missingSrcs = linkedSignal<string, ReadonlySet<string>>({
-    source: () => this.fv().imgPath,
+    source: () => `${this.fv().imgPath}#${this.imageReload()}`,
     computation: () => new Set(),
   });
 

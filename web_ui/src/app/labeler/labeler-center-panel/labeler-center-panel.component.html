@@ -55,6 +55,7 @@
             [style.width.px]="viewOptions.imageSizePx()"
             [fv]="fv"
             [revision]="cacheBuster()"
+            [imageReload]="imageReload()"
             [(selectedKeypoint)]="selectedKeypoint"
             [disableInteractions]="disableInteractions()"
             (keypointUpdated)="
@@ -89,6 +90,7 @@
                 class="!h-[120px] !w-[120px] block"
                 [fv]="fv"
                 [revision]="cacheBuster()"
+                [imageReload]="imageReload()"
                 [disableInteractions]="true"
                 [zoomableInteractivityDisabled]="true"
               ></app-image-label-widget>

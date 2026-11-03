@@ -17,22 +17,33 @@ import { MVFrame } from './frame.model';
 
 // Minimal stub that exposes the same inputs as the real component so we can
 // inspect what the parent template binds to them.
-@Component({ selector: 'app-extract-frames-dialog', template: '', standalone: true })
+@Component({
+  selector: 'app-extract-frames-dialog',
+  template: '',
+  standalone: true,
+})
 class StubExtractFramesDialogComponent {
   initialStep = input<string>('labelFile');
-  initialLabelFileSelectionType = input<'createNew' | 'useExisting'>('createNew');
+  initialLabelFileSelectionType = input<'createNew' | 'useExisting'>(
+    'createNew',
+  );
   initialSelectedLabelFileKey = input<string | null>(null);
   exit = output<void>();
   done = output<string>();
 }
 
-@Component({ selector: 'app-labeler-center-panel', template: '', standalone: true })
+@Component({
+  selector: 'app-labeler-center-panel',
+  template: '',
+  standalone: true,
+})
 class StubLabelerCenterPanelComponent {
   labelFile = input<MVLabelFile | null>(null);
   frame = input<unknown>(null);
   hasNextFrame = input(false);
   hasPreviousFrame = input(false);
   numLabeledFramesGetter = input<unknown>(null);
+  imageReload = input(0);
   saved = output<unknown>();
   nextFrame = output<void>();
   previousFrame = output<void>();
@@ -40,7 +51,11 @@ class StubLabelerCenterPanelComponent {
   newLabelFile = output<void>();
 }
 
-@Component({ selector: 'app-label-file-picker', template: '', standalone: true })
+@Component({
+  selector: 'app-label-file-picker',
+  template: '',
+  standalone: true,
+})
 class StubLabelFilePickerComponent {
   fullWidth = input<boolean>(false);
   labelFileKey = input<string | null>(null);
@@ -67,7 +82,12 @@ describe('LabelerPageComponent — extract-frames dialog initial step', () => {
     const mockProjectInfoService = {
       projectContext: () => null,
       allViews: signal<string[]>([]),
-      projectInfo: { views: [], data_dir: '', model_dir: '', keypoint_names: [] },
+      projectInfo: {
+        views: [],
+        data_dir: '',
+        model_dir: '',
+        keypoint_names: [],
+      },
     };
 
     TestBed.overrideComponent(LabelerPageComponent, {
@@ -111,8 +131,12 @@ describe('LabelerPageComponent — extract-frames dialog initial step', () => {
   });
 
   function queryDialogStub(): StubExtractFramesDialogComponent {
-    const el = fixture.debugElement.query(By.directive(StubExtractFramesDialogComponent));
-    expect(el).withContext('app-extract-frames-dialog stub should be present').not.toBeNull();
+    const el = fixture.debugElement.query(
+      By.directive(StubExtractFramesDialogComponent),
+    );
+    expect(el)
+      .withContext('app-extract-frames-dialog stub should be present')
+      .not.toBeNull();
     return el.componentInstance as StubExtractFramesDialogComponent;
   }
 
@@ -239,9 +263,9 @@ describe('LabelerPageComponent — handleSaved frame advance', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    (component as unknown as { isIniting: { set: (v: boolean) => void } }).isIniting.set(
-      false,
-    );
+    (
+      component as unknown as { isIniting: { set: (v: boolean) => void } }
+    ).isIniting.set(false);
     (
       component as unknown as {
         loadedLabelFile: { set: (v: MVLabelFile) => void };
@@ -343,9 +367,7 @@ describe('LabelerPageComponent — handleSaved frame advance', () => {
     setFrames([labeled, remaining]);
     fixture.componentRef.setInput('frameKey', 'labeled');
 
-    (
-      component as unknown as { handleNextFrame: () => void }
-    ).handleNextFrame();
+    (component as unknown as { handleNextFrame: () => void }).handleNextFrame();
 
     expect(labeled.views[0].keypoints).toEqual([
       { keypointName: 'nose', x: 9, y: 9 },
@@ -388,5 +410,216 @@ describe('LabelerPageComponent — handleSaved frame advance', () => {
     expect(page.hasPreviousFrame()).toBeFalse();
     page.handlePreviousFrame();
     expect(navigateSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('LabelerPageComponent — Refresh', () => {
+  let fixture: ComponentFixture<LabelerPageComponent>;
+  let navigateSpy: jasmine.Spy;
+  let loadLabelFiles: jasmine.Spy;
+  let loadLabelFileData: jasmine.Spy;
+  let showToast: jasmine.Spy;
+
+  const labelFile: MVLabelFile = {
+    key: 'CollectedData',
+    views: [{ viewName: 'camA', csvPath: 'CollectedData_camA.csv' }],
+  };
+
+  function makeFrame(key: string): MVFrame {
+    const kp = { keypointName: 'nose', x: 1, y: 2 };
+    return {
+      key,
+      views: [
+        {
+          viewName: 'camA',
+          imgPath: `labeled-data/s_camA/${key}.png`,
+          keypoints: [{ ...kp }],
+          originalKeypoints: [{ ...kp }],
+        },
+      ],
+    };
+  }
+
+  beforeEach(async () => {
+    loadLabelFiles = jasmine.createSpy('loadLabelFiles').and.resolveTo();
+    loadLabelFileData = jasmine
+      .createSpy('loadLabelFileData')
+      .and.callFake(() => Promise.resolve([makeFrame('img001')]));
+    showToast = jasmine.createSpy('showToast');
+
+    TestBed.overrideComponent(LabelerPageComponent, {
+      remove: {
+        imports: [
+          ExtractFramesDialogComponent,
+          LabelerCenterPanelComponent,
+          LabelFilePickerComponent,
+          LoadingBarComponent,
+        ],
+      },
+      add: {
+        imports: [
+          StubExtractFramesDialogComponent,
+          StubLabelerCenterPanelComponent,
+          StubLabelFilePickerComponent,
+          StubLoadingBarComponent,
+        ],
+      },
+    });
+
+    await TestBed.configureTestingModule({
+      imports: [LabelerPageComponent],
+      providers: [
+        provideRouter([]),
+        {
+          provide: ProjectInfoService,
+          useValue: {
+            projectContext: () => ({ key: 'proj' }),
+            allViews: signal<string[]>([]),
+            projectInfo: {
+              views: [],
+              data_dir: '',
+              model_dir: '',
+              keypoint_names: [],
+            },
+          },
+        },
+        {
+          provide: SessionService,
+          useValue: {
+            loadLabelFiles,
+            allLabelFiles: signal([labelFile]),
+            getDefaultLabelFile: () => null,
+          },
+        },
+        { provide: ToastService, useValue: { showToast } },
+        { provide: LabelFileFetcherService, useValue: { loadLabelFileData } },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(LabelerPageComponent);
+    navigateSpy = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+    fixture.componentRef.setInput('labelFileKey', labelFile.key);
+    fixture.componentRef.setInput('frameKey', 'img001');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  });
+
+  function centerPanel(): StubLabelerCenterPanelComponent {
+    return fixture.debugElement.query(
+      By.directive(StubLabelerCenterPanelComponent),
+    ).componentInstance;
+  }
+
+  function openFrame(): MVFrame {
+    return centerPanel().frame() as MVFrame;
+  }
+
+  function button(label: string): HTMLButtonElement {
+    const buttons: HTMLButtonElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('button'),
+    );
+    return buttons.find(
+      (b) =>
+        b.getAttribute('aria-label') === label ||
+        b.textContent!.trim() === label,
+    )!;
+  }
+
+  async function click(label: string) {
+    button(label).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  function frameListText(): string {
+    return fixture.nativeElement.querySelector('as-split-area').textContent;
+  }
+
+  it('reloads label files, labels and images and keeps the open frame', async () => {
+    expect(openFrame().key).toBe('img001');
+    expect(centerPanel().imageReload()).toBe(0);
+    loadLabelFiles.calls.reset();
+    // A frame was labeled on disk while the page was open.
+    loadLabelFileData.and.callFake(() =>
+      Promise.resolve([makeFrame('img001'), makeFrame('img002')]),
+    );
+
+    await click('Refresh label data and images');
+
+    expect(loadLabelFiles).toHaveBeenCalledTimes(1);
+    expect(frameListText()).toContain('img002');
+    expect(openFrame().key).toBe('img001');
+    expect(centerPanel().imageReload()).toBe(1);
+    expect(navigateSpy).not.toHaveBeenCalled();
+  });
+
+  it('asks before discarding unsaved keypoint edits; Cancel keeps them', async () => {
+    const edited = openFrame();
+    edited.views[0].keypoints = [{ keypointName: 'nose', x: 9, y: 9 }];
+    loadLabelFileData.calls.reset();
+
+    await click('Refresh label data and images');
+    expect(button('Discard and refresh')).toBeDefined();
+    expect(loadLabelFileData).not.toHaveBeenCalled();
+
+    await click('Cancel');
+    expect(button('Discard and refresh')).toBeUndefined();
+    expect(openFrame()).toBe(edited);
+    expect(openFrame().views[0].keypoints[0].x).toBe(9);
+
+    await click('Refresh label data and images');
+    await click('Discard and refresh');
+    expect(loadLabelFileData).toHaveBeenCalledTimes(1);
+    expect(openFrame().views[0].keypoints[0].x).toBe(1);
+  });
+
+  it('keeps what is shown and says why when Refresh fails to load', async () => {
+    const shown = openFrame();
+    loadLabelFileData.and.callFake(() =>
+      Promise.reject(
+        new Error('Failed to load CSV file: CollectedData_camA.csv'),
+      ),
+    );
+
+    await click('Refresh label data and images');
+
+    expect(showToast).toHaveBeenCalledWith(
+      jasmine.objectContaining({ variant: 'error' }),
+    );
+    expect(openFrame()).toBe(shown);
+    expect(button('Refresh label data and images').disabled).toBeFalse();
+    expect(navigateSpy).not.toHaveBeenCalled();
+  });
+
+  it('closes the label file, with a warning, when it is gone after Refresh', async () => {
+    const session = TestBed.inject(SessionService) as unknown as {
+      allLabelFiles: ReturnType<typeof signal<MVLabelFile[]>>;
+    };
+    loadLabelFiles.and.callFake(async () => session.allLabelFiles.set([]));
+
+    await click('Refresh label data and images');
+
+    expect(navigateSpy).toHaveBeenCalledWith([], { queryParams: {} });
+    expect(showToast).toHaveBeenCalledWith(
+      jasmine.objectContaining({ variant: 'warning' }),
+    );
+    expect(centerPanel().frame()).toBeNull();
+  });
+
+  it('closes the open frame, with a warning, when it is gone after Refresh', async () => {
+    loadLabelFileData.and.callFake(() =>
+      Promise.resolve([makeFrame('img002')]),
+    );
+
+    await click('Refresh label data and images');
+
+    expect(navigateSpy).toHaveBeenCalledWith([], {
+      queryParams: { labelFileKey: labelFile.key },
+    });
+    expect(showToast).toHaveBeenCalledWith(
+      jasmine.objectContaining({ variant: 'warning' }),
+    );
   });
 });

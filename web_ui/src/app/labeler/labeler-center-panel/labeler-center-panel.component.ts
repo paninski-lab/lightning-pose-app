@@ -98,6 +98,8 @@ export class LabelerCenterPanelComponent implements OnChanges {
   hasNextFrame = input(false);
   hasPreviousFrame = input(false);
   numLabeledFramesGetter = input.required<() => number>();
+  /** Passed to the image widgets; bumped by the Labeler's Refresh. */
+  imageReload = input(0);
 
   primaryZoomableElement =
     viewChild<ImageLabelWidgetComponent>('primaryZoomable');

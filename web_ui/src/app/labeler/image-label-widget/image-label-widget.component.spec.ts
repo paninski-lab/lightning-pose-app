@@ -267,6 +267,24 @@ describe('ImageLabelWidgetComponent context frames', () => {
     );
   });
 
+  it('loads the images again, and retries failed ones, after the Labeler is refreshed', () => {
+    show('labeled-data/s/img00000042.png');
+    expect(images()[2].getAttribute('src')).toBe(
+      FILES + 'labeled-data/s/img00000042.png',
+    );
+    images()[4].dispatchEvent(new Event('error'));
+    fixture.detectChanges();
+
+    fixture.componentRef.setInput('imageReload', 1);
+    fixture.detectChanges();
+    expect(images()[2].getAttribute('src')).toBe(
+      FILES + 'labeled-data/s/img00000042.png?reload=1',
+    );
+    expect(images()[4].getAttribute('src')).toBe(
+      FILES + 'labeled-data/s/img00000044.png?reload=1',
+    );
+  });
+
   describe('frame image message', () => {
     const message = () =>
       fixture.nativeElement.querySelector(
