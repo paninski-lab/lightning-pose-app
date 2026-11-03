@@ -6,6 +6,10 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 
 ## 📝 Release Notes
 
+### [2.4.4.1.dev0]
+
+No changes yet.
+
 ### [2.4.4.0] — 2026-11-03
 
 Built for Lightning Pose 2.4.4.

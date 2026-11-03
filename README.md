@@ -37,7 +37,7 @@ Bug reports with a clear repro can also go in [GitHub Issues](https://github.com
 See [CHANGELOG.md](CHANGELOG.md).
 
 - **Latest release (PyPI):** **[2.4.4.0](CHANGELOG.md#2440--2026-11-03)** — install with `pip install lightning-pose-app`.
-- **Development on [`main`](https://github.com/paninski-lab/lightning-pose-app):** **[2.4.2.4.dev0](CHANGELOG.md#24224dev0)** — rolling changes; clone the repo and install editable (see [CONTRIBUTING.md](CONTRIBUTING.md)).
+- **Development on [`main`](https://github.com/paninski-lab/lightning-pose-app):** **[2.4.4.1.dev0](CHANGELOG.md#24410dev0)** — rolling changes; clone the repo and install editable (see [CONTRIBUTING.md](CONTRIBUTING.md)).
 
 ## Contributing
 
