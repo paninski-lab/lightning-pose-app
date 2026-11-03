@@ -243,7 +243,15 @@ class CreateModelDialogComponent {
   protected posePcaUnavailableReason = computed((): string | null => {
     const labeled = this.labeledFrameCount();
     const split = this.trainValSplitAsSignal();
-    if (labeled === null || !split?.trainProb || !split?.valProb) return null;
+    // The form emits values while they are invalid (for example a negative
+    // Train prob being typed); only check a split LP could use.
+    if (
+      labeled === null ||
+      !((split?.trainProb ?? 0) > 0) ||
+      !((split?.valProb ?? 0) > 0)
+    ) {
+      return null;
+    }
     const numKeypoints =
       this.projectInfoService.projectInfo.keypoint_names.length;
     const { trainProb, valProb } = split;

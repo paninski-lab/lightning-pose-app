@@ -23,7 +23,8 @@ export function lpTrainFrameCount(
 }
 
 /**
- * Fewest labeled frames for which Pose PCA can fit. LP needs at least as many
+ * Fewest labeled frames for which Pose PCA can fit; Infinity when `trainProb`
+ * is not a positive number. LP needs at least as many
  * training frames as PCA dimensions, 2 per keypoint used
  * (`lightning_pose/utils/pca.py`, "cannot fit PCA with N samples < D").
  */
@@ -32,6 +33,9 @@ export function minFramesForPosePca(
   trainProb: number,
   valProb: number,
 ): number {
+  // With no training fraction no number of frames is enough (and the search
+  // below would never end).
+  if (!(trainProb > 0)) return Number.POSITIVE_INFINITY;
   const dims = 2 * numKeypoints;
   let total = Math.max(2, Math.ceil(dims / trainProb));
   // The split floors and adjusts, so step down and up to the exact boundary.

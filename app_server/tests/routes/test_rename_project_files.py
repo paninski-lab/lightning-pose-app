@@ -1,5 +1,6 @@
 """Rename a labeled-data folder and the label CSV paths that point at it."""
 
+import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -59,6 +60,118 @@ def test_rename_labeled_data_folder_rewrites_csv_paths(
     assert "labeled-data/old_extra/img0001.png,3,4" in text
     assert "labeled-data/old/" not in text
     assert model_csv.read_text() == original_model
+
+
+
+_HEADER = "scorer,s,s\nbodyparts,nose,nose\ncoords,x,y\n"
+
+
+def _rename(client: TestClient, path: Path, new_name: str):
+    return client.post(
+        "/app/v0/rpc/renameLabeledDataFolder",
+        json={"projectKey": "demo", "path": str(path), "newName": new_name},
+    )
+
+
+def _labeled_folder(data_dir: Path, name: str = "old") -> Path:
+    folder = data_dir / "labeled-data" / name
+    folder.mkdir(parents=True)
+    (folder / "img0001.png").write_bytes(b"png")
+    return folder
+
+
+def test_rename_labeled_data_folder_rewrites_label_csvs_outside_the_data_root(
+    client: TestClient, register_project
+):
+    """A CSV inside the renamed folder (DLC layout) and one in a subfolder are rewritten too."""
+    data_dir = register_project("demo", views=["bot"], keypoints=["nose"])
+    old = _labeled_folder(data_dir)
+    inside = old / "CollectedData_rick.csv"
+    inside.write_text(_HEADER + "labeled-data/old/img0001.png,1,2\n")
+    nested = data_dir / "labels" / "CollectedData_bot.csv"
+    nested.parent.mkdir()
+    nested.write_text(_HEADER + "labeled-data/old/img0001.png,3,4\n")
+
+    assert _rename(client, old, "sess_bot").status_code == 200
+
+    moved = data_dir / "labeled-data" / "sess_bot" / "CollectedData_rick.csv"
+    assert "labeled-data/sess_bot/img0001.png,1,2" in moved.read_text()
+    assert "labeled-data/sess_bot/img0001.png,3,4" in nested.read_text()
+
+
+def test_rename_labeled_data_folder_rewrites_unlabeled_queues(
+    client: TestClient, register_project
+):
+    """Queued frames follow the folder; other entries and unreadable lines stay as stored."""
+    data_dir = register_project("demo", views=["bot"], keypoints=["nose"])
+    old = _labeled_folder(data_dir)
+    (data_dir / "CollectedData_bot.csv").write_text(_HEADER)
+    queue = data_dir / "CollectedData_bot.unlabeled.jsonl"
+    other = '{"frame_path": "labeled-data/old_extra/img0002.png"}\n'
+    queue.write_text(
+        '{"frame_path": "labeled-data/old/img0002.png", "predictions": null}\n'
+        + '{"frame_path": "labeled-data\\\\old\\\\img0003.png"}\n'
+        + other
+        + "not json\n"
+    )
+    model_queue = data_dir / "models" / "m1" / "CollectedData_bot.unlabeled.jsonl"
+    model_queue.parent.mkdir(parents=True)
+    model_queue.write_text('{"frame_path": "labeled-data/old/img0002.png"}\n')
+    original_model_queue = model_queue.read_text()
+
+    assert _rename(client, old, "sess_bot").status_code == 200
+
+    lines = queue.read_text().splitlines(keepends=True)
+    assert [json.loads(line)["frame_path"] for line in lines[:2]] == [
+        "labeled-data/sess_bot/img0002.png",
+        "labeled-data/sess_bot/img0003.png",
+    ]
+    assert json.loads(lines[0])["predictions"] is None
+    assert lines[2:] == [other, "not json\n"]
+    assert model_queue.read_text() == original_model_queue
+
+
+def test_rename_labeled_data_folder_keeps_crlf_line_endings(
+    client: TestClient, register_project
+):
+    data_dir = register_project("demo", views=["bot"], keypoints=["nose"])
+    old = _labeled_folder(data_dir)
+    csv_path = data_dir / "CollectedData_bot.csv"
+    csv_path.write_bytes(
+        _HEADER.replace("\n", "\r\n").encode()
+        + b"labeled-data/old/img0001.png,1,2\r\n"
+    )
+
+    assert _rename(client, old, "sess_bot").status_code == 200
+
+    assert csv_path.read_bytes().endswith(b"labeled-data/sess_bot/img0001.png,1,2\r\n")
+    assert b"\r\n" in csv_path.read_bytes().split(b"labeled-data")[0]
+
+
+def test_rename_labeled_data_folder_failed_commit_changes_nothing(
+    client: TestClient, register_project, monkeypatch
+):
+    """If the files can't be committed, the folder moves back and every file is unchanged."""
+    from litpose_app.routes import rename_project_files
+
+    data_dir = register_project("demo", views=["bot"], keypoints=["nose"])
+    old = _labeled_folder(data_dir)
+    csv_path = data_dir / "CollectedData_bot.csv"
+    csv_path.write_text(_HEADER + "labeled-data/old/img0001.png,1,2\n")
+    queue = data_dir / "CollectedData_bot.unlabeled.jsonl"
+    queue.write_text('{"frame_path": "labeled-data/old/img0002.png"}\n')
+    before = {path: path.read_text() for path in (csv_path, queue)}
+
+    def fail(_staged):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(rename_project_files, "replace_files", fail)
+    resp = _rename(client, old, "sess_bot")
+
+    assert resp.status_code == 500
+    assert old.is_dir() and not (data_dir / "labeled-data" / "sess_bot").exists()
+    assert {path: path.read_text() for path in before} == before
+    assert not list(data_dir.rglob("*.tmp"))
 
 
 def test_import_calibration_creates_folder_and_copies_toml(
