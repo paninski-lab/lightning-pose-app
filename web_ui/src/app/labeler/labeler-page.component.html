@@ -51,6 +51,16 @@
                   +
                 </button>
               }
+              <button
+                type="button"
+                class="btn btn-sm btn-soft btn-square tooltip tooltip-bottom"
+                data-tip="Reload label files, labels and images from disk"
+                aria-label="Refresh label data and images"
+                [disabled]="isRefreshing() || isLoading()"
+                (click)="handleRefreshClick()"
+              >
+                <span class="material-icons text-base!">refresh</span>
+              </button>
             </div>
           </div>
           @if (isLoading()) {
@@ -164,6 +174,7 @@
         [hasNextFrame]="hasNextFrame()"
         [hasPreviousFrame]="hasPreviousFrame()"
         [numLabeledFramesGetter]="getNumLabeledFramesGetter"
+        [imageReload]="imageReload()"
         (saved)="handleSaved($event)"
         (nextFrame)="handleNextFrame()"
         (previousFrame)="handlePreviousFrame()"
@@ -172,6 +183,31 @@
       ></app-labeler-center-panel>
     </as-split-area>
   </as-split>
+  @if (refreshConfirmOpen()) {
+    <app-alert-dialog (dismiss)="refreshConfirmOpen.set(false)">
+      <app-alert-header>Discard unsaved changes?</app-alert-header>
+      <p>
+        Some frames have keypoint changes that are not saved. Refresh reloads
+        the labels from disk and drops those changes.
+      </p>
+      <app-alert-footer>
+        <button
+          type="button"
+          class="btn btn-soft"
+          (click)="refreshConfirmOpen.set(false)"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="btn btn-soft btn-error"
+          (click)="handleRefreshConfirmed()"
+        >
+          Discard and refresh
+        </button>
+      </app-alert-footer>
+    </app-alert-dialog>
+  }
   @if (extractFramesDialogOpen()) {
     <app-extract-frames-dialog
       [initialStep]="labelFileKey() == null ? 'labelFile' : 'session'"

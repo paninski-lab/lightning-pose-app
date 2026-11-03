@@ -36,6 +36,11 @@ import { LabelFilePickerComponent } from '../label-file-picker/label-file-picker
 import _ from 'lodash';
 import { SplitAreaComponent, SplitComponent } from 'angular-split';
 import { clampSplitPane, gutterPixels } from '../split-pane-limit';
+import {
+  AlertDialogComponent,
+  AlertFooterComponent,
+  AlertHeaderComponent,
+} from '../components/alert-dialog/alert-dialog.component';
 
 interface LoadError {
   message: string;
@@ -57,6 +62,9 @@ interface LoadError {
     DropdownTriggerComponent,
     DropdownContentComponent,
     DropdownTriggerDirective,
+    AlertDialogComponent,
+    AlertHeaderComponent,
+    AlertFooterComponent,
   ],
   templateUrl: './labeler-page.component.html',
   styleUrl: './labeler-page.component.css',
@@ -100,6 +108,18 @@ export class LabelerPageComponent implements OnInit, OnChanges {
 
   // Store the loading state
   protected isLoading = signal(false);
+  /** True while Refresh reloads; the selected label file and frame read as none. */
+  protected isRefreshing = signal(false);
+  /** Asks before Refresh discards unsaved keypoint edits. */
+  protected refreshConfirmOpen = signal(false);
+  /** Bumped by Refresh so images load again instead of from the browser cache. */
+  protected imageReload = signal(0);
+  /**
+   * A label file or frame key that Refresh found missing. It reads as none
+   * until the URL moves off it, instead of throwing "not found".
+   */
+  private goneLabelFileKey = signal<string | null>(null);
+  private goneFrameKey = signal<string | null>(null);
   protected loadError = signal<LoadError | null>(null);
 
   // Set from the router on URL change.
@@ -108,7 +128,13 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   frameKey = input<string | null>(null);
 
   protected selectedLabelFile = computed(() => {
-    if (this.isIniting()) return null;
+    if (this.isIniting() || this.isRefreshing()) return null;
+    if (
+      this.labelFileKey() != null &&
+      this.labelFileKey() === this.goneLabelFileKey()
+    ) {
+      return null;
+    }
     const labelFile =
       this.labelFileKey() == null
         ? null
@@ -124,7 +150,17 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   });
 
   protected selectedFrame = computed((): MVFrame | null => {
-    if (this.isIniting() || this.isLoading()) return null;
+    if (this.isIniting() || this.isLoading() || this.isRefreshing())
+      return null;
+    if (this.frameKey() != null && this.frameKey() === this.goneFrameKey()) {
+      return null;
+    }
+    if (
+      this.labelFileKey() != null &&
+      this.labelFileKey() === this.goneLabelFileKey()
+    ) {
+      return null;
+    }
     const selectedFrame =
       this.frameKey() == null
         ? null
@@ -170,6 +206,7 @@ export class LabelerPageComponent implements OnInit, OnChanges {
 
     try {
       this.isLoading.set(true);
+      this.goneFrameKey.set(null);
       const mvFrames = await this.labelFileFetcher.loadLabelFileData(labelFile);
 
       this.loadedLabelFile.set(labelFile);
@@ -328,6 +365,72 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     const leftWidth =
       split.querySelector(':scope > as-split-area')?.clientWidth ?? 0;
     clampSplitPane(this.leftPaneSize, this.leftPaneMax, max, leftWidth);
+  }
+
+  /** Refresh: asks first when any loaded frame has unsaved keypoint edits. */
+  protected handleRefreshClick() {
+    const frames = this.labelFileData() ?? [];
+    if (frames.some((frame) => mvf(frame).hasRevertibleEdits)) {
+      this.refreshConfirmOpen.set(true);
+      return;
+    }
+    void this.refresh();
+  }
+
+  protected handleRefreshConfirmed() {
+    this.refreshConfirmOpen.set(false);
+    void this.refresh();
+  }
+
+  /**
+   * Reloads the label file list, the selected label file's CSVs and unlabeled
+   * queue, and the images, without reloading the tab. Keeps the open label file
+   * and frame when they still exist. Writes nothing to disk.
+   */
+  protected async refresh() {
+    this.isRefreshing.set(true);
+    this.goneLabelFileKey.set(null);
+    this.goneFrameKey.set(null);
+    try {
+      this.imageReload.update((n) => n + 1);
+      await this.sessionService.loadLabelFiles();
+      const labelFileKey = this.labelFileKey() ?? null;
+      const labelFile =
+        this.sessionService
+          .allLabelFiles()
+          .find((file) => file.key === labelFileKey) ?? null;
+      if (labelFileKey !== null && labelFile === null) {
+        this.goneLabelFileKey.set(labelFileKey);
+        this.loadedLabelFile.set(null);
+        this.labelFileData.set(null);
+        this.toastService.showToast({
+          content: `Label file ${labelFileKey} is no longer in the data directory`,
+          variant: 'warning',
+        });
+        await this.router.navigate([], { queryParams: {} });
+        return;
+      }
+      const frames =
+        labelFile && labelFile.views.length > 0
+          ? await this.labelFileFetcher.loadLabelFileData(labelFile)
+          : null;
+      this.loadedLabelFile.set(frames ? labelFile : null);
+      this.labelFileData.set(frames);
+      const frameKey = this.frameKey();
+      if (
+        frameKey != null &&
+        !frames?.some((frame) => frame.key === frameKey)
+      ) {
+        this.goneFrameKey.set(frameKey);
+        this.toastService.showToast({
+          content: `Frame ${frameKey} is no longer in ${labelFileKey}`,
+          variant: 'warning',
+        });
+        await this.router.navigate([], { queryParams: { labelFileKey } });
+      }
+    } finally {
+      this.isRefreshing.set(false);
+    }
   }
 
   extractFramesDialogOpen = signal<boolean>(false);

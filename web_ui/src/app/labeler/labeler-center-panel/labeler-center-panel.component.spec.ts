@@ -762,7 +762,18 @@ describe('LabelerCenterPanelComponent Next and keypoint selection', () => {
     expect(selectedKeypoint()).toBe('tail');
   });
 
-  it('placing a keypoint selects the next unlabeled one unless Keep selected keypoint is on', () => {
+  it('keeps the open view when the frame is replaced by a reloaded copy (Refresh)', () => {
+    open(makeFrame('f1', ['top', 'side']));
+    clickNext();
+    expect(shownImage()).toBe('f1_side.png');
+
+    // Refresh: the page shows no frame while loading, then a new copy.
+    open(null as unknown as MVFrame);
+    open(makeFrame('f1', ['top', 'side']));
+    expect(shownImage()).toBe('f1_side.png');
+  });
+
+    it('placing a keypoint selects the next unlabeled one unless Keep selected keypoint is on', () => {
     open(makeFrame('f1', ['top'], { unlabeled: true }));
     const widget = fixture.debugElement.query(
       By.directive(ImageLabelWidgetStubComponent),
@@ -790,6 +801,7 @@ describe('LabelerCenterPanelComponent Next and keypoint selection', () => {
 class ImageLabelWidgetStubComponent {
   fv = input();
   revision = input();
+  imageReload = input();
   selectedKeypoint = model<string | null>(null);
   disableInteractions = input();
   zoomableInteractivityDisabled = input();
