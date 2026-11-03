@@ -8,9 +8,13 @@ does not touch user/system paths.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import toml
 import yaml
 from fastapi.testclient import TestClient
+
+import litpose_app
 
 
 def test_get_project_info(register_project, client: TestClient):
@@ -176,10 +180,11 @@ def test_create_new_project_requires_info_and_writes_yaml(
     assert data_dir.is_dir()
     assert (data_dir / "models").is_dir()
 
-    # Verify config files copied
-    assert (data_dir / "configs").is_dir()
-    assert (data_dir / "configs" / "config_default.yaml").exists()
-    assert (data_dir / "configs" / "config_default_multiview.yaml").exists()
+    # The project's default model config: LPA's multiview default for two views.
+    default = data_dir / "configs" / "default.yaml"
+    bundled = Path(litpose_app.__file__).parent / "config_default_multiview.yaml"
+    assert default.read_bytes() == bundled.read_bytes()
+    assert not (data_dir / "configs" / "config_default.yaml").exists()
 
     # Verify project.yaml created with merged info and schema_version 1
     with open(data_dir / "project.yaml") as f:

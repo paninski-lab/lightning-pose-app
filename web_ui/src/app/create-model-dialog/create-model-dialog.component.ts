@@ -19,8 +19,10 @@ import {
 import {
   backbones,
   DeepPartial,
+  HeatmapLossType,
   isUnsupervised,
   ModelConfig,
+  ModelRecommendation,
   ModelType,
   TrainingConfig,
   validMvBackbones,
@@ -53,6 +55,8 @@ import {
   scaleEpochSchedule,
 } from './epoch-schedule';
 import { lpTrainFrameCount, minFramesForPosePca } from './pose-pca';
+import { hflipPairProblem } from './hflip';
+import { multipleOf128 } from './image-size';
 
 @Component({
   selector: 'app-create-model-dialog',
@@ -139,6 +143,7 @@ class CreateModelDialogComponent {
         },
       ),
       randomSeed: [0, [Validators.required, Validators.min(0)]],
+      modelSeed: [0, [Validators.required, Validators.min(0)]],
       videosDir: 'videos',
     }),
     training: this.fb.group({
@@ -170,6 +175,22 @@ class CreateModelDialogComponent {
         ],
       ],
       augmentation: ['dlc', Validators.required],
+      // The rest start from the base config (applyBaseConfigDefaults).
+      imageHeight: [256, [Validators.required, multipleOf128]],
+      imageWidth: [256, [Validators.required, multipleOf128]],
+      learningRate: [1e-3, [Validators.required, Validators.min(1e-12)]],
+      optimizer: ['Adam' as 'Adam' | 'AdamW', Validators.required],
+      heatmapLossType: ['mse' as HeatmapLossType, Validators.required],
+      earlyStopping: [false],
+      earlyStopPatience: [
+        3,
+        [
+          Validators.required,
+          Validators.min(1),
+          Validators.pattern('^[0-9]+$'),
+        ],
+      ],
+      hflip: [false],
       unsupervisedLosses: this.fb.group({
         temporal: this.fb.group({
           enabled: [true],
@@ -203,6 +224,28 @@ class CreateModelDialogComponent {
   private posePcaChoice = true;
   /** Labeled frames in the chosen label file; null while unknown. */
   protected labeledFrameCount = signal<number | null>(null);
+  /** Whether the project has configs/default.yaml; null while checking. */
+  protected projectHasDefaultConfig = signal<boolean | null>(null);
+  protected isCreatingDefaultConfig = signal(false);
+  /** Base config learning rate; ViT backbones on single-view projects default to 5e-5 instead. */
+  private baseLearningRate = 1e-3;
+  /** Set once the user types a learning rate (or takes LP's); then backbone changes leave it. */
+  private learningRateEdited = false;
+  /** Why horizontal flip can't be used for this project's keypoints, or null. */
+  protected hflipUnavailableReason = hflipPairProblem(
+    this.projectInfoService.projectInfo.keypoint_names,
+  );
+  protected isRecommending = signal(false);
+  protected recommendation = signal<ModelRecommendation | null>(null);
+  protected topDownFreelyMoving = signal(false);
+  /** LP's reasons, in the order the dialog's fields appear. */
+  protected recommendationReasons = computed(() => {
+    const reasons = this.recommendation()?.recommendation.rationale ?? {};
+    return Object.entries(reasons).map(([field, reason]) => ({
+      field,
+      reason,
+    }));
+  });
 
   private epochsAsSignal = toSignal(
     this.trainingForm.controls['epochs'].valueChanges.pipe(
@@ -300,6 +343,7 @@ class CreateModelDialogComponent {
       ? [{ label: 'DLC', value: 'dlc' }]
       : [
           { label: 'DLC', value: 'dlc' },
+          { label: 'DLC-LR (adds 180° rotations)', value: 'dlc-lr' },
           { label: 'DLC-TopDown', value: 'dlc-top-down' },
         ],
   );
@@ -316,31 +360,20 @@ class CreateModelDialogComponent {
         );
       }
     };
-    this.sessionService
-      .getYamlFile('configs/default.yaml')
-      .then((baseConfig) => {
-        if (baseConfig) {
-          this.baseConfigPath.set(
-            this.projectInfoService.projectInfo.data_dir +
-              '/configs/default.yaml',
+    this.setBaseConfigToDefault = setBaseConfigToDefault;
+    void this.readBaseConfig();
+    if (this.hflipUnavailableReason || this.isMultiviewProject()) {
+      this.trainingForm.controls['hflip'].disable();
+    }
+    this.generalForm.controls['backbone'].valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe((backbone: string) => {
+        if (!this.learningRateEdited) {
+          this.trainingForm.controls['learningRate'].setValue(
+            this.defaultLearningRate(backbone),
           );
-        } else {
-          setBaseConfigToDefault();
         }
-      })
-      .catch(() => {
-        setBaseConfigToDefault();
       });
-    this.loadBaseConfig()
-      .then((baseConfig) => {
-        const schedule = readEpochSchedule(baseConfig);
-        this.baseEpochSchedule.set(schedule);
-        if (schedule === null) {
-          // A step-based base config: the Epochs field would not be written.
-          this.trainingForm.controls['epochs'].disable();
-        }
-      })
-      .catch(() => this.baseEpochSchedule.set(undefined));
 
     this.cameraCalibrationService.projectHasCalibrations().then((has) => {
       this.projectHasCalibrations.set(has);
@@ -400,6 +433,192 @@ class CreateModelDialogComponent {
       .allLabelFiles()
       .find((f) => f.key === labelFileKey);
     return file?.views[0]?.csvPath ?? null;
+  }
+
+  private setBaseConfigToDefault = () => {};
+
+  /** Which base config is used, its epoch schedule, and the fields that start from it. */
+  private async readBaseConfig() {
+    const projectConfig = await this.sessionService
+      .getYamlFile('configs/default.yaml')
+      .catch(() => null);
+    this.projectHasDefaultConfig.set(!!projectConfig);
+    if (projectConfig) {
+      this.baseConfigPath.set(
+        this.projectInfoService.projectInfo.data_dir + '/configs/default.yaml',
+      );
+    } else {
+      this.setBaseConfigToDefault();
+    }
+    try {
+      const baseConfig = await this.loadBaseConfig();
+      const schedule = readEpochSchedule(baseConfig);
+      this.baseEpochSchedule.set(schedule);
+      if (schedule === null) {
+        // A step-based base config: the Epochs field would not be written.
+        this.trainingForm.controls['epochs'].disable();
+      } else {
+        this.trainingForm.controls['epochs'].enable();
+      }
+      this.applyBaseConfigDefaults(baseConfig);
+    } catch {
+      this.baseEpochSchedule.set(undefined);
+    }
+  }
+
+  /** Start the fields that have a value in the base config from that value. */
+  private applyBaseConfigDefaults(base: Record<string, any>) {
+    const t = this.trainingForm.controls;
+    const dims = base?.['data']?.['image_resize_dims'];
+    if (typeof dims?.['height'] === 'number')
+      t['imageHeight'].setValue(dims['height']);
+    if (typeof dims?.['width'] === 'number')
+      t['imageWidth'].setValue(dims['width']);
+    const training = base?.['training'] ?? {};
+    const lr = training['optimizer_params']?.['learning_rate'];
+    if (typeof lr === 'number') this.baseLearningRate = lr;
+    if (!this.learningRateEdited) {
+      t['learningRate'].setValue(
+        this.defaultLearningRate(this.generalForm.controls['backbone'].value),
+      );
+    }
+    if (training['optimizer'] === 'Adam' || training['optimizer'] === 'AdamW') {
+      t['optimizer'].setValue(training['optimizer']);
+    }
+    const loss = base?.['model']?.['heatmap_loss_type'];
+    if (loss === 'mse' || loss === 'kl' || loss === 'js')
+      t['heatmapLossType'].setValue(loss);
+    if (typeof training['early_stopping'] === 'boolean') {
+      t['earlyStopping'].setValue(training['early_stopping']);
+    }
+    if (typeof training['early_stop_patience'] === 'number') {
+      t['earlyStopPatience'].setValue(training['early_stop_patience']);
+    }
+    if (typeof training['imgaug_hflip'] === 'boolean' && t['hflip'].enabled) {
+      t['hflip'].setValue(training['imgaug_hflip']);
+    }
+    if (typeof training['rng_seed_model_pt'] === 'number') {
+      this.dataForm.controls['modelSeed'].setValue(
+        training['rng_seed_model_pt'],
+      );
+    }
+  }
+
+  /** 5e-5 for ViT backbones on single-view projects (as before); the base config's rate otherwise. */
+  private defaultLearningRate(backbone: string | null | undefined): number {
+    return !this.isMultiviewProject() && backbone?.startsWith('vit')
+      ? 5e-5
+      : this.baseLearningRate;
+  }
+
+  protected markLearningRateEdited() {
+    this.learningRateEdited = true;
+  }
+
+  /** Write LPA's default as configs/default.yaml, then use it as the base config. */
+  protected async handleCreateDefaultConfigClick() {
+    this.isCreatingDefaultConfig.set(true);
+    try {
+      await this.sessionService.writeDefaultModelConfig();
+      this.toastService.showToast({
+        content: 'Created configs/default.yaml',
+        variant: 'success',
+      });
+    } finally {
+      this.isCreatingDefaultConfig.set(false);
+      await this.readBaseConfig();
+    }
+  }
+
+  /** The chosen label file's CSVs, in project view order, or null if none is chosen. */
+  private chosenLabelFileCsvs(): string[] | null {
+    const key = this.dataForm.controls['labelFile'].value;
+    const file = this.sessionService.allLabelFiles().find((f) => f.key === key);
+    if (!file) return null;
+    const views = this.projectInfoService.projectInfo.views;
+    if (views.length > 1) {
+      const csvs = views.map(
+        (v) => file.views.find((fv) => fv.viewName === v)?.csvPath,
+      );
+      return csvs.every((c) => !!c) ? (csvs as string[]) : null;
+    }
+    return file.views[0] ? [file.views[0].csvPath] : null;
+  }
+
+  protected hasChosenLabelFile = computed(() => !!this.labelFileAsSignal());
+
+  /** Ask LP for recommended settings for the chosen label file and fill the form with them. */
+  protected async handleUseRecommendedClick() {
+    const csvPaths = this.chosenLabelFileCsvs();
+    if (!csvPaths) return;
+    this.isRecommending.set(true);
+    try {
+      const result = await this.sessionService.recommendModelConfig({
+        csvPaths,
+        viewNames:
+          this.projectInfoService.projectInfo.views.length > 1
+            ? this.projectInfoService.projectInfo.views
+            : [],
+        videosDir: this.dataForm.controls['videosDir'].value,
+        topDownFreelyMoving: this.topDownFreelyMoving(),
+      });
+      this.applyRecommendation(result);
+      this.recommendation.set(result);
+    } finally {
+      this.isRecommending.set(false);
+    }
+  }
+
+  /** Fill the form fields LP recommends a value for. */
+  private applyRecommendation({ recommendation: rec }: ModelRecommendation) {
+    const g = this.generalForm.controls;
+    const t = this.trainingForm.controls;
+    if (this.isMultiviewProject()) {
+      g['useTrueMultiviewModel'].setValue(
+        rec.model_type === 'heatmap_multiview_transformer',
+      );
+    }
+    const semi = rec.losses_to_use.length > 0;
+    const context =
+      g['modelType'].value === ModelType.SUP_CTX ||
+      g['modelType'].value === ModelType.S_SUP_CTX;
+    const modelType = context
+      ? semi
+        ? ModelType.S_SUP_CTX
+        : ModelType.SUP_CTX
+      : semi
+        ? ModelType.S_SUP
+        : ModelType.SUP;
+    if (this.modelTypeOptions().includes(modelType)) {
+      g['modelType'].setValue(modelType);
+    }
+    if (this.backboneOptions().includes(rec.backbone)) {
+      g['backbone'].setValue(rec.backbone);
+    }
+    t['imageHeight'].setValue(rec.image_resize_height);
+    t['imageWidth'].setValue(rec.image_resize_width);
+    t['labeledBatchSize'].setValue(rec.train_batch_size);
+    if (rec.dali_train_sequence_length !== null) {
+      t['unlabeledBatchSize'].setValue(rec.dali_train_sequence_length);
+    }
+    if (t['epochs'].enabled) t['epochs'].setValue(rec.max_epochs);
+    t['optimizer'].setValue(rec.optimizer);
+    t['learningRate'].setValue(rec.learning_rate);
+    this.learningRateEdited = true;
+    if (this.augmentationOptions().some((o) => o.value === rec.imgaug)) {
+      t['augmentation'].setValue(rec.imgaug);
+    }
+    if (!this.isMultiviewProject()) {
+      const losses = this.trainingForm.get('unsupervisedLosses') as FormGroup;
+      losses
+        .get('temporal.enabled')!
+        .setValue(rec.losses_to_use.includes('temporal'));
+      const pca = rec.losses_to_use.includes('pca_singleview');
+      this.posePcaChoice = pca;
+      if (losses.get('pca_singleview')!.enabled) {
+        losses.get('pca_singleview.enabled')!.setValue(pca);
+      }
+    }
   }
 
   /** The project's configs/default.yaml, or LPA's bundled default when there is none. */
@@ -531,11 +750,20 @@ class CreateModelDialogComponent {
       labelFile: string;
       trainValSplit: Partial<{ trainProb: number; valProb: number }>;
       randomSeed: number;
+      modelSeed: number;
       videosDir: string;
       epochs: number;
       labeledBatchSize: number;
       unlabeledBatchSize: number;
       augmentation: string;
+      imageHeight: number;
+      imageWidth: number;
+      learningRate: number;
+      optimizer: 'Adam' | 'AdamW';
+      heatmapLossType: HeatmapLossType;
+      earlyStopping: boolean;
+      earlyStopPatience: number;
+      hflip: boolean;
       multiviewLosses: Partial<{
         supervised_reprojection_heatmap_mse: Partial<{
           enabled: boolean;
@@ -612,13 +840,45 @@ class CreateModelDialogComponent {
 
     if (formObject.backbone) {
       patches.push({ model: { backbone: formObject.backbone } });
-      // ViT backbones need a lower learning rate than the single-view default (1e-3).
-      // Multiview projects already default to 5e-5, so only patch for single-view models.
-      if (!this.isMultiviewProject() && formObject.backbone.startsWith('vit')) {
+    }
+    if (formObject.imageHeight != null && formObject.imageWidth != null) {
+      patches.push({
+        data: {
+          image_resize_dims: {
+            height: Number(formObject.imageHeight),
+            width: Number(formObject.imageWidth),
+          },
+        },
+      });
+    }
+    if (formObject.learningRate != null) {
+      patches.push({
+        training: {
+          optimizer_params: { learning_rate: Number(formObject.learningRate) },
+        },
+      });
+    }
+    if (formObject.optimizer) {
+      patches.push({ training: { optimizer: formObject.optimizer } });
+    }
+    if (formObject.heatmapLossType) {
+      patches.push({
+        model: { heatmap_loss_type: formObject.heatmapLossType },
+      });
+    }
+    if (formObject.earlyStopping != null) {
+      patches.push({ training: { early_stopping: formObject.earlyStopping } });
+      if (formObject.earlyStopping && formObject.earlyStopPatience != null) {
         patches.push({
-          training: { optimizer_params: { learning_rate: 5e-5 } },
+          training: {
+            early_stop_patience: Number(formObject.earlyStopPatience),
+          },
         });
       }
+    }
+    // A disabled control (multiview, or unpaired _left/_right keypoints) is left out.
+    if (!this.isMultiviewProject() && formObject.hflip != null) {
+      patches.push({ training: { imgaug_hflip: formObject.hflip } });
     }
     if (formObject.labelFile) {
       if (this.projectInfoService.projectInfo.views.length > 1) {
@@ -644,6 +904,11 @@ class CreateModelDialogComponent {
         training: {
           rng_seed_data_pt: formObject.randomSeed,
         },
+      });
+    }
+    if (formObject.modelSeed != null) {
+      patches.push({
+        training: { rng_seed_model_pt: Number(formObject.modelSeed) },
       });
     }
     if (formObject.videosDir) {

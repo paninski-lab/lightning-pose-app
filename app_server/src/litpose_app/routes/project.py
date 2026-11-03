@@ -28,6 +28,7 @@ from litpose_app.migrations import run_migrations_for_project
 from litpose_app.paths.project_videos import iter_project_mp4s
 from litpose_app.project import ProjectUtil
 from litpose_app.project_deletion import paths_to_delete, reject_forbidden_project_paths
+from litpose_app.routes.configs import write_project_default_config
 from litpose_app.routes.models import read_models_l1_from_base
 from litpose_app.routes.validate_files import _label_header_messages, label_csv_rels
 from litpose_app.session_view import (
@@ -674,18 +675,14 @@ def create_new_project(
     model_dir = pp.model_dir
 
     data_dir.mkdir(parents=True, exist_ok=True)
-    (data_dir / "configs").mkdir(exist_ok=True)
-    CONFIG_FILES = ("config_default.yaml", "config_default_multiview.yaml")
-    # Copy the config file stored in the same directory as the litpose_app package to the configs directory
-    # Get the directory where litpose_app package is installed
-    package_dir = Path(__file__).parent.parent
-
-    # Copy each config file to the project's configs directory
-    for config_file in CONFIG_FILES:
-        src = package_dir / config_file
-        if src.exists():
-            dst = data_dir / "configs" / config_file
-            shutil.copy2(src, dst)
+    # The project's own base model config, which the Create Model dialog reads.
+    # An existing one (for example in an LP project folder) is kept as it is.
+    try:
+        write_project_default_config(
+            data_dir, multiview=len(request.projectInfo.views or []) > 1
+        )
+    except FileExistsError:
+        pass
     project_yaml_path = project_util.get_project_yaml_path(data_dir)
 
     # Build initial YAML contents

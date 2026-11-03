@@ -47,9 +47,17 @@
             <form class="prose px-4" [formGroup]="generalForm">
               <fieldset class="fieldset my-4">
                 <h3 class="text-md mt-0!">Default config file</h3>
-                <p class="m-0!">
-                  The settings in this form will be applied on top of the LP
-                  config file:
+                <p class="m-0!" data-testid="base-config">
+                  @if (projectHasDefaultConfig() === true) {
+                    The settings in this form are applied on top of the
+                    project's default config:
+                  } @else if (projectHasDefaultConfig() === false) {
+                    This project has no default config (configs/default.yaml),
+                    so the settings in this form are applied on top of LPA's
+                    built-in default:
+                  } @else {
+                    The settings in this form are applied on top of:
+                  }
                   @if (baseConfigPath(); as configPath) {
                     <app-path-display
                       class="max-w-full"
@@ -59,6 +67,22 @@
                     <span class="loading loading-spinner loading-xs"></span>
                   }
                 </p>
+                @if (projectHasDefaultConfig() === false) {
+                  <div>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-soft btn-primary"
+                      [disabled]="isCreatingDefaultConfig()"
+                      (click)="handleCreateDefaultConfigClick()"
+                    >
+                      Create project default config
+                    </button>
+                  </div>
+                  <p class="m-0! text-sm opacity-70">
+                    Writes LPA's default to configs/default.yaml. Edit that file
+                    to set this project's starting values for every new model.
+                  </p>
+                }
               </fieldset>
               <fieldset class="fieldset my-4">
                 <h3 class="text-md mt-0">Model name</h3>
@@ -160,14 +184,31 @@
                 </div>
               </fieldset>
               <fieldset class="fieldset my-4">
-                <h3 class="text-md mt-0!">Random seed</h3>
-                <input
-                  type="number"
-                  step="1"
-                  class="input"
-                  min="0"
-                  formControlName="randomSeed"
-                />
+                <h3 class="text-md mt-0!">Random seeds</h3>
+                <div class="flex gap-4 items-start">
+                  <div>
+                    <p class="m-0!">Data split</p>
+                    <input
+                      type="number"
+                      step="1"
+                      class="input"
+                      min="0"
+                      aria-label="Data split seed"
+                      formControlName="randomSeed"
+                    />
+                  </div>
+                  <div>
+                    <p class="m-0!">Model</p>
+                    <input
+                      type="number"
+                      step="1"
+                      class="input"
+                      min="0"
+                      aria-label="Model seed"
+                      formControlName="modelSeed"
+                    />
+                  </div>
+                </div>
               </fieldset>
 
               @if (isUnsupervised(generalForm.controls["modelType"].value)) {
@@ -186,6 +227,65 @@
           }
           @if (selectedTab() === "training") {
             <form class="prose px-4" [formGroup]="trainingForm">
+              <fieldset
+                class="fieldset my-4"
+                data-testid="recommended-settings"
+              >
+                <h3 class="text-md mt-0!">Recommended settings</h3>
+                <p class="m-0!">
+                  Lightning Pose can suggest the model, image size, batch sizes,
+                  epochs, optimizer and augmentation for the chosen label file
+                  and this machine's GPU (litpose recommend).
+                </p>
+                @if (!isMultiviewProject()) {
+                  <label class="flex gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      class="checkbox checkbox-sm"
+                      [checked]="topDownFreelyMoving()"
+                      (change)="
+                        topDownFreelyMoving.set($any($event.target).checked)
+                      "
+                    />
+                    Top-down view of a freely moving animal
+                  </label>
+                }
+                <div>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-soft btn-primary"
+                    [disabled]="!hasChosenLabelFile() || isRecommending()"
+                    (click)="handleUseRecommendedClick()"
+                  >
+                    @if (isRecommending()) {
+                      <span class="loading loading-spinner loading-xs"></span>
+                    }
+                    Use recommended settings
+                  </button>
+                  @if (!hasChosenLabelFile()) {
+                    <span class="text-sm opacity-70 ml-2"
+                      >Choose a label file on the Data tab first.</span
+                    >
+                  }
+                </div>
+                @if (recommendation(); as rec) {
+                  <div class="text-sm" data-testid="recommendation-reasons">
+                    <p class="m-0!">
+                      Filled in from Lightning Pose's recommendation{{
+                        rec.gpu ? " for " + rec.gpu.name : ""
+                      }}. Its reasons:
+                    </p>
+                    <ul class="my-1!">
+                      @for (item of recommendationReasons(); track item.field) {
+                        <li class="my-0!">
+                          <code>{{ item.field }}</code
+                          >: {{ item.reason }}
+                        </li>
+                      }
+                    </ul>
+                  </div>
+                }
+              </fieldset>
               <fieldset class="fieldset my-4">
                 <h3 class="text-md mt-0!">Duration</h3>
                 <p class="m-0!">How many epochs to train for.</p>
@@ -205,6 +305,58 @@
                     {{ epochScheduleHint() }}
                   </p>
                 }
+              </fieldset>
+              <fieldset class="fieldset my-4">
+                <h3 class="text-md mt-0!">Image size</h3>
+                <p class="m-0!">
+                  Frames are resized to this before training. Larger is more
+                  accurate but slower and needs more GPU memory. Multiples of
+                  128.
+                </p>
+                <div class="flex gap-4 items-start">
+                  <div class="grow">
+                    <p class="m-0!">Height</p>
+                    <input
+                      type="number"
+                      step="128"
+                      class="input w-full"
+                      aria-label="Image height"
+                      formControlName="imageHeight"
+                    />
+                  </div>
+                  <div class="grow">
+                    <p class="m-0!">Width</p>
+                    <input
+                      type="number"
+                      step="128"
+                      class="input w-full"
+                      aria-label="Image width"
+                      formControlName="imageWidth"
+                    />
+                  </div>
+                </div>
+                @if (
+                  trainingForm.controls["imageHeight"].invalid ||
+                  trainingForm.controls["imageWidth"].invalid
+                ) {
+                  <p class="my-0! text-error">
+                    Height and width must be multiples of 128.
+                  </p>
+                }
+              </fieldset>
+              <fieldset class="fieldset my-4">
+                <h3 class="text-md mt-0!">Learning rate</h3>
+                <input
+                  type="number"
+                  step="any"
+                  class="input"
+                  aria-label="Learning rate"
+                  formControlName="learningRate"
+                  (input)="markLearningRateEdited()"
+                />
+                <p class="my-0! text-sm opacity-70">
+                  ViT backbones usually train best around 5e-5.
+                </p>
               </fieldset>
               <fieldset class="fieldset my-4">
                 <h3 class="text-md mt-0!">Batch size</h3>
@@ -350,6 +502,90 @@
                   </fieldset>
                 }
               }
+              <details class="collapse collapse-arrow bg-base-200 my-4">
+                <summary class="collapse-title text-md font-semibold">
+                  Advanced
+                </summary>
+                <div class="collapse-content">
+                  <fieldset class="fieldset my-2">
+                    <h3 class="text-md mt-0!">Optimizer</h3>
+                    <select
+                      class="select"
+                      aria-label="Optimizer"
+                      formControlName="optimizer"
+                    >
+                      <option value="Adam">Adam</option>
+                      <option value="AdamW">AdamW</option>
+                    </select>
+                    <p class="my-0! text-sm opacity-70">
+                      Lightning Pose recommends AdamW for ViT backbones.
+                    </p>
+                  </fieldset>
+                  <fieldset class="fieldset my-2">
+                    <h3 class="text-md mt-0!">Heatmap loss</h3>
+                    <select
+                      class="select"
+                      aria-label="Heatmap loss"
+                      formControlName="heatmapLossType"
+                    >
+                      <option value="mse">MSE</option>
+                      <option value="kl">KL divergence</option>
+                      <option value="js">JS divergence</option>
+                    </select>
+                  </fieldset>
+                  <fieldset class="fieldset my-2">
+                    <h3 class="text-md mt-0!">Early stopping</h3>
+                    <label class="flex gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        class="checkbox"
+                        aria-label="Early stopping"
+                        formControlName="earlyStopping"
+                      />
+                      Stop when the validation loss stops improving
+                    </label>
+                    @if (trainingForm.controls["earlyStopping"].value) {
+                      <p class="m-0!">
+                        Validation checks without improvement before stopping
+                      </p>
+                      <input
+                        type="number"
+                        step="1"
+                        min="1"
+                        class="input"
+                        aria-label="Early stopping patience"
+                        formControlName="earlyStopPatience"
+                      />
+                    }
+                  </fieldset>
+                  @if (!isMultiviewProject()) {
+                    <fieldset class="fieldset my-2">
+                      <h3 class="text-md mt-0!">Horizontal flip</h3>
+                      <span
+                        [class.tooltip]="hflipUnavailableReason"
+                        [class.tooltip-right]="hflipUnavailableReason"
+                        [attr.data-tip]="hflipUnavailableReason"
+                      >
+                        <label
+                          class="flex gap-2"
+                          [class.cursor-pointer]="!hflipUnavailableReason"
+                          [class.opacity-50]="hflipUnavailableReason"
+                        >
+                          <input
+                            type="checkbox"
+                            class="checkbox"
+                            aria-label="Horizontal flip"
+                            formControlName="hflip"
+                          />
+                          Randomly flip frames left-right, swapping each
+                          <code>_left</code> keypoint with its
+                          <code>_right</code> partner
+                        </label>
+                      </span>
+                    </fieldset>
+                  }
+                </div>
+              </details>
             </form>
           }
         </div>
