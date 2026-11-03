@@ -575,6 +575,24 @@ describe('LabelerPageComponent — Refresh', () => {
     expect(openFrame().views[0].keypoints[0].x).toBe(1);
   });
 
+  it('keeps what is shown and says why when Refresh fails to load', async () => {
+    const shown = openFrame();
+    loadLabelFileData.and.callFake(() =>
+      Promise.reject(
+        new Error('Failed to load CSV file: CollectedData_camA.csv'),
+      ),
+    );
+
+    await click('Refresh label data and images');
+
+    expect(showToast).toHaveBeenCalledWith(
+      jasmine.objectContaining({ variant: 'error' }),
+    );
+    expect(openFrame()).toBe(shown);
+    expect(button('Refresh label data and images').disabled).toBeFalse();
+    expect(navigateSpy).not.toHaveBeenCalled();
+  });
+
   it('closes the label file, with a warning, when it is gone after Refresh', async () => {
     const session = TestBed.inject(SessionService) as unknown as {
       allLabelFiles: ReturnType<typeof signal<MVLabelFile[]>>;

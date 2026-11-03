@@ -385,7 +385,8 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   /**
    * Reloads the label file list, the selected label file's CSVs and unlabeled
    * queue, and the images, without reloading the tab. Keeps the open label file
-   * and frame when they still exist. Writes nothing to disk.
+   * and frame when they still exist. If loading fails, what was shown stays
+   * and an error toast says why. Writes nothing to disk.
    */
   protected async refresh() {
     this.isRefreshing.set(true);
@@ -428,6 +429,13 @@ export class LabelerPageComponent implements OnInit, OnChanges {
         });
         await this.router.navigate([], { queryParams: { labelFileKey } });
       }
+    } catch (error) {
+      // For example a network drop. What was shown before stays.
+      console.error('Refresh failed:', error);
+      this.toastService.showToast({
+        content: `Refresh failed: ${error instanceof Error ? error.message : String(error)}`,
+        variant: 'error',
+      });
     } finally {
       this.isRefreshing.set(false);
     }
