@@ -761,6 +761,29 @@ describe('LabelerCenterPanelComponent Next and keypoint selection', () => {
     expect(shownImage()).toBe('f2_top.png');
     expect(selectedKeypoint()).toBe('tail');
   });
+
+  it('placing a keypoint selects the next unlabeled one unless Keep selected keypoint is on', () => {
+    open(makeFrame('f1', ['top'], { unlabeled: true }));
+    const widget = fixture.debugElement.query(
+      By.directive(ImageLabelWidgetStubComponent),
+    ).componentInstance as ImageLabelWidgetStubComponent;
+    const place = (kp: string) => {
+      widget.keypointUpdated.emit({ kp, position: { x: 1, y: 2 } });
+      fixture.detectChanges();
+    };
+
+    expect(selectedKeypoint()).toBe('nose');
+    place('nose');
+    expect(selectedKeypoint()).toBe('ear');
+
+    const keep: HTMLInputElement = fixture.nativeElement.querySelector(
+      'input[aria-label="Keep selected keypoint"]',
+    );
+    keep.click();
+    fixture.detectChanges();
+    place('ear');
+    expect(selectedKeypoint()).toBe('ear');
+  });
 });
 
 @Component({ selector: 'app-image-label-widget', template: '' })

@@ -8,6 +8,10 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 
 ### [2.4.2.4.dev0]
 
+* **Labeler: Keep selected also stops the jump to the next keypoint.** With **Keep selected** on, placing a keypoint that had no label keeps it selected, so you can place the same body part in every view and frame without reselecting it. With the switch off, placing a keypoint still selects the next unlabeled keypoint, as before. The switch's tip now says it keeps the keypoint after placing it too.
+
+Tests: `labeler-center-panel.component.spec.ts` "placing a keypoint selects the next unlabeled one unless Keep selected keypoint is on" (off: placing `nose` selects `ear`; on: placing `ear` keeps `ear`; fails on the old code). The tip change is wording only, no test.
+
 * **File Manager:** The model check no longer flags files LP writes into `video_preds/` beside each prediction CSV: `<video>_temporal_norm.csv`, `<video>_pca_singleview_error.csv`, `<video>_pca_multiview_error.csv` and `<video>_pixel_error.csv` (metrics), `<video>_bbox.csv` (`litpose create_bbox`), and the `labeled_videos/` folder. Before, a metric file was reported as "Unknown view: norm" (or `error`, `bbox`). The prediction name in front of the suffix is still checked, so a metric file for a view the project doesn't have is still reported. A view that is itself named like a suffix (for example `bbox`) keeps its own prediction files valid.
 
 Tests: `tests/routes/test_validate_project_files.py` (`test_validate_models_accepts_lp_metric_bbox_and_labeled_video_files`: LP metric, bbox and labeled-video files pass, an unknown view in a metric file and an unknown subdirectory are still reported; fails on the old code. `test_validate_models_view_named_like_an_lp_suffix`: a project view named `bbox` keeps `sess_bbox.csv` valid).
