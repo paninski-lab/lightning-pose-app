@@ -6,7 +6,9 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 
 ## 📝 Release Notes
 
-### [2.4.2.4.dev0]
+### [2.4.4.0] — 2026-11-03
+
+Built for Lightning Pose 2.4.4.
 
 * **Create Model: more training options, recommended settings, and a project default config.** (#190)
   * **Training tab:** **Image size** (height and width, multiples of 128), **Learning rate** (still 5e-5 for ViT backbones on single-view projects until you change it; before, that was set without showing it), and **DLC-LR** augmentation (adds 180° rotations). A collapsed **Advanced** section has **Optimizer** (Adam / AdamW), **Heatmap loss** (MSE, KL, JS), **Early stopping** with its patience, and **Horizontal flip** for single-view projects, which is off with the reason when a `_left` keypoint has no `_right` partner (LP's rule). **Data tab:** a **Model** seed beside the data split seed. Every new field starts from the base config.
