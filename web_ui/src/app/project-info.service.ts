@@ -243,9 +243,13 @@ export class ProjectInfoService {
   _allViews = new BehaviorSubject<string[]>([]);
   allViews$ = this._allViews.asObservable().pipe(distinctUntilChanged());
   allViews = toSignal(this.allViews$, { requireSync: true });
-  /** Push a new set of view names (with 'unknown' appended) into the allViews stream. */
+  /**
+   * Push the project's view names into the allViews stream. The "unknown"
+   * placeholder (`UNKNOWN_VIEW`) is not one of them; code that groups files by
+   * view adds it where it needs it.
+   */
   setAllViews(views: string[]) {
-    this._allViews.next(views.concat(['unknown']));
+    this._allViews.next([...views]);
   }
 
   _allKeypoints = new BehaviorSubject<string[]>([]);

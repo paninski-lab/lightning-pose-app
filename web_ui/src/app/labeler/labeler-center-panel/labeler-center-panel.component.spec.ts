@@ -687,6 +687,18 @@ describe('LabelerCenterPanelComponent Next and keypoint selection', () => {
     expect(shownImage()).toBe('f2_top.png');
   });
 
+  it('reports saving while a save is written, and done when it finishes', async () => {
+    const saving: boolean[] = [];
+    fixture.componentInstance.savingChange.subscribe((v) => saving.push(v));
+    open(makeFrame('f1', ['top'], { editedView: 'top' }));
+
+    actionButton('Save').click();
+    expect(saving).toEqual([true]);
+    await session.saveMVFrame.calls.mostRecent().returnValue;
+    await Promise.resolve();
+    expect(saving).toEqual([true, false]);
+  });
+
   it('Back walks the views back, then opens the previous frame on its last view, without saving', () => {
     const previousFrame = jasmine.createSpy('previousFrame');
     fixture.componentInstance.previousFrame.subscribe(previousFrame);
@@ -773,7 +785,7 @@ describe('LabelerCenterPanelComponent Next and keypoint selection', () => {
     expect(shownImage()).toBe('f1_side.png');
   });
 
-    it('placing a keypoint selects the next unlabeled one unless Keep selected keypoint is on', () => {
+  it('placing a keypoint selects the next unlabeled one unless Keep selected keypoint is on', () => {
     open(makeFrame('f1', ['top'], { unlabeled: true }));
     const widget = fixture.debugElement.query(
       By.directive(ImageLabelWidgetStubComponent),

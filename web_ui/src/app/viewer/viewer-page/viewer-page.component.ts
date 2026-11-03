@@ -29,7 +29,7 @@ import { SessionService } from '../../session.service';
 import { LoadingBarComponent } from '../../loading-bar/loading-bar.component';
 import { LoadingService } from '../../loading.service';
 import { Session } from '../../session.model';
-import { listedViews } from './listed-views';
+import { UNKNOWN_VIEW } from '../../utils/session-view';
 import { Router } from '@angular/router';
 import { LabelFilePickerComponent } from '../../label-file-picker/label-file-picker.component';
 import { RpcService } from '../../rpc.service';
@@ -115,8 +115,12 @@ export class ViewerPageComponent implements OnInit {
 
   protected keypointSelectionModel: SelectionModel<string>;
   protected viewSelectionModel: SelectionModel<string>;
+  /**
+   * Views a video tile can have: the project views plus UNKNOWN_VIEW, which
+   * single-view sessions use. All are shown at first.
+   */
   protected allViews = [] as string[];
-  /** allViews without the "unknown" placeholder, for the Views panel. */
+  /** The project views, listed in the Views panel. */
   protected listedViews = [] as string[];
   private router = inject(Router);
   protected videoPlayerState = inject(VideoPlayerState);
@@ -160,8 +164,8 @@ export class ViewerPageComponent implements OnInit {
     // Load sessions and prediction index, but don't wait, just fire off the request.
     const p = this.sessionService.loadPredictionIndex();
 
-    this.allViews = this.projectInfoService.allViews();
-    this.listedViews = listedViews(this.allViews);
+    this.listedViews = this.projectInfoService.allViews();
+    this.allViews = [...this.listedViews, UNKNOWN_VIEW];
     p.then(() => {
       this.keypointSelectionModel.select(
         ...this.projectInfoService.allKeypoints(),
@@ -365,10 +369,7 @@ export class ViewerPageComponent implements OnInit {
       return;
     }
     if (
-      !_.isEqual(
-        this.enabledViewsKeypoints.viewsShown(),
-        this.projectInfoService.allViews(),
-      ) ||
+      !_.isEqual(this.enabledViewsKeypoints.viewsShown(), this.allViews) ||
       !_.isEqual(
         this.enabledViewsKeypoints.keypointsShown(),
         this.projectInfoService.allKeypoints(),

@@ -7,6 +7,12 @@
  * A view name that contains `_` can't be read back from a name.
  */
 
+/**
+ * View of a file whose name doesn't end in `_<project view>`, and of every
+ * file in a single-view project. Not a project view: `allViews` leaves it out.
+ */
+export const UNKNOWN_VIEW = 'unknown';
+
 /** `{session, view}` split at the last `_`, without checking the view; null if there is none. */
 export function rsplitSessionView(
   stem: string,

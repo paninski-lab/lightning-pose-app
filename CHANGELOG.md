@@ -8,6 +8,14 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 
 ### [2.4.2.4.dev0]
 
+* **Labeler: Refresh waits for a save.** The Refresh button is off while a save is being written, so it can't reload the label file before the save lands. A save that finishes after a Refresh is now applied: before, it was ignored, the frame kept its old labels on screen, and **Save and next** didn't move on.
+
+Tests: `labeler-page.component.spec.ts` "keeps Refresh off while a save is being written" and "applies a save that finishes after a Refresh (Save and next still moves on)" (both fail on the old code); `labeler-center-panel.component.spec.ts` "reports saving while a save is written, and done when it finishes".
+
+* **Development:** `ProjectInfoService.allViews` is now only the project's views. The `"unknown"` placeholder for files with no project view is `UNKNOWN_VIEW` (`utils/session-view.ts`), added only where files are grouped and in the Viewer's own view selection. The Viewer's `listed-views.ts` filter is gone, and the Extract Frames name check treats any named view as multiview (`allViews().length > 0`, same behavior as before). The web UI's list of formats only LP can read (`image-formats.ts`) is checked against `image_formats.py` by a backend test.
+
+Tests: `project-info.service.spec.ts` (allViews has no placeholder); `label-file-template-validator.spec.ts` (a one-view project still needs a `*`, a single-view project doesn't); `tests/test_image_formats.py` `test_web_ui_lp_only_formats_match`, `test_web_ui_lp_only_message_matches` (each fails when the TypeScript copy differs).
+
 * **File Manager: renaming a labeled-data folder updates every file that points at it.** The rename now rewrites the image paths in every label CSV under the data directory (as before this version, not only CSVs at the top level), so a label file inside a session folder or in a subfolder keeps working. It also updates the remaining frames in each `*.unlabeled.jsonl` queue, which used to keep the old folder name and show "image could not be loaded". All the rewritten files are committed together: if one can't be written, every file keeps its old content and the folder is moved back. Line endings (CRLF) are kept. Model folders are not touched.
 
 Tests: `tests/routes/test_rename_project_files.py` (a CSV inside the renamed folder and one in a subfolder are rewritten; queue paths are rewritten, including a `\` path, while other entries and an unreadable line stay as stored and a queue under `models/` is untouched; CRLF line endings are kept; a failed commit moves the folder back and leaves every file unchanged). The first three fail on the old code.

@@ -56,7 +56,7 @@
                 class="btn btn-sm btn-soft btn-square tooltip tooltip-bottom tooltip-end before:max-w-56"
                 data-tip="Reload label files, labels and images from disk"
                 aria-label="Refresh label data and images"
-                [disabled]="isRefreshing() || isLoading()"
+                [disabled]="isRefreshing() || isLoading() || isSaving()"
                 (click)="handleRefreshClick()"
               >
                 <span class="material-icons text-base!">refresh</span>
@@ -176,6 +176,7 @@
         [numLabeledFramesGetter]="getNumLabeledFramesGetter"
         [imageReload]="imageReload()"
         (saved)="handleSaved($event)"
+        (savingChange)="isSaving.set($event)"
         (nextFrame)="handleNextFrame()"
         (previousFrame)="handlePreviousFrame()"
         (closeFrame)="handleCloseFrame()"
