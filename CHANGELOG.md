@@ -8,6 +8,10 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 
 ### [2.4.2.4.dev0]
 
+* **Video upload:** Picking a video that is already in the upload list no longer adds it a second time. Before, picking the same videos again (for example to add a missing camera view) listed them twice, and both copies were transcoded at once, which could show an ffmpeg error. Applies to **Upload a new session** (Extract Frames, Viewer, Run inference). Closes #87.
+
+Tests: `video-import.store.spec.ts` (picking `s1_top.mp4` again leaves one row; after picking two videos twice, starting the import transcodes each once; both fail on the old code).
+
 * **Labeler: Keep selected also stops the jump to the next keypoint.** With **Keep selected** on, placing a keypoint that had no label keeps it selected, so you can place the same body part in every view and frame without reselecting it. With the switch off, placing a keypoint still selects the next unlabeled keypoint, as before. The switch's tip now says it keeps the keypoint after placing it too.
 
 Tests: `labeler-center-panel.component.spec.ts` "placing a keypoint selects the next unlabeled one unless Keep selected keypoint is on" (off: placing `nose` selects `ear`; on: placing `ear` keeps `ear`; fails on the old code). The tip change is wording only, no test.
