@@ -29,6 +29,7 @@ import { SessionService } from '../../session.service';
 import { LoadingBarComponent } from '../../loading-bar/loading-bar.component';
 import { LoadingService } from '../../loading.service';
 import { Session } from '../../session.model';
+import { listedViews } from './listed-views';
 import { Router } from '@angular/router';
 import { LabelFilePickerComponent } from '../../label-file-picker/label-file-picker.component';
 import { RpcService } from '../../rpc.service';
@@ -115,6 +116,8 @@ export class ViewerPageComponent implements OnInit {
   protected keypointSelectionModel: SelectionModel<string>;
   protected viewSelectionModel: SelectionModel<string>;
   protected allViews = [] as string[];
+  /** allViews without the "unknown" placeholder, for the Views panel. */
+  protected listedViews = [] as string[];
   private router = inject(Router);
   protected videoPlayerState = inject(VideoPlayerState);
   private rpc = inject(RpcService);
@@ -158,6 +161,7 @@ export class ViewerPageComponent implements OnInit {
     const p = this.sessionService.loadPredictionIndex();
 
     this.allViews = this.projectInfoService.allViews();
+    this.listedViews = listedViews(this.allViews);
     p.then(() => {
       this.keypointSelectionModel.select(
         ...this.projectInfoService.allKeypoints(),

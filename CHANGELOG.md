@@ -8,6 +8,10 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 
 ### [2.4.2.4.dev0]
 
+* **Viewer: no "unknown" view in the Views panel.** In a multiview project, the **Views** panel listed the project's views plus one called "unknown". It now lists only the project's views. "unknown" is a placeholder for video files whose name doesn't end in a project view; those videos are not part of any session, so the row never controlled anything. Single-view projects still don't show the panel.
+
+Test: `listed-views.spec.ts` (the Views panel list is the project views without "unknown", in order). The Viewer page itself has no spec.
+
 * **Labeler: Refresh button.** A refresh button next to the label file picker reloads the label file list, the open label file's labels and remaining frames, and the images, without reloading the browser tab. Use it after frames or labels change on disk (another tool, a script, a second tab) or after images failed to load. The open label file and frame stay open; a labeled frame keeps its view. If any frame has unsaved keypoint changes, Refresh asks first, and **Cancel** keeps them. If the open frame or label file is gone after the reload, it is closed with a warning. If the reload fails (for example a network drop), what was shown stays and an error toast says why. Refresh writes nothing to disk. Closes #165.
 
 Tests: `labeler-page.component.spec.ts` "Refresh" (reloads label files and labels, a new frame appears, the open frame stays and images get a new reload number; with unsaved edits it asks first and Cancel keeps them; a removed frame or label file is closed with a warning instead of an error; a failed reload keeps what was shown and shows an error toast); `image-label-widget.component.spec.ts` "loads the images again, and retries failed ones, after the Labeler is refreshed"; `labeler-center-panel.component.spec.ts` "keeps the open view when the frame is replaced by a reloaded copy (Refresh)".
