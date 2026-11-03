@@ -103,6 +103,9 @@ export class VideoImportStore implements OnDestroy {
       const f = (files as FileList).item
         ? (files as FileList).item(i)!
         : (files as File[])[i];
+      // Uploads are stored by name, so a second copy would transcode the same
+      // file twice at once (#87).
+      if (next.some((s) => s.id === f.name)) continue;
       next.push({
         id: f.name,
         kind: 'local',
