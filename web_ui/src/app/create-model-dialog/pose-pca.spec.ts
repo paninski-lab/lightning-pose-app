@@ -29,4 +29,9 @@ describe('minFramesForPosePca', () => {
     expect(lpTrainFrameCount(n - 1, 0.8, 0.2)).toBeLessThan(20);
     expect(n).toBe(24);
   });
+
+  it('is Infinity, without searching, when the train fraction is not positive', () => {
+    expect(minFramesForPosePca(17, -0.5, 0.05)).toBe(Number.POSITIVE_INFINITY);
+    expect(minFramesForPosePca(17, 0, 0.05)).toBe(Number.POSITIVE_INFINITY);
+  });
 });

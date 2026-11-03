@@ -355,7 +355,16 @@ describe('CreateModelDialogComponent — Pose PCA needs enough frames (#54)', ()
     expect(checkbox.checked).toBeTrue();
   });
 
-  async function previewConfig(fixture: ComponentFixture<CreateModelDialogComponent>) {
+  it('does not hang or block Pose PCA while a negative Train prob is typed', async () => {
+    const { fixture, component, checkbox } = await open(34);
+    const split = component['dataForm'].controls['trainValSplit'];
+    split.setValue({ trainProb: -0.5, valProb: 0.05 });
+    fixture.detectChanges();
+    expect(checkbox.disabled).toBeFalse();
+    expect(checkbox.closest('[data-tip]')).toBeNull();
+  });
+
+    async function previewConfig(fixture: ComponentFixture<CreateModelDialogComponent>) {
     await fixture.componentInstance.onPreviewYamlClick();
     return { config: yamlParse(fixture.componentInstance['yamlPreviewText']()) };
   }

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import tempfile
+import time
 from pathlib import Path
 from typing import BinaryIO, Literal
 
@@ -18,10 +20,10 @@ from litpose_app.calibration_paths import (
     session_calibration_filename_issue,
     session_calibration_path,
 )
-from litpose_app.config import Config
 from litpose_app.datatypes import Project
 from litpose_app.deps import ProjectInfoGetter
 from litpose_app.project_cache import drop_file_check, relative_data_path
+from litpose_app.routes.rglob import _rglob
 from litpose_app.routes.validate_files import (
     _MODEL_NAME_RE,
     _inspect_label_table,
@@ -32,6 +34,8 @@ from litpose_app.routes.validate_files import (
     calibration_file_issues,
     label_csv_rels,
 )
+from litpose_app.utils.file_transaction import CommitRollbackError, replace_files
+from litpose_app.utils.mv_label_file import label_files_lock, queue_frame_path
 
 router = APIRouter()
 _CalibrationDestination = Literal["project", "session"]
@@ -116,13 +120,70 @@ def _rewrite_index_field(text: str, old: str, new: str, *, prefix: bool) -> str:
     return "".join(rewritten)
 
 
-def _label_csvs(project: Project, scope: str) -> list[Path]:
-    """Label CSVs in scope, excluding the model directory and data_dir/models."""
+def _label_csvs(project: Project) -> list[Path]:
+    """Every CSV under the data directory except the model directory and data_dir/models.
+
+    Wider than ``Config.LABEL_CSV_SCOPE`` on purpose: LP can train on a label
+    CSV anywhere, for example ``labeled-data/<session>/CollectedData_<scorer>.csv``,
+    so a renamed folder must not leave stale paths in it.
+    """
     data_dir = project.paths.data_dir
     return [
         data_dir / rel
-        for rel in label_csv_rels(data_dir, project.paths.model_dir, scope)
+        for rel in label_csv_rels(data_dir, project.paths.model_dir, "tree")
     ]
+
+
+def _label_queues(project: Project) -> list[Path]:
+    """Every ``*.unlabeled.jsonl`` queue under the data directory, outside the model folders."""
+    data_dir = project.paths.data_dir
+    model_dir = project.paths.model_dir
+    found: list[Path] = []
+    for entry in _rglob(str(data_dir), pattern="**/*.unlabeled.jsonl", no_dirs=True):
+        full = data_dir / Path(entry["path"])
+        if _under(full, data_dir / "models") or (
+            model_dir is not None and _under(full, model_dir)
+        ):
+            continue
+        found.append(full)
+    return found
+
+
+def _rewrite_queue(text: str, old: str, new: str, *, prefix: bool) -> str:
+    """Replace ``frame_path`` in an unlabeled queue, as ``_rewrite_index_field`` does for CSVs.
+
+    Only lines whose path changes are rewritten; other lines, including ones
+    that are not valid JSON, stay as stored.
+    """
+    rewritten: list[str] = []
+    for line in text.splitlines(keepends=True):
+        body = line.rstrip("\r\n")
+        newline = line[len(body) :]
+        try:
+            entry = json.loads(body) if body.strip() else None
+        except json.JSONDecodeError:
+            entry = None
+        frame_path = entry.get("frame_path") if isinstance(entry, dict) else None
+        if not isinstance(frame_path, str):
+            rewritten.append(line)
+            continue
+        normalized = queue_frame_path(frame_path)
+        if prefix and normalized.startswith(old):
+            replacement = new + normalized[len(old) :]
+        elif not prefix and normalized == old:
+            replacement = new
+        else:
+            rewritten.append(line)
+            continue
+        entry["frame_path"] = replacement
+        rewritten.append(json.dumps(entry) + newline)
+    return "".join(rewritten)
+
+
+def _read_exact(path: Path) -> str:
+    """File text with its line endings kept (CRLF stays CRLF)."""
+    with path.open(encoding="utf-8", newline="") as handle:
+        return handle.read()
 
 
 def _path_after_move(path: Path, src: Path, dest: Path) -> Path:
@@ -401,15 +462,17 @@ def import_calibration_upload(
 def rename_labeled_data_folder(
     request: RenameLabeledDataRequest,
     project_info_getter: ProjectInfoGetter = Depends(deps.project_info_getter),
-    config: Config = Depends(deps.config),
 ) -> RenamePathResponse:
-    """Rename a labeled-data child and update matching label CSV index paths.
+    """Rename a labeled-data child and update the paths that point at it.
 
+    Rewrites the index of every label CSV under the data directory and the
+    ``frame_path`` of every unlabeled queue (``_label_csvs``, ``_label_queues``).
     A directory rename replaces the ``labeled-data/<old>/`` prefix. A loose file
-    rename replaces an index that equals ``labeled-data/<old>`` exactly.
-    ``old_extra`` is not treated as ``old``. Header rows and other cells stay
-    as stored. If a CSV write fails, the original text is restored and the
-    folder or file is moved back.
+    rename replaces a path that equals ``labeled-data/<old>`` exactly.
+    ``old_extra`` is not treated as ``old``. Header rows, other cells, other
+    queue lines and line endings stay as stored. The rewritten files are
+    committed together (``replace_files``); if that fails, every file keeps its
+    original content and the folder or file is moved back.
     """
     project = project_info_getter(request.projectKey)
     root = (project.paths.data_dir / "labeled-data").resolve()
@@ -441,41 +504,62 @@ def rename_labeled_data_folder(
     if dest.exists():
         raise HTTPException(status_code=409, detail="A file with that name already exists.")
 
-    prepared: list[tuple[Path, str, str]] = []
-    for csv in _label_csvs(project, config.LABEL_CSV_SCOPE):
+    with label_files_lock:
+        # (file, rewritten text); only files that change.
+        prepared: list[tuple[Path, str]] = []
+        for csv in _label_csvs(project):
+            try:
+                original = _read_exact(csv)
+            except UnicodeDecodeError as exc:
+                raise HTTPException(
+                    status_code=400, detail=f"Could not read {csv.name} as text."
+                ) from exc
+            updated = _rewrite_index_field(original, old_index, new_index, prefix=prefix)
+            if updated != original:
+                prepared.append((csv, updated))
+        for queue in _label_queues(project):
+            try:
+                original = _read_exact(queue)
+            except UnicodeDecodeError as exc:
+                raise HTTPException(
+                    status_code=400, detail=f"Could not read {queue.name} as text."
+                ) from exc
+            updated = _rewrite_queue(original, old_index, new_index, prefix=prefix)
+            if updated != original:
+                prepared.append((queue, updated))
+
         try:
-            original = csv.read_text(encoding="utf-8")
-        except UnicodeDecodeError as exc:
-            raise HTTPException(
-                status_code=400, detail=f"Could not read {csv.name} as text."
-            ) from exc
-        updated = _rewrite_index_field(original, old_index, new_index, prefix=prefix)
-        if updated != original:
-            prepared.append((csv, original, updated))
+            src.rename(dest)
+        except OSError as exc:
+            raise HTTPException(status_code=400, detail=f"Could not rename: {exc}") from exc
 
-    try:
-        src.rename(dest)
-    except OSError as exc:
-        raise HTTPException(status_code=400, detail=f"Could not rename: {exc}") from exc
+        stamp = time.time_ns()
+        staged: list[tuple[Path, Path]] = []
+        try:
+            for path, updated in prepared:
+                target = _path_after_move(path, src, dest)
+                tmp = target.with_name(f".{target.name}.{stamp}.tmp")
+                with tmp.open("w", encoding="utf-8", newline="") as handle:
+                    handle.write(updated)
+                staged.append((tmp, target))
+            replace_files(staged)
+        except Exception as exc:
+            for tmp, _target in staged:
+                tmp.unlink(missing_ok=True)
+            if dest.exists() and not src.exists():
+                dest.rename(src)
+            detail = "Could not update the label file and queue paths."
+            if isinstance(exc, CommitRollbackError):
+                detail += " " + str(exc)
+            raise HTTPException(status_code=500, detail=detail) from exc
+        written = [target for _tmp, target in staged]
 
-    written: list[tuple[Path, str]] = []
-    try:
-        for csv, original, updated in prepared:
-            target = _path_after_move(csv, src, dest)
-            target.write_text(updated, encoding="utf-8")
-            written.append((target, original))
-    except Exception as exc:
-        for target, original in written:
-            target.write_text(original, encoding="utf-8")
-        if dest.exists() and not src.exists():
-            dest.rename(src)
-        raise HTTPException(
-            status_code=500, detail="Could not update label CSV paths."
-        ) from exc
     data_dir = project.paths.data_dir
     drop_file_check(data_dir, "labeled-data", f"labeled-data/{src.name}")
     drop_file_check(data_dir, "labeled-data", f"labeled-data/{dest.name}")
-    for target, _original in written:
+    for target in written:
+        if target.suffix != ".csv":
+            continue
         rel = relative_data_path(data_dir, target)
         if rel is not None:
             drop_file_check(data_dir, "labels", rel)

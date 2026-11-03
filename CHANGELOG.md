@@ -8,6 +8,14 @@ GitHub Releases use the matching `### [X.Y.Z.W]` section from this file. A `### 
 
 ### [2.4.2.4.dev0]
 
+* **File Manager: renaming a labeled-data folder updates every file that points at it.** The rename now rewrites the image paths in every label CSV under the data directory (as before this version, not only CSVs at the top level), so a label file inside a session folder or in a subfolder keeps working. It also updates the remaining frames in each `*.unlabeled.jsonl` queue, which used to keep the old folder name and show "image could not be loaded". All the rewritten files are committed together: if one can't be written, every file keeps its old content and the folder is moved back. Line endings (CRLF) are kept. Model folders are not touched.
+
+Tests: `tests/routes/test_rename_project_files.py` (a CSV inside the renamed folder and one in a subfolder are rewritten; queue paths are rewritten, including a `\` path, while other entries and an unreadable line stay as stored and a queue under `models/` is untouched; CRLF line endings are kept; a failed commit moves the folder back and leaves every file unchanged). The first three fail on the old code.
+
+* **Create Model: a negative Train prob no longer freezes the dialog.** Typing a negative value into **Train prob** with a label file chosen made the Pose PCA frame check loop forever and hang the browser tab. The check now runs only for a positive train and val fraction.
+
+Tests: `create-model-dialog.component.spec.ts` "does not hang or block Pose PCA while a negative Train prob is typed"; `pose-pca.spec.ts` "is Infinity, without searching, when the train fraction is not positive".
+
 * **Viewer: no "unknown" view in the Views panel.** In a multiview project, the **Views** panel listed the project's views plus one called "unknown". It now lists only the project's views. "unknown" is a placeholder for video files whose name doesn't end in a project view; those videos are not part of any session, so the row never controlled anything. Single-view projects still don't show the panel.
 
 Test: `listed-views.spec.ts` (the Views panel list is the project views without "unknown", in order). The Viewer page itself has no spec.
