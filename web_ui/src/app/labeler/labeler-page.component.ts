@@ -110,6 +110,8 @@ export class LabelerPageComponent implements OnInit, OnChanges {
   protected isLoading = signal(false);
   /** True while Refresh reloads; the selected label file and frame read as none. */
   protected isRefreshing = signal(false);
+  /** A save is being written; Refresh waits for it so it reloads what was saved. */
+  protected isSaving = signal(false);
   /** Asks before Refresh discards unsaved keypoint edits. */
   protected refreshConfirmOpen = signal(false);
   /** Bumped by Refresh so images load again instead of from the browser cache. */
@@ -227,7 +229,8 @@ export class LabelerPageComponent implements OnInit, OnChanges {
     shouldAdvanceFrame: boolean;
     deletion?: boolean;
   }) {
-    if (data.labelFile !== this.loadedLabelFile()) {
+    // By key: a Refresh replaces the loaded label file object with an equal one.
+    if (data.labelFile.key !== this.loadedLabelFile()?.key) {
       return;
     }
     const currentFrameIndex = this.labelFileData()!.findIndex(
@@ -369,6 +372,7 @@ export class LabelerPageComponent implements OnInit, OnChanges {
 
   /** Refresh: asks first when any loaded frame has unsaved keypoint edits. */
   protected handleRefreshClick() {
+    if (this.isSaving()) return;
     const frames = this.labelFileData() ?? [];
     if (frames.some((frame) => mvf(frame).hasRevertibleEdits)) {
       this.refreshConfirmOpen.set(true);

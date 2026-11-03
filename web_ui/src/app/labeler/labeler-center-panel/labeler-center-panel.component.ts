@@ -110,6 +110,8 @@ export class LabelerCenterPanelComponent implements OnChanges {
     shouldAdvanceFrame: boolean;
     deletion?: boolean;
   }>();
+  /** True while a save is being written, false when it finishes or fails. */
+  savingChange = output<boolean>();
   nextFrame = output<void>();
   previousFrame = output<void>();
   closeFrame = output<void>();
@@ -339,6 +341,11 @@ export class LabelerCenterPanelComponent implements OnChanges {
   private cameraCalibrationService = inject(CameraCalibrationService);
   private abortController = new AbortController();
   protected isSaving = signal(false);
+
+  private setSaving(saving: boolean) {
+    this.isSaving.set(saving);
+    this.savingChange.emit(saving);
+  }
   private isMVAutoLabeling = signal(false);
   protected calibrationStatus = signal<'session' | 'project' | 'none'>('none');
   protected hasCameraCalibrationFiles = computed(
@@ -517,13 +524,13 @@ export class LabelerCenterPanelComponent implements OnChanges {
         return;
     }
 
-    this.isSaving.set(true);
+    this.setSaving(true);
     const nextFrameView = this.nextFrameView();
 
     this.sessionService
       .saveMVFrame(labelFile, frame, deletion)
       .then(() => {
-        this.isSaving.set(false);
+        this.setSaving(false);
         if (shouldContinue && !nextFrameView) {
           this.openFrameOn = 'first';
         }
@@ -542,7 +549,7 @@ export class LabelerCenterPanelComponent implements OnChanges {
         this.selectKeypointForView();
       })
       .catch((error) => {
-        this.isSaving.set(false);
+        this.setSaving(false);
         throw error;
       });
   }

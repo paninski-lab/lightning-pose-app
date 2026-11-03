@@ -25,7 +25,7 @@ import {
 import _ from 'lodash';
 import { EksSmoother, ModelListResponse } from './modelconf';
 import { PROJECT_VIDEO_MP4_GLOB } from './project-video-paths';
-import { sessionViewKey } from './utils/session-view';
+import { sessionViewKey, UNKNOWN_VIEW } from './utils/session-view';
 
 type SessionModelMap = Record<string, string[]>;
 
@@ -269,7 +269,7 @@ export class SessionService {
       const parts = path.split('/');
       // The view is the part after the last "_"; a name without a project view stays on its own.
       const split = sessionViewKey(parts.at(-1)!, views);
-      const viewName = split?.view ?? 'unknown';
+      const viewName = split?.view ?? UNKNOWN_VIEW;
       const pathKey = split
         ? [...parts.slice(0, -1), split.key].join('/')
         : path;
@@ -380,7 +380,7 @@ export class SessionService {
           this.projectInfoService.allViews(),
         );
         const sessionKey = split?.key ?? sessionView;
-        const viewName = split?.view ?? 'unknown';
+        const viewName = split?.view ?? UNKNOWN_VIEW;
 
         // Parse out key metadata.
         return {
@@ -554,8 +554,8 @@ export class SessionService {
     const ungroupedVideos: string[] = [];
 
     for (const [pathKey, groupedFiles] of pathKeyToViewFiles.entries()) {
-      const knownViews = groupedFiles.filter((f) => f.view !== 'unknown');
-      const unknownViews = groupedFiles.filter((f) => f.view === 'unknown');
+      const knownViews = groupedFiles.filter((f) => f.view !== UNKNOWN_VIEW);
+      const unknownViews = groupedFiles.filter((f) => f.view === UNKNOWN_VIEW);
 
       if (knownViews.length === 0) {
         ungroupedVideos.push(...unknownViews.map((f) => f.filename));

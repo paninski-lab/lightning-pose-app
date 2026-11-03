@@ -37,7 +37,7 @@ import { SessionImportComponent } from '../../session-import/session-import.comp
     },
   ],
 })
-class LabelFileTemplateValidatorDirective implements Validator {
+export class LabelFileTemplateValidatorDirective implements Validator {
   private projectInfoService = inject(ProjectInfoService);
 
   validate(control: AbstractControl): ValidationErrors | null {
@@ -48,8 +48,8 @@ class LabelFileTemplateValidatorDirective implements Validator {
 
     const errors = {} as Record<string, unknown>;
 
-    // If multiview, one star is required.
-    if (this.projectInfoService.allViews().length > 1) {
+    // If multiview (any named view), one star is required.
+    if (this.projectInfoService.allViews().length > 0) {
       const starCount = (value.match(/\*/g) || []).length;
       if (starCount === 0) {
         errors['viewStarMissing'] = true;

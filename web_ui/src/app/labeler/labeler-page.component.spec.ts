@@ -45,6 +45,7 @@ class StubLabelerCenterPanelComponent {
   numLabeledFramesGetter = input<unknown>(null);
   imageReload = input(0);
   saved = output<unknown>();
+  savingChange = output<boolean>();
   nextFrame = output<void>();
   previousFrame = output<void>();
   closeFrame = output<void>();
@@ -573,6 +574,40 @@ describe('LabelerPageComponent — Refresh', () => {
     await click('Discard and refresh');
     expect(loadLabelFileData).toHaveBeenCalledTimes(1);
     expect(openFrame().views[0].keypoints[0].x).toBe(1);
+  });
+
+  it('keeps Refresh off while a save is being written', async () => {
+    centerPanel().savingChange.emit(true);
+    fixture.detectChanges();
+    expect(button('Refresh label data and images').disabled).toBeTrue();
+
+    centerPanel().savingChange.emit(false);
+    fixture.detectChanges();
+    expect(button('Refresh label data and images').disabled).toBeFalse();
+  });
+
+  it('applies a save that finishes after a Refresh (Save and next still moves on)', async () => {
+    const session = TestBed.inject(SessionService) as unknown as {
+      allLabelFiles: ReturnType<typeof signal<MVLabelFile[]>>;
+    };
+    // Refresh loads an equal label file as a new object.
+    loadLabelFiles.and.callFake(async () =>
+      session.allLabelFiles.set([{ ...labelFile }]),
+    );
+    loadLabelFileData.and.callFake(() =>
+      Promise.resolve([makeFrame('img001'), makeFrame('img002')]),
+    );
+    await click('Refresh label data and images');
+
+    centerPanel().saved.emit({
+      labelFile,
+      frame: openFrame(),
+      shouldAdvanceFrame: true,
+    });
+
+    expect(navigateSpy).toHaveBeenCalledWith([], {
+      queryParams: { labelFileKey: labelFile.key, frameKey: 'img002' },
+    });
   });
 
   it('keeps what is shown and says why when Refresh fails to load', async () => {
