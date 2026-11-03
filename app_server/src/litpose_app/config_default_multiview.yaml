@@ -46,6 +46,8 @@ training:
   imgaug: dlc
   # 3d augmentations require camera calibration
   imgaug_3d: false
+  # imgaug_hflip is not supported for multiview models; setting to true will raise an error
+  imgaug_hflip: false
   # batch size of labeled data during training
   train_batch_size: 16
   # batch size of labeled data during validation
@@ -77,6 +79,10 @@ training:
   # save model weights every n epochs; must be divisible by check_val_every_n_epoch above
   # if null, only best weights will be saved after training
   ckpt_every_n_epochs: null
+  # perform early stopping based on validation loss
+  early_stopping: false
+  # number of validation checks with no improvement before stopping (requires early_stopping: true)
+  early_stop_patience: 3
   # rng seed for labeled batches
   rng_seed_data_pt: 0
   # rng seed for weight initialization
@@ -147,7 +153,7 @@ losses:
   # loss = projection onto the discarded eigenvectors
   pca_multiview:
     # weight in front of PCA loss
-    log_weight: 10.7
+    log_weight: 11.0
     # predictions should lie within the low-d subspace spanned by these components
     components_to_keep: 3
     # absolute error (in pixels) below which pca loss is zeroed out; if null, an empirical
@@ -156,7 +162,7 @@ losses:
   # loss = projection onto the discarded eigenvectors
   pca_singleview:
     # weight in front of PCA loss
-    log_weight: 10.7
+    log_weight: 11.0
     # predictions should lie within the low-d subspace spanned by components that describe this fraction of variance
     components_to_keep: 0.99
     # absolute error (in pixels) below which pca loss is zeroed out; if null, an empirical
@@ -165,7 +171,7 @@ losses:
   # loss = norm of distance between successive timepoints
   temporal:
     # weight in front of temporal loss
-    log_weight: 10.7
+    log_weight: 11.0
     # for epsilon insensitive rectification
     # (in pixels; diffs below this are not penalized)
     epsilon: 20.0
@@ -182,7 +188,7 @@ eval:
   # predict? used in scripts/train_hydra.py
   predict_vids_after_training: true
   # str with an absolute path to a directory containing videos for prediction.
-  test_videos_directory: /replace/with/your/path
+  test_videos_directory: ${data.video_dir}
   # save labeled .mp4? used in scripts/train_hydra.py and scripts/predict_new_vids.py
   save_vids_after_training: false
   # matplotlib sequential or diverging colormap name for prediction visualization

@@ -48,8 +48,10 @@ export interface LRSchedulerParams {
  * Configuration for the model training process.
  */
 export interface TrainingConfig {
-  imgaug: 'default' | 'dlc' | 'dlc-top-down';
+  imgaug: 'default' | 'dlc' | 'dlc-lr' | 'dlc-top-down';
   imgaug_3d: boolean;
+  /** Random horizontal flip that swaps _left/_right keypoints; single-view only. */
+  imgaug_hflip: boolean;
   train_batch_size: number;
   val_batch_size: number;
   test_batch_size: number;
@@ -57,6 +59,7 @@ export interface TrainingConfig {
   val_prob: number;
   train_frames: number;
   num_gpus: number;
+  early_stopping: boolean;
   early_stop_patience: number;
   unfreezing_epoch: number;
   min_epochs: number;
@@ -82,8 +85,33 @@ export interface ModelConfig {
     | 'heatmap'
     | 'heatmap_mhcrnn'
     | 'heatmap_multiview_transformer';
-  heatmap_loss_type: 'mse';
+  heatmap_loss_type: HeatmapLossType;
   model_name: string;
+}
+
+export type HeatmapLossType = 'mse' | 'kl' | 'js';
+
+/** LP's recommended settings for a label file (`litpose recommend`). */
+export interface ModelRecommendation {
+  recommendation: {
+    model_type: string;
+    backbone: string;
+    image_resize_height: number;
+    image_resize_width: number;
+    train_batch_size: number;
+    max_epochs: number;
+    optimizer: 'Adam' | 'AdamW';
+    learning_rate: number;
+    imgaug: string;
+    losses_to_use: string[];
+    dali_train_sequence_length: number | null;
+    /** Field name → one-line reason. */
+    rationale: Record<string, string>;
+  };
+  gpu: { name: string; vram_gb: number } | null;
+  labeledFrames: number;
+  imageHeight: number;
+  imageWidth: number;
 }
 
 export const backbones = [

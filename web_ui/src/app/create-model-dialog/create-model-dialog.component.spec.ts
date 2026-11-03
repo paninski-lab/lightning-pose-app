@@ -9,7 +9,10 @@ import { ToastService } from '../toast.service';
 import { ModelType } from '../modelconf';
 import { parse as yamlParse } from 'yaml';
 
-function makeProjectInfoMock(views: string[], keypointNames = ['nose', 'tail']) {
+function makeProjectInfoMock(
+  views: string[],
+  keypointNames = ['nose', 'tail'],
+) {
   return {
     projectInfo: {
       views,
@@ -40,10 +43,14 @@ function makeSessionServiceMock(defaultConfig: object = {}) {
     'createTrainingTask',
     'countLabeledFrames',
     'allLabelFiles',
+    'writeDefaultModelConfig',
+    'recommendModelConfig',
   ]);
   mock.getYamlFile.and.returnValue(Promise.resolve(null));
   mock.getDefaultYamlFile.and.returnValue(Promise.resolve(defaultConfig));
-  mock.getDefaultMultiviewYamlFile.and.returnValue(Promise.resolve(defaultConfig));
+  mock.getDefaultMultiviewYamlFile.and.returnValue(
+    Promise.resolve(defaultConfig),
+  );
   mock.countLabeledFrames.and.returnValue(Promise.resolve(100));
   mock.allLabelFiles.and.returnValue([
     {
@@ -94,6 +101,14 @@ async function createComponent(
   return fixture;
 }
 
+/** The config the dialog would write, as shown in the YAML preview. */
+async function previewConfig(
+  fixture: ComponentFixture<CreateModelDialogComponent>,
+): Promise<any> {
+  await fixture.componentInstance.onPreviewYamlClick();
+  return yamlParse(fixture.componentInstance['yamlPreviewText']());
+}
+
 const MULTIVIEW_LOSSES_ON = {
   multiviewLosses: {
     supervised_reprojection_heatmap_mse: { enabled: true, logWeight: 3.0 },
@@ -141,41 +156,278 @@ describe('CreateModelDialogComponent — imgaug_3d in config patch', () => {
   });
 });
 
-describe('CreateModelDialogComponent — learning rate override for ViT backbones', () => {
-  describe('singleview project', () => {
-    let component: CreateModelDialogComponent;
+describe('CreateModelDialogComponent — learning rate', () => {
+  const BASE = { training: { optimizer_params: { learning_rate: 1e-3 } } };
 
-    beforeEach(async () => {
-      component = (await createComponent(['top'])).componentInstance;
-    });
+  async function open(views: string[], base: object = BASE) {
+    const fixture = await createComponent(views, makeSessionServiceMock(base));
+    await fixture.whenStable();
+    return { fixture, component: fixture.componentInstance };
+  }
 
-    it('overrides learning_rate to 5e-5 when a vit backbone is selected', () => {
-      const patch = component['computeConfigPatch']({ backbone: 'vits_dino' });
-      expect(patch.training?.optimizer_params?.learning_rate).toBe(5e-5);
-    });
+  function lr(component: CreateModelDialogComponent): number {
+    return component['trainingForm'].controls['learningRate'].value;
+  }
 
-    it('does not override learning_rate for a non-vit backbone', () => {
-      const patch = component['computeConfigPatch']({ backbone: 'resnet50' });
-      expect(patch.training?.optimizer_params?.learning_rate).toBeUndefined();
-    });
-
-    it('does not set learning_rate when backbone is absent', () => {
-      const patch = component['computeConfigPatch']({});
-      expect(patch.training?.optimizer_params?.learning_rate).toBeUndefined();
-    });
+  it('single-view: a ViT backbone starts at 5e-5, others at the base config rate', async () => {
+    const { fixture, component } = await open(['top']);
+    const backbone = component['generalForm'].controls['backbone'];
+    backbone.setValue('vits_dino');
+    expect(lr(component)).toBe(5e-5);
+    expect(
+      (await previewConfig(fixture)).training.optimizer_params.learning_rate,
+    ).toBe(5e-5);
+    backbone.setValue('resnet50');
+    expect(lr(component)).toBe(1e-3);
   });
 
-  describe('multiview project', () => {
-    let component: CreateModelDialogComponent;
+  it('keeps a typed learning rate when the backbone changes', async () => {
+    const { component } = await open(['top']);
+    component['trainingForm'].controls['learningRate'].setValue(2e-4);
+    component['markLearningRateEdited']();
+    component['generalForm'].controls['backbone'].setValue('vits_dino');
+    expect(lr(component)).toBe(2e-4);
+  });
 
-    beforeEach(async () => {
-      component = (await createComponent(['top', 'bot'])).componentInstance;
+  it('multiview: uses the base config rate for every backbone', async () => {
+    const { component } = await open(['top', 'bot'], {
+      training: { optimizer_params: { learning_rate: 5e-5 } },
     });
+    expect(lr(component)).toBe(5e-5);
+    component['generalForm'].controls['backbone'].setValue('vits_dino');
+    expect(lr(component)).toBe(5e-5);
+  });
+});
 
-    it('does not override learning_rate since the multiview default already uses 5e-5', () => {
-      const patch = component['computeConfigPatch']({ backbone: 'vits_dino' });
-      expect(patch.training?.optimizer_params?.learning_rate).toBeUndefined();
+describe('CreateModelDialogComponent — training options (#190)', () => {
+  const BASE = {
+    data: { image_resize_dims: { height: 384, width: 256 } },
+    model: { heatmap_loss_type: 'kl' },
+    training: {
+      optimizer: 'AdamW',
+      optimizer_params: { learning_rate: 1e-3 },
+      early_stopping: false,
+      early_stop_patience: 3,
+      imgaug_hflip: false,
+      rng_seed_model_pt: 7,
+    },
+  };
+
+  async function open(views: string[], keypoints?: string[]) {
+    const fixture = await createComponent(
+      views,
+      makeSessionServiceMock(BASE),
+      keypoints,
+    );
+    await fixture.whenStable();
+    const component = fixture.componentInstance;
+    component.handleTabClick('training');
+    fixture.detectChanges();
+    return { fixture, component };
+  }
+
+  function input(
+    fixture: ComponentFixture<CreateModelDialogComponent>,
+    label: string,
+  ) {
+    return fixture.nativeElement.querySelector(
+      `[aria-label="${label}"]`,
+    ) as HTMLInputElement | null;
+  }
+
+  it('starts each new field from the base config', async () => {
+    const { component } = await open(['top']);
+    const t = component['trainingForm'].controls;
+    expect(t['imageHeight'].value).toBe(384);
+    expect(t['imageWidth'].value).toBe(256);
+    expect(t['optimizer'].value).toBe('AdamW');
+    expect(t['heatmapLossType'].value).toBe('kl');
+    expect(component['dataForm'].controls['modelSeed'].value).toBe(7);
+  });
+
+  it('writes image size, optimizer, heatmap loss, early stopping and model seed', async () => {
+    const { fixture, component } = await open(['top']);
+    const t = component['trainingForm'].controls;
+    t['imageHeight'].setValue(128);
+    t['imageWidth'].setValue(512);
+    t['optimizer'].setValue('Adam');
+    t['heatmapLossType'].setValue('js');
+    t['earlyStopping'].setValue(true);
+    t['earlyStopPatience'].setValue(5);
+    component['dataForm'].controls['modelSeed'].setValue(3);
+    const config = await previewConfig(fixture);
+    expect(config.data.image_resize_dims).toEqual({ height: 128, width: 512 });
+    expect(config.training.optimizer).toBe('Adam');
+    expect(config.model.heatmap_loss_type).toBe('js');
+    expect(config.training.early_stopping).toBeTrue();
+    expect(config.training.early_stop_patience).toBe(5);
+    expect(config.training.rng_seed_model_pt).toBe(3);
+  });
+
+  it('refuses an image size that is not a multiple of 128', async () => {
+    const { fixture, component } = await open(['top']);
+    component['trainingForm'].controls['imageHeight'].setValue(200);
+    fixture.detectChanges();
+    expect(component['trainingForm'].valid).toBeFalse();
+    expect(fixture.nativeElement.textContent).toContain('multiples of 128');
+  });
+
+  it('offers DLC-LR augmentation', async () => {
+    const { component } = await open(['top']);
+    expect(
+      component['augmentationOptions']().map((o: { value: string }) => o.value),
+    ).toContain('dlc-lr');
+  });
+
+  it('single-view: horizontal flip writes imgaug_hflip', async () => {
+    const { fixture, component } = await open(['top']);
+    expect(input(fixture, 'Horizontal flip')!.disabled).toBeFalse();
+    component['trainingForm'].controls['hflip'].setValue(true);
+    expect((await previewConfig(fixture)).training.imgaug_hflip).toBeTrue();
+  });
+
+  it('turns horizontal flip off, saying why, when a _left keypoint has no _right', async () => {
+    const { fixture } = await open(
+      ['top'],
+      ['nose', 'paw_left', 'ear_left', 'ear_right'],
+    );
+    const box = input(fixture, 'Horizontal flip')!;
+    expect(box.disabled).toBeTrue();
+    expect(box.closest('[data-tip]')!.getAttribute('data-tip')).toContain(
+      'paw_left',
+    );
+  });
+
+  it('multiview: no horizontal flip (LP does not support it for multiview models)', async () => {
+    const { fixture } = await open(['top', 'bot']);
+    expect(input(fixture, 'Horizontal flip')).toBeNull();
+    expect((await previewConfig(fixture)).training.imgaug_hflip).toBeFalse();
+  });
+});
+
+describe('CreateModelDialogComponent — project default config (#190)', () => {
+  it('without configs/default.yaml, says so and creates it on request', async () => {
+    const session = makeSessionServiceMock(DEFAULT_CONFIG);
+    session.writeDefaultModelConfig.and.callFake(async () => {
+      session.getYamlFile.and.returnValue(Promise.resolve(DEFAULT_CONFIG));
+      return '/data/configs/default.yaml';
     });
+    const fixture = await createComponent(['top'], session);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const text = () =>
+      fixture.nativeElement.querySelector('[data-testid="base-config"]')
+        .textContent;
+    const createButton = () =>
+      Array.from(fixture.nativeElement.querySelectorAll('button')).find((b) =>
+        (b as HTMLButtonElement).textContent!.includes(
+          'Create project default config',
+        ),
+      ) as HTMLButtonElement | undefined;
+    expect(text()).toContain('no default config');
+
+    createButton()!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(session.writeDefaultModelConfig).toHaveBeenCalledTimes(1);
+    expect(text()).toContain("project's default config");
+    expect(createButton()).toBeUndefined();
+  });
+
+  it('with configs/default.yaml, uses it and offers no create button', async () => {
+    const session = makeSessionServiceMock(DEFAULT_CONFIG);
+    session.getYamlFile.and.returnValue(Promise.resolve(DEFAULT_CONFIG));
+    const fixture = await createComponent(['top'], session);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="base-config"]')
+        .textContent,
+    ).toContain("project's default config");
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'Create project default config',
+    );
+  });
+});
+
+describe('CreateModelDialogComponent — recommended settings (#190)', () => {
+  const RECOMMENDATION = {
+    recommendation: {
+      model_type: 'heatmap',
+      backbone: 'vits_dino',
+      image_resize_height: 256,
+      image_resize_width: 256,
+      train_batch_size: 8,
+      max_epochs: 500,
+      optimizer: 'AdamW',
+      learning_rate: 5e-5,
+      imgaug: 'dlc-top-down',
+      losses_to_use: ['temporal'],
+      dali_train_sequence_length: 8,
+      rationale: {
+        backbone: 'vits_dino is a strong default',
+        max_epochs: 'few frames',
+      },
+    },
+    gpu: { name: 'Test GPU', vram_gb: 12 },
+    labeledFrames: 40,
+    imageHeight: 200,
+    imageWidth: 300,
+  };
+
+  async function open() {
+    const session = makeSessionServiceMock(DEFAULT_CONFIG);
+    session.recommendModelConfig.and.returnValue(
+      Promise.resolve(RECOMMENDATION),
+    );
+    const fixture = await createComponent(['top'], session);
+    await fixture.whenStable();
+    const component = fixture.componentInstance;
+    component.handleTabClick('training');
+    fixture.detectChanges();
+    const button = () =>
+      Array.from(fixture.nativeElement.querySelectorAll('button')).find((b) =>
+        (b as HTMLButtonElement).textContent!.includes(
+          'Use recommended settings',
+        ),
+      ) as HTMLButtonElement;
+    return { fixture, component, session, button };
+  }
+
+  it('needs a label file first', async () => {
+    const { button } = await open();
+    expect(button().disabled).toBeTrue();
+  });
+
+  it("fills the form from LP's recommendation and lists LP's reasons", async () => {
+    const { fixture, component, session, button } = await open();
+    component['dataForm'].controls['labelFile'].setValue('CollectedData.csv');
+    fixture.detectChanges();
+    button().click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(session.recommendModelConfig).toHaveBeenCalledWith(
+      jasmine.objectContaining({
+        csvPaths: ['/data/CollectedData.csv'],
+        viewNames: [],
+      }),
+    );
+    const g = component['generalForm'].controls;
+    const t = component['trainingForm'].controls;
+    expect(g['backbone'].value).toBe('vits_dino');
+    expect(g['modelType'].value).toBe(ModelType.S_SUP);
+    expect(t['labeledBatchSize'].value).toBe(8);
+    expect(t['unlabeledBatchSize'].value).toBe(8);
+    expect(t['epochs'].value).toBe(500);
+    expect(t['optimizer'].value).toBe('AdamW');
+    expect(t['learningRate'].value).toBe(5e-5);
+    expect(t['augmentation'].value).toBe('dlc-top-down');
+    const reasons = fixture.nativeElement.querySelector(
+      '[data-testid="recommendation-reasons"]',
+    ).textContent;
+    expect(reasons).toContain('vits_dino is a strong default');
+    expect(reasons).toContain('Test GPU');
   });
 });
 
@@ -190,7 +442,9 @@ describe('CreateModelDialogComponent — reprojection loss in config patch', () 
     it('includes reprojection log_weight when calibrations are on and loss is enabled', () => {
       component['useCameraCalibrations'].set(true);
       const patch = component['computeConfigPatch'](MULTIVIEW_LOSSES_ON);
-      expect(patch.losses?.supervised_reprojection_heatmap_mse?.log_weight).toBe(3.0);
+      expect(
+        patch.losses?.supervised_reprojection_heatmap_mse?.log_weight,
+      ).toBe(3.0);
     });
 
     it('omits reprojection log_weight when calibrations are off', () => {
@@ -203,7 +457,10 @@ describe('CreateModelDialogComponent — reprojection loss in config patch', () 
       component['useCameraCalibrations'].set(true);
       const patch = component['computeConfigPatch']({
         multiviewLosses: {
-          supervised_reprojection_heatmap_mse: { enabled: false, logWeight: 3.0 },
+          supervised_reprojection_heatmap_mse: {
+            enabled: false,
+            logWeight: 3.0,
+          },
         },
       });
       expect(patch.losses?.supervised_reprojection_heatmap_mse).toBeUndefined();
@@ -226,7 +483,10 @@ describe('CreateModelDialogComponent — reprojection loss in config patch', () 
 
 describe('CreateModelDialogComponent — epochs scale the schedule (#172)', () => {
   async function previewFor(epochs: number, config: object = DEFAULT_CONFIG) {
-    const fixture = await createComponent(['top'], makeSessionServiceMock(config));
+    const fixture = await createComponent(
+      ['top'],
+      makeSessionServiceMock(config),
+    );
     await fixture.whenStable();
     const component = fixture.componentInstance;
     component['trainingForm'].controls['epochs'].setValue(epochs);
@@ -253,7 +513,10 @@ describe('CreateModelDialogComponent — epochs scale the schedule (#172)', () =
   });
 
   it('shows the scaled schedule under Epochs as the value changes', async () => {
-    const fixture = await createComponent(['top'], makeSessionServiceMock(DEFAULT_CONFIG));
+    const fixture = await createComponent(
+      ['top'],
+      makeSessionServiceMock(DEFAULT_CONFIG),
+    );
     await fixture.whenStable();
     const component = fixture.componentInstance;
     component.handleTabClick('training');
@@ -264,7 +527,9 @@ describe('CreateModelDialogComponent — epochs scale the schedule (#172)', () =
     input.value = '150';
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
-    const hint = fixture.nativeElement.querySelector('[data-testid="epoch-schedule-hint"]');
+    const hint = fixture.nativeElement.querySelector(
+      '[data-testid="epoch-schedule-hint"]',
+    );
     expect(hint.textContent.trim()).toBe(
       'Backbone unfreezes at epoch 10. Learning rate drops at epochs 75, 100, 125.',
     );
@@ -292,7 +557,8 @@ describe('CreateModelDialogComponent — epochs scale the schedule (#172)', () =
     );
     expect(input.disabled).toBeTrue();
     expect(
-      fixture.nativeElement.querySelector('[data-testid="epoch-schedule-hint"]').textContent,
+      fixture.nativeElement.querySelector('[data-testid="epoch-schedule-hint"]')
+        .textContent,
     ).toContain('counts in steps');
   });
 });
@@ -320,7 +586,9 @@ describe('CreateModelDialogComponent — Pose PCA needs enough frames (#54)', ()
 
   it('disables and unchecks Pose PCA with too few frames, and says how many are needed', async () => {
     const { fixture, session, checkbox } = await open(34);
-    expect(session.countLabeledFrames).toHaveBeenCalledWith('/data/CollectedData.csv');
+    expect(session.countLabeledFrames).toHaveBeenCalledWith(
+      '/data/CollectedData.csv',
+    );
     expect(checkbox.disabled).toBeTrue();
     expect(checkbox.checked).toBeFalse();
     const tip = checkbox.closest('[data-tip]')!;
@@ -364,8 +632,12 @@ describe('CreateModelDialogComponent — Pose PCA needs enough frames (#54)', ()
     expect(checkbox.closest('[data-tip]')).toBeNull();
   });
 
-    async function previewConfig(fixture: ComponentFixture<CreateModelDialogComponent>) {
+  async function previewConfig(
+    fixture: ComponentFixture<CreateModelDialogComponent>,
+  ) {
     await fixture.componentInstance.onPreviewYamlClick();
-    return { config: yamlParse(fixture.componentInstance['yamlPreviewText']()) };
+    return {
+      config: yamlParse(fixture.componentInstance['yamlPreviewText']()),
+    };
   }
 });

@@ -23,7 +23,11 @@ import {
   GetMVAutoLabelsResponse,
 } from './labeler/mv-autolabel';
 import _ from 'lodash';
-import { EksSmoother, ModelListResponse } from './modelconf';
+import {
+  EksSmoother,
+  ModelListResponse,
+  ModelRecommendation,
+} from './modelconf';
 import { PROJECT_VIDEO_MP4_GLOB } from './project-video-paths';
 import { sessionViewKey, UNKNOWN_VIEW } from './utils/session-view';
 
@@ -498,6 +502,27 @@ export class SessionService {
       csvPath,
     })) as { labeledFrames: number };
     return response.labeledFrames;
+  }
+
+  /** Create configs/default.yaml from LPA's bundled default. Rejects (409) when it exists. */
+  async writeDefaultModelConfig(): Promise<string> {
+    const response = (await this.rpc.call('writeDefaultModelConfig', {
+      projectKey: this.getProjectKeyOrThrow(),
+    })) as { path: string };
+    return response.path;
+  }
+
+  /** LP's recommended training settings for a label file's CSVs (one per view). */
+  async recommendModelConfig(request: {
+    csvPaths: string[];
+    viewNames: string[];
+    videosDir: string;
+    topDownFreelyMoving: boolean;
+  }): Promise<ModelRecommendation> {
+    return (await this.rpc.call('recommendModelConfig', {
+      projectKey: this.getProjectKeyOrThrow(),
+      ...request,
+    })) as ModelRecommendation;
   }
 
   /** Fetch the bundled default single-view training config YAML. */
