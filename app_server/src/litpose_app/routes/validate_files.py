@@ -53,6 +53,17 @@ _LABEL_INDEX_RE = re.compile(
 # Pandas rewrites a repeated scorer as rick, rick.1, rick.2.
 _PANDAS_SCORER_SUFFIX_RE = re.compile(r"\.\d+\Z")
 _ISSUE_LIMIT = 8
+# Files LP writes into video_preds/ beside each <video stem>.csv: metrics
+# (lightning_pose/metrics.py) and `litpose create_bbox` output.
+_LP_PREDICTION_SIDE_SUFFIXES = (
+    "_temporal_norm",
+    "_pca_singleview_error",
+    "_pca_multiview_error",
+    "_pixel_error",
+    "_bbox",
+)
+# Labeled videos LP saves after prediction (lightning_pose/api/model.py, labeled_videos_dir).
+_LP_LABELED_VIDEOS_DIR = "labeled_videos"
 
 
 class ValidateProjectFilesRequest(BaseModel):
@@ -127,6 +138,14 @@ def _session_stem_issue(stem: str, views: list[str], *, kind: str) -> str | None
     if view not in views:
         return f"Unknown view: {view}"
     return None
+
+
+def _prediction_stem(stem: str) -> str:
+    """The video stem of a video_preds CSV: ``s_v_temporal_norm`` → ``s_v``; others unchanged."""
+    for suffix in _LP_PREDICTION_SIDE_SUFFIXES:
+        if stem.endswith(suffix) and len(stem) > len(suffix):
+            return stem[: -len(suffix)]
+    return stem
 
 
 def label_csv_rels(data_dir: Path, model_dir: Path | None, scope: str) -> list[Path]:
@@ -422,14 +441,17 @@ def _validate_one_model(model_path: Path, views: list[str]) -> FileCheck:
             unexpected: list[str] = []
             for child in sorted(preds.iterdir(), key=lambda p: p.name.lower()):
                 if child.is_dir():
-                    unexpected.append(f"Unexpected subdirectory: {child.name}")
+                    if child.name != _LP_LABELED_VIDEOS_DIR:
+                        unexpected.append(f"Unexpected subdirectory: {child.name}")
                     continue
                 if child.suffix != ".csv":
                     unexpected.append(f"Unexpected file in video_preds: {child.name}")
                     continue
-                name_issue = _session_stem_issue(
-                    child.stem, views, kind="prediction file"
-                )
+                name_issue = _session_stem_issue(child.stem, views, kind="prediction file")
+                video_stem = _prediction_stem(child.stem)
+                if name_issue and video_stem != child.stem:
+                    # An LP metric or bbox file: check the prediction name it belongs to.
+                    name_issue = _session_stem_issue(video_stem, views, kind="prediction file")
                 if name_issue:
                     unexpected.append(f"{child.name}: {name_issue}")
             issues.extend(_cap(unexpected))
